@@ -1,0 +1,49 @@
+`ifdef LM32_CONFIG_V
+`else
+`define LM32_CONFIG_V
+
+//
+// Common configuration options
+//
+
+`define CFG_EBA_RESET  32'h00000000
+//`define CFG_DEBA_RESET 32'h10000000
+`define CFG_DEBA_RESET 32'h00000000
+
+`define CFG_PL_MULTIPLY_ENABLED
+`define CFG_PL_BARREL_SHIFT_ENABLED
+//`define CFG_SIGN_EXTEND_ENABLED
+//`define CFG_MC_DIVIDE_ENABLED
+
+// bi and calli -> 2 cycles
+//`define CFG_FAST_UNCONDITIONAL_BRANCH
+
+// 2k memory cheaper than 1k registers+logic
+`define CFG_EBR_POSEDGE_REGISTER_FILE
+
+//`define CFG_ICACHE_ENABLED
+//`define CFG_ICACHE_ASSOCIATIVITY   1
+//`define CFG_ICACHE_SETS            256
+//`define CFG_ICACHE_BYTES_PER_LINE  16
+//`define CFG_ICACHE_BASE_ADDRESS    32'h0
+//`define CFG_ICACHE_LIMIT           32'h7fffffff
+
+//`define CFG_DCACHE_ENABLED
+//`define CFG_DCACHE_ASSOCIATIVITY   1
+//`define CFG_DCACHE_SETS            256
+//`define CFG_DCACHE_BYTES_PER_LINE  16
+//`define CFG_DCACHE_BASE_ADDRESS    32'h0
+//`define CFG_DCACHE_LIMIT           32'h7fffffff
+
+// Enable Debugging
+//`define CFG_JTAG_ENABLED
+//`define CFG_JTAG_UART_ENABLED
+//`define CFG_DEBUG_ENABLED
+//`define CFG_HW_DEBUG_ENABLED
+//`define CFG_BREAKPOINTS 32'h0
+//`define CFG_WATCHPOINTS 32'h0
+
+`define CFG_INTERRUPTS_ENABLED
+//`define CFG_BUS_ERRORS_ENABLED
+
+`endif

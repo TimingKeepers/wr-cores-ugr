@@ -1,0 +1,193 @@
+-------------------------------------------------------------------------------
+-- Title      : Deterministic Xilinx GTP wrapper - bitslide state machine
+-- Project    : White Rabbit Switch
+-------------------------------------------------------------------------------
+-- File       : gtp_bitslide.vhd
+-- Author     : Tomasz Wlostowski
+-- Company    : CERN BE-CO-HT
+-- Created    : 2010-11-18
+-- Last update: 2011-04-11
+-- Platform   : FPGA-generic
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Description: Module implements a manual bitslide alignment state machine and
+-- provides the obtained bitslide value to the MAC.
+-------------------------------------------------------------------------------
+--
+-- Original EASE design (c) 2010 NIKHEF / Peter Jansweijer and Henk Peek
+-- VHDL port (c) 2010 CERN / Tomasz Wlostowski
+--
+-- <license>
+--
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author    Description
+-- 2010-11-18  0.4      twlostow  Ported EASE design to VHDL 
+-- 2011-02-07  0.5      twlostow  Verified on Spartan6 GTP
+-------------------------------------------------------------------------------
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity gtp_bitslide is
+
+  generic (
+-- set to non-zero value to enable some simulation speedups (reduce delays)
+    g_simulation : integer);
+
+  port (
+    gtp_rst_i                : in std_logic;
+
+-- GTP
+    gtp_rx_clk_i             : in std_logic;
+
+-- '1' indicates that the GTP has detected a comma in the incoming serial stream
+    gtp_rx_comma_det_i       : in std_logic;
+
+
+    gtp_rx_byte_is_aligned_i : in std_logic;
+
+-- GTP ready flag (PLL locked and RX signal present)
+    serdes_ready_i : in std_logic;
+
+-- GTP manual bitslip control line
+    gtp_rx_slide_o   : out std_logic;
+
+-- GTP CDR reset, asserted when the link is lost to set the bitslide to a known
+-- value
+    gtp_rx_cdr_rst_o : out std_logic;
+
+-- Current bitslide, in UIs
+    bitslide_o : out std_logic_vector(3 downto 0);
+
+-- '1' when the bitsliding has been completed and the link is up
+    synced_o   : out std_logic
+    );
+
+end gtp_bitslide;
+
+
+architecture behavioral of gtp_bitslide is
+
+
+
+  function f_eval_sync_detect_threshold
+    return integer is
+  begin
+    if(g_simulation /= 0) then
+      return 256;
+    else
+      return 8192;
+    end if;
+  end f_eval_sync_detect_threshold;
+
+
+
+  constant c_pause_tics            : integer := 31;
+  constant c_sync_detect_threshold : integer := f_eval_sync_detect_threshold;
+
+
+  type t_bitslide_fsm_state is (S_SYNC_LOST, S_STABILIZE, S_SLIDE, S_PAUSE, S_GOT_SYNC, S_RESET_CDR);
+  signal cur_slide : unsigned(3 downto 0);
+  signal state     : t_bitslide_fsm_state;
+  signal counter   : unsigned(15 downto 0);
+
+  signal commas_missed : unsigned(1 downto 0);
+  
+begin  -- behavioral
+
+  p_do_slide : process(gtp_rx_clk_i, gtp_rst_i)
+  begin
+    if gtp_rst_i = '1' then
+      state            <= S_SYNC_LOST;
+      gtp_rx_slide_o   <= '0';
+      counter          <= (others => '0');
+      synced_o         <= '0';
+      gtp_rx_cdr_rst_o <= '0';
+    elsif rising_edge(gtp_rx_clk_i) then
+      
+      if(serdes_ready_i = '0') then
+        state <= S_SYNC_LOST;
+      end if;
+
+      case state is
+
+-- State: synchronization lost. Waits until a comma pattern is detected
+        when S_SYNC_LOST =>
+          cur_slide        <= (others => '0');
+          counter          <= (others => '0');
+          gtp_rx_slide_o   <= '0';
+          synced_o         <= '0';
+          gtp_rx_cdr_rst_o <= '0';
+          commas_missed    <= (others => '0');
+
+          if(gtp_rx_comma_det_i = '1') then
+            state <= S_STABILIZE;
+          end if;
+
+-- State: stabilize: 
+          
+        when S_STABILIZE =>
+          
+          
+          if(gtp_rx_comma_det_i = '1') then
+            counter       <= counter + 1;
+            commas_missed <= (others => '0');
+          else
+
+            commas_missed <= commas_missed + 1;
+            if(commas_missed(1) = '1') then
+              state <= S_SYNC_LOST;
+            end if;
+          end if;
+
+          if(counter = to_unsigned(c_sync_detect_threshold, counter'length)) then
+            counter <= (others => '0');
+            state   <= S_PAUSE;
+          end if;
+
+          if(serdes_ready_i = '0') then
+            state <= S_SYNC_LOST;
+          end if;
+
+        when S_SLIDE =>
+          cur_slide      <= cur_slide + 1;
+          gtp_rx_slide_o <= '1';
+          counter        <= (others => '0');
+
+          state <= S_PAUSE;
+
+          if(serdes_ready_i = '0') then
+            state <= S_SYNC_LOST;
+          end if;
+
+        when S_PAUSE =>
+          counter        <= counter + 1;
+          gtp_rx_slide_o <= '0';
+
+          if(counter = to_unsigned(c_pause_tics, counter'length)) then
+
+            if(gtp_rx_byte_is_aligned_i = '0') then
+              state <= S_SLIDE;
+            else
+              state <= S_GOT_SYNC;
+            end if;
+          end if;
+
+        when S_GOT_SYNC =>
+          gtp_rx_slide_o <= '0';
+          bitslide_o     <= std_logic_vector(cur_slide);
+          synced_o       <= '1';
+          if(gtp_rx_byte_is_aligned_i = '0' or serdes_ready_i = '0') then
+            gtp_rx_cdr_rst_o <= '1';
+            state            <= S_SYNC_LOST;
+          end if;
+        when others => null;
+      end case;
+    end if;
+  end process;
+  
+  
+
+end behavioral;

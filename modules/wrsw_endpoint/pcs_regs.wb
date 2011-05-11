@@ -1,0 +1,690 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+	 name = "WR Endpoint 1000base-X TBI PCS register block";
+	 hdl_entity = "ep_pcs_tbi_mdio_wb";
+	 prefix = "MDIO";
+
+	 reg {
+			name = "MDIO Control Register";
+			prefix = "MCR";
+
+			field {
+				 name = "Reserved";
+				 description = "Always return 0s, writes ignored.";
+				 prefix = "RESV";
+				 type = CONSTANT;
+				 size = 5;
+				 value = 0;
+			};
+
+			field {
+				 name = "Unidirectional Enable";
+				 description = "1 = Enable transmit regardless of whether a valid link has been established\
+				 0 = Normal operation";
+
+				 prefix = "uni_en";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+
+			};
+
+			field {
+				 name = "Speed Selection (MSB)";
+				 description = "Always 1, indicating (together with bit 13) a fixed speed of 1000 Mbps";
+				 prefix = "SPEED1000";
+				 type = CONSTANT;
+				 size = 1;
+				 value  = 1;
+			};
+
+
+			field {
+				 name = "Collision Test";
+				 description = "Always equal to 0, since collision detection is not supported";
+				 prefix = "ctst";
+				 type = CONSTANT;
+				 size = 1;
+				 value  = 0;
+			};
+
+
+
+			field {
+				 name = "Duplex Mode";
+				 description = "Always equal to 1 to indicate Full-Duplex operation";
+				 prefix = "fulldplx";
+				 type = CONSTANT;
+				 size = 1;
+				 value  = 1;
+			};
+
+
+			field {
+				 name = "Restart Auto-Negotiation";
+				 description = "write 1 = restart Auto-Negotiation process\
+				 write 0 = no effect";
+
+				 prefix = "anrestart";
+				 type = MONOSTABLE;
+			};
+
+
+			field {
+				 name = "Isolate";
+				 description = "GMII Electrical isolation enable. Ignored since the PCS doesn't use GMII";
+				 prefix = "isolate";
+				 size = 1;
+				 type = CONSTANT;
+				 value  = 0;
+			};
+
+
+			field {
+				 name = "Power Down";
+				 description = "1 = Power down \
+				 0 = Normal operation \
+				 This bit controls directly the PHY Enable pin";
+				 
+				 prefix = "pdown";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+
+
+			};
+
+			field  {
+				 name = "Auto-Negotiation Enable";
+				 description = "1 = Enable Auto-Negotiation process \
+				 0 = Disable Auto-Negotiation process";
+				 prefix = "anenable";
+				 align = 12;
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+
+			field {
+				 name = "Speed Selection (LSB)";
+				 description = "Always 0, indicating (together with bit 6) a fixed speed of 1000 Mbps";
+				 align = 13;
+				 prefix = "SPEED100";
+				 size = 1;
+				 type = CONSTANT;
+				 value = 0;
+			};
+
+			field {
+				 name = "Loopback";
+				 description = "1 = enable loopback mode \
+				 0 = disable loopback mode \
+				 With the TBI version, loopback bit is connected to PHY loopback enable pin. When set to 1, indicates to the external PHY to enter loopback mode";
+
+				 prefix = "loopback";
+				 align = 14;
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+			field {
+				 name = "Reset";
+				 description = "write 1 = triggers reset of the PCS core\
+				 write 0 = no effect";
+
+				 align = 15;
+
+				 prefix = "reset";
+				 type = MONOSTABLE;
+			};
+	 };
+
+
+
+	 reg {
+			name = "MDIO Status Register";
+			prefix = "MSR";
+			--  options = READ_STROBE;
+
+			field {
+				 name = "Extended Capability";
+				 description = "Always 0, since extended register set is not supported";
+				 prefix = "ERCAP";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+
+			field {
+				 name = "Jabber Detect";
+				 description = "Always 0, since Jabber Detect is not supported";
+				 prefix = "JCD";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "Link Status";
+				 description = "1 = Link is up\
+				 0 = Link is down (or has been down)\
+				 Latches '0' if Link Status goes down. Clears to current Link Status on read.";
+				 prefix = "LSTATUS";
+				 type = BIT;
+				 access_bus=READ_ONLY;
+				 access_dev=WRITE_ONLY;
+				 ack_read="lstat_read_notify_o";
+			};
+
+
+			field {
+				 name = "Auto-Negotiation Ability";
+				 description = "Always 1, to indicate the support for Auto-Negotiation.";
+				 prefix = "ANEGCAPABLE";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 1;
+			};
+
+			field {
+				 name = "Remote Fault";
+				 description = "1 = Remote fault condition detected\
+				 0 = No remote fault condition detected\
+				 The bit clears itself after being read by the host.";
+				 prefix = "RFAULT";
+
+				 type = BIT;
+				 access_bus=READ_ONLY;
+				 access_dev=WRITE_ONLY;
+			};
+
+
+			field {
+				 name = "Auto-Negotiation Complete";
+				 description = "1 = Auto-Negotiation process completed\
+				 0 = Auto-Negotiation process not completed";
+				 prefix = "anegcomplete";
+				 type = BIT;
+				 access_bus=READ_ONLY;
+				 access_dev=WRITE_ONLY;
+			};
+
+			field {
+				 name = "MF Preamble Suppression";
+				 description = "Always 0, feature not supported. ";
+				 prefix = "mfsuppress";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+
+			field {
+				 name = "Unidirectional Ability";
+				 description = "Always 1, as the Unidirectional mode is supported. ";
+				 prefix = "unidirable";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 1;
+			};
+
+			field {
+				 name = "Extended Status Capable";
+				 description = "Always 1, indicating the presence of the Extended Status Register";
+				 prefix = "estaten";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 1;
+			};
+
+			field {
+				 name = "100BASE-T2 Half Duplex";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "100half2";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "100BASE-T2 Full Duplex";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "100full2";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+			
+
+			field {
+				 name = "10 Mbps Half Duplex";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "10half";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "10 Mbps Full Duplex";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "10full";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+
+			field {
+				 name = "100BASE-X Half Duplex";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "100half";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+
+			field {
+				 name = "100BASE-X Full Duplex";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "100full";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			
+			field {
+				 name = "100BASE-T4";
+				 description = "Always 0 (unsupported medium)";
+				 prefix = "100base4";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+	 };
+
+
+	 reg {
+			name = "MDIO PHY Identification Register 1";
+			prefix = "PHYSID1";
+
+			field {
+				 name = " Organizationally Unique Identifier (bits 7-21)";
+				 description = "Always 0.";
+				 prefix = "OUI";
+				 type = CONSTANT;
+				 size = 16;
+				 value = 0;
+			};
+	 };
+
+	 reg {
+			name = "MDIO PHY Identification Register 2";
+			prefix = "PHYSID2";
+
+			field {
+				 name = "Revision Number";
+				 description = "Always 0.";
+				 prefix = "REV_NUM";
+				 type = CONSTANT;
+				 size = 4;
+				 value = 0;
+			};
+
+			field {
+				 name = "Manufacturer Model Number";
+				 description = "Always 0.";
+				 prefix = "MMNUM";
+				 type = CONSTANT;
+				 size = 6;
+				 value = 0;
+			};
+
+			field {
+				 name = "Organizationally Unique Identifier (bits 0-5)";
+				 description = "Always 0.";
+				 prefix = "OUI";
+				 type = CONSTANT;
+				 size = 6;
+				 value = 0;
+			};
+
+
+
+	 };
+
+	 reg {
+			name = "MDIO Auto-Negotiation Advertisement Register";
+			prefix = "ADVERTISE";
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD3";
+				 type = CONSTANT;
+				 size = 5;
+				 value = 0;
+			};
+
+			field {
+				 name = "Full Duplex";
+				 description = "Always 1, since Full Duplex Mode is the only supported mode.";
+				 prefix = "FULL";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 1;
+			};
+			
+			field {
+				 name = "Half Duplex";
+				 description = "Always 0, since Half Duplex Mode is not supported.";
+				 prefix = "HALF";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "Pause";
+				 description = "00 = No PAUSE\
+				 01 = Symmetric PAUSE \
+				 10 = Asymmetric PAUSE towards link partner\
+				 11 = Both Symmetric PAUSE and Asymmetric PAUSE towards link partner";
+
+				 prefix = "PAUSE";
+				 type = SLV;
+				 size = 2;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD2";
+				 type = CONSTANT;
+				 size = 3;
+				 value = 0;
+			};
+
+			field {
+				 name = "Remote Fault";
+				 description = "00 = No Error \
+				 01 = Offline \
+				 10 = Link Failure \
+				 11 = Auto-Negotiation Error";
+
+				 prefix = "RFAULT";
+				 type = SLV;
+				 size = 2;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD1";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "Next Page";
+				 description = "Always 0, since Next Page feature is not supported";
+				 prefix = "NPAGE";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+	 };
+
+
+
+
+
+	 reg {
+			name = "MDIO Auto-Negotiation Link Partner Ability Register";
+			prefix = "LPA";
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD3";
+				 type = CONSTANT;
+				 size = 5;
+				 value = 0;
+			};
+
+			field {
+				 name = "Full Duplex";
+				 description = "1 = Remote partner supports Full Duplex operation\
+				                0 = It doesn't";
+
+				 prefix = "FULL";
+
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+			
+			field {
+				 name = "Half Duplex";
+				 description = "1 = Remote partner supports Half Duplex operation\
+				                0 = It doesn't";
+				 prefix = "HALF";
+
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 name = "Pause";
+				 description = "00 = No PAUSE\
+				 01 = Symmetric PAUSE \
+				 10 = Asymmetric PAUSE towards link partner\
+				 11 = Both Symmetric PAUSE and Asymmetric PAUSE towards link partner";
+
+				 prefix = "PAUSE";
+				 type = SLV;
+
+				 size = 2;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD2";
+				 type = CONSTANT;
+				 size = 3;
+				 value = 0;
+			};
+
+			field {
+				 name = "Remote Fault";
+				 description = "00 = No Error \
+				 01 = Offline \
+				 10 = Link Failure \
+				 11 = Auto-Negotiation Error";
+
+				 prefix = "RFAULT";
+				 type = SLV;
+				 size = 2;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+
+			};
+
+			field {
+				 name = "Acknowledge";
+				 description = "Used by Auto-Negotiation function to indicate reception of a link partner's base or next page.";
+				 prefix = "LPACK";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 name = "Next Page";
+				 description = "1 = Next Page functionality is supported\
+				                0 = It isn't";
+				 prefix = "NPAGE";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+	 };
+
+
+	 reg {
+			name = "MDIO Auto-Negotiation Expansion Register";
+			prefix = "EXPANSION";
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD1";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "Page Received";
+				 description = "Always 0, since we don't support the Next Page function";
+				 prefix = "LWCP";	
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+		};
+
+			field {
+				 name = "Next Page Able";
+				 description = "Always 0, since we don't support the Next Page function";
+				 prefix = "ENABLENPAGE";
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+			};
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD2";
+				 type = CONSTANT;
+				 size = 13;
+				 value = 0;
+			};
+	 };
+
+
+	 reg {
+			name = "MDIO Extended Status Register";
+			prefix = "ESTATUS";
+			align=15;
+
+			field {
+				 name = "Reserved";
+				 description = "Always 0.";
+				 prefix = "RSVD1";
+				 type = CONSTANT;
+				 size = 12;
+				 value = 0;
+			};
+
+			field {
+				 name = "1000Base-T Half Duplex";
+				 description = "Always 0, since this mode is not supported.";
+				 prefix = "1000_THALF";	
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+		};
+			field {
+				 name = "1000Base-T Full Duplex";
+				 description = "Always 0, since this mode is not supported.";
+				 prefix = "1000_TFULL";	
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+		};
+
+			field {
+				 name = "1000Base-X Half Duplex";
+				 description = "Always 0, since this mode is not supported.";
+				 prefix = "1000_XHALF";	
+				 type = CONSTANT;
+				 size = 1;
+				 value = 0;
+		};
+			field {
+				 name = "1000Base-X Full Duplex";
+				 description = "Always 1, indicating the support for 1000Base-X Full Duplex mode.";
+				 prefix = "1000_XFULL";	
+				 type = CONSTANT;
+				 size = 1;
+				 value = 1;
+		};
+	 };
+
+	 reg {
+			name = "WhiteRabbit-specific Configuration Register";
+			prefix = "WR_SPEC";
+
+			field {
+				 name = "TX Calibration Pattern";
+				 description = "Controls the transmission of WR PHY calibration pattern. \
+				                1 = PCS is sending calibration pattern\
+				                0 = Normal PCS operation";
+				 prefix = "TX_CAL";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+				 clock = "tx_clk_i";
+				 
+			};
+
+			field {
+				 name = "Calibration Pattern RX Status";
+				 description = "1 = Valid calibration pattern is being received\
+				                0 = no calibration pattern detected by the receiver";
+				 prefix = "RX_CAL_STAT";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+				 clock = "rx_clk_i";
+			};
+
+		field {
+			 name = "Reset calibration counter";
+			 prefix = "CAL_CRST";
+			 description = "1: resets the calibration pattern valid counter. \
+			 0: no effect";
+			 type = MONOSTABLE;
+			 clock = "rx_clk_i";
+		};
+
+		field {
+			 name = "GTP RX Bitslide";
+			 prefix = "BSLIDE";
+			 description = "Current receive path bit slide (valid only for Xilinx GTP version)";
+			 type = SLV;
+			 size = 4;
+			 align = 4;
+			 access_bus = READ_ONLY;
+			 access_dev = WRITE_ONLY;
+			 clock = "rx_clk_i";
+		};
+ };
+};
+

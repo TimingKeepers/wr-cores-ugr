@@ -1,0 +1,1 @@
+files = [ "wrc_lm32.vhd", "lm32_top.v" ];

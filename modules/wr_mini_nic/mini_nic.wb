@@ -1,0 +1,195 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+	 name = "Mini NIC for WhiteRabbit";
+	 description = "Simple, embedded WhiteRabbit-compiliant Network Interface Controller (NIC) for use in WhiteRabbit embedded receivers";
+	 prefix = "minic";
+	 hdl_entity = "minic_wb_slave";
+
+	 reg {
+			name = "miNIC Control Register";
+			prefix = "MCR";
+			
+			field {
+				 name = "TX DMA start";
+				 prefix = "TX_START";
+				 description = "write 1: starts the DMA transmission of TX descriptors placed in the DMA buffer, write 0: no effect";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 name = "TX DMA idle";
+				 prefix = "TX_IDLE";
+				 description = "1: TX DMA engine is idle.\n0: TX DMA engine is busy, don't touch the buffer";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+
+			field {
+				 name = "TX DMA error";
+				 prefix = "TX_ERROR";
+				 description = "1: an error occured during the TX DMA transfer. The address at which the error occured is kept in TX_ADDR register";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+		field {
+				 name = "RX DMA ready";
+				 prefix = "RX_READY";
+				 description = "1: RX buffer contains at least one packet";
+				 type = BIT;
+			   align = 8;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 name = "RX DMA buffer full";
+				 prefix = "RX_FULL";
+				 description = "1: RX buffer is full";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+		field {
+				 name = "RX DMA enable";
+				 prefix = "RX_EN";
+				 description = "1: RX buffer is allocated and initialized by the host, the miNIC can receive packets\n0: RX buffer not ready, reception is disabled";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+	 };
+	
+	 reg {
+			name = "TX DMA Address";
+			description = "Address of the start of TX buffer:\
+			               read: base address of the last transmitted TX descriptor\
+			               write: base address of the first descriptor to transmit";
+			prefix = "TX_ADDR";
+			field {
+				 name = "TX DMA buffer address";
+				 size = 24;
+				 align = 2;
+				 type = SLV;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+			};
+	 };
+
+	 reg {
+			name = "RX DMA Address";
+			description = "Address of the start of RX buffer:\
+			read: address of the last received RX descriptor\
+			write: base address of the RX buffer";
+			
+			prefix = "RX_ADDR";
+			field {
+				 name = "RX DMA buffer address";
+				 size = 24;
+				 align = 2;
+				 type = SLV;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+			};
+	 };
+
+	 reg {
+			name = "RX buffer size register";
+			description = "Number of available 32-bit words in the RX buffer";
+			
+			prefix = "RX_AVAIL";
+			field {
+				 name = "RX available words";
+				 size = 24;
+				 align = 2;
+				 type = SLV;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+			};
+	 };
+
+	 fifo_reg {
+			name = "TX timestamp FIFO";
+			prefix = "TSFIFO";
+
+			size = 16;
+			direction = CORE_TO_BUS;
+		  flags_bus = {FIFO_EMPTY};
+			flags_dev = {FIFO_FULL, FIFO_EMPTY};
+
+			field {
+				 name = "Timestamp value";
+prefix = "TSVAL";
+				 size = 32;
+				 type = SLV;
+			};
+
+			field {
+				 name = "Port ID";
+				 prefix = "PID";
+				 size = 5;
+				 type = SLV;
+			};
+
+			field {
+				 name = "Frame ID";
+				 prefix = "FID";
+				 size = 16;
+				 type = SLV;
+			};
+	 };
+
+	 reg {
+			name = "Debug register";
+			prefix = "DBGR";
+			
+			field {
+				 name = "interrupt counter";
+				 prefix = "IRQ_CNT";
+				 size = 24;
+				 type = SLV;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+
+			};
+
+			field {
+				 name = "status of wb_irq_o line";
+				 prefix = "WB_IRQ_VAL";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+
+			};
+
+	 };
+	 
+	 irq {
+			name = "TX DMA interrupt";
+			trigger = LEVEL_1;
+			ack_line = true;
+			mask_line = true;
+			prefix = "TX";
+	 };
+
+	 irq {
+			name = "RX DMA interrupt";
+			trigger = LEVEL_1;
+			ack_line = true;
+			prefix = "RX";
+	 };
+
+	 irq {
+			name = "TX timestamp available";
+			trigger = LEVEL_1;
+			prefix = "TXTS";
+	 };
+};
