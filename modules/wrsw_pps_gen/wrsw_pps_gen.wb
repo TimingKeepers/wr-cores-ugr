@@ -1,0 +1,174 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+
+	 name = "WR Switch PPS generator and RTC";
+	 description = "Unit generating PPS signals and acting as a UTC real-time clock";
+	 hdl_entity = "pps_gen_wb";
+	 prefix = "ppsg";
+
+	 reg {
+			name = "Control Register";
+			prefix = "CR";
+			
+			field {
+				 name = "Reset counter";
+				 description = "write 1: resets the counter\
+                				write 0: no effect";
+
+				 prefix = "CNT_RST";
+				 type = MONOSTABLE;
+				 clock = "refclk_i";
+			};
+
+			field {
+				 name = "Enable counter";
+				 description = "1: PPS counter is enabled";
+
+				 prefix = "CNT_EN";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+				 clock = "refclk_i";
+			};
+
+			field {
+				 name = "Adjust offset";
+				 description = "write 1: Starts adjusting PPS/UTC offsets by adding the values taken from ADJ_NSEC, ADJ_UTCLO, ADJ_UTCHI registers to the current PPS counter value. These registers need to be programmed prior to update.\
+				                write 0: no effect\
+				 read 0: adjustment operation is done\
+				 read 1: adjustment operation is in progress";
+
+				 prefix = "CNT_ADJ";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+				 clock = "refclk_i";
+			};
+
+
+			field {
+				 name = "Set time";
+				 description = "write 1: Sets the UTC/PPS counter to values taken from ADJ_NSEC, ADJ_UTCLO, ADJ_UTCHI registers";
+				 prefix = "CNT_SET";
+				 type = MONOSTABLE;
+				 clock = "refclk_i";
+			};
+
+
+			field {
+				 name = "PPS Pulse width";
+				 description = "Width of generated PPS pulses in 125 MHz refernce clock cycles";
+				 prefix = "PWIDTH";
+				 size = 28;
+				 type = SLV;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+				 clock= "refclk_i";
+			 };
+		};
+
+		reg {
+			 name = "Nanosecond counter register";
+			 description = "Nanosecond part of current time, expressed as number of 125 MHz reference clock cycles";
+
+			 prefix = "CNTR_NSEC";
+			 field {
+					name = "Nanosecond counter";
+					type = SLV;
+					size = 28;
+					access_bus = READ_ONLY;
+					access_dev = WRITE_ONLY;
+					clock = "refclk_i";
+			 };
+
+		};
+
+		reg {
+			 name = "UTC Counter register (least-significant part)";
+			 description = "Lower 32 bits of current UTC time";
+
+			 prefix = "CNTR_UTCLO";
+			 field {
+					name = "UTC Counter";
+					type = SLV;
+					size = 32;
+					access_bus = READ_ONLY;
+					access_dev = WRITE_ONLY;
+					clock = "refclk_i";
+			 };
+		};
+
+		reg {
+			 name = "UTC Counter register (most-significant part)";
+			 description = "Highest 8 bits of current UTC time";
+
+			 prefix = "CNTR_UTCHI";
+			 field {
+					name = "UTC Counter";
+					type = SLV;
+					size = 8;
+					access_bus = READ_ONLY;
+					access_dev = WRITE_ONLY;
+					clock = "refclk_i";
+			 };
+		};
+
+	 reg {
+			name = "Nanosecond adjustment register";
+			description = "Adjustment value for nanosecond counter";
+
+			prefix = "ADJ_NSEC";
+			field {
+				 name = "Nanosecond adjustment";
+				 type = PASS_THROUGH;
+				 size = 28;
+			};
+	 };
+
+	 reg {
+			name = "UTC Adjustment register (least-significant part)";
+			description = "Lower 32 bits of adjustment value for UTC";
+
+			prefix = "ADJ_UTCLO";
+			field {
+				 name = "UTC Counter adjustment";
+				 type = PASS_THROUGH;
+				 size = 32;
+			};
+	 };
+
+
+	 reg {
+			name = "UTC Adjustment register (most-significant part)";
+			description = "Highest 8 bits of adjustment value for UTC";
+
+			prefix = "ADJ_UTCHI";
+			field {
+				 name = "UTC Counter adjustment";
+				 type = PASS_THROUGH;
+				 size = 8;
+			};
+	 };
+
+	 reg {
+			name = "External sync control register";
+			prefix = "ESCR";
+			
+			field {
+				 name = "Sync to external PPS input";
+				 description = "write 1: Waits until a pulse on external PPS input arrives and re-synchronizes the PPS counter to it\
+				 write 0: no effect\
+				 read 1: external synchronization done\
+				 read 0: external synchronization in progress";
+				 type = BIT;
+				 prefix = "SYNC";
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+				 clock = "refclk_i";
+			};
+	 };
+
+};

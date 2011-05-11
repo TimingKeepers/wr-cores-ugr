@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-05-07
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -35,11 +35,8 @@ use ieee.numeric_std.all;
 
 library work;
 
-use work.global_defs.all;
-use work.common_components.all;
+use work.gencores_pkg.all;
 use work.endpoint_pkg.all;
-use work.platform_specific.all;
-
 
 entity wrsw_endpoint is
   
@@ -124,7 +121,7 @@ entity wrsw_endpoint is
 
 -- RX control bus: indicates type of word currently present on rx_data_o:
 -- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB
-    rx_ctrl_o : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+    rx_ctrl_o : out std_logic_vector(4 - 1 downto 0);
 
 -- RX byte enable signal: when active, only MSB of rx_data_o contains valid
 -- data byte (the last byte of the frame). Used for handling odd-sized frames.
@@ -167,7 +164,7 @@ entity wrsw_endpoint is
 
 -- RX control bus: indicates type of word currently present on rx_data_o:
 -- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB, END_OF_FRAME
-    tx_ctrl_i : in std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    tx_ctrl_i : in std_logic_vector(4 - 1 downto 0);
 
 -- active HI: indicates the last byte of odd-sized frame. Byte is transferred
 -- on MSB of tx_data_i.
@@ -208,10 +205,10 @@ entity wrsw_endpoint is
     txtsu_port_id_o : out std_logic_vector(4 downto 0);
 
 -- frame ID value
-    txtsu_frame_id_o : out std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
+    txtsu_frame_id_o : out std_logic_vector(16 - 1 downto 0);
 
 -- timestamp values: gathered on rising clock edge (the main timestamp)
-    txtsu_tsval_o : out std_logic_vector(c_wrsw_timestamp_size_r + c_wrsw_timestamp_size_f - 1 downto 0);
+    txtsu_tsval_o : out std_logic_vector(28 + 4 - 1 downto 0);
 
 -- HI indicates a valid timestamp/frame ID pair for the TXTSU
     txtsu_valid_o : out std_logic;
@@ -233,18 +230,18 @@ entity wrsw_endpoint is
     rtu_rq_strobe_p1_o : out std_logic;
 
 -- source and destination MAC addresses extracted from the packet header
-    rtu_rq_smac_o : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-    rtu_rq_dmac_o : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
+    rtu_rq_smac_o : out std_logic_vector(48 - 1 downto 0);
+    rtu_rq_dmac_o : out std_logic_vector(48 - 1 downto 0);
 
 -- VLAN id (extracted from the header for TRUNK ports and assigned by the port
 -- for ACCESS ports)
-    rtu_rq_vid_o : out std_logic_vector(c_wrsw_vid_width - 1 downto 0);
+    rtu_rq_vid_o : out std_logic_vector(12 - 1 downto 0);
 
 -- HI means that packet has valid assigned a valid VID (low - packet is untagged)
     rtu_rq_has_vid_o : out std_logic;
 
 -- packet priority (either extracted from the header or assigned per port).
-    rtu_rq_prio_o : out std_logic_vector(c_wrsw_prio_width-1 downto 0);
+    rtu_rq_prio_o : out std_logic_vector(3 - 1 downto 0);
 
 -- HI indicates that packet has assigned priority.
     rtu_rq_has_prio_o : out std_logic;
@@ -270,22 +267,20 @@ architecture syn of wrsw_endpoint is
 
   component dmtd_phase_meas
     generic (
-      g_deglitch_thr_lo     : integer;
-      g_deglitch_thr_hi     : integer;
-      g_deglitch_thr_glitch : integer;
-      g_counter_bits        : integer);
+      g_deglitcher_threshold : integer;
+      g_counter_bits         : integer);
     port (
+      rst_n_i        : in  std_logic;
       clk_sys_i      : in  std_logic;
       clk_a_i        : in  std_logic;
       clk_b_i        : in  std_logic;
       clk_dmtd_i     : in  std_logic;
-      rst_n_i        : in  std_logic;
       en_i           : in  std_logic;
       navg_i         : in  std_logic_vector(11 downto 0);
       phase_meas_o   : out std_logic_vector(31 downto 0);
       phase_meas_p_o : out std_logic);
   end component;
-
+  
   signal sv_zero : std_logic_vector(63 downto 0);
   signal sv_one  : std_logic_vector(63 downto 0);
 
@@ -320,8 +315,8 @@ architecture syn of wrsw_endpoint is
   signal txpcs_timestamp_stb_p : std_logic;
   signal rxpcs_timestamp_stb_p : std_logic;
 
-  signal txts_timestamp_value : std_logic_vector(c_wrsw_timestamp_size_f + c_wrsw_timestamp_size_r - 1 downto 0);
-  signal rxts_timestamp_value : std_logic_vector(c_wrsw_timestamp_size_f + c_wrsw_timestamp_size_r - 1 downto 0);
+  signal txts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
+  signal rxts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
   signal rxts_done_p          : std_logic;
   signal txts_done_p          : std_logic;
 
@@ -356,7 +351,7 @@ architecture syn of wrsw_endpoint is
 -------------------------------------------------------------------------------
 
   signal rbuf_data    : std_logic_vector(15 downto 0);
-  signal rbuf_ctrl    : std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+  signal rbuf_ctrl    : std_logic_vector(4-1 downto 0);
   signal rbuf_sof_p   : std_logic;
   signal rbuf_eof_p   : std_logic;
   signal rbuf_error_p : std_logic;
@@ -774,8 +769,8 @@ begin
 
   U_EP_TSU : ep_timestamping_unit
     generic map (
-      g_timestamp_bits_r => c_wrsw_timestamp_size_r,
-      g_timestamp_bits_f => c_wrsw_timestamp_size_f)
+      g_timestamp_bits_r => 28,
+      g_timestamp_bits_f => 4)
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,
@@ -810,12 +805,11 @@ begin
 
   U_DMTD : dmtd_phase_meas
     generic map (
-      g_deglitch_thr_lo     => 150,
-      g_deglitch_thr_hi     => 150,
-      g_deglitch_thr_glitch => 60,
-      g_counter_bits        => 14)
+      g_counter_bits        => 14,
+      g_deglitcher_threshold => 1000 )
     port map (
       clk_sys_i  => clk_sys_i,
+
       clk_a_i    => tx_clk,
       clk_b_i    => rx_clk,
       clk_dmtd_i => clk_dmtd_i,

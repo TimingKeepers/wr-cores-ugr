@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-04-12
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -32,8 +32,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.global_defs.all;
-use work.common_components.all;
+use work.gencores_pkg.all;
 use work.endpoint_pkg.all;
 
 entity ep_tx_framer is
@@ -66,7 +65,7 @@ entity ep_tx_framer is
 
 -- RX control bus: indicates type of word currently present on rx_data_o:
 -- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB, END_OF_FRAME
-    tx_ctrl_i : in std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    tx_ctrl_i : in std_logic_vector(4 - 1 downto 0);
 
 -- active HI: indicates the last byte of odd-sized frame. Byte is transferred
 -- on MSB of tx_data_i.
@@ -177,7 +176,7 @@ begin  -- behavioral
   crc_gen_reset  <= '1' when rst_n_i = '0' else ((tx_sof_p1_i and (not tx_pause_mode)) or crc_gen_force_reset);
   crc_gen_enable <= tx_data_t2f_valid and crc_gen_enable_mask;
 
-  U_tx_crc_generator : crc_gen
+  U_tx_crc_generator : gc_crc_gen
     generic map (
       g_polynomial => x"04C11DB7",
       g_init_value => x"ffffffff",
@@ -444,7 +443,7 @@ begin  -- behavioral
 
               if(tx_valid_i = '1') then
                 if(tx_ctrl_i = c_wrsw_ctrl_tx_oob) then
-                  oob_fid_value_o     <= tx_data_i (c_wrsw_oob_frame_id_size - 1 downto 0);
+                  oob_fid_value_o     <= tx_data_i (15 downto 0);
                   oob_fid_stb_o       <= '1';
                   tx_data_t2f_valid   <= '0';
                   crc_gen_enable_mask <= '0';

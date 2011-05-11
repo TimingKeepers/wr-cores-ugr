@@ -7,7 +7,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-03-16
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -34,9 +34,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.global_defs.all;
+use work.gencores_pkg.all;
 use work.endpoint_pkg.all;
-use work.common_components.all;
 
 entity ep_timestamping_unit is
   generic (
@@ -68,7 +67,7 @@ entity ep_timestamping_unit is
 -------------------------------------------------------------------------------
 
 -- TX OOB frame ID (extracted from OOB fields from fabric interface by TX framer)
-    txoob_fid_i   : in std_logic_vector(c_wrsw_oob_frame_id_size - 1 downto 0);
+    txoob_fid_i   : in std_logic_vector(16 - 1 downto 0);
 -- TX OOB strobe, denotes valid FID on txoob_fid_i.
     txoob_stb_p_i : in std_logic;
 
@@ -90,9 +89,9 @@ entity ep_timestamping_unit is
 -- Port ID value
     txtsu_port_id_o : out std_logic_vector(4 downto 0);
 -- Frame ID value
-    txtsu_fid_o     : out std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
+    txtsu_fid_o     : out std_logic_vector(16 -1 downto 0);
 -- Encoded timestamps
-    txtsu_tsval_o   : out std_logic_vector(c_wrsw_timestamp_size_r + c_wrsw_timestamp_size_f - 1 downto 0);
+    txtsu_tsval_o   : out std_logic_vector(28 + 4 - 1 downto 0);
 
 -- TX timestamp valid: HI tells the TX timestamping unit that there is a valid
 -- timestmap on txtsu_tsval_o, txtsu_fid_o and txtsu_port_id_o. Line remains HI
@@ -186,7 +185,7 @@ begin  -- syn
       );
 
   -- Sync chains for timestamp strobes: 4 combinations - (TX-RX) -> (rising/falling)
-  sync_ffs_tx_r : sync_ffs
+  sync_ffs_tx_r : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -197,7 +196,7 @@ begin  -- syn
       npulse_o => open,
       ppulse_o => take_tx_synced_p);
 
-  sync_ffs_rx_r : sync_ffs
+  sync_ffs_rx_r : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -209,7 +208,7 @@ begin  -- syn
       ppulse_o => take_rx_synced_p);
 
 
-  sync_ffs_tx_f : sync_ffs
+  sync_ffs_tx_f : gc_sync_ffs
     generic map (
       g_sync_edge => "negative")
     port map (
@@ -220,7 +219,7 @@ begin  -- syn
       npulse_o => open,
       ppulse_o => take_tx_synced_p_fedge);
 
-  sync_ffs_rx_f : sync_ffs
+  sync_ffs_rx_f : gc_sync_ffs
     generic map (
       g_sync_edge => "negative")
     port map (
@@ -281,7 +280,7 @@ begin  -- syn
 
 
   -- timestamping "done" signals sync chains (refclk/rbclk -> refclk2)
-  tx_done_gen : sync_ffs
+  tx_done_gen : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -292,7 +291,7 @@ begin  -- syn
       npulse_o => tx_ts_done,
       ppulse_o => open);
 
-  rx_done_gen : sync_ffs
+  rx_done_gen : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (

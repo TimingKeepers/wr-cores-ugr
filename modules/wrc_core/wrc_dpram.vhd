@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-15
--- Last update: 2011-04-07
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ begin
       g_size                     => g_size,
       g_with_byte_enable         => g_with_byte_enable,
       g_addr_conflict_resolution => g_addr_conflict_resolution,
-      g_init_file                => g_init_file,
+    --  g_init_file                => g_init_file,
       g_dual_clock               => g_dual_clock
       )
     port map(

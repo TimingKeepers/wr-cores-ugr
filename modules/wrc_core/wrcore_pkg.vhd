@@ -2,8 +2,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 library work;
-use work.global_defs.all;
-use work.wrczpu_pkg.all;
 use work.genram_pkg.all;
 use work.wbconmax_pkg.all;
 
@@ -23,29 +21,25 @@ package wrcore_pkg is
   -----------------------------------------------------------------------------
   --PPS generator
   -----------------------------------------------------------------------------
-  component wrsw_pps_gen is
-  port (
-    clk_ref_i : in std_logic;
-    clk_sys_i : in std_logic;
-    
-    rst_n_i : in std_logic;
-
-    wb_addr_i : in  std_logic_vector(3 downto 0);
-    wb_data_i : in  std_logic_vector(31 downto 0);
-    wb_data_o : out std_logic_vector(31 downto 0);
-    wb_cyc_i  : in  std_logic;
-    wb_sel_i  : in  std_logic_vector(3 downto 0);
-    wb_stb_i  : in  std_logic;
-    wb_we_i   : in  std_logic;
-    wb_ack_o  : out std_logic;
-
-    -- Single-pulse PPS output for synchronizing endpoint to
-    pps_csync_o : out std_logic;
-    pps_out_o   : out std_logic
-  );
+  component wrsw_pps_gen
+    port (
+      clk_ref_i   : in  std_logic;
+      clk_sys_i   : in  std_logic;
+      rst_n_i     : in  std_logic;
+      wb_addr_i   : in  std_logic_vector(3 downto 0);
+      wb_data_i   : in  std_logic_vector(31 downto 0);
+      wb_data_o   : out std_logic_vector(31 downto 0);
+      wb_cyc_i    : in  std_logic;
+      wb_sel_i    : in  std_logic_vector(3 downto 0);
+      wb_stb_i    : in  std_logic;
+      wb_we_i     : in  std_logic;
+      wb_ack_o    : out std_logic;
+      pps_in_i    : in  std_logic;
+      pps_csync_o : out std_logic;
+      pps_out_o   : out std_logic);
   end component;
-  
-  -----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
   --WR Endpoint
   -----------------------------------------------------------------------------
   component wrsw_endpoint is
@@ -83,7 +77,7 @@ package wrcore_pkg is
     gtp_loopen_o : out std_logic;
     --WRF Source
     rx_data_o : out std_logic_vector(15 downto 0);
-    rx_ctrl_o : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+    rx_ctrl_o : out std_logic_vector(4 - 1 downto 0);
     rx_bytesel_o : out std_logic;
     rx_sof_p1_o : out std_logic;
     rx_eof_p1_o : out std_logic;
@@ -94,7 +88,7 @@ package wrcore_pkg is
     rx_rerror_p1_o : out std_logic;
     --WRF Sink
     tx_data_i : in std_logic_vector(15 downto 0);
-    tx_ctrl_i : in std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    tx_ctrl_i : in std_logic_vector(4 -1 downto 0);
     tx_bytesel_i : in std_logic;
     tx_sof_p1_i : in std_logic;
     tx_eof_p1_i : in std_logic;
@@ -105,19 +99,19 @@ package wrcore_pkg is
     tx_terror_p1_o : out std_logic;
     --TXTSU
     txtsu_port_id_o : out std_logic_vector(4 downto 0);
-    txtsu_frame_id_o : out std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
-    txtsu_tsval_o : out std_logic_vector(c_wrsw_timestamp_size_r + c_wrsw_timestamp_size_f - 1 downto 0);
+    txtsu_frame_id_o : out std_logic_vector(16 -1 downto 0);
+    txtsu_tsval_o : out std_logic_vector(28 + 4 - 1 downto 0);
     txtsu_valid_o : out std_logic;
     txtsu_ack_i : in std_logic;
     --RTU
     rtu_full_i : in std_logic;
     rtu_almost_full_i : in std_logic;
     rtu_rq_strobe_p1_o : out std_logic;
-    rtu_rq_smac_o : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-    rtu_rq_dmac_o : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-    rtu_rq_vid_o : out std_logic_vector(c_wrsw_vid_width - 1 downto 0);
+    rtu_rq_smac_o : out std_logic_vector(48 - 1 downto 0);
+    rtu_rq_dmac_o : out std_logic_vector(48 - 1 downto 0);
+    rtu_rq_vid_o : out std_logic_vector(12 - 1 downto 0);
     rtu_rq_has_vid_o : out std_logic;
-    rtu_rq_prio_o : out std_logic_vector(c_wrsw_prio_width-1 downto 0);
+    rtu_rq_prio_o : out std_logic_vector(3-1 downto 0);
     rtu_rq_has_prio_o : out std_logic;
     --WB
     wb_cyc_i  : in  std_logic;
@@ -194,7 +188,7 @@ package wrcore_pkg is
     mem_wr_o   : out std_logic;
       -- WRF source/sink
     src_data_o     : out std_logic_vector(15 downto 0);
-    src_ctrl_o     : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+    src_ctrl_o     : out std_logic_vector(4 - 1 downto 0);
     src_bytesel_o  : out std_logic;
     src_sof_p1_o   : out std_logic;
     src_eof_p1_o   : out std_logic;
@@ -204,7 +198,7 @@ package wrcore_pkg is
     src_error_p1_i : in  std_logic;
 
     snk_data_i     : in  std_logic_vector(15 downto 0);
-    snk_ctrl_i     : in  std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    snk_ctrl_i     : in  std_logic_vector(4 -1 downto 0);
     snk_bytesel_i  : in  std_logic;
     snk_sof_p1_i   : in  std_logic;
     snk_eof_p1_i   : in  std_logic;
@@ -214,9 +208,8 @@ package wrcore_pkg is
     snk_error_p1_i : in  std_logic;
       -- TXTSU i/f
     txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
-    txtsu_frame_id_i : in  std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
-    txtsu_tsval_i    : in  std_logic_vector(c_wrsw_timestamp_size_r + 
-                                    c_wrsw_timestamp_size_f - 1 downto 0);
+    txtsu_frame_id_i : in  std_logic_vector(16 -1 downto 0);
+    txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
     txtsu_valid_i    : in  std_logic;
     txtsu_ack_o      : out std_logic;
       --WB
@@ -232,6 +225,7 @@ package wrcore_pkg is
   );
   end component;
 
+  constant maxAddrBitIncIO : integer := 10;
 
   component wrc_zpu
     generic (

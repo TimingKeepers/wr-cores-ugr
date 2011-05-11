@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2011-04-18
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ use ieee.std_logic_1164.all;
 use ieee.NUMERIC_STD.all;
 
 library work;
-use work.common_components.all;
+use work.gencores_pkg.all;
 
 entity dmtd_with_deglitcher is
   generic (
@@ -83,13 +83,13 @@ entity dmtd_with_deglitcher is
     deglitch_threshold_i : in std_logic_vector(15 downto 0);
 
     -- [clk_dmtd_i] raw DDMTD output (for debugging purposes)
-    dbg_dmtdout_o : out std_logic
+    dbg_dmtdout_o : out std_logic;
 
     -- [clk_sys_i] deglitched edge tag value
     tag_o : out std_logic_vector(g_counter_bits-1 downto 0);
 
     -- [clk_sys_i] pulse indicates new phase tag on tag_o
-    tag_stb_p1_o : out std_logic;
+    tag_stb_p1_o : out std_logic
     );
 
 end dmtd_with_deglitcher;
@@ -147,7 +147,7 @@ begin  -- rtl
 
         case state is
           when WAIT_STABLE_0 =>         -- out-of-sync
-            new_edge_sreg <= '0' & new_edge_sreg(new_edge_sreg'length downto 1);
+            new_edge_sreg <= '0' & new_edge_sreg(new_edge_sreg'length-1 downto 1);
 
             if clk_i_d3 /= '0' then
               stab_cntr <= (others => '0');
@@ -184,9 +184,9 @@ begin  -- rtl
         end case;
       end if;
     end if;
-  end process deglitch;
+  end process p_deglitch;
 
-  U_sync_tag_strobe : sync_ffs
+  U_sync_tag_strobe : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -197,7 +197,7 @@ begin  -- rtl
       npulse_o => open,
       ppulse_o => new_edge_p);
 
-  tag_stb_p_o   <= new_edge_p;
+  tag_stb_p1_o   <= new_edge_p;
   tag_o         <= std_logic_vector(tag_int);
   dbg_dmtdout_o <= clk_i_d3;
 end rtl;

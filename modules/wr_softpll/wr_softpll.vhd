@@ -2,8 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.common_components.all;
-
+use work.gencores_pkg.all;
 
 entity wr_softpll is
   generic(
@@ -63,21 +62,19 @@ architecture rtl of wr_softpll is
     generic (
       g_counter_bits : natural);
     port (
-      rst_n_dmtdclk_i       : in  std_logic;
-      rst_n_sysclk_i        : in  std_logic;
-      clk_dmtd_i            : in  std_logic;
-      clk_sys_i             : in  std_logic;
-      clk_in_i              : in  std_logic;
-      tag_o                 : out std_logic_vector(g_counter_bits-1 downto 0);
-      tag_stb_p_o           : out std_logic;
-      shift_en_i            : in  std_logic;
-      shift_dir_i           : in  std_logic;
-      deglitch_thr_lo_i     : in  std_logic_vector(11 downto 0);
-      deglitch_thr_hi_i     : in  std_logic_vector(11 downto 0);
-      deglitch_thr_glitch_i : in  std_logic_vector(7 downto 0);
-      dbg_dmtdout_o         : out std_logic);
+      rst_n_dmtdclk_i      : in  std_logic;
+      rst_n_sysclk_i       : in  std_logic;
+      clk_in_i             : in  std_logic;
+      clk_dmtd_i           : in  std_logic;
+      clk_sys_i            : in  std_logic;
+      shift_en_i           : in  std_logic;
+      shift_dir_i          : in  std_logic;
+      deglitch_threshold_i : in  std_logic_vector(15 downto 0);
+      dbg_dmtdout_o        : out std_logic;
+      tag_o                : out std_logic_vector(g_counter_bits-1 downto 0);
+      tag_stb_p1_o         : out std_logic);
   end component;
-
+  
   component softpll_wb
     port (
       rst_n_i            : in  std_logic;
@@ -174,7 +171,7 @@ architecture rtl of wr_softpll is
   
 begin  -- rtl
 
-  sync_ffs_rst1 : sync_ffs
+  sync_ffs_rst1 : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -185,7 +182,7 @@ begin  -- rtl
       npulse_o => open,
       ppulse_o => open);
 
-  sync_ffs_rst2 : sync_ffs
+  sync_ffs_rst2 : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -196,7 +193,7 @@ begin  -- rtl
       npulse_o => open,
       ppulse_o => open);
 
-  sync_ffs_rst3 : sync_ffs
+  sync_ffs_rst3 : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -266,12 +263,10 @@ begin  -- rtl
         clk_in_i   => clk_rx_buf,
 
         tag_o                 => tag_ref,
-        tag_stb_p_o           => tag_ref_p,
+        tag_stb_p1_o           => tag_ref_p,
         shift_en_i            => '0',
         shift_dir_i           => '0',
-        deglitch_thr_lo_i     => deglitch_thr_slv(11 downto 0),
-        deglitch_thr_hi_i     => "000000000000",
-        deglitch_thr_glitch_i => "00000000",
+        deglitch_threshold_i => deglitch_thr_slv,
         dbg_dmtdout_o         => open);
 
     DMTD_FB : dmtd_with_deglitcher
@@ -286,12 +281,11 @@ begin  -- rtl
         clk_in_i   => clk_ref_buf,
 
         tag_o                 => tag_fb,
-        tag_stb_p_o           => tag_fb_p,
+        tag_stb_p1_o           => tag_fb_p,
         shift_en_i            => '0',
         shift_dir_i           => '0',
-        deglitch_thr_lo_i     => deglitch_thr_slv(11 downto 0),
-        deglitch_thr_hi_i     => "000000000000",
-        deglitch_thr_glitch_i => "00000000",
+        
+        deglitch_threshold_i => deglitch_thr_slv,
         dbg_dmtdout_o         => open);
   end generate gen_with_single_dmtd;
 

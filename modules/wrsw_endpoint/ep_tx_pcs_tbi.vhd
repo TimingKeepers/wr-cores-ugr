@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-02-01
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -57,9 +57,9 @@ use ieee.numeric_std.all;
 
 
 library work;
-use work.common_components.all;
-use work.endpoint_pkg.all;
+use work.gencores_pkg.all;
 use work.genram_pkg.all;
+use work.endpoint_pkg.all;
 
 
 entity ep_tx_pcs_tbi is
@@ -202,7 +202,7 @@ begin
 
 
   
-  U_sync_pcs_busy_o : sync_ffs
+  U_sync_pcs_busy_o : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -213,7 +213,7 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-  U_sync_pcs_error_o : sync_ffs
+  U_sync_pcs_error_o : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -224,7 +224,7 @@ begin
       npulse_o => open,
       ppulse_o => pcs_error_p_o);
 
-  U_sync_tx_reset : sync_ffs
+  U_sync_tx_reset : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -235,7 +235,7 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-  U_sync_power_down : sync_ffs
+  U_sync_power_down : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (

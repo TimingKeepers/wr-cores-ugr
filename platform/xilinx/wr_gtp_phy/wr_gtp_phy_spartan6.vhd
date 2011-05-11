@@ -48,7 +48,7 @@ library unisim;
 use unisim.all;
 
 library work;
-use work.common_components.all;
+use work.gencores_pkg.all;
 
 entity wr_gtp_phy_spartan6 is
 
@@ -547,7 +547,7 @@ begin  -- rtl
   ch0_rx_enable_output <= ch0_rx_synced and ch0_align_done;
   ch1_rx_enable_output <= ch1_rx_synced and ch1_align_done;
 
-  U_sync_oen_ch0 : sync_ffs
+  U_sync_oen_ch0 : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -558,7 +558,7 @@ begin  -- rtl
       npulse_o => open,
       ppulse_o => open);
 
-  U_sync_oen_ch1 : sync_ffs
+  U_sync_oen_ch1 : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (

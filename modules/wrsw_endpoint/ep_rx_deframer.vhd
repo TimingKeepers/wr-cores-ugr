@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-02-04
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -29,8 +29,6 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.global_defs.all;
-use work.common_components.all;
 use work.endpoint_pkg.all;
 
 entity ep_rx_deframer is
@@ -56,7 +54,7 @@ entity ep_rx_deframer is
 -- RX Buffer interface
     rbuf_sof_p1_o    : out std_logic;
     rbuf_eof_p1_o    : out std_logic;
-    rbuf_ctrl_o      : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+    rbuf_ctrl_o      : out std_logic_vector(4 - 1 downto 0);
     rbuf_data_o      : out std_logic_vector(15 downto 0);
     rbuf_bytesel_o   : out std_logic;
     rbuf_valid_o     : out std_logic;
@@ -98,15 +96,15 @@ entity ep_rx_deframer is
 -------------------------------------------------------------------------------
 
 -- source/MAC address
-    rtu_rq_smac_o : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-    rtu_rq_dmac_o : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
+    rtu_rq_smac_o : out std_logic_vector(48 - 1 downto 0);
+    rtu_rq_dmac_o : out std_logic_vector(48 - 1 downto 0);
 
 -- VLAN Id/VID present flag
-    rtu_rq_vid_o     : out std_logic_vector(c_wrsw_vid_width - 1 downto 0);
+    rtu_rq_vid_o     : out std_logic_vector(12 - 1 downto 0);
     rtu_rq_has_vid_o : out std_logic;
 
 -- packet priority / priority present flag
-    rtu_rq_prio_o     : out std_logic_vector(c_wrsw_prio_width - 1 downto 0);
+    rtu_rq_prio_o     : out std_logic_vector(3 - 1 downto 0);
     rtu_rq_has_prio_o : out std_logic;
 
 -- RTU idle input (indicates that the RTU is ready to serve another request)

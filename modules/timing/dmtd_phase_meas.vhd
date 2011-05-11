@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2011-04-18
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ use ieee.std_logic_1164.all;
 use ieee.NUMERIC_STD.all;
 
 library work;
-use work.common_components.all;
+use work.gencores_pkg.all;
 
 entity dmtd_phase_meas is
   generic (
@@ -83,19 +83,17 @@ architecture syn of dmtd_phase_meas is
     generic (
       g_counter_bits : natural);
     port (
-      rst_n_dmtdclk_i       : in  std_logic;
-      rst_n_sysclk_i        : in  std_logic;
-      clk_dmtd_i            : in  std_logic;
-      clk_sys_i             : in  std_logic;
-      clk_in_i              : in  std_logic;
-      tag_o                 : out std_logic_vector(g_counter_bits-1 downto 0);
-      tag_stb_p_o           : out std_logic;
-      shift_en_i            : in  std_logic;
-      shift_dir_i           : in  std_logic;
-      deglitch_thr_lo_i     : in  std_logic_vector(11 downto 0);
-      deglitch_thr_hi_i     : in  std_logic_vector(11 downto 0);
-      deglitch_thr_glitch_i : in  std_logic_vector(7 downto 0);
-      dbg_dmtdout_o         : out std_logic);
+      rst_n_dmtdclk_i      : in  std_logic;
+      rst_n_sysclk_i       : in  std_logic;
+      clk_in_i             : in  std_logic;
+      clk_dmtd_i           : in  std_logic;
+      clk_sys_i            : in  std_logic;
+      shift_en_i           : in  std_logic;
+      shift_dir_i          : in  std_logic;
+      deglitch_threshold_i : in  std_logic_vector(15 downto 0);
+      dbg_dmtdout_o        : out std_logic;
+      tag_o                : out std_logic_vector(g_counter_bits-1 downto 0);
+      tag_stb_p1_o         : out std_logic);
   end component;
 
   type t_pd_state is (PD_WAIT_TAG, PD_WAIT_A, PD_WAIT_B);
@@ -128,7 +126,7 @@ begin  -- syn
   rst_n_sysclk <= rst_n_i;
 
   -- reset sync for DMTD sampling clock
-  sync_reset_dmtdclk : sync_ffs
+  sync_reset_dmtdclk : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -149,12 +147,10 @@ begin  -- syn
       clk_sys_i             => clk_sys_i,
       clk_in_i              => clk_a_i,
       tag_o                 => tag_a,
-      tag_stb_p_o           => tag_a_p,
+      tag_stb_p1_o           => tag_a_p,
       shift_en_i            => '0',
       shift_dir_i           => '0',
-      deglitch_thr_lo_i     => std_logic_vector(to_unsigned(g_deglitch_thr_lo, 12)),
-      deglitch_thr_hi_i     => std_logic_vector(to_unsigned(g_deglitch_thr_hi, 12)),
-      deglitch_thr_glitch_i => std_logic_vector(to_unsigned(g_deglitch_thr_glitch, 8)),
+      deglitch_threshold_i => std_logic_vector(to_unsigned(g_deglitcher_threshold, 16)),
       dbg_dmtdout_o         => open);
 
   DMTD_B : dmtd_with_deglitcher
@@ -167,12 +163,10 @@ begin  -- syn
       clk_sys_i             => clk_sys_i,
       clk_in_i              => clk_b_i,
       tag_o                 => tag_b,
-      tag_stb_p_o           => tag_b_p,
+      tag_stb_p1_o           => tag_b_p,
       shift_en_i            => '0',
       shift_dir_i           => '0',
-      deglitch_thr_lo_i     => std_logic_vector(to_unsigned(g_deglitch_thr_lo, 12)),
-      deglitch_thr_hi_i     => std_logic_vector(to_unsigned(g_deglitch_thr_hi, 12)),
-      deglitch_thr_glitch_i => std_logic_vector(to_unsigned(g_deglitch_thr_glitch, 8)),
+      deglitch_threshold_i => std_logic_vector(to_unsigned(g_deglitcher_threshold, 16)),
       dbg_dmtdout_o         => open);
 
 

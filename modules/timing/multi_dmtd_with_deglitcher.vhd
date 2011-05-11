@@ -3,7 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.NUMERIC_STD.all;
 
 library work;
-use work.common_components.all;
+use work.gencores_pkg.all;
 
 entity multi_dmtd_with_deglitcher is
   generic (
@@ -195,7 +195,7 @@ begin  -- rtl
 
 --n_zeroes <= f_count_zeroes(dmtd_in);
 
-  sync_reset_refclk : sync_ffs
+  sync_reset_refclk : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (

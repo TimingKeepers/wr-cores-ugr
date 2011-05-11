@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-02-07
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,9 +50,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.common_components.all;
-use work.endpoint_pkg.all;
+use work.gencores_pkg.all;
 use work.genram_pkg.all;
+use work.endpoint_pkg.all;
 
 entity ep_rx_pcs_tbi is
   generic (
@@ -240,7 +240,7 @@ begin
 -- synchronizer chains for Wishbone-accessible control signals
 -------------------------------------------------------------------------------
 
-  U_sync_pcs_busy : sync_ffs
+  U_sync_pcs_busy : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -252,7 +252,7 @@ begin
       ppulse_o => open);
 
 
-  U_sync_rx_reset : sync_ffs
+  U_sync_rx_reset : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -263,7 +263,7 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-  U_sync_an_rx_enable : sync_ffs
+  U_sync_an_rx_enable : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -274,7 +274,7 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-  U_sync_power_down : sync_ffs
+  U_sync_power_down : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -341,7 +341,7 @@ begin
       cal_i    => d_is_cal);
 
   -- synchronizer chain for rx_synced signal, also serving as a loss-of-sync detector
-  U_sync_los : sync_ffs
+  U_sync_los : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -899,7 +899,7 @@ begin
 
   an_rx_val_o <= lcr_cur_val;
 
-  U_sync_an_rx_ready : sync_ffs
+  U_sync_an_rx_ready : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -910,7 +910,7 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-  U_sync_an_idle_match : sync_ffs
+  U_sync_an_idle_match : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
@@ -921,7 +921,7 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-  U_ext_rmon_1 : extend_pulse
+  U_ext_rmon_1 : gc_extend_pulse
     generic map (
       g_width => 3)
     port map (
@@ -930,7 +930,7 @@ begin
       pulse_i    => rmon_invalid_code_p_int,
       extended_o => rmon_invalid_code_p_o);
 
-  U_ext_rmon_2 : extend_pulse
+  U_ext_rmon_2 : gc_extend_pulse
     generic map (
       g_width => 3)
     port map (

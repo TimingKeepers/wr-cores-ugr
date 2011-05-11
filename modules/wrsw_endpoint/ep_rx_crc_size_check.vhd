@@ -3,8 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.global_defs.all;
-use work.common_components.all;
+use work.gencores_pkg.all;              -- for gc_crc_gen
 use work.endpoint_pkg.all;
 
 -- 1st deframing pipeline stage - CRC/PCS error/Size checker
@@ -86,7 +85,7 @@ begin  -- behavioral
   crc_gen_reset  <= snk_sof_p1_i or (not rst_n_i);
   crc_gen_enable <= snk_valid_i;
 
-  U_rx_crc_generator : crc_gen
+  U_rx_crc_generator : gc_crc_gen
     generic map (
       g_polynomial => x"04C11DB7",
       g_init_value => x"ffffffff",

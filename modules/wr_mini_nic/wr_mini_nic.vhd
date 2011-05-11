@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2011-03-27
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.global_defs.all;
+use work.endpoint_pkg.all;
 
 entity wr_mini_nic is
 
@@ -56,7 +56,7 @@ entity wr_mini_nic is
 -------------------------------------------------------------------------------
     
     src_data_o     : out std_logic_vector(15 downto 0);
-    src_ctrl_o     : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+    src_ctrl_o     : out std_logic_vector(4 - 1 downto 0);
     src_bytesel_o  : out std_logic;
     src_sof_p1_o   : out std_logic;
     src_eof_p1_o   : out std_logic;
@@ -66,7 +66,7 @@ entity wr_mini_nic is
     src_error_p1_i : in  std_logic;
 
     snk_data_i     : in  std_logic_vector(15 downto 0);
-    snk_ctrl_i     : in  std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    snk_ctrl_i     : in  std_logic_vector(4 - 1 downto 0);
     snk_bytesel_i  : in  std_logic;
     snk_sof_p1_i   : in  std_logic;
     snk_eof_p1_i   : in  std_logic;
@@ -80,8 +80,8 @@ entity wr_mini_nic is
 -------------------------------------------------------------------------------
 
     txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
-    txtsu_frame_id_i : in  std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
-    txtsu_tsval_i    : in  std_logic_vector(c_wrsw_timestamp_size_r + c_wrsw_timestamp_size_f - 1 downto 0);
+    txtsu_frame_id_i : in  std_logic_vector(16 - 1 downto 0);
+    txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
     txtsu_valid_i    : in  std_logic;
     txtsu_ack_o      : out std_logic;
 

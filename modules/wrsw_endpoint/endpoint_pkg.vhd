@@ -2,11 +2,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library work;
-use work.global_defs.all;
-
 package endpoint_pkg is
-
+  
   constant c_endpoint_rx_buffer_size      : integer := 4096;
   constant c_endpoint_rx_buffer_size_log2 : integer := 12;
 
@@ -34,6 +31,19 @@ package endpoint_pkg is
   constant c_WRF_DATA   : std_logic_vector(1 downto 0) := "00";
   constant c_WRF_OOB    : std_logic_vector(1 downto 0) := "01";
 
+  -- fixme: remove these along with the non-WB version of the endpoint
+  constant c_wrsw_ctrl_none : std_logic_vector(4 - 1 downto 0) := x"0";
+  constant c_wrsw_ctrl_dst_mac   : std_logic_vector(4 - 1 downto 0) := x"1";
+  constant c_wrsw_ctrl_src_mac   : std_logic_vector(4 - 1 downto 0) := x"2";
+  constant c_wrsw_ctrl_ethertype : std_logic_vector(4 - 1 downto 0) := x"3";
+  constant c_wrsw_ctrl_vid_prio  : std_logic_vector(4 - 1 downto 0) := x"4";
+  constant c_wrsw_ctrl_tx_oob    : std_logic_vector(4 - 1 downto 0) := x"5";
+  constant c_wrsw_ctrl_rx_oob    : std_logic_vector(4 - 1 downto 0) := x"6";
+  constant c_wrsw_ctrl_payload   : std_logic_vector(4 - 1 downto 0) := x"7";
+  constant c_wrsw_ctrl_fcs       : std_logic_vector(4 - 1 downto 0) := x"8";
+
+
+  
   type t_wrf_status_reg is record
     is_hp       : std_logic;
     has_smac    : std_logic;
@@ -131,7 +141,7 @@ package endpoint_pkg is
       pcs_fifo_write_o      : out std_logic;
       pcs_fifo_almostfull_i : in  std_logic;
       tx_data_i             : in  std_logic_vector(15 downto 0);
-      tx_ctrl_i             : in  std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+      tx_ctrl_i             : in  std_logic_vector(4 -1 downto 0);
       tx_bytesel_i          : in  std_logic;
       tx_sof_p1_i           : in  std_logic;
       tx_eof_p1_i           : in  std_logic;
@@ -169,7 +179,7 @@ package endpoint_pkg is
       oob_ack_o            : out std_logic;
       rbuf_sof_p1_o        : out std_logic;
       rbuf_eof_p1_o        : out std_logic;
-      rbuf_ctrl_o          : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+      rbuf_ctrl_o          : out std_logic_vector(4 - 1 downto 0);
       rbuf_data_o          : out std_logic_vector(15 downto 0);
       rbuf_bytesel_o       : out std_logic;
       rbuf_valid_o         : out std_logic;
@@ -192,11 +202,11 @@ package endpoint_pkg is
       ep_rfcr_fix_prio_i   : in  std_logic;
       ep_rfcr_prio_val_i   : in  std_logic_vector(2 downto 0);
       ep_rfcr_vid_val_i    : in  std_logic_vector(11 downto 0);
-      rtu_rq_smac_o        : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-      rtu_rq_dmac_o        : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-      rtu_rq_vid_o         : out std_logic_vector(c_wrsw_vid_width - 1 downto 0);
+      rtu_rq_smac_o        : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_dmac_o        : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_vid_o         : out std_logic_vector(12 - 1 downto 0);
       rtu_rq_has_vid_o     : out std_logic;
-      rtu_rq_prio_o        : out std_logic_vector(c_wrsw_prio_width - 1 downto 0);
+      rtu_rq_prio_o        : out std_logic_vector(3 - 1 downto 0);
       rtu_rq_has_prio_o    : out std_logic;
       rtu_full_i           : in  std_logic;
       rtu_rq_strobe_p1_o   : out std_logic);
@@ -217,14 +227,14 @@ package endpoint_pkg is
       pps_csync_p1_i       : in  std_logic;
       tx_timestamp_stb_p_i : in  std_logic;
       rx_timestamp_stb_p_i : in  std_logic;
-      txoob_fid_i          : in  std_logic_vector(c_wrsw_oob_frame_id_size - 1 downto 0);
+      txoob_fid_i          : in  std_logic_vector(16 - 1 downto 0);
       txoob_stb_p_i        : in  std_logic;
       rxoob_data_o         : out std_logic_vector(47 downto 0);
       rxoob_valid_o        : out std_logic;
       rxoob_ack_i          : in  std_logic;
       txtsu_port_id_o      : out std_logic_vector(4 downto 0);
-      txtsu_fid_o          : out std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
-      txtsu_tsval_o        : out std_logic_vector(c_wrsw_timestamp_size_r + c_wrsw_timestamp_size_f - 1 downto 0);
+      txtsu_fid_o          : out std_logic_vector(16 -1 downto 0);
+      txtsu_tsval_o        : out std_logic_vector(28 + 4 - 1 downto 0);
       txtsu_valid_o        : out std_logic;
       txtsu_ack_i          : in  std_logic;
       ep_tscr_en_txts_i    : in  std_logic;
@@ -260,7 +270,7 @@ package endpoint_pkg is
       clk_sys_i          : in  std_logic;
       rst_n_i            : in  std_logic;
       fra_data_i         : in  std_logic_vector(15 downto 0);
-      fra_ctrl_i         : in  std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+      fra_ctrl_i         : in  std_logic_vector(4 -1 downto 0);
       fra_sof_p_i        : in  std_logic;
       fra_eof_p_i        : in  std_logic;
       fra_error_p_i      : in  std_logic;
@@ -268,7 +278,7 @@ package endpoint_pkg is
       fra_drop_o         : out std_logic;
       fra_bytesel_i      : in  std_logic;
       fab_data_o         : out std_logic_vector(15 downto 0);
-      fab_ctrl_o         : out std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+      fab_ctrl_o         : out std_logic_vector(4 -1 downto 0);
       fab_sof_p_o        : out std_logic;
       fab_eof_p_o        : out std_logic;
       fab_error_p_o      : out std_logic;
@@ -394,7 +404,7 @@ package endpoint_pkg is
       gtp_rst_o          : out std_logic;
       gtp_loopen_o       : out std_logic;
       rx_data_o          : out std_logic_vector(15 downto 0);
-      rx_ctrl_o          : out std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+      rx_ctrl_o          : out std_logic_vector(4 - 1 downto 0);
       rx_bytesel_o       : out std_logic;
       rx_sof_p1_o        : out std_logic;
       rx_eof_p1_o        : out std_logic;
@@ -404,7 +414,7 @@ package endpoint_pkg is
       rx_idle_o          : out std_logic;
       rx_rerror_p1_o     : out std_logic;
       tx_data_i          : in  std_logic_vector(15 downto 0);
-      tx_ctrl_i          : in  std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+      tx_ctrl_i          : in  std_logic_vector(4 -1 downto 0);
       tx_bytesel_i       : in  std_logic;
       tx_sof_p1_i        : in  std_logic;
       tx_eof_p1_i        : in  std_logic;
@@ -414,18 +424,18 @@ package endpoint_pkg is
       tx_tabort_p1_i     : in  std_logic;
       tx_terror_p1_o     : out std_logic;
       txtsu_port_id_o    : out std_logic_vector(4 downto 0);
-      txtsu_frame_id_o   : out std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
-      txtsu_tsval_o      : out std_logic_vector(c_wrsw_timestamp_size_r + c_wrsw_timestamp_size_f - 1 downto 0);
+      txtsu_frame_id_o   : out std_logic_vector(16 -1 downto 0);
+      txtsu_tsval_o      : out std_logic_vector(28 + 4 - 1 downto 0);
       txtsu_valid_o      : out std_logic;
       txtsu_ack_i        : in  std_logic;
       rtu_full_i         : in  std_logic                    := '0';
       rtu_almost_full_i  : in  std_logic                    := '0';
       rtu_rq_strobe_p1_o : out std_logic;
-      rtu_rq_smac_o      : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-      rtu_rq_dmac_o      : out std_logic_vector(c_wrsw_mac_addr_width - 1 downto 0);
-      rtu_rq_vid_o       : out std_logic_vector(c_wrsw_vid_width - 1 downto 0);
+      rtu_rq_smac_o      : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_dmac_o      : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_vid_o       : out std_logic_vector(12 - 1 downto 0);
       rtu_rq_has_vid_o   : out std_logic;
-      rtu_rq_prio_o      : out std_logic_vector(c_wrsw_prio_width-1 downto 0);
+      rtu_rq_prio_o      : out std_logic_vector(3-1 downto 0);
       rtu_rq_has_prio_o  : out std_logic;
       wb_cyc_i           : in  std_logic;
       wb_stb_i           : in  std_logic;

@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-04-18
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -32,7 +32,6 @@ use ieee.std_logic_1164.all;
 
 library work;
 use work.wrcore_pkg.all;
-use work.global_defs.all;
 use work.wbconmax_pkg.all;
 
 entity wr_core is
@@ -140,99 +139,6 @@ end wr_core;
 
 architecture struct of wr_core is
 
-  component wr_helper_pll
-    generic (
-      g_num_ref_inputs : integer := 1;
-      g_with_wishbone  : integer := 1;
-      g_dacval_bits    : integer := 16;
-      g_output_bias    : integer := 32767;
-      g_div_ref        : integer := 0;
-      g_div_fb         : integer := 0;
-      g_kp_freq        : integer := 0;
-      g_ki_freq        : integer := 0;
-      g_kp_phase       : integer := 0;
-      g_ki_phase       : integer := 0;
-      g_ld_threshold   : integer := 0;
-      g_ld_samples     : integer := 0;
-      g_fd_gating      : integer := 0;
-      g_pd_gating      : integer := 0;
-      g_ferr_setpoint  : integer := 0);
-    port (
-      rst_n_i            : in  std_logic;
-      cfg_enable_i       : in  std_logic;
-      cfg_force_freq_i   : in  std_logic;
-      cfg_clear_status_i : in  std_logic;
-      cfg_refsel_i       : in  std_logic_vector(1 downto 0);
-      stat_flock_o       : out std_logic;
-      stat_plock_o       : out std_logic;
-      stat_lock_lost_o   : out std_logic;
-      clk_ref_i          : in  std_logic_vector(g_num_ref_inputs-1 downto 0);
-      clk_sys_i          : in  std_logic;
-      clk_fbck_i         : in  std_logic;
-      dac_data_o         : out std_logic_vector(g_dacval_bits-1 downto 0);
-      dac_load_p1_o      : out std_logic;
-      auxout1_o          : out std_logic;
-      auxout2_o          : out std_logic;
-      auxout3_o          : out std_logic;
-      wb_addr_i          : in  std_logic_vector(3 downto 0);
-      wb_data_i          : in  std_logic_vector(31 downto 0);
-      wb_data_o          : out std_logic_vector(31 downto 0);
-      wb_cyc_i           : in  std_logic;
-      wb_sel_i           : in  std_logic_vector(3 downto 0);
-      wb_stb_i           : in  std_logic;
-      wb_we_i            : in  std_logic;
-      wb_ack_o           : out std_logic);
-  end component;
-
-  component wr_dmtd_pll
-    generic (
-      g_num_ref_inputs  : integer := 1;
-      g_with_debug_fifo : integer := 0;
-      g_with_wishbone   : integer := 1;
-      g_dacval_bits     : integer := 16;
-      g_output_bias     : integer := 32767;
-      g_kp_freq         : integer := 0;
-      g_ki_freq         : integer := 0;
-      g_kp_phase        : integer := 0;
-      g_ki_phase        : integer := 0;
-      g_ld_threshold    : integer := 0;
-      g_ld_samples      : integer := 0;
-      g_ref_gthr_lo     : integer := 0;
-      g_ref_gthr_hi     : integer := 0;
-      g_ref_gthr_glitch : integer := 0;
-      g_fb_gthr_lo      : integer := 0;
-      g_fb_gthr_hi      : integer := 0;
-      g_fb_gthr_glitch  : integer := 0;
-      g_pshifter_speed  : integer := 0);
-    port (
-      rst_n_i              : in  std_logic;
-      cfg_enable_i         : in  std_logic;
-      cfg_force_freq_i     : in  std_logic;
-      cfg_clear_status_i   : in  std_logic;
-      cfg_pshift_load_p1_i : in  std_logic;
-      cfg_pshift_val_i     : in  std_logic_vector(23 downto 0);
-      stat_flock_o         : out std_logic;
-      stat_plock_o         : out std_logic;
-      stat_lock_lost_o     : out std_logic;
-      stat_pshift_busy_o   : out std_logic;
-      clk_sys_i            : in  std_logic;
-      clk_fbck_i           : in  std_logic;
-      clk_dmtd_i           : in  std_logic;
-      clk_ref_i            : in  std_logic_vector(g_num_ref_inputs-1 downto 0);
-      dac_data_o           : out std_logic_vector(g_dacval_bits-1 downto 0);
-      dac_load_p1_o        : out std_logic;
-      auxout1_o            : out std_logic;
-      auxout2_o            : out std_logic;
-      auxout3_o            : out std_logic;
-      wb_addr_i            : in  std_logic_vector(4 downto 0);
-      wb_data_i            : in  std_logic_vector(31 downto 0);
-      wb_data_o            : out std_logic_vector(31 downto 0);
-      wb_cyc_i             : in  std_logic;
-      wb_sel_i             : in  std_logic_vector(3 downto 0);
-      wb_stb_i             : in  std_logic;
-      wb_we_i              : in  std_logic;
-      wb_ack_o             : out std_logic);
-  end component;
 
   
   signal s_rst   : std_logic;
@@ -257,7 +163,7 @@ architecture struct of wr_core is
   --Endpoint
   -----------------------------------------------------------------------------
   signal s_ep_rx_data_o      : std_logic_vector(15 downto 0);
-  signal s_ep_rx_ctrl_o      : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0);
+  signal s_ep_rx_ctrl_o      : std_logic_vector(4 - 1 downto 0);
   signal s_ep_rx_bytesel_o   : std_logic;
   signal s_ep_rx_sof_p1_o    : std_logic;
   signal s_ep_rx_eof_p1_o    : std_logic;
@@ -266,7 +172,7 @@ architecture struct of wr_core is
   signal s_ep_rx_rerror_p1_o : std_logic;
 
   signal s_ep_tx_data_i      : std_logic_vector(15 downto 0);
-  signal s_ep_tx_ctrl_i      : std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+  signal s_ep_tx_ctrl_i      : std_logic_vector(4 - 1 downto 0);
   signal s_ep_tx_bytesel_i   : std_logic;
   signal s_ep_tx_sof_p1_i    : std_logic;
   signal s_ep_tx_eof_p1_i    : std_logic;
@@ -275,9 +181,8 @@ architecture struct of wr_core is
   signal s_ep_tx_terror_p1_o : std_logic;
 
   signal txtsu_port_id_o  : std_logic_vector(4 downto 0);
-  signal txtsu_frame_id_o : std_logic_vector(c_wrsw_oob_frame_id_size -1 downto 0);
-  signal txtsu_tsval_o : std_logic_vector(c_wrsw_timestamp_size_r +
-                                          c_wrsw_timestamp_size_f - 1 downto 0);
+  signal txtsu_frame_id_o : std_logic_vector(16 -1 downto 0);
+  signal txtsu_tsval_o : std_logic_vector(28 + 4 - 1 downto 0); 
   signal txtsu_valid_o : std_logic;
   signal txtsu_ack_i   : std_logic;
 
@@ -432,6 +337,7 @@ begin
       wb_ack_o  => ppsg_wb_o.ack,
 
       -- Single-pulse PPS output for synchronizing endpoint to
+      pps_in_i => '0',
       pps_csync_o => s_pps_csync,
       pps_out_o   => pps_p_o
       );

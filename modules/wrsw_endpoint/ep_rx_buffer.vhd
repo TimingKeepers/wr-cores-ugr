@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-01-30
+-- Last update: 2011-05-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -26,10 +26,7 @@ use ieee.numeric_std.all;
 
 library work;
 
-use work.global_defs.all;
-use work.common_components.all;
 use work.endpoint_pkg.all;
-
 use work.genram_pkg.all;
 
 entity ep_rx_buffer is
@@ -45,7 +42,7 @@ entity ep_rx_buffer is
 -------------------------------------------------------------------------------
 
     fra_data_i    : in  std_logic_vector(15 downto 0);
-    fra_ctrl_i    : in  std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    fra_ctrl_i    : in  std_logic_vector(4 -1 downto 0);
     fra_sof_p_i   : in  std_logic;
     fra_eof_p_i   : in  std_logic;
     fra_error_p_i : in  std_logic;
@@ -58,7 +55,7 @@ entity ep_rx_buffer is
 -------------------------------------------------------------------------------
 
     fab_data_o    : out std_logic_vector(15 downto 0);
-    fab_ctrl_o    : out std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
+    fab_ctrl_o    : out std_logic_vector(4 -1 downto 0);
     fab_sof_p_o   : out std_logic;
     fab_eof_p_o   : out std_logic;
     fab_error_p_o : out std_logic;
@@ -80,19 +77,19 @@ architecture behavioral of ep_rx_buffer is
   constant c_drop_threshold    : integer := 2**g_size_log2 - 800;
   constant c_release_threshold : integer := 2**(g_size_log2-1);
 
-  constant c_ctrl_sof        : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0) := x"8";
-  constant c_ctrl_payload_1b : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0) := x"9";
-  constant c_ctrl_eof        : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0) := x"a";
-  constant c_ctrl_eof_1b     : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0) := x"b";
-  constant c_ctrl_eof_2b     : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0) := x"c";
-  constant c_ctrl_eof_error  : std_logic_vector(c_wrsw_ctrl_size - 1 downto 0) := x"d";
+  constant c_ctrl_sof        : std_logic_vector(4 - 1 downto 0) := x"8";
+  constant c_ctrl_payload_1b : std_logic_vector(4 - 1 downto 0) := x"9";
+  constant c_ctrl_eof        : std_logic_vector(4 - 1 downto 0) := x"a";
+  constant c_ctrl_eof_1b     : std_logic_vector(4 - 1 downto 0) := x"b";
+  constant c_ctrl_eof_2b     : std_logic_vector(4 - 1 downto 0) := x"c";
+  constant c_ctrl_eof_error  : std_logic_vector(4 - 1 downto 0) := x"d";
 
   signal threshold_hit : std_logic;
 
-  signal wr_packed_ctrl : std_logic_vector(c_wrsw_ctrl_size-1 downto 0);
+  signal wr_packed_ctrl : std_logic_vector(4-1 downto 0);
   signal wr_valid       : std_logic;
 
-  signal rd_packed_ctrl : std_logic_vector(c_wrsw_ctrl_size-1 downto 0);
+  signal rd_packed_ctrl : std_logic_vector(4-1 downto 0);
   signal rd_valid       : std_logic;
 
   signal fifo_reset_n                 : std_logic;
