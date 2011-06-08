@@ -5,7 +5,7 @@ peripheral {
 	name = "WR switch endpoint controller";
 	description = "EP controller";
 	hdl_entity = "ep_wishbone_controller";
-	prefix = "EP";
+	prefix = "ep";
 
 -- ECR
 	reg {
@@ -51,6 +51,51 @@ peripheral {
 			 access_dev = READ_ONLY;
 			 type = BIT;
 		};
+
+    field {
+       name = "Feature present: VLAN tagging";
+       description = "1: this implementation of WR Endpoint supports VLAN processing \
+                         (tagging/untagging). VCR register can be used to control the \
+                         VLAN functionality \
+                      0: no VLAN support compiled";
+       prefix = "FEAT_VLAN";
+       align = 24;
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+
+
+    field {
+       name = "Feature present: DDMTD phase measurement";
+       description = "1: this implementation of WR Endpoint can do fine phase measurements \
+                         using a DDMTD phase detector\
+                      0: no phase measurement support compiled";
+       prefix = "FEAT_DMTD";
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+
+    field {
+       name = "Feature present: IEEE1588 timestamper";
+       description = "1: this implementation of WR Endpoint can timestamp packets\
+                      0: no timestamping compiled";
+       prefix = "FEAT_PTP";
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+
+    field {
+       name = "Feature present: DPI packet classifier";
+       description = "1: this implementation of WR Endpoint includes Deep Packet Inspection packet classifier/filter\
+                      0: no DPI compiled";
+       prefix = "FEAT_DPI";
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
 	};
  
 
@@ -356,7 +401,7 @@ peripheral {
 	 };
 
 	 reg {
-			name = "MDIO Status Register";
+			name = "MDIO Address/Status Register";
 			description = "Register with the current status of the MDIO interface";
 			prefix = "MDIO_SR";
 
@@ -369,6 +414,16 @@ peripheral {
 				 size = 16;
 				 access_bus = READ_ONLY;
 				 access_dev = WRITE_ONLY;
+			};
+		
+			field {
+				 name = "MDIO PHY Address";
+				 description = "Address of the PHY on the MDIO bus";
+				 prefix = "PHYAD";
+				 type = SLV;
+				 size = 8;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;			
 			};
 
 			field {

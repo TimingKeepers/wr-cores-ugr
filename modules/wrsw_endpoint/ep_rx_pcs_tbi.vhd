@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-05-11
+-- Last update: 2011-05-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -52,12 +52,11 @@ use ieee.numeric_std.all;
 library work;
 use work.gencores_pkg.all;
 use work.genram_pkg.all;
-use work.endpoint_pkg.all;
+use work.endpoint_private_pkg.all;
 
 entity ep_rx_pcs_tbi is
   generic (
-    g_simulation : integer;
-    g_phy_mode   : string);
+    g_simulation : integer);
   port (
 -- 62.5 MHz refclk divided by 2
     clk_sys_i : in std_logic;
@@ -68,45 +67,24 @@ entity ep_rx_pcs_tbi is
 -- RX path busy indicator (active HI),
 -- asserted means that receiver is in the middle of reception
 -- of a frame
-    pcs_busy_o : out std_logic;
+    pcs_busy_o  : out std_logic;
     -- data FIFO output
-    pcs_data_o : out std_logic_vector(15 downto 0);
-
--- HIGH level indicates that pcs_data_o contains the last single byte of
--- odd-sized frame.
-    pcs_bytesel_o : out std_logic;
-
--- start-of-frame and end-of-frame indicators
-    pcs_sof_o : out std_logic;
-    pcs_eof_o : out std_logic;
-
--- reception error indicator
-    pcs_error_o : out std_logic;
-
+    pcs_data_o  : out std_logic_vector(17 downto 0);
 -- HI requests a single word from RX FIFO
-    pcs_dreq_i : in std_logic;
-
+    pcs_dreq_i  : in  std_logic;
     -- HI indicates that there is valid data present on pcs_data_o
     pcs_valid_o : out std_logic;
-
 
     timestamp_stb_p_o : out std_logic;  -- strobe for RX timestamping
 
 -------------------------------------------------------------------------------
--- TBI interface
--------------------------------------------------------------------------------
-
-    tbi_rbclk_i  : in std_logic;                     -- recovered byte clock
-    tbi_rxdata_i : in std_logic_vector(9 downto 0);  -- 8b10b encoded PHY input
-
--------------------------------------------------------------------------------
--- Xilinx GTP Interface
+-- PHY interface
 -------------------------------------------------------------------------------    
 
-    gtp_rx_clk_i     : in std_logic;
-    gtp_rx_data_i    : in std_logic_vector(7 downto 0);
-    gtp_rx_k_i       : in std_logic;
-    gtp_rx_enc_err_i : in std_logic;
+    phy_rx_clk_i     : in std_logic;
+    phy_rx_data_i    : in std_logic_vector(7 downto 0);
+    phy_rx_k_i       : in std_logic;
+    phy_rx_enc_err_i : in std_logic;
 
 -------------------------------------------------------------------------------
 -- Wishbone registers
@@ -127,9 +105,7 @@ entity ep_rx_pcs_tbi is
     an_idle_match_o : out std_logic;
 
     -- RMON statistic counters
-    rmon_syncloss_p_o     : out std_logic;
-    rmon_invalid_code_p_o : out std_logic;
-    rmon_rx_overrun_p_o   : out std_logic
+    rmon_o: inout t_rmon_triggers
     );
 
 end ep_rx_pcs_tbi;
@@ -180,21 +156,16 @@ architecture behavioral of ep_rx_pcs_tbi is
   signal rx_rdreq, fifo_wrreq : std_logic;
 
   -- 8b10b decoding and postprocessing signals
-  signal dec_err_code                               : std_logic;
-  signal dec_err_rdisp                              : std_logic;
   signal d_is_k, d_err, d_is_comma, d_is_epd        : std_logic;
   signal d_is_spd, d_is_extend, d_is_idle, d_is_lcr : std_logic;
   signal d_is_sfd_char, d_is_preamble_char          : std_logic;
   signal d_data                                     : std_logic_vector(7 downto 0);
   signal d_is_even                                  : std_logic;
   signal d_is_cal                                   : std_logic;
-  signal dec_out                                    : std_logic_vector(7 downto 0);
-  signal dec_err, dec_is_k                          : std_logic;
-
 
   -- Clock alignment FIFO signals
   signal fifo_wr_toggle     : std_logic;
-  signal fifo_in, fifo_out  : std_logic_vector(21 downto 0);
+  signal fifo_in, fifo_out  : std_logic_vector(17 downto 0);
   signal fifo_rx_data       : std_logic_vector(15 downto 0);
   signal fifo_mask_write    : std_logic;
   signal fifo_bytesel       : std_logic;
@@ -230,7 +201,6 @@ architecture behavioral of ep_rx_pcs_tbi is
   signal cal_pattern_cntr      : unsigned(c_cal_pattern_counter_bits-1 downto 0);
   signal mdio_mcr_pdown_synced : std_logic;
 
-  signal rx_clk : std_logic;
 
   signal pcs_valid_int : std_logic;
   
@@ -251,12 +221,11 @@ begin
       npulse_o => open,
       ppulse_o => open);
 
-
   U_sync_rx_reset : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
-      clk_i    => rx_clk,
+      clk_i    => phy_rx_clk_i,
       rst_n_i  => '1',
       data_i   => rst_n_i,
       synced_o => reset_synced_rxclk,
@@ -267,7 +236,7 @@ begin
     generic map (
       g_sync_edge => "positive")
     port map (
-      clk_i    => rx_clk,
+      clk_i    => phy_rx_clk_i,
       rst_n_i  => reset_synced_rxclk,
       data_i   => an_rx_en_i,
       synced_o => an_rx_en_synced,
@@ -278,51 +247,14 @@ begin
     generic map (
       g_sync_edge => "positive")
     port map (
-      clk_i    => rx_clk,
+      clk_i    => phy_rx_clk_i,
       rst_n_i  => '1',
       data_i   => mdio_mcr_pdown_i,
       synced_o => mdio_mcr_pdown_synced,
       npulse_o => open,
       ppulse_o => open);
 
-
   rx_sync_enable <= not mdio_mcr_pdown_synced;
-
--------------------------------------------------------------------------------
--- TBI version:  instantiate an 8b10b decoder
--------------------------------------------------------------------------------
-
-  gen_tbi : if(g_phy_mode = "TBI") generate
-
-    rx_clk <= tbi_rbclk_i after 1ns;    -- choose TBI clock as the RX clock
-
-    U_DEC : ep_dec_8b10b
-
-      port map (
-        clk_i    => rx_clk,
-        rst_n_i  => reset_synced_rxclk,
-        in_10b_i => tbi_rxdata_i,
-
-        ctrl_o      => dec_is_k,
-        out_8b_o    => dec_out,
-        code_err_o  => dec_err_code,
-        rdisp_err_o => dec_err_rdisp);
-
-    dec_err <= dec_err_code or dec_err_rdisp;
-  end generate gen_tbi;
-
--------------------------------------------------------------------------------
--- GTP version: 8b10b is integrated in the transceiver
--------------------------------------------------------------------------------  
-  gen_gtp : if(g_phy_mode = "GTP") generate
-    rx_clk <= gtp_rx_clk_i after 1ns;   -- select GTP clock as the RX clock
-    -- the after statement is to avoid fooling the simulator, it doesn't affect
-    -- the synthesis.
-
-    dec_is_k <= gtp_rx_k_i;
-    dec_out  <= gtp_rx_data_i;
-    dec_err  <= gtp_rx_enc_err_i;
-  end generate gen_gtp;
 
 -------------------------------------------------------------------------------
 -- 802.3z Link Synchronization State Machine
@@ -331,11 +263,11 @@ begin
   U_SYNC_DET : ep_sync_detect
     port map (
       rst_n_i  => reset_synced_rxclk,
-      rbclk_i  => rx_clk,
+      rbclk_i  => phy_rx_clk_i,
       en_i     => rx_sync_enable,
-      data_i   => dec_out,
-      k_i      => dec_is_k,
-      err_i    => dec_err,
+      data_i   => phy_rx_data_i,
+      k_i      => phy_rx_k_i,
+      err_i    => phy_rx_enc_err_i,
       synced_o => rx_synced,
       even_o   => rx_even,
       cal_i    => d_is_cal);
@@ -362,23 +294,22 @@ begin
   -- process checks the presence of valid calibtaion pattern and controls the
   -- state of CAL_STA bit in Receive Control Register.
   --
-  -- reads: dec_out, mdio_wr_spec_cal_crst_i
+  -- reads: phy_rx_data_i, mdio_wr_spec_cal_crst_i
   -- writes: mdio_wr_spec_rx_cal_stat_o
   --
-  p_detect_cal : process(rx_clk, reset_synced_rxclk)
+  p_detect_cal : process(phy_rx_clk_i, reset_synced_rxclk)
   begin
-    if rising_edge(rx_clk) then
+    if rising_edge(phy_rx_clk_i) then
       if reset_synced_rxclk = '0' then
         cal_pattern_cntr <= (others => '0');
         d_is_cal         <= '0';
       else
         
-        if(dec_out = c_k28_7 and dec_is_k = '1') then
+        if(phy_rx_data_i = c_k28_7 and phy_rx_k_i = '1') then
           d_is_cal <= '1';
         else
           d_is_cal <= '0';
         end if;
-
 
         if(d_is_cal = '1' and mdio_wr_spec_cal_crst_i = '0') then
 
@@ -406,20 +337,12 @@ begin
 
   -- FIFO input data formatting
   fifo_wrreq <= fifo_wr_toggle and fifo_mask_write;
-
-  fifo_in(15 downto 0) <= fifo_rx_data;
-  fifo_in(16)          <= fifo_sof;
-  fifo_in(17)          <= fifo_eof;
-  fifo_in(18)          <= fifo_bytesel;
-  fifo_in(19)          <= fifo_error;
-  fifo_in(20)          <= '0';
-  fifo_in(21)          <= '0';
+  fifo_in    <= f_encode_fabric_int(fifo_rx_data, fifo_sof, fifo_eof, fifo_bytesel, fifo_error);
 
 -- Clock adjustment FIFO
-
   U_RX_FIFO : generic_async_fifo
     generic map (
-      g_data_width             => 22,
+      g_data_width             => 18,
       g_size                   => 32,
       g_with_wr_almost_full    => true,
       g_with_rd_almost_empty   => true,
@@ -427,7 +350,7 @@ begin
       g_almost_full_threshold  => 30)
     port map (
       rst_n_i           => fifo_clear_n,
-      clk_wr_i          => rx_clk,
+      clk_wr_i          => phy_rx_clk_i,
       d_i               => fifo_in,
       we_i              => fifo_wrreq,
       wr_empty_o        => open,
@@ -459,14 +382,8 @@ begin
   end process;
 
   -- FIFO output data formatting
-  pcs_data_o    <= fifo_out(15 downto 0);
-  pcs_bytesel_o <= fifo_out(18);
-
-  pcs_sof_o   <= fifo_out(16) and pcs_valid_int;
-  pcs_eof_o   <= fifo_out(17) and pcs_valid_int;
-  pcs_error_o <= fifo_out(19) and pcs_valid_int;
-
-  pcs_valid_o <= pcs_valid_int and not (fifo_out(16) or fifo_out(17) or fifo_out(19));
+  pcs_data_o  <= fifo_out;
+  pcs_valid_o <= pcs_valid_int;
 
   -- FIFO control signals
   rx_rdreq <= (not fifo_empty) and pcs_dreq_i;
@@ -474,12 +391,11 @@ begin
   -- the FIFO is cleared during the reset or when the PCS is disabled
   fifo_clear_n <= '1' when (reset_synced_rxclk = '0') or (mdio_mcr_pdown_synced = '1');
 
-
-  -- process postprocesses the raw 8b10b decoder output (dec_out, dec_is_k, dec_error)
+  -- process postprocesses the raw 8b10b decoder output (phy_rx_data_i, phy_rx_k_i, phy_rx_enc_err_ior)
   -- providing 1-bit signals indicating various 8b10b control patterns
-  p_8b10b_postprocess : process(rx_clk, reset_synced_rxclk)
+  p_8b10b_postprocess : process(phy_rx_clk_i, reset_synced_rxclk)
   begin
-    if rising_edge(rx_clk) then
+    if rising_edge(phy_rx_clk_i) then
       
       if(reset_synced_rxclk = '0') then
         d_data             <= (others => '0');
@@ -497,60 +413,57 @@ begin
       else
 
         -- store the odd/even field information from sync detection unit (U_SYNC_DET)
-        
-        
-
         d_is_even <= rx_even;
-        d_data    <= dec_out;
-        d_is_k    <= dec_is_k;
+        d_data    <= phy_rx_data_i;
+        d_is_k    <= phy_rx_k_i;
 
-        if(dec_err = '0') then
+        if(phy_rx_enc_err_i = '0') then
           d_err <= '0';
 
 -- decode commas and other control characters....
-          if(dec_out = c_K28_5 and dec_is_k = '1') then
+          if(phy_rx_data_i = c_K28_5 and phy_rx_k_i = '1') then
             d_is_comma <= '1';
           else
             d_is_comma <= '0';
           end if;
 
-          if(dec_out = c_k23_7 and dec_is_k = '1') then
+          if(phy_rx_data_i = c_k23_7 and phy_rx_k_i = '1') then
             d_is_extend <= '1';
           else
             d_is_extend <= '0';
           end if;
 
-          if(dec_out = c_k27_7 and dec_is_k = '1') then
+          if(phy_rx_data_i = c_k27_7 and phy_rx_k_i = '1') then
             d_is_spd <= '1';
           else
             d_is_spd <= '0';
           end if;
 
-          if(dec_out = c_K29_7 and dec_is_k = '1') then
+          if(phy_rx_data_i = c_K29_7 and phy_rx_k_i = '1') then
             d_is_epd <= '1';
           else
             d_is_epd <= '0';
           end if;
 
-          if((dec_out = c_d21_5 or dec_out = c_d2_2) and dec_is_k = '0') then
+          if((phy_rx_data_i = c_d21_5 or phy_rx_data_i = c_d2_2) and phy_rx_k_i = '0') then
             d_is_lcr <= '1';
           else
             d_is_lcr <= '0';
           end if;
 
-          if((dec_out = c_d5_6 or dec_out = c_d16_2) and dec_is_k = '0') then
+          if((phy_rx_data_i = c_d5_6 or phy_rx_data_i = c_d16_2) and phy_rx_k_i = '0') then
             d_is_idle <= '1';
           else
             d_is_idle <= '0';
           end if;
 
-          if(dec_out = c_preamble_sfd and dec_is_k = '0') then
+          if(phy_rx_data_i = c_preamble_sfd and phy_rx_k_i = '0') then
             d_is_sfd_char <= '1';
           else
             d_is_sfd_char <= '0';
           end if;
 
-          if(dec_out = c_preamble_char and dec_is_k = '0') then
+          if(phy_rx_data_i = c_preamble_char and phy_rx_k_i = '0') then
             d_is_preamble_char <= '1';
           else
             d_is_preamble_char <= '0';
@@ -579,9 +492,9 @@ begin
 -- reads: almost everything
 -- writes: almost everything
 
-  rx_fsm : process (rx_clk, reset_synced_rxclk)
+  rx_fsm : process (phy_rx_clk_i, reset_synced_rxclk)
   begin
-    if rising_edge(rx_clk) then
+    if rising_edge(phy_rx_clk_i) then
       -- reset or PCS disabled
       if(reset_synced_rxclk = '0' or mdio_mcr_pdown_synced = '1') then
         rx_state <= RX_NOFRAME;
@@ -925,22 +838,22 @@ begin
     generic map (
       g_width => 3)
     port map (
-      clk_i      => rx_clk,
+      clk_i      => phy_rx_clk_i,
       rst_n_i    => reset_synced_rxclk,
       pulse_i    => rmon_invalid_code_p_int,
-      extended_o => rmon_invalid_code_p_o);
+      extended_o => rmon_o.rx_invalid_code);
 
   U_ext_rmon_2 : gc_extend_pulse
     generic map (
       g_width => 3)
     port map (
-      clk_i      => rx_clk,
+      clk_i      => phy_rx_clk_i,
       rst_n_i    => reset_synced_rxclk,
       pulse_i    => rmon_rx_overrun_p_int,
-      extended_o => rmon_rx_overrun_p_o);
+      extended_o => rmon_o.rx_overrun);
 
 -- drive the "RX PCS Sync Lost" event counter
-  rmon_syncloss_p_o <= rx_sync_lost_p and (not mdio_mcr_pdown_i);
+  rmon_o.rx_sync_lost <= rx_sync_lost_p and (not mdio_mcr_pdown_i);
 
 end behavioral;
 

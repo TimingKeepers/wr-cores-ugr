@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-05-28
--- Last update: 2011-02-04
+-- Last update: 2011-05-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.endpoint_pkg.all;
+use work.endpoint_private_pkg.all;
 
 entity ep_sync_detect is
   

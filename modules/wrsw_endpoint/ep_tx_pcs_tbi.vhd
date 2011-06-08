@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-05-11
+-- Last update: 2011-05-28
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -59,13 +59,10 @@ use ieee.numeric_std.all;
 library work;
 use work.gencores_pkg.all;
 use work.genram_pkg.all;
-use work.endpoint_pkg.all;
+use work.endpoint_private_pkg.all;
 
 
 entity ep_tx_pcs_tbi is
-  generic(
-    g_phy_mode : string := "TBI"
-    );
 
   port (
 -- reset (synchronous to refclk2, active LO)
@@ -79,24 +76,10 @@ entity ep_tx_pcs_tbi is
 -------------------------------------------------------------------------------    
 
 -- TX FIFO input
-    pcs_data_i : in std_logic_vector(15 downto 0);
-
--- HI means that the frame has odd length and that currently transferred
--- word contains the last byte of the frame payload
-    pcs_bytesel_i : in std_logic;
-
--- HI state begins transmission of the frame (the first word to be sent
--- has this line asserted
-    pcs_sof_i : in std_logic;
-
--- HI means indicates the end of currently transmitted frame
-    pcs_eof_i : in std_logic;
-
--- HI causes transmit abort (PCS injects /V/ ordered sets and terminates the frame)
-    pcs_abort_i : in std_logic;
+    pcs_data_i : in std_logic_vector(17 downto 0);
 
 -- HI pulse indicates an error during transmission of a frame (buffer underrun)
-    pcs_error_p_o : out std_logic;
+    pcs_error_o : out std_logic;
 
 -- HI indicates that the PCS is busy (transmitting a frame or during autonegotiation)
     pcs_busy_o : out std_logic;
@@ -106,7 +89,7 @@ entity ep_tx_pcs_tbi is
     pcs_valid_i : in std_logic;
 
 -- HI indicates that PCS FIFO is almost full.
-    pcs_fifo_almostfull_o : out std_logic;
+    pcs_dreq_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- WB controller control signals
@@ -125,33 +108,24 @@ entity ep_tx_pcs_tbi is
     timestamp_stb_p_o : out std_logic;
 
 -- RMON counters
-    rmon_tx_underrun_o : out std_logic;
+    rmon_o: inout t_rmon_triggers;
 
 -------------------------------------------------------------------------------
--- Xilinx GTP interface (bypassing 8b10b encoder)
+-- PHY Interface
 -------------------------------------------------------------------------------
 
-    gtp_tx_clk_i       : in  std_logic;
-    gtp_tx_data_o      : out std_logic_vector(7 downto 0);
-    gtp_tx_k_o         : out std_logic;
-    gtp_tx_disparity_i : in  std_logic;
-    gtp_tx_enc_err_i   : in  std_logic;
-
--------------------------------------------------------------------------------                 -- TBI interface 
--------------------------------------------------------------------------------
-
--- TBI transmit clock
-    tbi_txclk_i  : in  std_logic;
--- TBI 8b10b-encoded data output
-    tbi_txdata_o : out std_logic_vector(9 downto 0)
-
+    phy_tx_clk_i :in std_logic;
+    phy_tx_data_o      : out std_logic_vector(7 downto 0);
+    phy_tx_k_o         : out std_logic;
+    phy_tx_disparity_i : in  std_logic;
+    phy_tx_enc_err_i   : in  std_logic
     );
 
 end ep_tx_pcs_tbi;
 
 
 
-architecture  behavioral of ep_tx_pcs_tbi is
+architecture behavioral of ep_tx_pcs_tbi is
 
 -- TX state machine definitions
   type t_tbif_tx_state is (TX_COMMA, TX_CAL, TX_CR1, TX_CR2, TX_CR3, TX_CR4, TX_SPD, TX_IDLE, TX_DATA, TX_PREAMBLE, TX_SFD, TX_EPD, TX_EXTEND, TX_GOTO_COMMA, TX_GEN_ERROR);
@@ -169,17 +143,17 @@ architecture  behavioral of ep_tx_pcs_tbi is
 
 -- TX clock alignment FIFO signals
 
-  signal tx_fifo_data_in, tx_fifo_data_out : std_logic_vector(19 downto 0);
+  signal tx_fifo_data_in, tx_fifo_data_out : std_logic_vector(17 downto 0);
   signal tx_fifo_msb, tx_fifo_lsb          : std_logic_vector(7 downto 0);
   signal tx_fifo_singlebyte, tx_fifo_end   : std_logic;
   signal tx_fifo_start                     : std_logic;
   signal tx_fifo_rdempty                   : std_logic;
-  signal tx_fifo_almostempty : std_logic;
-  
-  signal tx_fifo_abort                     : std_logic;
-  signal tx_rdreq_toggle                   : std_logic;
-  signal tx_odd_length                     : std_logic;
-  signal tx_fifo_clear_n                     : std_logic;
+  signal tx_fifo_almostempty               : std_logic;
+
+  signal tx_fifo_abort   : std_logic;
+  signal tx_rdreq_toggle : std_logic;
+  signal tx_odd_length   : std_logic;
+  signal tx_fifo_clear_n : std_logic;
 
   signal fifo_rdy           : std_logic;
   signal tx_busy            : std_logic;
@@ -191,17 +165,11 @@ architecture  behavioral of ep_tx_pcs_tbi is
 
   signal mdio_mcr_pdown_synced : std_logic;
 
-  signal tx_clk : std_logic;
-
---  signal tx_fifo_usedw       : std_logic_vector(31 downto 0);
   signal tx_fifo_enough_data : std_logic;
-  
-  
+  signal fifo_almost_full    : std_logic;
   
 begin
 
-
-  
   U_sync_pcs_busy_o : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
@@ -222,13 +190,13 @@ begin
       data_i   => tx_error,
       synced_o => open,
       npulse_o => open,
-      ppulse_o => pcs_error_p_o);
+      ppulse_o => pcs_error_o);
 
   U_sync_tx_reset : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
-      clk_i    => tx_clk,
+      clk_i    => phy_tx_clk_i,
       rst_n_i  => '1',
       data_i   => rst_n_i,
       synced_o => reset_synced_txclk,
@@ -239,89 +207,49 @@ begin
     generic map (
       g_sync_edge => "positive")
     port map (
-      clk_i    => tx_clk,
+      clk_i    => phy_tx_clk_i,
       rst_n_i  => '1',
       data_i   => mdio_mcr_pdown_i,
       synced_o => mdio_mcr_pdown_synced,
       npulse_o => open,
       ppulse_o => open);
 
-  -----------------------------------------------------------------------------
-  -- TBI version
-  -----------------------------------------------------------------------------
 
-  gen_tbi : if(g_phy_mode = "TBI") generate
-    
-    U_ENC : ep_enc_8b10b
-      port map (
-        clk_i     => tx_clk,
-        rst_n_i   => reset_synced_txclk,
-        ctrl_i    => tx_is_k,
-        in_8b_i   => tx_odata_reg,
-        err_o     => tx_enc_err,
-        dispar_o  => tx_disparity,
-        out_10b_o => txdata_encoded);
+  tx_disparity <= phy_tx_disparity_i;
+  tx_enc_err   <= phy_tx_enc_err_i;
 
-    
-
-    tbi_txdata_o <= txdata_encoded;
-    tx_clk       <= tbi_txclk_i;
-    
-  end generate gen_tbi;
-
-
-  gen_gtp : if(g_phy_mode = "GTP") generate
-
-    tx_disparity <= gtp_tx_disparity_i; 
-    tx_enc_err   <= gtp_tx_enc_err_i;
-
-    gtp_tx_data_o <= tx_odata_reg;
-    gtp_tx_k_o    <= tx_is_k;
-
-    tx_clk <= gtp_tx_clk_i;
-  end generate gen_gtp;
-
+  phy_tx_data_o <= tx_odata_reg;
+  phy_tx_k_o    <= tx_is_k;
 
 -------------------------------------------------------------------------------
 -- Clock alignment FIFO
 -------------------------------------------------------------------------------  
 
-  tx_fifo_data_in(15 downto 0) <= pcs_data_i;
-  tx_fifo_data_in(16)          <= pcs_bytesel_i;
-  tx_fifo_data_in(17)          <= pcs_abort_i;
-  tx_fifo_data_in(18)          <= pcs_sof_i;
-  tx_fifo_data_in(19)          <= pcs_eof_i;
-
   tx_fifo_clear_n <= '0' when (rst_n_i = '0') or (mdio_mcr_pdown_synced = '1') else '1';
 
+  pcs_dreq_o <= not fifo_almost_full;
 
-  U_TX_FIFO: generic_async_fifo
+  U_TX_FIFO : generic_async_fifo
     generic map (
-      g_data_width             => 20,
+      g_data_width             => 18,
       g_size                   => 64,
       g_with_rd_empty          => true,
-      g_with_rd_full           => false,
       g_with_rd_almost_empty   => true,
-      g_with_rd_almost_full    => false,
       g_with_rd_count          => true,
-      g_with_wr_empty          => false,
-      g_with_wr_full           => false,
-      g_with_wr_almost_empty   => false,
       g_with_wr_almost_full    => true,
-      g_with_wr_count          => false,
       g_almost_empty_threshold => 16,
-      g_almost_full_threshold  => 60)   -- fixme: make this a generic (or WB register)
+      g_almost_full_threshold  => 60)  -- fixme: make this a generic (or WB register)
     port map (
-      rst_n_i           => tx_fifo_clear_n, 
+      rst_n_i           => tx_fifo_clear_n,
       clk_wr_i          => clk_sys_i,
-      d_i               => tx_fifo_data_in,
+      d_i               => pcs_data_i,
       we_i              => pcs_valid_i,
       wr_empty_o        => open,
       wr_full_o         => open,
       wr_almost_empty_o => open,
-      wr_almost_full_o  => pcs_fifo_almostfull_o,
+      wr_almost_full_o  => fifo_almost_full,
       wr_count_o        => open,
-      clk_rd_i          => tx_clk,
+      clk_rd_i          => phy_tx_clk_i,
       q_o               => tx_fifo_data_out,
       rd_i              => tx_fifo_rdreq,
       rd_empty_o        => tx_fifo_rdempty,
@@ -331,22 +259,23 @@ begin
       rd_count_o        => open);
 
   tx_fifo_enough_data <= not tx_fifo_almostempty;
-  
-  tx_fifo_msb        <= tx_fifo_data_out(15 downto 8);
-  tx_fifo_lsb        <= tx_fifo_data_out(7 downto 0);
-  tx_fifo_singlebyte <= tx_fifo_data_out(16);
-  tx_fifo_abort      <= tx_fifo_data_out(17);
-  tx_fifo_start      <= tx_fifo_data_out(18);
-  tx_fifo_end        <= tx_fifo_data_out(19);
-  
+
+  tx_fifo_msb <= tx_fifo_data_out(15 downto 8);
+  tx_fifo_lsb <= tx_fifo_data_out(7 downto 0);
+
+  tx_fifo_singlebyte <= f_is_single_byte(tx_fifo_data_out, '1');
+  tx_fifo_abort      <= f_is_error      (tx_fifo_data_out, '1');
+  tx_fifo_start      <= f_is_sof        (tx_fifo_data_out, '1');
+  tx_fifo_end        <= f_is_eof        (tx_fifo_data_out, '1');
+
   -----------------------------------------------------------------------------
   -- Main TX PCS state machine
   -----------------------------------------------------------------------------
 
-  p_tx_fsm : process (tx_clk)
+  p_tx_fsm : process (phy_tx_clk_i)
   begin
     
-    if rising_edge(tx_clk) then
+    if rising_edge(phy_tx_clk_i) then
 -- PCS is reset or disabled
       if(reset_synced_txclk = '0' or mdio_mcr_pdown_synced = '1') then
         tx_state           <= TX_COMMA;
@@ -362,7 +291,7 @@ begin
         tx_preamble_cntr   <= (others => '0');
         tx_odd_length      <= '0';
         tx_rdreq_toggle    <= '0';
-        rmon_tx_underrun_o <= '0';
+        rmon_o.tx_underrun <= '0';
         
       else
         
@@ -385,7 +314,7 @@ begin
 
             -- clear the RMON/error pulse after 2 cycles (DATA->COMMA->IDLE) to
             -- make sure is't long enough to trigger the event counter
-            rmon_tx_underrun_o <= '0';
+            rmon_o.tx_underrun <= '0';
             tx_error           <= '0';
 
 -- endpoint wants to send Config_Reg
@@ -515,7 +444,7 @@ begin
             timestamp_stb_p_o <= '0';
 
             -- toggle the TX FIFO request line, so we read a 16-bit word
-            -- every 2 tx_clk periods
+            -- every 2 phy_tx_clk_i periods
 
             tx_fifo_rdreq <= tx_rdreq_toggle and not tx_fifo_rdempty;
 
@@ -525,7 +454,7 @@ begin
               tx_is_k            <= '1';
               tx_state           <= TX_GEN_ERROR;
               tx_error           <= not tx_fifo_abort;
-              rmon_tx_underrun_o <= '1';
+              rmon_o.tx_underrun <= '1';
             else
 
               if tx_rdreq_toggle = '1' then  -- send 16-bit word MSB or LSB

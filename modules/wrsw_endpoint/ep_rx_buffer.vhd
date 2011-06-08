@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-05-11
+-- Last update: 2011-05-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -26,8 +26,8 @@ use ieee.numeric_std.all;
 
 library work;
 
-use work.endpoint_pkg.all;
 use work.genram_pkg.all;
+use work.endpoint_private_pkg.all;
 
 entity ep_rx_buffer is
   generic (

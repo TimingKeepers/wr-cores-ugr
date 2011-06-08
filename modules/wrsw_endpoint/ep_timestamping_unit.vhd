@@ -35,7 +35,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.gencores_pkg.all;
-use work.endpoint_pkg.all;
+use work.endpoint_private_pkg.all;
 
 entity ep_timestamping_unit is
   generic (

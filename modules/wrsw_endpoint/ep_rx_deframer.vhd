@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-05-11
+-- Last update: 2011-05-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.endpoint_pkg.all;
+use work.endpoint_private_pkg.all;
 
 entity ep_rx_deframer is
 
@@ -38,13 +38,10 @@ entity ep_rx_deframer is
     rst_n_i   : in std_logic;
 
 -- physical coding sublayer (PCS) interface
-    pcs_data_i    : in  std_logic_vector(15 downto 0);
-    pcs_bytesel_i : in  std_logic;
-    pcs_sof_i     : in  std_logic;
-    pcs_eof_i     : in  std_logic;
-    pcs_valid_i   : in  std_logic;
-    pcs_error_i   : in  std_logic;
-    pcs_dreq_o    : out std_logic;
+    pcs_data_i  : in  std_logic_vector(17 downto 0);
+    pcs_valid_i : in  std_logic;
+    pcs_dreq_o  : out std_logic;
+    pcs_busy_i  : in  std_logic;
 
 -- OOB frame tag value and strobing signal
     oob_data_i  : in  std_logic_vector(47 downto 0);
@@ -66,32 +63,10 @@ entity ep_rx_deframer is
     fc_pause_delay_o : out std_logic_vector(15 downto 0);
 
 -- RMON/statistic counters signals
-    rmon_rx_ok_p_o       : out std_logic;
-    rmon_rx_buf_drop_p_o : out std_logic;
-    rmon_rx_rtu_drop_p_o : out std_logic;
-    rmon_rx_crc_err_p_o  : out std_logic;
-    rmon_rx_runt_p_o     : out std_logic;
-    rmon_rx_giant_p_o    : out std_logic;
-    rmon_rx_pcs_err_p_o  : out std_logic;
+    rmon_o : inout t_rmon_triggers;
+    regs_b : inout t_ep_registers;
 
--------------------------------------------------------------------------------
--- control registers
--------------------------------------------------------------------------------
-
-    -- 802.1q access/trunk mode
-    ep_rfcr_qmode_i : in std_logic_vector(1 downto 0);
-    ep_rcr_en_fra_i : in std_logic;
-
-    ep_tscr_en_rxts_i  : in std_logic;
-    ep_rfcr_fix_prio_i : in std_logic;
-    ep_rfcr_prio_val_i : in std_logic_vector(2 downto 0);
-    ep_rfcr_vid_val_i  : in std_logic_vector(11 downto 0);
-
-    ep_rfcr_a_runt_i  : in std_logic;
-    ep_rfcr_a_giant_i : in std_logic;
---    ep_rfcr_keep_crc_i : in std_logic;
-
--------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------
 -- RTU interface
 -------------------------------------------------------------------------------
 
@@ -120,31 +95,17 @@ architecture behavioral of ep_rx_deframer is
 
   component ep_rx_crc_size_check
     port (
-      clk_sys_i           : in  std_logic;
-      rst_n_i             : in  std_logic;
-      enable_i            : in  std_logic;
-      snk_data_i          : in  std_logic_vector(15 downto 0);
-      snk_bytesel_i       : in  std_logic;
-      snk_sof_p1_i        : in  std_logic;
-      snk_eof_p1_i        : in  std_logic;
-      snk_valid_i         : in  std_logic;
-      snk_rerror_p1_i     : in  std_logic;
-      snk_dreq_o          : out std_logic;
-      src_dreq_i          : in  std_logic;
-      src_data_o          : out std_logic_vector(15 downto 0);
-      src_bytesel_o       : out std_logic;
-      src_sof_p1_o        : out std_logic;
-      src_eof_p1_o        : out std_logic;
-      src_valid_o         : out std_logic;
-      src_rerror_p1_o     : out std_logic;
-      src_is_crc_o        : out std_logic;
-      rmon_rx_crc_err_p_o : out std_logic;
-      rmon_rx_runt_p_o    : out std_logic;
-      rmon_rx_giant_p_o   : out std_logic;
-      rmon_rx_pcs_err_p_o : out std_logic;
-      ep_rfcr_a_runt_i    : in  std_logic;
-      ep_rfcr_a_giant_i   : in  std_logic;
-      ep_rfcr_keep_crc_i  : in  std_logic);
+      clk_sys_i   : in    std_logic;
+      rst_n_i     : in    std_logic;
+      enable_i    : in    std_logic;
+      snk_data_i  : in    std_logic_vector(17 downto 0);
+      snk_valid_i : in    std_logic;
+      snk_dreq_o  : out    std_logic;
+      src_data_o  : out   std_logic_vector(17 downto 0);
+      src_valid_o : out   std_logic;
+      src_dreq_i  : in    std_logic;
+      rmon_o      : inout t_rmon_triggers;
+      regs_b      : inout t_ep_registers);
   end component;
 
   type t_rx_deframer_state is (RXF_IDLE, RXF_HEADER, RXF_DATA, RXF_ERROR, RXF_OOB);
@@ -164,50 +125,46 @@ architecture behavioral of ep_rx_deframer is
   signal snk_dreq_int   : std_logic;
 
   signal snk_data      : std_logic_vector(15 downto 0);
+  signal snk_idata      : std_logic_vector(17 downto 0);
   signal snk_dreq      : std_logic;
-  signal snk_valid     : std_logic;
-  signal snk_sof_p1    : std_logic;
-  signal snk_eof_p1    : std_logic;
-  signal snk_rerror_p1 : std_logic;
-  signal snk_is_crc    : std_logic;
+  signal snk_dvalid     : std_logic;
+  signal snk_ivalid     : std_logic;
+  signal snk_sof    : std_logic;
+  signal snk_eof    : std_logic;
+  signal snk_error : std_logic;
   signal snk_bytesel   : std_logic;
+
+  signal ep_rfcr_qmode_i : std_logic_vector(1 downto 0) := c_QMODE_PORT_NONE;
+  signal ep_rfcr_vid_val_i : std_logic_vector(11 downto 0) := x"000";
+  signal ep_rfcr_prio_val_i : std_logic_vector(2 downto 0) := "000";
+  signal ep_rfcr_fix_prio_i : std_logic := '0';
+  
   
 begin  -- behavioral
 
 
   U_crc_size_checker : ep_rx_crc_size_check
     port map (
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_n_i,
+      clk_sys_i   => clk_sys_i,
+      rst_n_i     => rst_n_i,
+      enable_i    => regs_b.ecr_rx_en,
+      snk_data_i  => pcs_data_i,
+      snk_valid_i => pcs_valid_i,
+      snk_dreq_o  => pcs_dreq_o,
+      src_dreq_i  => snk_dreq,
+      src_data_o  => snk_idata,
+      src_valid_o => snk_ivalid,
+      rmon_o      => rmon_o,
+      regs_b      => regs_b);
 
-      enable_i => ep_rcr_en_fra_i,
+  snk_sof     <= f_is_sof(snk_idata, snk_ivalid);
+  snk_eof     <= f_is_eof(snk_idata, snk_ivalid);
+  snk_bytesel <= f_is_single_byte(snk_idata, snk_ivalid);
+  snk_error   <= f_is_error(snk_idata, snk_ivalid);
+  snk_dvalid  <= f_is_data(snk_idata, snk_ivalid);
 
-      snk_data_i      => pcs_data_i,
-      snk_bytesel_i   => pcs_bytesel_i,
-      snk_sof_p1_i    => pcs_sof_i,
-      snk_eof_p1_i    => pcs_eof_i,
-      snk_valid_i     => pcs_valid_i,   --checker_valid,
-      snk_rerror_p1_i => pcs_error_i,
-      snk_dreq_o      => pcs_dreq_o,
-
-      src_dreq_i      => snk_dreq,
-      src_data_o      => snk_data,
-      src_bytesel_o   => snk_bytesel,
-      src_sof_p1_o    => snk_sof_p1,
-      src_eof_p1_o    => snk_eof_p1,
-      src_valid_o     => snk_valid,
-      src_rerror_p1_o => snk_rerror_p1,
-      src_is_crc_o    => snk_is_crc,
-
-      rmon_rx_crc_err_p_o => rmon_rx_crc_err_p_o,
-      rmon_rx_runt_p_o    => rmon_rx_runt_p_o,
-      rmon_rx_giant_p_o   => rmon_rx_giant_p_o,
-      rmon_rx_pcs_err_p_o => rmon_rx_pcs_err_p_o,
-      ep_rfcr_a_runt_i    => ep_rfcr_a_runt_i,
-      ep_rfcr_a_giant_i   => ep_rfcr_a_giant_i,
-      ep_rfcr_keep_crc_i  => '0');
-
-
+  snk_data <= snk_idata(15 downto 0);
+  
   RX_FSM : process (clk_sys_i, rst_n_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -232,9 +189,9 @@ begin  -- behavioral
         rtu_rq_prio_o      <= (others => '0');
         rtu_rq_has_prio_o  <= '0';
 
-        rmon_rx_buf_drop_p_o <= '0';
-        rmon_rx_ok_p_o       <= '0';
-        rmon_rx_rtu_drop_p_o <= '0';
+        rmon_o.rx_buffer_overrun <= '0';
+        rmon_o.rx_ok       <= '0';
+        rmon_o.rx_rtu_overrun <= '0';
 
         fc_pause_p_o     <= '0';
         fc_pause_delay_o <= (others => '0');
@@ -257,9 +214,9 @@ begin  -- behavioral
 
             fc_pause_p_o <= '0';
 
-            rmon_rx_buf_drop_p_o <= '0';
-            rmon_rx_ok_p_o       <= '0';
-            rmon_rx_rtu_drop_p_o <= '0';
+            rmon_o.rx_buffer_overrun <= '0';
+            rmon_o.rx_ok      <= '0';
+            rmon_o.rx_rtu_overrun <= '0';
 
             snk_dreq_int <= '1';
 
@@ -268,14 +225,14 @@ begin  -- behavioral
             counter        <= (others => '0');
             data_firstword <= '1';
 
-            if(ep_rcr_en_fra_i = '1') then
-              if(snk_sof_p1 = '1') then
+            if(regs_b.ecr_rx_en = '1') then
+              if(snk_sof = '1') then
                 if(rbuf_drop_i = '0' and rtu_full_i = '0') then
                   state         <= RXF_HEADER;
                   rbuf_sof_p1_o <= '1';
                 else
-                  rmon_rx_buf_drop_p_o <= rbuf_drop_i;
-                  rmon_rx_rtu_drop_p_o <= rtu_full_i;
+                  rmon_o.rx_buffer_overrun <= rbuf_drop_i;
+                  rmon_o.rx_rtu_overrun<= rtu_full_i;
                   rbuf_sof_p1_o        <= '0';
                 end if;
               else
@@ -286,16 +243,16 @@ begin  -- behavioral
           when RXF_HEADER =>
             rbuf_sof_p1_o <= '0';
 
-            if(snk_rerror_p1 = '1') then
+            if(snk_error = '1') then
               state <= RXF_ERROR;
             end if;
 
             if(rbuf_drop_i = '1') then
               state                <= RXF_ERROR;
-              rmon_rx_buf_drop_p_o <= '1';
+              rmon_o.rx_buffer_overrun <= '1';
             end if;
 
-            if(snk_valid = '1' or next_hdr = '1') then
+            if(snk_dvalid = '1' or next_hdr = '1') then
 
               counter <= counter + 1;
 
@@ -458,25 +415,25 @@ begin  -- behavioral
 
           when RXF_DATA =>
 
-            if(snk_rerror_p1 = '1') then
+            if(snk_error = '1') then
               state <= RXF_ERROR;
             end if;
 
             if(rbuf_drop_i = '1') then
               state                <= RXF_ERROR;
-              rmon_rx_buf_drop_p_o <= '1';
+              rmon_o.rx_buffer_overrun <= '1';
             end if;
 
             rbuf_ctrl_o <= c_wrsw_ctrl_payload;
 
-            if(snk_eof_p1 = '1') then
+            if(snk_eof = '1') then
 
-              if(oob_valid_i = '1' and ep_tscr_en_rxts_i = '1') then
+              if(oob_valid_i = '1' and regs_b.tscr_en_rxts = '1') then
                 state   <= RXF_OOB;
                 counter <= (others => '0');
               else
-                rmon_rx_ok_p_o <= '1';
-                rbuf_eof_p1_o <= '1';
+                rmon_o.rx_ok <= '1';
+                rbuf_eof_p1_o  <= '1';
                 state          <= RXF_IDLE;
               end if;
 
@@ -485,7 +442,7 @@ begin  -- behavioral
             end if;
 
             -- got a valid word from the PCS
-            if(snk_valid = '1') then
+            if(snk_dvalid = '1') then
 
               if(data_firstword = '1') then
                 rtu_rq_strobe_p1_o <= not is_pause;
@@ -498,10 +455,10 @@ begin  -- behavioral
               data_firstword <= '0';
 
               -- end-of-frame?
-              rbuf_data_o  <= snk_data;
+              rbuf_data_o    <= snk_data;
               rbuf_bytesel_o <= snk_bytesel;
-              rbuf_valid_o <= '1';
-              snk_dreq_int <= '1';
+              rbuf_valid_o   <= '1';
+              snk_dreq_int   <= '1';
             else
               rbuf_valid_o <= '0';
             end if;
@@ -510,7 +467,7 @@ begin  -- behavioral
             counter <= counter + 1;
             if(rbuf_drop_i = '1') then
               state                <= RXF_ERROR;
-              rmon_rx_buf_drop_p_o <= '1';
+              rmon_o.rx_buffer_overrun <= '1';
             else
               case counter is
                 when x"00" =>
@@ -531,7 +488,7 @@ begin  -- behavioral
                   oob_ack_o      <= '0';
                   rbuf_eof_p1_o  <= '1';
                   snk_dreq_int   <= '1';
-                  rmon_rx_ok_p_o <= '1';
+                  rmon_o.rx_ok <= '1';
                   state          <= RXF_IDLE;
 
                 when others => null;
@@ -550,7 +507,7 @@ begin  -- behavioral
     end if;
   end process;
 
-  snk_dreq <= snk_dreq_int and not (snk_eof_p1 or snk_rerror_p1);
+  snk_dreq <= snk_dreq_int and not (snk_eof or snk_error);
 
 end behavioral;
 
