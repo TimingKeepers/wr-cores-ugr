@@ -28,11 +28,6 @@ package endpoint_private_pkg is
   constant c_QMODE_PORT_TRUNK  : std_logic_vector(1 downto 0) := "01";
   constant c_QMODE_PORT_NONE   : std_logic_vector(1 downto 0) := "11";
 
-
-  constant c_WRF_STATUS : std_logic_vector(1 downto 0) := "11";
-  constant c_WRF_DATA   : std_logic_vector(1 downto 0) := "00";
-  constant c_WRF_OOB    : std_logic_vector(1 downto 0) := "01";
-
   -- fixme: remove these along with the non-WB version of the endpoint
   constant c_wrsw_ctrl_none      : std_logic_vector(4 - 1 downto 0) := x"0";
   constant c_wrsw_ctrl_dst_mac   : std_logic_vector(4 - 1 downto 0) := x"1";
@@ -60,14 +55,6 @@ package endpoint_private_pkg is
     tx_pause    : std_logic;
     tx_underrun : std_logic;
 
-  end record;
-
-  type t_wrf_status_reg is record
-    is_hp       : std_logic;
-    has_smac    : std_logic;
-    has_crc     : std_logic;
-    rx_error    : std_logic;
-    match_class : std_logic_vector(7 downto 0);
   end record;
 
   component ep_1000basex_pcs
@@ -289,9 +276,6 @@ package endpoint_private_pkg is
       regs_b             : inout t_ep_registers);
   end component;
 
-  function f_marshall_wrf_status (stat  : t_wrf_status_reg) return std_logic_vector;
-  function f_unmarshall_wrf_status(stat : std_logic_vector) return t_wrf_status_reg;
-
   function f_encode_fabric_int (
     data    : std_logic_vector;
     sof     : std_logic;
@@ -311,27 +295,6 @@ end endpoint_private_pkg;
 
 package body endpoint_private_pkg is
 
-  function f_marshall_wrf_status(stat : t_wrf_status_reg)
-    return std_logic_vector is
-    variable tmp : std_logic_vector(15 downto 0);
-  begin
-    tmp(0)           := stat.is_hp;
-    tmp(1)           := stat.rx_error;
-    tmp(2)           := stat.has_smac;
-    tmp(15 downto 8) := stat.match_class;
-    return tmp;
-  end function;
-
-  function f_unmarshall_wrf_status(stat : std_logic_vector) return t_wrf_status_reg is
-    variable tmp : t_wrf_status_reg;
-  begin
-    tmp.is_hp       := stat(0);
-    tmp.rx_error    := stat(1);
-    tmp.has_smac    := stat(2);
-    tmp.match_class := stat(15 downto 8);
-    return tmp;
-    
-  end function;
 
     function f_encode_fabric_int (
     data    : std_logic_vector;

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-05-27
+-- Last update: 2011-06-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -30,6 +30,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.endpoint_private_pkg.all;
+use work.ep_wbgen2_pkg.all;
 
 entity ep_rx_deframer is
 
@@ -147,7 +148,7 @@ begin  -- behavioral
     port map (
       clk_sys_i   => clk_sys_i,
       rst_n_i     => rst_n_i,
-      enable_i    => regs_b.ecr_rx_en,
+      enable_i    => regs_b.ecr_rx_en_o,
       snk_data_i  => pcs_data_i,
       snk_valid_i => pcs_valid_i,
       snk_dreq_o  => pcs_dreq_o,
@@ -225,7 +226,7 @@ begin  -- behavioral
             counter        <= (others => '0');
             data_firstword <= '1';
 
-            if(regs_b.ecr_rx_en = '1') then
+            if(regs_b.ecr_rx_en_o = '1') then
               if(snk_sof = '1') then
                 if(rbuf_drop_i = '0' and rtu_full_i = '0') then
                   state         <= RXF_HEADER;
@@ -428,7 +429,7 @@ begin  -- behavioral
 
             if(snk_eof = '1') then
 
-              if(oob_valid_i = '1' and regs_b.tscr_en_rxts = '1') then
+              if(oob_valid_i = '1' and regs_b.tscr_en_rxts_o = '1') then
                 state   <= RXF_OOB;
                 counter <= (others => '0');
               else

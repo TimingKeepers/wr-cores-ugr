@@ -5,6 +5,7 @@ use ieee.numeric_std.all;
 library work;
 use work.gencores_pkg.all;              -- for gc_crc_gen
 use work.endpoint_private_pkg.all;
+use work.ep_wbgen2_pkg.all;
 
 -- 1st deframing pipeline stage - CRC/PCS error/Size checker
 
@@ -55,7 +56,7 @@ architecture behavioral of ep_rx_crc_size_check is
   signal crc_gen_reset  : std_logic;
   signal crc_match      : std_logic;
 
-  signal byte_cntr     : unsigned(11 downto 0);
+  signal byte_cntr     : unsigned(13 downto 0);
   signal is_runt       : std_logic;
   signal is_giant      : std_logic;
   signal size_check_ok : std_logic;
@@ -146,7 +147,7 @@ begin  -- behavioral
           is_runt <= '0';
         end if;
 
-        if(byte_cntr > unsigned(regs_b.rfcr_mru)) then
+        if(byte_cntr > unsigned(regs_b.rfcr_mru_o)) then
           is_giant <= '1';
         else
           is_giant <= '0';
@@ -156,8 +157,8 @@ begin  -- behavioral
     end if;
   end process;
 
-  size_check_ok <= '0' when (is_runt = '1' and regs_b.rfcr_a_runt = '0') or
-                   (is_giant = '1' and regs_b.rfcr_a_giant = '0') else '1';
+  size_check_ok <= '0' when (is_runt = '1' and regs_b.rfcr_a_runt_o = '0') or
+                   (is_giant = '1' and regs_b.rfcr_a_giant_o = '0') else '1';
 
 
   p_gen_output : process(clk_sys_i, rst_n_i)
@@ -221,15 +222,15 @@ begin  -- behavioral
                 src_eof <= '1';
               end if;
 
-              if(regs_b.rfcr_keep_crc = '0') then
+              if(regs_b.rfcr_keep_crc_o = '0') then
                 valid_mask <= '0';
                 q_purge    <= '1';
               else
                 q_flush <= '1';
               end if;
 
-              rmon_o.rx_runt    <= is_runt and (not regs_b.rfcr_a_runt);
-              rmon_o.rx_giant   <= is_giant and (not regs_b.rfcr_a_giant);
+              rmon_o.rx_runt    <= is_runt and (not regs_b.rfcr_a_runt_o);
+              rmon_o.rx_giant   <= is_giant and (not regs_b.rfcr_a_giant_o);
               rmon_o.rx_crc_err <= not crc_match;
               
             end if;

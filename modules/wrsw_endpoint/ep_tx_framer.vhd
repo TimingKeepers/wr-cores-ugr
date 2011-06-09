@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-05-28
+-- Last update: 2011-06-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -26,14 +26,15 @@
 -------------------------------------------------------------------------------
 
 
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
 use work.gencores_pkg.all;
+use work.wr_fabric_pkg.all;
 use work.endpoint_private_pkg.all;
+use work.ep_wbgen2_pkg.all;
 
 entity ep_tx_framer is
 
@@ -56,43 +57,9 @@ entity ep_tx_framer is
 -- WRF Sink (see WRF specification for the details)
 -------------------------------------------------------------------------------    
 
--- TX data input
-    tx_data_i : in std_logic_vector(15 downto 0);
-
--- RX control bus: indicates type of word currently present on rx_data_o:
--- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB, END_OF_FRAME
-    tx_ctrl_i : in std_logic_vector(4 - 1 downto 0);
-
--- active HI: indicates the last byte of odd-sized frame. Byte is transferred
--- on MSB of tx_data_i.
-    tx_bytesel_i : in std_logic;
-
--- start of frame signal. HI pulse indicates the beginning of new frame. Upon
--- assertion of tx_sof_p_i, tx_ready_o shall become active, allowing the frame
--- data to be sent.
-    tx_sof_p1_i : in std_logic;
-
--- end-of-frame pulse: indicates end of the current frame on fabric i/f. When rx_valid_o
--- is active, rx_ctrl_o and rx_data_o contain the last data word of the current
--- frame.
-    tx_eof_p1_i : in std_logic;
-
--- active HI: TX fabric is ready to accept data.
-    tx_dreq_o : out std_logic;
-
--- active HI: indicates that tx_data_i, tx_ctrl_i, tx_bytesel_i are valid
-    tx_valid_i : in std_logic;
-
--- Source error: kept only for the comptibility with WRF spec. Ignored by the endpoint.
-    tx_rerror_p1_i : in std_logic;
-
--- TX abort: HI pulse immediately aborts transmission of current frame. 
-    tx_tabort_p1_i : in std_logic;
-
--- TX error strobe: HI pulse indicates that an TX error occured. Error code is
--- present on tx_error_code_o.
-    tx_terror_p1_o : out std_logic;
-
+    snk_i: in t_wrf_sink_in;
+    snk_o: out t_wrf_sink_out;
+    
 -------------------------------------------------------------------------------
 -- Flow Control Unit signals
 -------------------------------------------------------------------------------    
@@ -158,11 +125,14 @@ architecture behavioral of ep_tx_framer is
 -- Flow Control-related signals
   signal tx_pause_mode  : std_logic;
   signal tx_pause_delay : std_logic_vector(15 downto 0);
-    signal ep_rfcr_qmode_i : std_logic_vector(1 downto 0) := c_QMODE_PORT_NONE;
+  signal ep_rfcr_qmode_i : std_logic_vector(1 downto 0) := c_QMODE_PORT_NONE;
 
+  signal sof_p1, eof_p1, abort_p1, rx_error_p1: std_logic;
+  signal snk_cyc_d0 : std_logic;
+  
 begin  -- behavioral
 
-  crc_gen_reset  <= '1' when rst_n_i = '0' else ((tx_sof_p1_i and (not tx_pause_mode)) or crc_gen_force_reset);
+  crc_gen_reset  <= '1' when rst_n_i = '0' else ((sof_p1 and (not tx_pause_mode)) or crc_gen_force_reset);
   crc_gen_enable <= q_valid and crc_gen_enable_mask;
 
   U_tx_crc_generator : gc_crc_gen
@@ -180,10 +150,25 @@ begin  -- behavioral
       rst_i   => crc_gen_reset,
       en_i    => crc_gen_enable,
       half_i  => q_bytesel,
-      data_i  => tx_data,
+      data_i  => snk_i.dat,
       match_o => open,
       crc_o   => crc_value);
 
+  p_detect_frame: process(clk_sys_i)
+     begin
+       if rising_edge(clk_sys_i) then
+         if rst_n_i ='0' then
+           snk_cyc_d0 <= '0';
+         else
+           snk_cyc_d0 <= snk_i.cyc;
+       end if;
+     end process;
+
+  sof_p1 <= not snk_cyc_d0 and snk_i.cyc;
+  eof_p1 <= snk_cyc_d0 and not snk_i.cyc;
+
+  
+  
   -- process: p_tx_fsm
   -- inputs: everything
   -- outputs: everything
@@ -215,7 +200,7 @@ begin  -- behavioral
 
         -- we are in the middle of the frame and the framer has got suddenly
         -- disabled or we've received an ABORT command or an error occured in the PCS:
-        if((state /= TXF_IDLE and state /= TXF_GAP) and (regs_b.ecr_tx_en = '0' or tx_tabort_p1_i = '1')) then
+        if((state /= TXF_IDLE and state /= TXF_GAP) and (regs_b.ecr_tx_en_o = '0' or tx_tabort_p1_i = '1')) then
           -- abort the current frame
           state      <= TXF_ABORT;
           tx_ready_t <= '0';
@@ -245,7 +230,7 @@ begin  -- behavioral
               -- Check start-of-frame and send-pause signals and eventually
               -- commence frame transmission
 
-              if((tx_sof_p1_i = '1' or tx_pause_i = '1') and regs_b.ecr_tx_en = '1') then
+              if((tx_sof_p1_i = '1' or tx_pause_i = '1') and regs_b.ecr_tx_en_o = '1') then
                 -- enable writing to PCS FIFO
                 q_eof      <= '0';
                 write_mask <= '1';
@@ -327,7 +312,7 @@ begin  -- behavioral
 -- SRC MAC bits [47:32]
                   when x"03" =>
                     if(tx_ctrl_i = c_wrsw_ctrl_none or tx_pause_mode = '1') then
-                      tx_data <= regs_b.mach;
+                      tx_data <= regs_b.mach_o;
                     else
                       tx_data <= tx_data_i;
                     end if;
@@ -337,7 +322,7 @@ begin  -- behavioral
 -- SRC MAC bits [31:16]
                   when x"04" =>
                     if(tx_ctrl_i = c_wrsw_ctrl_none or tx_pause_mode = '1') then
-                      tx_data <= regs_b.macl(31 downto 16);
+                      tx_data <= regs_b.macl_o(31 downto 16);
                     else
                       tx_data <= tx_data_i;
                     end if;
@@ -346,7 +331,7 @@ begin  -- behavioral
 -- SRC MAC bits [15:0]
                   when x"05" =>
                     if(tx_ctrl_i = c_wrsw_ctrl_none or tx_pause_mode = '1') then
-                      tx_data <= regs_b.macl(15 downto 0);
+                      tx_data <= regs_b.macl_o(15 downto 0);
                     else
                       tx_data <= tx_data_i;
                     end if;
@@ -533,7 +518,7 @@ begin  -- behavioral
 
   end process;
 
-  tx_dreq_o <= tx_ready_t or (not regs_b.ecr_tx_en);  -- /dev/null if disabled
+  tx_dreq_o <= tx_ready_t or (not regs_b.ecr_tx_en_o);  -- /dev/null if disabled
 
   pcs_data_o <= f_encode_fabric_int(
     tx_data,

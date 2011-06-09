@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-05-31
+-- Last update: 2011-06-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -75,23 +75,23 @@ entity wrsw_endpoint is
 -- Xilinx GTP PHY Interace
 -------------------------------------------------------------------------------    
 
-    serdes_rst_o    : out std_logic;
-    serdes_loopen_o : out std_logic;
-    serdes_prbsen_o : out std_logic;
-    serdes_enable_o : out std_logic;
-    serdes_syncen_o : out std_logic;
+    phy_rst_o    : out std_logic;
+    phy_loopen_o : out std_logic;
+    phy_prbsen_o : out std_logic;
+    phy_enable_o : out std_logic;
+    phy_syncen_o : out std_logic;
 
---    serdes_tx_clk_i       : in  std_logic;
-    serdes_tx_data_o      : out std_logic_vector(7 downto 0);
-    serdes_tx_k_o         : out std_logic;
-    serdes_tx_disparity_i : in  std_logic;
-    serdes_tx_enc_err_i   : in  std_logic;
+    phy_ref_clk_i: in std_logic;
+    phy_tx_data_o      : out std_logic_vector(7 downto 0);
+    phy_tx_k_o         : out std_logic;
+    phy_tx_disparity_i : in  std_logic;
+    phy_tx_enc_err_i   : in  std_logic;
 
-    serdes_rx_data_i     : in std_logic_vector(7 downto 0);
-    serdes_rx_clk_i      : in std_logic;
-    serdes_rx_k_i        : in std_logic;
-    serdes_rx_enc_err_i  : in std_logic;
-    serdes_rx_bitslide_i : in std_logic_vector(3 downto 0);
+    phy_rx_data_i     : in std_logic_vector(7 downto 0);
+    phy_rx_clk_i      : in std_logic;
+    phy_rx_k_i        : in std_logic;
+    phy_rx_enc_err_i  : in std_logic;
+    phy_rx_bitslide_i : in std_logic_vector(3 downto 0);
 
 -------------------------------------------------------------------------------
 -- WRF source (output of RXed packets)
@@ -403,22 +403,22 @@ begin
 
       link_ok_o => link_ok,
 
-      serdes_rst_o    => serdes_rst_o,
-      serdes_loopen_o => serdes_loopen_o,
-      serdes_prbsen_o => serdes_prbsen_o,
-      serdes_enable_o => serdes_enable_o,
-      serdes_syncen_o => serdes_syncen_o,
+      serdes_rst_o    => phy_rst_o,
+      serdes_loopen_o => phy_loopen_o,
+      serdes_prbsen_o => phy_prbsen_o,
+      serdes_enable_o => phy_enable_o,
+      serdes_syncen_o => phy_syncen_o,
 
-      serdes_tx_clk_i       => clk_ref_i,
-      serdes_tx_data_o      => serdes_tx_data_o,
-      serdes_tx_k_o         => serdes_tx_k_o,
-      serdes_tx_disparity_i => serdes_tx_disparity_i,
-      serdes_tx_enc_err_i   => serdes_tx_enc_err_i,
-      serdes_rx_data_i      => serdes_rx_data_i,
-      serdes_rx_clk_i       => serdes_rx_clk_i,
-      serdes_rx_k_i         => serdes_rx_k_i,
-      serdes_rx_enc_err_i   => serdes_rx_enc_err_i,
-      serdes_rx_bitslide_i  => serdes_rx_bitslide_i,
+      serdes_tx_clk_i       => phy_ref_clk_i,
+      serdes_tx_data_o      => phy_tx_data_o,
+      serdes_tx_k_o         => phy_tx_k_o,
+      serdes_tx_disparity_i => phy_tx_disparity_i,
+      serdes_tx_enc_err_i   => phy_tx_enc_err_i,
+      serdes_rx_data_i      => phy_rx_data_i,
+      serdes_rx_clk_i       => phy_rx_clk_i,
+      serdes_rx_k_i         => phy_rx_k_i,
+      serdes_rx_enc_err_i   => phy_rx_enc_err_i,
+      serdes_rx_bitslide_i  => phy_rx_bitslide_i,
 
       rmon_o => rmon,
 
@@ -643,7 +643,7 @@ begin
       clk_sys_i => clk_sys_i,
 
       clk_a_i    => clk_ref_i,
-      clk_b_i    => serdes_rx_clk_i,
+      clk_b_i    => phy_rx_clk_i,
       clk_dmtd_i => clk_dmtd_i,
       rst_n_i    => rst_n_i,
 

@@ -31,10 +31,10 @@ peripheral {
 			};
 
 		field {
-			name = "Transmit framer enable";
-			description = "1: TX framer is enabled\
-										 0: TX framer is disabled";
-			prefix = "TX_EN_FRA";
+			name = "Transmit path enable";
+			description = "1: TX path is enabled\
+										 0: TX path is disabled";
+			prefix = "TX_EN";
 			access_bus = READ_WRITE;
 			access_dev = READ_ONLY;
 			type = BIT;
@@ -42,10 +42,10 @@ peripheral {
 		
 
 		field {
-			 name = "Receive deframer enable";
-			 prefix = "RX_en_fra";
-			 description = "1: RX deframer is enabled\
-			                0: RX deframer is disabled";
+			 name = "Receive path enable";
+			 prefix = "RX_en";
+			 description = "1: RX path is enabled\
+			                0: RX path is disabled";
 
 			 access_bus = READ_WRITE;
 			 access_dev = READ_ONLY;
@@ -182,15 +182,30 @@ peripheral {
 			 };
 
 			 field {
-					name = "RX accept fragments";
-					description = "1: endpoint accepts WhiteRabbit fragmented frames\
-					               0: fragmented frames are dropped";
-					prefix = "a_frag";
+					name = "RX keep CRC";
+					description = "1: endpoint keeps FCS fields on the fabric side\
+					               0: FCS fields are stripped";
+					prefix = "KEEP_CRC";
 					access_bus = READ_WRITE;
 					access_dev = READ_ONLY;
 					type = BIT;
 			 };
-		
+
+       field {
+          name = "Maximum receive unit (MRU)";
+          description = "Maximum size of a frame which is considered valid (in bytes)";
+          prefix = "MRU";
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+					type = SLV;
+          size = 14;
+       };
+		};
+
+		reg {
+			 name = "VLAN control register";
+			 prefix = "VCR";
+
 			 field {
 					name = "RX 802.1q port mode";
 					description = "00: ACCESS port - tags untagged received packets with VID from RX_VID field. Drops all tagged packets not belonging to RX_VID VLAN\
