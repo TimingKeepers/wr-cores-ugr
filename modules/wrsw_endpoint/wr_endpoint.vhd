@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-04-12
+-- Last update: 2011-07-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -69,51 +69,23 @@ entity wr_endpoint is
     pps_csync_p1_i : in std_logic;
 
 -------------------------------------------------------------------------------
--- Ten-Bit PHY interface (TLK1221)
--------------------------------------------------------------------------------
-
--- PHY TX path - synchronous to refclk:
-
--- data output, 8b10b-encoded
-    tbi_td_o     : out std_logic_vector(9 downto 0);
--- PHY enable, active HI
-    tbi_enable_o : out std_logic;
--- PHY comma sync enable, active HI
-    tbi_syncen_o : out std_logic;
--- PHY loopback mode enable, active HI
-    tbi_loopen_o : out std_logic;
--- PHY PRBS pattern test enable, active HI  
-    tbi_prbsen_o : out std_logic;
-
--- PHY RX path - synchronous to phy_rbclk_i:
-
--- RX clock (125.x MHz)
-    tbi_rbclk_i : in std_logic;
-
--- data input, 8b10b-encoded
-    tbi_rd_i : in std_logic_vector(9 downto 0);
-
--- PHY sync detect pulse (active HI when PHY detects valid comma pattern)
-    tbi_sync_pass_i : in std_logic;
-
--------------------------------------------------------------------------------
 -- Xilinx GTP PHY Interace
 -------------------------------------------------------------------------------    
 
-    gtp_tx_clk_i       : in  std_logic;
-    gtp_tx_data_o      : out std_logic_vector(7 downto 0);
-    gtp_tx_k_o         : out std_logic;
-    gtp_tx_disparity_i : in  std_logic;
-    gtp_tx_enc_err_i   : in  std_logic;
+    serdes_tx_clk_i       : in  std_logic;
+    serdes_tx_data_o      : out std_logic_vector(7 downto 0);
+    serdes_tx_k_o         : out std_logic;
+    serdes_tx_disparity_i : in  std_logic;
+    serdes_tx_enc_err_i   : in  std_logic;
 
-    gtp_rx_data_i     : in std_logic_vector(7 downto 0);
-    gtp_rx_clk_i      : in std_logic;
-    gtp_rx_k_i        : in std_logic;
-    gtp_rx_enc_err_i  : in std_logic;
-    gtp_rx_bitslide_i : in std_logic_vector(3 downto 0);
+    serdes_rx_data_i     : in std_logic_vector(7 downto 0);
+    serdes_rx_clk_i      : in std_logic;
+    serdes_rx_k_i        : in std_logic;
+    serdes_rx_enc_err_i  : in std_logic;
+    serdes_rx_bitslide_i : in std_logic_vector(3 downto 0);
 
-    gtp_rst_o    : out std_logic;
-    gtp_loopen_o : out std_logic;
+    serdes_rst_o    : out std_logic;
+    serdes_loopen_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- WRF source (output of RXed packets)
@@ -139,49 +111,6 @@ entity wr_endpoint is
     snk_err_o   : out std_logic;
     snk_rty_o   : out std_logic;
 
-    
-
--------------------------------------------------------------------------------
--- WRF Sink (input for the packets to be TXed)
--------------------------------------------------------------------------------
-
--- TX data input
-  tx_data_i : in std_logic_vector(15 downto 0);
-
--- RX control bus: indicates type of word currently present on rx_data_o:
--- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB, END_OF_FRAME
-  tx_ctrl_i : in std_logic_vector(c_wrsw_ctrl_size -1 downto 0);
-
--- active HI: indicates the last byte of odd-sized frame. Byte is transferred
--- on MSB of tx_data_i.
-  tx_bytesel_i : in std_logic;
-
--- start of frame signal. HI pulse indicates the beginning of new frame. Upon
--- assertion of tx_sof_p_i, tx_ready_o shall become active, allowing the frame
--- data to be sent.
-  tx_sof_p1_i : in std_logic;
-
--- end-of-frame pulse: indicates end of the current frame on fabric i/f. When rx_valid_o
--- is active, rx_ctrl_o and rx_data_o contain the last data word of the current
--- frame.
-  tx_eof_p1_i : in std_logic;
-
-
--- active HI: TX fabric is ready to accept data.
-  tx_dreq_o : out std_logic;
-
--- active HI: indicates that tx_data_i, tx_ctrl_i, tx_bytesel_i are valid
-  tx_valid_i : in std_logic;
-
--- Source error: kept only for the comptibility with WRF spec. Ignored by the endpoint.
-  tx_rerror_p1_i : in std_logic;
-
--- TX abort: HI pulse immediately aborts transmission of current frame. 
-  tx_tabort_p1_i : in std_logic;
-
--- TX error strobe: HI pulse indicates that an TX error occured. Error code is
--- present on tx_error_code_o.
-  tx_terror_p1_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- TX timestamping unit interface
@@ -269,54 +198,6 @@ architecture syn of wr_endpoint is
       phase_meas_p_o : out std_logic);
   end component;
 
-  component ep_wb_to_wrf
-    port (
-      clk_sys_i      : in  std_logic;
-      rst_n_i        : in  std_logic;
-      src_data_o     : out std_logic_vector(15 downto 0);
-      src_ctrl_o     : out std_logic_vector(c_wrsw_ctrl_size-1 downto 0);
-      src_bytesel_o  : out std_logic;
-      src_dreq_i     : in  std_logic;
-      src_valid_o    : out std_logic;
-      src_sof_p1_o   : out std_logic;
-      src_eof_p1_o   : out std_logic;
-      src_error_p1_i : in  std_logic;
-      src_abort_p1_o : out std_logic;
-      wb_dat_i       : in  std_logic_vector(15 downto 0);
-      wb_adr_i       : in  std_logic_vector(1 downto 0);
-      wb_sel_i       : in  std_logic_vector(1 downto 0);
-      wb_cyc_i       : in  std_logic;
-      wb_stb_i       : in  std_logic;
-      wb_we_i        : in  std_logic;
-      wb_stall_o     : out std_logic;
-      wb_ack_o       : out std_logic;
-      wb_err_o       : out std_logic;
-      wb_rty_o       : out std_logic);
-  end component;
-
-
-  
-  component ep_wrf_to_wb
-    port (
-      clk_sys_i      : in  std_logic;
-      rst_n_i        : in  std_logic;
-      snk_data_i     : in  std_logic_vector(15 downto 0);
-      snk_ctrl_i     : in  std_logic_vector(c_wrsw_ctrl_size-1 downto 0);
-      snk_bytesel_i  : in  std_logic;
-      snk_dreq_o     : out std_logic;
-      snk_valid_i    : in  std_logic;
-      snk_sof_p1_i   : in  std_logic;
-      snk_eof_p1_i   : in  std_logic;
-      snk_error_p1_i : in  std_logic;
-      wb_dat_o       : out std_logic_vector(15 downto 0);
-      wb_adr_o       : out std_logic_vector(1 downto 0);
-      wb_sel_o       : out std_logic_vector(1 downto 0);
-      wb_cyc_o       : out std_logic;
-      wb_stb_o       : out std_logic;
-      wb_we_o        : out std_logic;
-      wb_stall_i     : in  std_logic;
-      wb_ack_i       : in  std_logic);
-  end component;
 
   signal sv_zero : std_logic_vector(63 downto 0);
   signal sv_one  : std_logic_vector(63 downto 0);
@@ -327,25 +208,11 @@ architecture syn of wr_endpoint is
 -------------------------------------------------------------------------------
 -- TX FRAMER -> TX PCS signals
 -------------------------------------------------------------------------------
-  signal fromwb_data     : std_logic_vector(15 downto 0);
-  signal fromwb_ctrl     : std_logic_vector(c_wrsw_ctrl_size-1 downto 0);
-  signal fromwb_bytesel  : std_logic;
-  signal fromwb_dreq     : std_logic;
-  signal fromwb_valid    : std_logic;
-  signal fromwb_sof_p1   : std_logic;
-  signal fromwb_eof_p1   : std_logic;
-  signal fromwb_error_p1 : std_logic;
-  signal fromwb_abort_p1 : std_logic;
-  
   signal txpcs_data            : std_logic_vector(15 downto 0);
-  signal txpcs_bytesel         : std_logic;
-  signal txpcs_sof             : std_logic;
-  signal txpcs_eof             : std_logic;
-  signal txpcs_abort           : std_logic;
-  signal txpcs_error_p         : std_logic;
+  signal txpcs_error         : std_logic;
   signal txpcs_busy            : std_logic;
   signal txpcs_valid           : std_logic;
-  signal txpcs_fifo_almostfull : std_logic;
+  signal txpcs_dreq          : std_logic;
 
 -------------------------------------------------------------------------------
 -- Timestamping/OOB signals
@@ -366,13 +233,11 @@ architecture syn of wr_endpoint is
   signal rxts_done_p          : std_logic;
   signal txts_done_p          : std_logic;
 
-
 -------------------------------------------------------------------------------
 -- MDIO signals
 -------------------------------------------------------------------------------
 
   signal ep_mdio_strobe : std_logic;
-
   signal ep_mdio_cr_data  : std_logic_vector(15 downto 0);
   signal ep_mdio_cr_addr  : std_logic_vector(7 downto 0);
   signal ep_mdio_cr_rw    : std_logic;
@@ -385,10 +250,6 @@ architecture syn of wr_endpoint is
 
   signal rxpcs_busy    : std_logic;
   signal rxpcs_data    : std_logic_vector(15 downto 0);
-  signal rxpcs_bytesel : std_logic;
-  signal rxpcs_sof     : std_logic;
-  signal rxpcs_eof     : std_logic;
-  signal rxpcs_error   : std_logic;
   signal rxpcs_dreq    : std_logic;
   signal rxpcs_valid   : std_logic;
 
@@ -407,15 +268,6 @@ architecture syn of wr_endpoint is
 
   signal rx_buffer_used : std_logic_vector(7 downto 0);
 
-  signal towb_data     : std_logic_vector(15 downto 0);
-  signal towb_ctrl     : std_logic_vector(c_wrsw_ctrl_size-1 downto 0);
-  signal towb_bytesel  : std_logic;
-  signal towb_dreq     : std_logic;
-  signal towb_valid    : std_logic;
-  signal towb_sof_p1   : std_logic;
-  signal towb_eof_p1   : std_logic;
-  signal towb_error_p1 : std_logic;
-
 -------------------------------------------------------------------------------
 -- WB slave signals
 -------------------------------------------------------------------------------
@@ -423,9 +275,6 @@ architecture syn of wr_endpoint is
   signal ep_ecr_portid  : std_logic_vector(4 downto 0);
   signal ep_ecr_pcs_lbk : std_logic;
   signal ep_ecr_fra_lbk : std_logic;
-
-
-
 
   signal ep_tscr_en_txts  : std_logic;
   signal ep_tscr_en_rxts  : std_logic;
@@ -547,7 +396,7 @@ begin
 -- Xilinx GTP interface mode
   gen_gtp : if(g_phy_mode = "GTP") generate
     tx_clk <= gtp_tx_clk_i;
-    rx_clk <= gtp_rx_clk_i;
+    rx_clk <= serdes_rx_clk_i;
   end generate gen_gtp;
 
 -------------------------------------------------------------------------------
@@ -595,18 +444,18 @@ begin
       tbi_prbsen_o => tbi_prbsen_o,
       tbi_enable_o => tbi_enable_o,
 
-      gtp_tx_clk_i       => gtp_tx_clk_i,
-      gtp_tx_data_o      => gtp_tx_data_o,
-      gtp_tx_k_o         => gtp_tx_k_o,
-      gtp_tx_disparity_i => gtp_tx_disparity_i,
-      gtp_tx_enc_err_i   => gtp_tx_enc_err_i,
-      gtp_rx_data_i      => gtp_rx_data_i,
-      gtp_rx_clk_i       => gtp_rx_clk_i,
-      gtp_rx_k_i         => gtp_rx_k_i,
-      gtp_rx_enc_err_i   => gtp_rx_enc_err_i,
-      gtp_rx_bitslide_i  => gtp_rx_bitslide_i,
-      gtp_rst_o          => gtp_rst_o,
-      gtp_loopen_o       => gtp_loopen_o,
+      gtp_tx_clk_i       => serdes_tx_clk_i,
+      gtp_tx_data_o      => serdes_tx_data_o,
+      gtp_tx_k_o         => serdes_tx_k_o,
+      gtp_tx_disparity_i => serdes_tx_disparity_i,
+      gtp_tx_enc_err_i   => serdes_tx_enc_err_i,
+      gtp_rx_data_i      => serdes_rx_data_i,
+      gtp_rx_clk_i       => serdes_rx_clk_i,
+      gtp_rx_k_i         => serdes_rx_k_i,
+      gtp_rx_enc_err_i   => serdes_rx_enc_err_i,
+      gtp_rx_bitslide_i  => serdes_rx_bitslide_i,
+      gtp_rst_o          => serdes_rst_o,
+      gtp_loopen_o       => serdes_loopen_o,
 
       rmon_syncloss_p_o     => rmon_counters(0),
       rmon_invalid_code_p_o => rmon_counters(1),
@@ -707,9 +556,6 @@ begin
       rst_n_i   => rst_n_i,
 
       pcs_data_i    => rxpcs_data,
-      pcs_bytesel_i => rxpcs_bytesel,
-      pcs_sof_i     => rxpcs_sof,
-      pcs_eof_i     => rxpcs_eof,
       pcs_dreq_o    => rxpcs_dreq,
       pcs_valid_i   => rxpcs_valid,
       pcs_error_i   => rxpcs_error,

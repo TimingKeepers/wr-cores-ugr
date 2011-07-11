@@ -12,18 +12,11 @@ package wr_fabric_pkg is
   constant c_WRF_OOB_TYPE_RX : std_logic_vector(3 downto 0) := "0000";
   constant c_WRF_OOB_TYPE_TX : std_logic_vector(3 downto 0) := "0001";
 
-  type t_wrf_oob is record
-    ts_r: std_logic_vector(27 downto 0);
-    ts_f: std_logic_vector(3 downto 0);
-    port_id: std_logic_vector(5 downto 0);
-    frame_id: std_logic_vector(15 downto 0);
-  end record;
-  
   type t_wrf_status_reg is record
     is_hp       : std_logic;
     has_smac    : std_logic;
     has_crc     : std_logic;
-    rx_error    : std_logic;
+    error       : std_logic;
     tag_me      : std_logic;
     match_class : std_logic_vector(7 downto 0);
   end record;
@@ -40,12 +33,24 @@ package wr_fabric_pkg is
   type t_wrf_source_in is record
     ack   : std_logic;
     stall : std_logic;
+    err   : std_logic;
+    rty   : std_logic;
+  end record;
+
+
+  type t_wrf_oob is record
+    valid: std_logic;
+    oob_type : std_logic_vector(3 downto 0);
+    ts_r     : std_logic_vector(27 downto 0);
+    ts_f     : std_logic_vector(3 downto 0);
+    frame_id : std_logic_vector(15 downto 0);
+    port_id  : std_logic_vector(5 downto 0);
   end record;
 
   subtype t_wrf_sink_in is t_wrf_source_out;
   subtype t_wrf_sink_out is t_wrf_source_in;
 
-  
+
   function f_marshall_wrf_status (stat  : t_wrf_status_reg) return std_logic_vector;
   function f_unmarshall_wrf_status(stat : std_logic_vector) return t_wrf_status_reg;
 
@@ -54,13 +59,14 @@ end wr_fabric_pkg;
 
 package body wr_fabric_pkg is
 
-    function f_marshall_wrf_status(stat : t_wrf_status_reg)
+  function f_marshall_wrf_status(stat : t_wrf_status_reg)
     return std_logic_vector is
     variable tmp : std_logic_vector(15 downto 0);
   begin
     tmp(0)           := stat.is_hp;
-    tmp(1)           := stat.rx_error;
+    tmp(1)           := stat.error;
     tmp(2)           := stat.has_smac;
+    tmp(3)           := stat.has_crc;
     tmp(15 downto 8) := stat.match_class;
     return tmp;
   end function;
@@ -69,8 +75,9 @@ package body wr_fabric_pkg is
     variable tmp : t_wrf_status_reg;
   begin
     tmp.is_hp       := stat(0);
-    tmp.rx_error    := stat(1);
+    tmp.error       := stat(1);
     tmp.has_smac    := stat(2);
+    tmp.has_crc     := stat(3);
     tmp.match_class := stat(15 downto 8);
     return tmp;
     

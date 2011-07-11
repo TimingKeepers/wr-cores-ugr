@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-06-09
+-- Last update: 2011-07-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -93,90 +93,25 @@ entity wrsw_endpoint is
     phy_rx_enc_err_i  : in std_logic;
     phy_rx_bitslide_i : in std_logic_vector(3 downto 0);
 
--------------------------------------------------------------------------------
--- WRF source (output of RXed packets)
--------------------------------------------------------------------------------
+    src_dat_o   : out std_logic_vector(15 downto 0);
+    src_adr_o   : out std_logic_vector(1 downto 0);
+    src_sel_o   : out std_logic_vector(1 downto 0);
+    src_cyc_o   : out std_logic;
+    src_stb_o   : out std_logic;
+    src_we_o    : out std_logic;
+    src_stall_i : in  std_logic;
+    src_ack_i   : in  std_logic;
 
--- RX data: framedata word
-    rx_data_o : out std_logic_vector(15 downto 0);
-
--- RX control bus: indicates type of word currently present on rx_data_o:
--- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB
-    rx_ctrl_o : out std_logic_vector(4 - 1 downto 0);
-
--- RX byte enable signal: when active, only MSB of rx_data_o contains valid
--- data byte (the last byte of the frame). Used for handling odd-sized frames.
-    rx_bytesel_o : out std_logic;
-
-
--- start-of-frame pulse: active each time new frame is received. Frame data is
--- available one cycle after on ctrl/data lines
-    rx_sof_p1_o : out std_logic;
-
--- end-of-frame pulse: indicates end of the current frame on fabric i/f. When rx_valid_o
--- is active, rx_ctrl_o and rx_data_o contain the last data word of the current
--- frame.
-    rx_eof_p1_o : out std_logic;
-
--- RX data request line: when HI, subsequent frame words are outputted to
--- rx_ctrl_o, rx_data_o, etc.
-    rx_dreq_i : in std_logic;
-
--- Active HI when rx_ctrl_o, rx_data_o, rx_bytesel_o are valid.
-    rx_valid_o : out std_logic;
-
--- When active, endpoint drops all the incoming frames. When asserted in the
--- middle of reception of the frame, reception is immediately terminated.
-    rx_rabort_p1_i : in std_logic;
-
--- Active HI: indicates that RX path is idle (no data is being currently processed)
-    rx_idle_o : out std_logic;
-
--- RX error strobe: HI pulse indicates that an RX error occured. Error code is
--- present on rx_error_code_o.
-    rx_rerror_p1_o : out std_logic;
-
--------------------------------------------------------------------------------
--- WRF Sink (input for the packets to be TXed)
--------------------------------------------------------------------------------
-
--- TX data input
-    tx_data_i : in std_logic_vector(15 downto 0);
-
--- RX control bus: indicates type of word currently present on rx_data_o:
--- SRC_MAC, DST_MAC, VID_PRIO, PAYLOAD, CRC, OOB, END_OF_FRAME
-    tx_ctrl_i : in std_logic_vector(4 - 1 downto 0);
-
--- active HI: indicates the last byte of odd-sized frame. Byte is transferred
--- on MSB of tx_data_i.
-    tx_bytesel_i : in std_logic;
-
--- start of frame signal. HI pulse indicates the beginning of new frame. Upon
--- assertion of tx_sof_p_i, tx_ready_o shall become active, allowing the frame
--- data to be sent.
-    tx_sof_p1_i : in std_logic;
-
--- end-of-frame pulse: indicates end of the current frame on fabric i/f. When rx_valid_o
--- is active, rx_ctrl_o and rx_data_o contain the last data word of the current
--- frame.
-    tx_eof_p1_i : in std_logic;
-
-
--- active HI: TX fabric is ready to accept data.
-    tx_dreq_o : out std_logic;
-
--- active HI: indicates that tx_data_i, tx_ctrl_i, tx_bytesel_i are valid
-    tx_valid_i : in std_logic;
-
--- Source error: kept only for the comptibility with WRF spec. Ignored by the endpoint.
-    tx_rerror_p1_i : in std_logic;
-
--- TX abort: HI pulse immediately aborts transmission of current frame. 
-    tx_tabort_p1_i : in std_logic;
-
--- TX error strobe: HI pulse indicates that an TX error occured. Error code is
--- present on tx_error_code_o.
-    tx_terror_p1_o : out std_logic;
+    snk_dat_i   : in  std_logic_vector(15 downto 0);
+    snk_adr_i   : in  std_logic_vector(1 downto 0);
+    snk_sel_i   : in  std_logic_vector(1 downto 0);
+    snk_cyc_i   : in  std_logic;
+    snk_stb_i   : in  std_logic;
+    snk_we_i    : in  std_logic;
+    snk_stall_o : out std_logic;
+    snk_ack_o   : out std_logic;
+    snk_err_o   : out std_logic;
+    snk_rty_o   : out std_logic;
 
 -------------------------------------------------------------------------------
 -- TX timestamping unit interface
@@ -246,21 +181,7 @@ end wrsw_endpoint;
 
 architecture syn of wrsw_endpoint is
 
-  component dmtd_phase_meas
-    generic (
-      g_deglitcher_threshold : integer;
-      g_counter_bits         : integer);
-    port (
-      rst_n_i        : in  std_logic;
-      clk_sys_i      : in  std_logic;
-      clk_a_i        : in  std_logic;
-      clk_b_i        : in  std_logic;
-      clk_dmtd_i     : in  std_logic;
-      en_i           : in  std_logic;
-      navg_i         : in  std_logic_vector(11 downto 0);
-      phase_meas_o   : out std_logic_vector(31 downto 0);
-      phase_meas_p_o : out std_logic);
-  end component;
+  
 
   signal sv_zero : std_logic_vector(63 downto 0);
   signal sv_one  : std_logic_vector(63 downto 0);
@@ -284,17 +205,17 @@ architecture syn of wrsw_endpoint is
   signal txoob_fid_value : std_logic_vector(15 downto 0);
   signal txoob_fid_stb   : std_logic;
 
-  signal rxoob_data  : std_logic_vector(47 downto 0);
-  signal rxoob_valid : std_logic;
-  signal rxoob_ack   : std_logic;
+  --signal rxoob_data  : std_logic_vector(47 downto 0);
+  --signal rxoob_valid : std_logic;
+  --signal rxoob_ack   : std_logic;
 
   signal txpcs_timestamp_stb_p : std_logic;
-  signal rxpcs_timestamp_stb_p : std_logic;
+  --signal rxpcs_timestamp_stb_p : std_logic;
 
-  signal txts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
-  signal rxts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
-  signal rxts_done_p          : std_logic;
-  signal txts_done_p          : std_logic;
+  --signal txts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
+  --signal rxts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
+  --signal rxts_done_p          : std_logic;
+  --signal txts_done_p          : std_logic;
 
 -------------------------------------------------------------------------------
 -- RX PCS -> RX DEFRAMER signals
@@ -309,16 +230,16 @@ architecture syn of wrsw_endpoint is
 -- RX deframer -> RX buffer signals
 -------------------------------------------------------------------------------
 
-  signal rbuf_data    : std_logic_vector(15 downto 0);
-  signal rbuf_ctrl    : std_logic_vector(4-1 downto 0);
-  signal rbuf_sof_p   : std_logic;
-  signal rbuf_eof_p   : std_logic;
-  signal rbuf_error_p : std_logic;
-  signal rbuf_valid   : std_logic;
-  signal rbuf_drop    : std_logic;
-  signal rbuf_bytesel : std_logic;
+  --signal rbuf_data    : std_logic_vector(15 downto 0);
+  --signal rbuf_ctrl    : std_logic_vector(4-1 downto 0);
+  --signal rbuf_sof_p   : std_logic;
+  --signal rbuf_eof_p   : std_logic;
+  --signal rbuf_error_p : std_logic;
+  --signal rbuf_valid   : std_logic;
+  --signal rbuf_drop    : std_logic;
+  --signal rbuf_bytesel : std_logic;
 
-  signal rx_buffer_used : std_logic_vector(7 downto 0);
+  --signal rx_buffer_used : std_logic_vector(7 downto 0);
 
 
 -------------------------------------------------------------------------------
@@ -333,10 +254,9 @@ architecture syn of wrsw_endpoint is
 -------------------------------------------------------------------------------
 
   signal txfra_flow_enable : std_logic;
-
-  signal rxfra_pause_p       : std_logic;
-  signal rxfra_pause_delay   : std_logic_vector(15 downto 0);
-  signal rxbuf_threshold_hit : std_logic;
+  --signal rxfra_pause_p       : std_logic;
+  --signal rxfra_pause_delay   : std_logic_vector(15 downto 0);
+  --signal rxbuf_threshold_hit : std_logic;
 
   signal txfra_pause       : std_logic;
   signal txfra_pause_ack   : std_logic;
@@ -355,11 +275,11 @@ architecture syn of wrsw_endpoint is
 
   signal rmon_counters : std_logic_vector(31 downto 0);
 
-  signal rofifo_write, rofifo_full, oob_valid_d0 : std_logic;
+  --signal rofifo_write, rofifo_full, oob_valid_d0 : std_logic;
 
-  signal phase_meas    : std_logic_vector(31 downto 0);
-  signal phase_meas_p  : std_logic;
-  signal validity_cntr : unsigned(1 downto 0);
+  --signal phase_meas    : std_logic_vector(31 downto 0);
+  --signal phase_meas_p  : std_logic;
+  --signal validity_cntr : unsigned(1 downto 0);
 
   signal link_ok : std_logic;
 
