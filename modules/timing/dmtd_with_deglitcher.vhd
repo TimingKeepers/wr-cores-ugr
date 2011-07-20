@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2011-05-11
+-- Last update: 2011-07-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -106,12 +106,41 @@ architecture rtl of dmtd_with_deglitcher is
   signal in_d0, in_d1 : std_logic;
   signal s_one        : std_logic;
 
+  --attribute optimize_primitives : string;
+  --attribute optimize_primitives of clk_i_d0:signal is "yes";
+  --attribute keep of clk_i_d0: signal is “true”;
+  --attribute keep of clk_i_d1: signal is “true”;
+  --attribute keep of clk_i_d2: signal is “true”;
+  --attribute keep of clk_i_d3: signal is “true”;
+  
   signal clk_i_d0, clk_i_d1, clk_i_d2, clk_i_d3 : std_logic;
 
-  signal new_edge_sreg : std_logic_vector(3 downto 0);
+  signal new_edge_sreg : std_logic_vector(5 downto 0);
   signal new_edge_p    : std_logic;
 
   signal tag_int : unsigned(g_counter_bits-1 downto 0);
+
+  --component chipscope_ila
+  --  port (
+  --    CONTROL : inout std_logic_vector(35 downto 0);
+  --    CLK     : in    std_logic;
+  --    TRIG0   : in    std_logic_vector(31 downto 0);
+  --    TRIG1   : in    std_logic_vector(31 downto 0);
+  --    TRIG2   : in    std_logic_vector(31 downto 0);
+  --    TRIG3   : in    std_logic_vector(31 downto 0));
+  --end component;
+
+  --component chipscope_icon
+  --  port (
+  --    CONTROL0 : inout std_logic_vector (35 downto 0));
+  --end component;
+
+  --signal CONTROL : std_logic_vector(35 downto 0);
+  --signal CLK     : std_logic;
+  --signal TRIG0   : std_logic_vector(31 downto 0);
+  --signal TRIG1   : std_logic_vector(31 downto 0);
+  --signal TRIG2   : std_logic_vector(31 downto 0);
+  --signal TRIG3   : std_logic_vector(31 downto 0);
   
 begin  -- rtl
   
@@ -164,6 +193,7 @@ begin  -- rtl
             if (clk_i_d3 /= '0') then   -- got a glitch?
               state   <= GOT_EDGE;
               tag_int <= free_cntr;
+              stab_cntr <= (others => '0');
             end if;
 
           when GOT_EDGE =>
@@ -171,16 +201,18 @@ begin  -- rtl
               tag_int <= tag_int + 1;
             end if;
 
-            if (clk_i_d3 = '0') then
+             if stab_cntr = unsigned(deglitch_threshold_i) then
+              state         <= WAIT_STABLE_0;
+              tag_o         <= std_logic_vector(tag_int);
+              new_edge_sreg <= (others => '1');
+              stab_cntr <= (others => '0');
+            elsif (clk_i_d3 = '0') then
               stab_cntr <= (others => '0');
             else
               stab_cntr <= stab_cntr + 1;
             end if;
 
-            if stab_cntr = unsigned(deglitch_threshold_i) then
-              state         <= WAIT_STABLE_0;
-              new_edge_sreg <= (others => '1');
-            end if;
+          
         end case;
       end if;
     end if;
@@ -198,6 +230,37 @@ begin  -- rtl
       ppulse_o => new_edge_p);
 
   tag_stb_p1_o   <= new_edge_p;
-  tag_o         <= std_logic_vector(tag_int);
-  dbg_dmtdout_o <= clk_i_d3;
+
+  gc_extend_pulse_1: gc_extend_pulse
+    generic map (
+      g_width => 3000)
+    port map (
+      clk_i      => clk_sys_i,
+      rst_n_i    => rst_n_sysclk_i,
+      pulse_i    => new_edge_p,
+      extended_o => dbg_dmtdout_o);
+
+
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_dmtd_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
+
+  --chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
+
+  
+  --TRIG0(tag_int'left downto 0) <= std_logic_vector(tag_int);
+  --TRIG0(31) <=clk_i_d3;
+  --TRIG0(30) <= '1' when (state = WAIT_STABLE_0) else '0';
+  --TRIG0(29) <= '1' when (state = WAIT_EDGE) else '0';
+  --TRIG0(28) <= '1' when (state = GOT_EDGE) else '0';
+  --TRIG1(stab_cntr'left downto 0) <= std_logic_vector(stab_cntr);
+  --TRIG2(free_cntr'left downto 0) <= std_logic_vector(free_cntr);
+    
 end rtl;
