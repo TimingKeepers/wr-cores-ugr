@@ -147,11 +147,11 @@ entity old_ep_tx_pcs_tbi is
 
     );
 
-end ep_tx_pcs_tbi;
+end old_ep_tx_pcs_tbi;
 
 
 
-architecture  behavioral of ep_tx_pcs_tbi is
+architecture  behavioral of old_ep_tx_pcs_tbi is
 
 -- TX state machine definitions
   type t_tbif_tx_state is (TX_COMMA, TX_CAL, TX_CR1, TX_CR2, TX_CR3, TX_CR4, TX_SPD, TX_IDLE, TX_DATA, TX_PREAMBLE, TX_SFD, TX_EPD, TX_EXTEND, TX_GOTO_COMMA, TX_GEN_ERROR);

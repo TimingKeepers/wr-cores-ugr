@@ -11,94 +11,63 @@
 `define EP_QMODE_TRUNK 1
 `define EP_QMODE_UNQ 3
 
-typedef struct {
-   int tx_error;
-   int rx_error;
-   int ep_assigned_mac;
-   int is_vlan;
-   int vid;
-   int prio;
-   int tx_oob;
-   int rx_oob;
-} test_vector_t;
-
-// Clock periods (in picoseconds)
 const int c_RBCLK_PERIOD   = 8010;
 const int c_REFCLK_PERIOD  = 8000;
-/* -----\/----- EXCLUDED -----\/-----
-
-interface tbi_sink(
-	input clk_sys_i,
-	input rst_n_i)
-	
-	wire [7:0] data;
-	wire k;
-	wire disparity;
-	
-	modport in(
-		data, k, disparity
-	);
-
-	
-
-endinterface
- -----/\----- EXCLUDED -----/\----- */
 
 
+interface old_endpoint_test_wrapper
+  (
+   input clk_sys_i,
+   input clk_ref_i,
+   input rst_n_i
+   );
 
-module main;
-
-   wire clk_ref;
-   wire clk_sys;
-   wire rst_n;
-
-  // WRF links
-   
    `WRF_FULL_WIRES(toEP)
    `WRF_FULL_WIRES(fromEP)
-  
-   wire [9:0] phy_td, phy_rd;
-   wire phy_rbclk;
-
+   
    wire txtsu_valid, txtsu_ack;
    wire [4:0] txtsu_pid;
    wire [15:0] txtsu_fid;
    wire [31:0] txtsu_timestamp;
 
-   wire[7:0] gtp_tx_data;
-   wire gtp_tx_k;
-   wire gtp_tx_disparity;
-   wire gtp_tx_enc_error;
-   wire [7:0] gtp_rx_data;
-   wire gtp_rx_clk;
-   wire gtp_rx_k;
-   wire gtp_rx_enc_error;
-   wire [3:0] gtp_rx_bitslide;
    
    
+   wire[7:0] gtx_data;
+   wire gtx_k;
+   wire gtx_disparity;
+   wire gtx_enc_error;
+   wire [7:0] grx_data;
+   wire grx_clk;
+   wire grx_k;
+   wire grx_enc_error;
+   wire [3:0] grx_bitslide;
 
-   tbi_clock_rst_gen
-     #(
-       .g_rbclk_period(8100))
-     clkgen(
-	    .clk_ref_o(clk_ref),
-	    .clk_sys_o(clk_sys),
-	    .phy_rbclk_o(phy_rbclk),
-	    .rst_n_o(rst_n)
-	    );
+   modport gtp
+     (
+      output gtx_data,
+      output gtx_k,
+      output gtx_disparity,
+      output gtx_enc_error,
 
-   
+      input grx_data,
+      input grx_clk,
+      input grx_k,
+      input grx_enc_error,
+      input [3:0] grx_bitslide
+      );
+
+
    WB_TEST_MASTER  WB
      (
-      .clk_i(clk_sys),
-      .rst_n_i(rst_n)
+      .clk_i(clk_sys_i),
+      .rst_n_i(rst_n_i)
       );
    
    
    fabric_emu EMU
       (
-       .clk_i(clk_sys),
-       .rst_n_i(rst_n),
+       .clk_i(clk_sys_i),
+       .rst_n_i(rst_n_i),
     
        `WRF_FULL_CONNECT_SOURCE(rx, toEP),
        `WRF_FULL_CONNECT_SINK(tx, fromEP),
@@ -110,93 +79,6 @@ module main;
        .txtsu_ack_o (txtsu_ack)
        );
 
-   
-   wrsw_endpoint
-     #(
-       .g_interface_mode("SERDES"),
-       .g_simulation(1)
-       )
-     DUT (
-	  .clk_ref_i(clk_ref),
-	  .clk_sys_i(clk_sys),
-	  .clk_dmtd_i(1'b0),
-	  .rst_n_i (rst_n),
-	  .pps_csync_p1_i(1'b0),
-	  
-	  `_WRF_CONNECT_MANDATORY_SOURCE(rx, fromEP),
-	  `_WRF_CONNECT_MANDATORY_SINK(tx, toEP),
-
-	  .rtu_full_i(1'b0),
-	  .rtu_almost_full_i(1'b0),
-	  
-	  .wb_cyc_i  (WB.wb_cyc),
-	  .wb_stb_i  (WB.wb_stb),
-	  .wb_we_i   (WB.wb_we),
-	  .wb_sel_i  (WB.wb_bwsel),
-	  .wb_addr_i (WB.wb_addr [5:0]),
-	  .wb_data_i (WB.wb_data_o),
-	  .wb_data_o (WB.wb_data_i),
-	  .wb_ack_o  (WB.wb_ack),
-	  
-	  .txtsu_port_id_o(txtsu_pid),
-	  .txtsu_frame_id_o (txtsu_fid),
-	  .txtsu_tsval_o  (txtsu_timestamp),
-	  .txtsu_valid_o (txtsu_valid),
-	  .txtsu_ack_i (txtsu_ack),
-
-// GTP I/F
-          .gtp_rst_o(serdes_rst),
-	  .gtp_tx_clk_i(clk_ref),
-	  .gtp_tx_data_o (gtp_tx_data),
-	  .gtp_tx_k_o    (gtp_tx_k),
-	  .gtp_tx_disparity_i (gtp_tx_disparity),
-	  .gtp_tx_enc_err_i  (gtp_tx_enc_error),
-	
-	  .gtp_rx_data_i     (gtp_rx_data),
-	  .gtp_rx_clk_i    (gtp_rx_clk),
-	  .gtp_rx_k_i        (gtp_rx_k),
-	  .gtp_rx_enc_err_i  (gtp_rx_enc_error),
-	  .gtp_rx_bitslide_i (gtp_rx_bitslide)
-    );
-
-
-   wr_gtp_phy_spartan6
-     PHY (
-          .ch0_rst_i    (serdes_rst),
-          .ch0_loopen_i (1'b0),
-          .ch0_ref_clk_i(clk_ref),
-
-          .ch0_tx_data_i  (gtp_tx_data),
-          .ch0_tx_k_i        (gtp_tx_k),
-          .ch0_tx_disparity_o (gtp_tx_disparity),
-          .ch0_tx_enc_err_o(gtp_tx_enc_error),
-
-          .ch0_rx_rbclk_o (gtp_rx_clk),
-          .ch0_rx_data_o    (gtp_rx_data),
-          .ch0_rx_k_o       (gtp_rx_k),
-          .ch0_rx_enc_err_o  (gtp_rx_enc_error),
-          .ch0_rx_bitslide_o (gtp_rx_bitslide),
-
-          .pad_txn0_o(loopn),          
-          .pad_rxn0_i(loopn),
-          .pad_txp0_o(loopp),          
-          .pad_rxp0_i(loopp)
-          );
-
-    wr_tbi_phy
-     PHY2 (
-          .serdes_rst_i    (serdes_rst),
-          .serdes_loopen_i (1'b0),
-          .tbi_refclk_i(clk_ref),
-
-          .serdes_tx_data_i  (gtp_tx_data),
-          .serdes_tx_k_i        (gtp_tx_k),
-          .serdes_tx_disparity_o (gtp_tx_disparity2)
-          );
-   
-   
- 
-   
    
    task mdio_write(int addr, int data);
       reg[31:0] rval;
@@ -238,6 +120,82 @@ module main;
       mdio_write(`ADDR_MDIO_MCR, `MDIO_MCR_RESET);
       
    endtask // initialize_EP_regs
+
+   old_wrsw_endpoint
+     #(
+       .g_interface_mode("SERDES"),
+       .g_simulation(1)
+       )
+     DUT (
+	  .clk_ref_i(clk_ref_i),
+	  .clk_sys_i(clk_sys_i),
+	  .clk_dmtd_i(1'b0),
+	  .rst_n_i (rst_n_i),
+	  .pps_csync_p1_i(1'b0),
+	  
+	  `_WRF_CONNECT_MANDATORY_SOURCE(rx, fromEP),
+	  `_WRF_CONNECT_MANDATORY_SINK(tx, toEP),
+
+	  .rtu_full_i(1'b0),
+	  .rtu_almost_full_i(1'b0),
+	  
+	  .wb_cyc_i  (WB.wb_cyc),
+	  .wb_stb_i  (WB.wb_stb),
+	  .wb_we_i   (WB.wb_we),
+	  .wb_sel_i  (WB.wb_bwsel),
+	  .wb_addr_i (WB.wb_addr [5:0]),
+	  .wb_data_i (WB.wb_data_o),
+	  .wb_data_o (WB.wb_data_i),
+	  .wb_ack_o  (WB.wb_ack),
+	  
+	  .txtsu_port_id_o(txtsu_pid),
+	  .txtsu_frame_id_o (txtsu_fid),
+	  .txtsu_tsval_o  (txtsu_timestamp),
+	  .txtsu_valid_o (txtsu_valid),
+	  .txtsu_ack_i (txtsu_ack),
+
+// GTP I/F
+          .gtp_rst_o(),
+	  .gtp_tx_clk_i(clk_ref_i),
+	  .gtp_tx_data_o (gtx_data),
+	  .gtp_tx_k_o    (gtx_k),
+	  .gtp_tx_disparity_i (gtx_disparity),
+	  .gtp_tx_enc_err_i  (gtx_enc_error),
+	
+	  .gtp_rx_data_i     (grx_data),
+	  .gtp_rx_clk_i    (grx_clk),
+	  .gtp_rx_k_i        (grx_k),
+	  .gtp_rx_enc_err_i  (grx_enc_error),
+	  .gtp_rx_bitslide_i (grx_bitslide)
+    );
+
+   
+endinterface // old_endpoint_test_wrapper
+
+
+module main;
+
+   wire clk_ref_old;
+   wire clk_ref_new;
+   wire clk_sys;
+   wire rst_n;
+
+  // WRF links
+   
+   wire [9:0] phy_td, phy_rd;
+   wire phy_rbclk;
+
+   tbi_clock_rst_gen
+     #(
+       .g_rbclk_period(8091))
+     clkgen
+       (
+	.clk_ref_o(clk_ref_new),
+	.clk_sys_o(clk_sys),
+	.phy_rbclk_o(clk_ref_old),
+	.rst_n_o(rst_n)
+	);
+   
 
    // sets the Q-mode of the endpoint
    task ep_set_qmode(int qmode);
