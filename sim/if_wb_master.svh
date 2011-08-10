@@ -7,11 +7,10 @@
 // Standard       : SystemVerilog
 //
 
-// Default values of certain WB parameters.
 
-`include "simdrv_defs.sv"
-
-`include "if_wishbone_defs.sv"
+`include "simdrv_defs.svh"
+`include "if_wishbone_types.svh"
+`include "if_wishbone_accessor.svh"
 
 interface IWishboneMaster
   (
@@ -21,7 +20,7 @@ interface IWishboneMaster
 
    parameter g_data_width 	   = 32;
    parameter g_addr_width 	   = 32;
-   
+
    logic [g_addr_width - 1 : 0] adr;
    logic [g_data_width - 1 : 0] dat_o;
    logic [(g_data_width/8)-1 : 0] sel; 
@@ -43,6 +42,7 @@ interface IWishboneMaster
       wb_cycle_type_t mode;
       int gen_random_throttling;
       real throttle_prob;
+      int little_endian;
    } settings;
    
 
@@ -62,30 +62,43 @@ interface IWishboneMaster
       );
 
    function automatic logic[g_addr_width-1:0] gen_addr(uint64_t addr, int xfer_size);
-      case(xfer_size)
-	1: return addr;
-	2: return addr << 1;
-	4: return addr << 2;
-	8: return addr << 3;
-	default: $error("IWishbone: invalid WB transfer size [%d bytes]\n", xfer_size);
+      case(g_data_width)
+	8: return addr;
+	16: return addr >> 1;
+	32: return addr >> 2;
+	64: return addr >> 3;
+	default: $error("IWishbone: invalid WB data bus width [%d bits\n]", g_data_width);
       endcase // case (xfer_size)
    endfunction
 
-   // FIXME: little-endian
-   function automatic logic[(g_data_width/8)-1:0] gen_sel(uint64_t addr, int xfer_size);
-      logic [(g_data_width/8)-1:0] sel;
-
-      sel  = (1<<xfer_size)-1;
+   function automatic logic[63:0] rev_bits(logic [63:0] x, int nbits);
+      logic[63:0] tmp;
+      int i;
       
-      return sel << (addr % xfer_size);
+      for (i=0;i<nbits;i++)
+        tmp[nbits-1-i]  = x[i];
+
+      return tmp;
+   endfunction // rev_bits
+   
+
+   //FIXME: little endian
+   function automatic logic[(g_data_width/8)-1:0] gen_sel(uint64_t addr, int xfer_size, int little_endian);
+      logic [(g_data_width/8)-1:0] sel;
+      const int dbytes  = (g_data_width/8-1);
+      
+      
+      sel               = ((1<<xfer_size) - 1);
+
+      return rev_bits(sel << (addr % xfer_size), g_data_width/8);
       endfunction
 
-   function automatic logic[(g_data_width/8)-1:0] gen_data(uint64_t addr, int xfer_size);
-      logic [(g_data_width/8)-1:0] sel;
-
-      sel  = (1<<xfer_size)-1;
-      
-      return sel << (addr % xfer_size);
+   function automatic logic[g_data_width-1:0] gen_data(uint64_t addr, uint64_t data, int xfer_size, int little_endian);
+      const int dbytes  = (g_data_width/8-1);
+      $display("GenData: %x shift %d", data, (8 * (addr % xfer_size)));
+    
+  
+      return data << (8 * (dbytes - (xfer_size - 1 - (addr % xfer_size))));
    endfunction // gen_data
 
    function automatic uint64_t decode_data(uint64_t addr, int xfer_size, logic[g_data_width-1:0] data);
@@ -112,13 +125,13 @@ interface IWishboneMaster
       for(i=0;i<n_xfers;i++)
 	begin
 	      
-	   stb 	 <= 1'b1;
-	   cyc 	 <= 1'b1;
-	   adr  <= /*gen_addr(*/xfer[i].a;/*, xfer[i].size);*/
-	   we 	 <= rw;
-	   sel 	 <= xfer[i].sel[g_data_width/8-1:0];
+	   stb   <= 1'b1;
+	   cyc   <= 1'b1;
+	   adr   <= gen_addr(xfer[i].a, xfer[i].size);
+	   we    <= rw;
+	   sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
 //gen_sel(xfer[i].a, xfer[i].size);
-	   dat_o <= gen_data(xfer[i].a, xfer[i].d);
+	   dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
 	   
 	   @(posedge clk_i);
 	 	 
@@ -197,27 +210,25 @@ interface IWishboneMaster
 	      end
 	   
 	   if (stall || (settings.gen_random_throttling && probability_hit(settings.throttle_prob))) begin
-	      stb <= 1'b0;
-	      
 	      @(posedge clk_i);
-	      end else begin
-	      adr   <= xfer[i].a;
-//gen_addr(xfer[i].a, xfer[i].size);
+	   end else begin
+	      adr   <= gen_addr(xfer[i].a, xfer[i].size);
 	      stb   <= 1'b1;
 	      we    <= 1'b1;
-	      sel   <= xfer[i].sel[g_data_width/8-1:0];
-//gen_sel(xfer[i].a, xfer[i].size);
-	      dat_o <= xfer[i].d;
-//		 $display("wbWrite: a %x d %x\n", xfer[i].a, xfer[i].d);
+	      sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
+	      dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
+	      $display("wbWrite: a %x d %x xsize %d", xfer[i].a, xfer[i].d, xfer[i].size);
 		 i++;
-		 
 	      @(posedge clk_i);
+              stb <= 0;
+              we  <= 0;
 	   end
 
 	end // for (i=0;i<n_xfers;i++)
 
       while((ack_count > 0) && !failure)
 	begin
+           
 
 	   if(err) begin
 	      result   = R_ERROR;
@@ -249,34 +260,34 @@ interface IWishboneMaster
 	
    wb_cycle_t request_queue[$];
    wb_cycle_t result_queue[$];
-   
 
 class CIWBMasterAccessor extends CWishboneAccessor;
 
    function automatic int poll();
       return 0;
    endfunction
-	
-   task get(output wb_cycle_t xfer);
+   
+   task get(ref wb_cycle_t xfer);
       while(!result_queue.size())
 	@(posedge clk_i);
       xfer  = result_queue.pop_front();
    endtask
-      
+   
    task clear();
    endtask // clear
 
-   task put(input wb_cycle_t xfer);
-    //  $display("wbMasteR: put");
+   task put(ref wb_cycle_t xfer);
+       $display("WBMaster: PutCycle");
       
       request_queue.push_back(xfer);
+      $display("RQsize: %d", request_queue.size());
+      
    endtask // put
 
    function int idle();
       return (request_queue.size() == 0) && xf_idle;
    endfunction // idle
 endclass // CIWBMasterAccessor
-   
    
 
    function CIWBMasterAccessor get_accessor();
@@ -301,29 +312,25 @@ endclass // CIWBMasterAccessor
 
    initial begin
       settings.mode 		      = PIPELINED;
-      settings.gen_random_throttling  =1;
+      settings.gen_random_throttling  = 0;
       settings.throttle_prob 	      = 0.01;
-      
-
    end
 
-    
    
    initial forever
      begin
 	@(posedge clk_i);
-	
+
 	
 	if(request_queue.size() > 0)
 	  begin
 	     wb_cycle_t c;
 
-//	     $display("wbMaster: got cycle [%d]", c.data.size());
-
 	     c 	= request_queue.pop_front();
 
-	     
-	     
+	     $display("WBMaster: got cycle [%d]", c.data.size());
+
+
 	     if(settings.mode == PIPELINED)
 	       begin
 		  wb_cycle_result_t res;
