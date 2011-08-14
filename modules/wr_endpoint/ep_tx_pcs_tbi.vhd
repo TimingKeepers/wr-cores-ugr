@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-05-28
+-- Last update: 2011-08-14
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -238,7 +238,7 @@ begin
       g_with_rd_count          => true,
       g_with_wr_almost_full    => true,
       g_almost_empty_threshold => 16,
-      g_almost_full_threshold  => 60)  -- fixme: make this a generic (or WB register)
+      g_almost_full_threshold  => 56)  -- fixme: make this a generic (or WB register)
     port map (
       rst_n_i           => tx_fifo_clear_n,
       clk_wr_i          => clk_sys_i,
@@ -326,7 +326,7 @@ begin
 
 -- we've got a new frame in the FIFO
             elsif (tx_fifo_start = '1' and fifo_rdy = '1')then
-              tx_fifo_rdreq    <= '0';
+              tx_fifo_rdreq    <= '1';
               tx_newframe      <= '1';
               tx_state         <= TX_SPD;
               tx_preamble_cntr <= "101";
@@ -409,6 +409,7 @@ begin
 -- State SPD: sends a start-of-packet delimeter
 -------------------------------------------------------------------------------
           when TX_SPD =>
+            tx_fifo_rdreq <= '0';
             tx_is_k      <= '1';
             tx_odata_reg <= c_k27_7;
             tx_state     <= TX_PREAMBLE;
