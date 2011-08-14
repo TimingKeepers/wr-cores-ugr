@@ -6,23 +6,27 @@ typedef longint unsigned uint64_t;
 typedef uint64_t u64_array_t[];
 typedef byte byte_array_t[];
 
+
+
+
 virtual class CBusAccessor;
    static int _null  = 0;
    
    pure virtual task writem(uint64_t addr[], uint64_t data[], input int size, ref int result);
    pure virtual task readm(uint64_t addr[], ref uint64_t data[], input int size, ref int result);
 
-   virtual task read(uint64_t addr, ref uint64_t data, input int size = 32, ref int result = _null);
+   virtual task read(uint64_t addr, ref uint64_t data, input int size = 4, ref int result = _null);
       int res;
-      
       uint64_t aa[], da[];
+
+   
       aa[0]  = addr;
       readm(aa, da, size, res);
       data  = da[0];
    endtask
 
 
-   virtual task write(uint64_t addr, uint64_t data, input int size = 32, ref int result = _null);
+   virtual task write(uint64_t addr, uint64_t data, input int size = 4, ref int result = _null);
       uint64_t aa[1], da[1];
       aa[0]  = addr;
       da[1]  = data;
