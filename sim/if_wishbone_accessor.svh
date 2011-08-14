@@ -6,7 +6,16 @@
 virtual class CWishboneAccessor extends CBusAccessor;
 
    static int _null  = 0;
+   protected wb_cycle_type_t m_cycle_type;
 
+   function new();
+      m_cycle_type  = CLASSIC;
+   endfunction // new
+
+   virtual task set_mode(wb_cycle_type_t mode);
+      m_cycle_type  = mode;
+   endtask // set_mode
+   
    
    // [slave only] checks if there are any transactions in the queue 
    virtual function automatic int poll();
@@ -39,11 +48,12 @@ virtual class CWishboneAccessor extends CBusAccessor;
    endfunction // idle
    
    // [master only] generic write(s), blocking
-   virtual task writem(uint64_t addr[], uint64_t data[], int size = 32, ref int result = _null);
+   virtual task writem(uint64_t addr[], uint64_t data[], int size = 4, ref int result = _null);
       wb_cycle_t cycle;
       int i;
-//      xfer.ctype  = PIPELINED;
-      cycle.rw  = 0;
+
+      cycle.ctype  = m_cycle_type;
+      cycle.rw  = 1'b1;
       
       for(i=0;i < addr.size(); i++)
         begin
@@ -54,6 +64,8 @@ virtual class CWishboneAccessor extends CBusAccessor;
            cycle.data.push_back(xfer);
         end
 
+//      $display("DS: %d", cycle.data.size());
+      
       put(cycle);
       get(cycle);
       result  = cycle.result;
@@ -61,26 +73,49 @@ virtual class CWishboneAccessor extends CBusAccessor;
    endtask // write
 
    // [master only] generic read(s), blocking
-   virtual task readm(uint64_t addr[], ref uint64_t data[],input int size = 32, ref int result = _null);
+   virtual task readm(uint64_t addr[], ref uint64_t data[],input int size = 4, ref int result = _null);
+      wb_cycle_t cycle;
+      int i;
 
-   endtask // read
+      cycle.ctype  = m_cycle_type;
+      cycle.rw  = 1'b0;
+      
+      for(i=0;i < addr.size(); i++)
+        begin
+           wb_xfer_t xfer;
+           xfer.a     = addr[i];
+           xfer.size  = size;
+           cycle.data.push_back(xfer);
+        end
 
-/* -----\/----- EXCLUDED -----\/-----
-   virtual task read(uint32_t addr, ref uint32_t data, int size = 32, ref int result = _null);
-      uint64_t aa[1], da[1];
+      put(cycle);
+      get(cycle);
+
+      for(i=0;i < addr.size(); i++)
+        data[i]  = cycle.data[i].d;
+      
+      result     = cycle.result;
+
+   endtask // readm
+
+   virtual task read(uint64_t addr, ref uint64_t data, input int size = 4, ref int result = _null);
+      uint64_t aa[], da[];
+      aa     = new[1];
+      da     = new[1];
       aa[0]  = addr;
-      read(aa, da, size, result);
+      readm(aa, da, size, result);
       data  = da[0];
    endtask
 
-
-   virtual task write(uint32_t addr, ref uint32_t data, int size = 32, ref int result = _null);
-      uint64_t aa[1], da[1];
+   virtual task write(uint64_t addr, uint64_t data, int size = 4, ref int result = _null);
+      uint64_t aa[], da[];
+      aa     = new[1];
+      da     = new[1];
+      
       aa[0]  = addr;
-      da[1]  = data;
-      write(aa, da, size, result);
+      da[0]  = data;
+      writem(aa, da, size, result);
    endtask
- -----/\----- EXCLUDED -----/\----- */
    
 endclass // CWishboneAccessor
 
