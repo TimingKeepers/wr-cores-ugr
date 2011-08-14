@@ -26,6 +26,8 @@ typedef struct {
    bit[31:0] fcs;
    bit error;
    bit has_payload;
+
+   byte raw_data[];
 } ether_frame_t;
 
 /* WR-compliant TX frame timestamp */

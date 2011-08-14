@@ -428,6 +428,8 @@ module fabric_emu
       int rand_val;
       int abort_me;
       int abort_offset;
+      int n;
+      
       
       
       int i, data_start, tot_len, payload_len;
@@ -492,10 +494,30 @@ module fabric_emu
 	 if(tx_eof_p1_i || tx_rerror_p1_i) break;
       
 	 wait_clk();
-      end
+         end
 
-      error    = tx_rerror_p1_i;
-      tot_len  = i;
+      error                         = tx_rerror_p1_i;
+      tot_len                       = i;
+
+      
+      n                             =0;
+
+      frame.raw_data                = new[10000];
+      
+      
+      for (i=0; i<tot_len && ctrl_vec[i] != `c_wrsw_ctrl_rx_oob; i++)
+        begin
+           frame.raw_data[2*i]      = data_vec[i] >> 8;
+           frame.raw_data[2*i + 1]  = data_vec[i] & 'hff;
+           n                        =n+2;
+        end
+
+      
+      if(bytesel_saved)
+	n--;
+
+      frame.raw_data                = new[n](frame.raw_data);
+
       
       frame.hdr.dst[47:32] = data_vec[0];
       frame.hdr.dst[31:16] = data_vec[1];
@@ -540,7 +562,7 @@ module fabric_emu
       frame.size 	      = payload_len;
       frame.error 	      = error;
 
-      dump_frame_header("RX: ", frame);
+//      dump_frame_header("RX: ", frame);
       rx_queue.push(frame);
       
       
