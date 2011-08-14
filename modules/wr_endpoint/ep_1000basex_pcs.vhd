@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-06-07
+-- Last update: 2011-08-14
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -342,7 +342,8 @@ begin  -- rtl
       phy_rx_enc_err_i => serdes_rx_enc_err_i
       );
 
-  txpcs_busy_o <= '1' when (synced = '0' and mdio_mcr_uni_en = '0') else txpcs_busy_int;
+  txpcs_busy_o <= txpcs_busy_int;
+  --'1' when (synced = '0' and mdio_mcr_uni_en = '0') else txpcs_busy_int;
 
   serdes_rst_o           <= (not pcs_reset_n) or mdio_mcr_pdown;
   mdio_wr_spec_bslide <= serdes_rx_bitslide_i;
@@ -362,8 +363,8 @@ begin  -- rtl
       wb_stb_i => wb_stb,
       wb_we_i  => mdio_rw_i,
       wb_ack_o => wb_ack,
-      tx_clk_i => tx_clk,
-      rx_clk_i => rx_clk,
+      tx_clk_i => serdes_tx_clk_i,
+      rx_clk_i => serdes_rx_clk_i,
 
       mdio_mcr_uni_en_o          => mdio_mcr_uni_en,
       mdio_mcr_anrestart_o       => mdio_mcr_anrestart,
