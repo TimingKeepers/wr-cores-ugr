@@ -2,11 +2,11 @@
 -- Title      : 1000base-X MAC/Endpoint
 -- Project    : WhiteRabbit Switch
 -------------------------------------------------------------------------------
--- File       : wrsw_endpoint.vhd
+-- File       : wr_endpoint.vhd
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-07-11
+-- Last update: 2011-08-11
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -37,8 +37,11 @@ library work;
 
 use work.gencores_pkg.all;
 use work.endpoint_private_pkg.all;
+use work.ep_wbgen2_pkg.all;
+use work.wr_fabric_pkg.all;
 
-entity wrsw_endpoint is
+
+entity wr_endpoint is
   
   generic (
     g_simulation          : integer := 0;
@@ -170,21 +173,19 @@ entity wrsw_endpoint is
     wb_stb_i  : in  std_logic;
     wb_we_i   : in  std_logic;
     wb_sel_i  : in  std_logic_vector(3 downto 0);
-    wb_addr_i : in  std_logic_vector(5 downto 0);
-    wb_data_i : in  std_logic_vector(31 downto 0);
-    wb_data_o : out std_logic_vector(31 downto 0);
+    wb_adr_i : in  std_logic_vector(5 downto 0);
+    wb_dat_i : in  std_logic_vector(31 downto 0);
+    wb_dat_o : out std_logic_vector(31 downto 0);
     wb_ack_o  : out std_logic
 
     );
 
-end wrsw_endpoint;
+end wr_endpoint;
 
-architecture syn of wrsw_endpoint is
+architecture syn of wr_endpoint is
 
-  
-
-  signal sv_zero : std_logic_vector(63 downto 0);
-  signal sv_one  : std_logic_vector(63 downto 0);
+  constant c_zeros : std_logic_vector(63 downto 0) := (others => '0');
+  constant c_ones  : std_logic_vector(63 downto 0) := (others => '0');
 
 
 -------------------------------------------------------------------------------
@@ -196,7 +197,6 @@ architecture syn of wrsw_endpoint is
   signal txpcs_valid           : std_logic;
   signal txpcs_error           : std_logic;
   signal txpcs_busy            : std_logic;
-  signal txpcs_fifo_almostfull : std_logic;
 
 -------------------------------------------------------------------------------
 -- Timestamping/OOB signals
@@ -210,7 +210,7 @@ architecture syn of wrsw_endpoint is
   --signal rxoob_ack   : std_logic;
 
   signal txpcs_timestamp_stb_p : std_logic;
-  --signal rxpcs_timestamp_stb_p : std_logic;
+  signal rxpcs_timestamp_stb_p : std_logic;
 
   --signal txts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
   --signal rxts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
@@ -247,7 +247,7 @@ architecture syn of wrsw_endpoint is
 -------------------------------------------------------------------------------
 
   signal rmon : t_rmon_triggers;
-  signal regs : t_ep_registers;
+  signal regs : t_ep_registers := c_ep_registers_init_value;
 
 -------------------------------------------------------------------------------
 -- flow control signals
@@ -258,7 +258,7 @@ architecture syn of wrsw_endpoint is
   --signal rxfra_pause_delay   : std_logic_vector(15 downto 0);
   --signal rxbuf_threshold_hit : std_logic;
 
-  signal txfra_pause       : std_logic;
+  signal txfra_pause_p       : std_logic;
   signal txfra_pause_ack   : std_logic;
   signal txfra_pause_delay : std_logic_vector(15 downto 0);
 
@@ -286,20 +286,18 @@ architecture syn of wrsw_endpoint is
   signal txfra_enable, rxfra_enable : std_logic;
   signal mdio_addr                  : std_logic_vector(15 downto 0);
 
-  signal regs : t_ep_registers;
-  
+  signal sink_in : t_wrf_sink_in;
+  signal sink_out : t_wrf_sink_out;
+    
 begin
 
-  regs <= c_ep_registers_init_value;
 
-  sv_zero <= (others => '0');
-  sv_one  <= (others => '1');
 
 -------------------------------------------------------------------------------
 -- 1000Base-X PCS
 -------------------------------------------------------------------------------
 
-  mdio_addr <= ep_mdio_sr_phyad & ep_mdio_cr_addr;
+  mdio_addr <= regs.mdio_asr_phyad_o & regs.mdio_cr_addr_o;
 
   U_PCS_1000BASEX : ep_1000basex_pcs
     generic map (
@@ -342,264 +340,301 @@ begin
 
       rmon_o => rmon,
 
-      mdio_addr_i  => regs.mdio_cr_addr_o,
+      mdio_addr_i  => mdio_addr,
       mdio_data_i  => regs.mdio_cr_data_o,
-      mdio_data_o  => regs.mdio_sr_rdata_i,
+      mdio_data_o  => regs.mdio_asr_rdata_i,
       mdio_stb_i   => regs.mdio_cr_data_wr_o,
       mdio_rw_i    => regs.mdio_cr_rw_o,
-      mdio_ready_o => regs.mdio_sr_ready_i);
+      mdio_ready_o => regs.mdio_asr_ready_i);
 
 
 -------------------------------------------------------------------------------
 -- TX FRAMER
 -------------------------------------------------------------------------------
 
-  txfra_enable <= link_ok and regs.ecr_tx_en_fra_o;
+  txfra_enable <= link_ok and regs.ecr_tx_en_o;
 
-  U_TX_FRA : ep_tx_framer
+  U_Tx_Framer: ep_tx_framer
+    generic map (
+      g_with_vlans       => g_with_vlans,
+      g_with_timestamper => g_with_timestamper)
     port map (
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_n_i,
-
-      pcs_data_o  => txpcs_data,
-      pcs_error_i => txpcs_error,
-      pcs_busy_i  => txpcs_busy,
-      pcs_valid_o => txpcs_valid,
-      pcs_dreq_i  => txpcs_dreq,
-
-      tx_data_i      => tx_data_i,
-      tx_ctrl_i      => tx_ctrl_i,
-      tx_bytesel_i   => tx_bytesel_i,
-      tx_sof_p1_i    => tx_sof_p1_i,
-      tx_eof_p1_i    => tx_eof_p1_i,
-      tx_dreq_o      => tx_dreq_o,
-      tx_valid_i     => tx_valid_i,
-      tx_rerror_p1_i => tx_rerror_p1_i,
-      tx_tabort_p1_i => tx_tabort_p1_i,
-      tx_terror_p1_o => tx_terror_p1_o,
-
-      oob_fid_value_o => txoob_fid_value,
-      oob_fid_stb_o   => txoob_fid_stb,
-
-      tx_pause_i       => txfra_pause,
-      tx_pause_ack_o   => txfra_pause_ack,
+      clk_sys_i        => clk_sys_i,
+      rst_n_i          => rst_n_i,
+      pcs_error_i      => txpcs_error,
+      pcs_busy_i       => txpcs_busy,
+      pcs_data_o       => txpcs_data,
+      pcs_dreq_i       => txpcs_dreq,
+      pcs_valid_o      => txpcs_valid,
+      snk_i            => sink_in,
+      snk_o            => sink_out,
+      tx_pause_i       => txfra_pause_p,
       tx_pause_delay_i => txfra_pause_delay,
-
+      tx_pause_ack_o   => txfra_pause_ack,
       tx_flow_enable_i => txfra_flow_enable,
+      oob_fid_value_o  => txoob_fid_value,
+      oob_fid_stb_o    => txoob_fid_stb,
+      regs_b           => regs);
 
-      regs_b => regs);
+
+ txfra_flow_enable <= '1';
+  txfra_pause_p <= '0';    
+
+  sink_in.dat <= snk_dat_i;
+  sink_in.adr <= snk_adr_i;
+  sink_in.sel <= snk_sel_i;
+  sink_in.cyc <= snk_cyc_i; 
+  sink_in.stb <= snk_stb_i;
+  sink_in.we  <= snk_we_i;
+  snk_stall_o <= sink_out.stall;
+  snk_ack_o <= sink_out.ack;
+  snk_err_o <= sink_out.err;
+  snk_rty_o <= sink_out.rty;
+  
+  --U_TX_FRA : ep_tx_framer
+  --  port map (
+  --    clk_sys_i => clk_sys_i,
+  --    rst_n_i   => rst_n_i,
+
+  --    pcs_data_o  => txpcs_data,
+  --    pcs_error_i => txpcs_error,
+  --    pcs_busy_i  => txpcs_busy,
+  --    pcs_valid_o => txpcs_valid,
+  --    pcs_dreq_i  => txpcs_dreq,
+
+  --    tx_data_i      => tx_data_i,
+  --    tx_ctrl_i      => tx_ctrl_i,
+  --    tx_bytesel_i   => tx_bytesel_i,
+  --    tx_sof_p1_i    => tx_sof_p1_i,
+  --    tx_eof_p1_i    => tx_eof_p1_i,
+  --    tx_dreq_o      => tx_dreq_o,
+  --    tx_valid_i     => tx_valid_i,
+  --    tx_rerror_p1_i => tx_rerror_p1_i,
+  --    tx_tabort_p1_i => tx_tabort_p1_i,
+  --    tx_terror_p1_o => tx_terror_p1_o,
+
+  --    oob_fid_value_o => txoob_fid_value,
+  --    oob_fid_stb_o   => txoob_fid_stb,
+
+  --    tx_pause_i       => txfra_pause,
+  --    tx_pause_ack_o   => txfra_pause_ack,
+  --    tx_pause_delay_i => txfra_pause_delay,
+
+  --    tx_flow_enable_i => txfra_flow_enable,
+
+  --    regs_b => regs);
 
 -------------------------------------------------------------------------------
 -- RX deframer
 -------------------------------------------------------------------------------
-  rxfra_enable <= link_ok and regs.ecr_rx_en_fra_o;
+  rxfra_enable <= link_ok and regs.ecr_rx_en_o;
 
-  U_RX_DFRA : ep_rx_deframer
-    port map (
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_n_i,
+--  U_RX_DFRA : ep_rx_deframer
+--    port map (
+--      clk_sys_i => clk_sys_i,
+--      rst_n_i   => rst_n_i,
 
-      pcs_data_i  => rxpcs_data,
-      pcs_dreq_o  => rxpcs_dreq,
-      pcs_valid_i => rxpcs_valid,
-      pcs_busy_i  => rxpcs_busy,
+--      pcs_data_i  => rxpcs_data,
+--      pcs_dreq_o  => rxpcs_dreq,
+--      pcs_valid_i => rxpcs_valid,
+--      pcs_busy_i  => rxpcs_busy,
 
-      oob_data_i  => rxoob_data,
-      oob_valid_i => rxoob_valid,
-      oob_ack_o   => rxoob_ack,
+--      oob_data_i  => rxoob_data,
+--      oob_valid_i => rxoob_valid,
+--      oob_ack_o   => rxoob_ack,
 
-      rbuf_sof_p1_o    => rbuf_sof_p,
-      rbuf_eof_p1_o    => rbuf_eof_p,
-      rbuf_ctrl_o      => rbuf_ctrl,
-      rbuf_data_o      => rbuf_data,
-      rbuf_valid_o     => rbuf_valid,
-      rbuf_drop_i      => rbuf_drop,
-      rbuf_bytesel_o   => rbuf_bytesel,
-      rbuf_rerror_p1_o => rbuf_error_p,
+--      rbuf_sof_p1_o    => rbuf_sof_p,
+--      rbuf_eof_p1_o    => rbuf_eof_p,
+--      rbuf_ctrl_o      => rbuf_ctrl,
+--      rbuf_data_o      => rbuf_data,
+--      rbuf_valid_o     => rbuf_valid,
+--      rbuf_drop_i      => rbuf_drop,
+--      rbuf_bytesel_o   => rbuf_bytesel,
+--      rbuf_rerror_p1_o => rbuf_error_p,
 
-      fc_pause_p_o     => rxfra_pause_p,
-      fc_pause_delay_o => rxfra_pause_delay,
+--      fc_pause_p_o     => rxfra_pause_p,
+--      fc_pause_delay_o => rxfra_pause_delay,
 
-      rmon_o => rmon,
-      regs_b => regs,
+--      rmon_o => rmon,
+--      regs_b => regs,
 
-      rtu_full_i => rtu_full_i,
+--      rtu_full_i => rtu_full_i,
 
-      rtu_rq_smac_o      => rtu_rq_smac_o,
-      rtu_rq_dmac_o      => rtu_rq_dmac_o,
-      rtu_rq_vid_o       => rtu_rq_vid_o,
-      rtu_rq_has_vid_o   => rtu_rq_has_vid_o,
-      rtu_rq_prio_o      => rtu_rq_prio_o,
-      rtu_rq_has_prio_o  => rtu_rq_has_prio_o,
-      rtu_rq_strobe_p1_o => rtu_rq_strobe_p1_o);
+--      rtu_rq_smac_o      => rtu_rq_smac_o,
+--      rtu_rq_dmac_o      => rtu_rq_dmac_o,
+--      rtu_rq_vid_o       => rtu_rq_vid_o,
+--      rtu_rq_has_vid_o   => rtu_rq_has_vid_o,
+--      rtu_rq_prio_o      => rtu_rq_prio_o,
+--      rtu_rq_has_prio_o  => rtu_rq_has_prio_o,
+--      rtu_rq_strobe_p1_o => rtu_rq_strobe_p1_o);
 
--------------------------------------------------------------------------------
--- RX buffer
--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+---- RX buffer
+---------------------------------------------------------------------------------
 
-  U_RX_BUF : ep_rx_buffer
-    generic map (
-      g_size_log2 => g_rx_buffer_size_log2)
-    port map (
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_n_i,
+--  U_RX_BUF : ep_rx_buffer
+--    generic map (
+--      g_size_log2 => g_rx_buffer_size_log2)
+--    port map (
+--      clk_sys_i => clk_sys_i,
+--      rst_n_i   => rst_n_i,
 
-      fra_data_i    => rbuf_data,
-      fra_ctrl_i    => rbuf_ctrl,
-      fra_sof_p_i   => rbuf_sof_p,
-      fra_eof_p_i   => rbuf_eof_p,
-      fra_error_p_i => rbuf_error_p,
-      fra_valid_i   => rbuf_valid,
-      fra_bytesel_i => rbuf_bytesel,
-      fra_drop_o    => rbuf_drop,
+--      fra_data_i    => rbuf_data,
+--      fra_ctrl_i    => rbuf_ctrl,
+--      fra_sof_p_i   => rbuf_sof_p,
+--      fra_eof_p_i   => rbuf_eof_p,
+--      fra_error_p_i => rbuf_error_p,
+--      fra_valid_i   => rbuf_valid,
+--      fra_bytesel_i => rbuf_bytesel,
+--      fra_drop_o    => rbuf_drop,
 
-      fab_data_o    => rx_data_o,
-      fab_ctrl_o    => rx_ctrl_o,
-      fab_sof_p_o   => rx_sof_p1_o,
-      fab_eof_p_o   => rx_eof_p1_o,
-      fab_error_p_o => rx_rerror_p1_o,
-      fab_bytesel_o => rx_bytesel_o,
-      fab_valid_o   => rx_valid_o,
-      fab_dreq_i    => rx_dreq_i,
+--      fab_data_o    => rx_data_o,
+--      fab_ctrl_o    => rx_ctrl_o,
+--      fab_sof_p_o   => rx_sof_p1_o,
+--      fab_eof_p_o   => rx_eof_p1_o,
+--      fab_error_p_o => rx_rerror_p1_o,
+--      fab_bytesel_o => rx_bytesel_o,
+--      fab_valid_o   => rx_valid_o,
+--      fab_dreq_i    => rx_dreq_i,
 
-      ep_ecr_rx_en_fra_i => regs.ecr_rx_en_fra_o,
+--      ep_ecr_rx_en_fra_i => regs.ecr_rx_en_fra_o,
 
-      buffer_used_o => rx_buffer_used);
+--      buffer_used_o => rx_buffer_used);
 
 -------------------------------------------------------------------------------
 -- Flow control unit
 -------------------------------------------------------------------------------
 
-  U_FLOW_CTL : ep_flow_control
-    port map (
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_n_i,
+  --U_FLOW_CTL : ep_flow_control
+  --  port map (
+  --    clk_sys_i => clk_sys_i,
+  --    rst_n_i   => rst_n_i,
 
-      rx_pause_p1_i    => rxfra_pause_p,
-      rx_pause_delay_i => rxfra_pause_delay,
+  --    rx_pause_p1_i    => rxfra_pause_p,
+  --    rx_pause_delay_i => rxfra_pause_delay,
 
-      tx_pause_o       => txfra_pause,
-      tx_pause_delay_o => txfra_pause_delay,
-      tx_pause_ack_i   => txfra_pause_ack,
+  --    tx_pause_o       => txfra_pause,
+  --    tx_pause_delay_o => txfra_pause_delay,
+  --    tx_pause_ack_i   => txfra_pause_ack,
 
-      tx_flow_enable_o => txfra_flow_enable,
+  --    tx_flow_enable_o => txfra_flow_enable,
 
-      rx_buffer_used_i => rx_buffer_used,
+  --    rx_buffer_used_i => rx_buffer_used,
 
-      ep_fcr_txpause_i   => regs.fcr_txpause_o,
-      ep_fcr_rxpause_i   => regs.fcr_rxpause_o,
-      ep_fcr_tx_thr_i    => regs.fcr_tx_thr_o,
-      ep_fcr_tx_quanta_i => regs.fcr_tx_quanta_o,
-      rmon_rcvd_pause_o  => rmon.rx_pause,
-      rmon_sent_pause_o  => rmon.tx_pause
-      );
+  --    ep_fcr_txpause_i   => regs.fcr_txpause_o,
+  --    ep_fcr_rxpause_i   => regs.fcr_rxpause_o,
+  --    ep_fcr_tx_thr_i    => regs.fcr_tx_thr_o,
+  --    ep_fcr_tx_quanta_i => regs.fcr_tx_quanta_o,
+  --    rmon_rcvd_pause_o  => rmon.rx_pause,
+  --    rmon_sent_pause_o  => rmon.tx_pause
+  --    );
 
 -------------------------------------------------------------------------------
 -- RMON counters
 -------------------------------------------------------------------------------
 
-  U_RMON_CNT : ep_rmon_counters
-    generic map (
-      g_num_counters   => 12,
-      g_ram_addr_width => 5)
-    port map (
-      clk_sys_i       => clk_sys_i,
-      rst_n_i         => rst_n_i,
-      cntr_rst_i      => ep_ecr_rst_cnt,
-      cntr_pulse_i    => rmon_counters(11 downto 0),
-      ram_addr_o      => ep_rmon_ram_addr,
-      ram_data_i      => ep_rmon_ram_data_o,
-      ram_data_o      => ep_rmon_ram_data_i,
-      ram_wr_o        => ep_rmon_ram_wr,
-      cntr_overflow_o => open);
+  --U_RMON_CNT : ep_rmon_counters
+  --  generic map (
+  --    g_num_counters   => 12,
+  --    g_ram_addr_width => 5)
+  --  port map (
+  --    clk_sys_i       => clk_sys_i,
+  --    rst_n_i         => rst_n_i,
+  --    cntr_rst_i      => ep_ecr_rst_cnt,
+  --    cntr_pulse_i    => rmon_counters(11 downto 0),
+  --    ram_addr_o      => ep_rmon_ram_addr,
+  --    ram_data_i      => ep_rmon_ram_data_o,
+  --    ram_data_o      => ep_rmon_ram_data_i,
+  --    ram_wr_o        => ep_rmon_ram_wr,
+  --    cntr_overflow_o => open);
 
-  ep_rmon_ram_rd <= '1';
+  --ep_rmon_ram_rd <= '1';
 
 -------------------------------------------------------------------------------
 -- Timestamping unit
 -------------------------------------------------------------------------------
 
-  U_EP_TSU : ep_timestamping_unit
-    generic map (
-      g_timestamp_bits_r => 28,
-      g_timestamp_bits_f => 4)
-    port map (
-      clk_ref_i      => clk_ref_i,
-      clk_sys_i      => clk_sys_i,
-      rst_n_i        => rst_n_i,
-      pps_csync_p1_i => pps_csync_p1_i,
+  --U_EP_TSU : ep_timestamping_unit
+  --  generic map (
+  --    g_timestamp_bits_r => 28,
+  --    g_timestamp_bits_f => 4)
+  --  port map (
+  --    clk_ref_i      => clk_ref_i,
+  --    clk_sys_i      => clk_sys_i,
+  --    rst_n_i        => rst_n_i,
+  --    pps_csync_p1_i => pps_csync_p1_i,
 
-      tx_timestamp_stb_p_i => txpcs_timestamp_stb_p,
-      rx_timestamp_stb_p_i => rxpcs_timestamp_stb_p,
+  --    tx_timestamp_stb_p_i => txpcs_timestamp_stb_p,
+  --    rx_timestamp_stb_p_i => rxpcs_timestamp_stb_p,
 
-      txoob_fid_i   => txoob_fid_value,
-      txoob_stb_p_i => txoob_fid_stb,
+  --    txoob_fid_i   => txoob_fid_value,
+  --    txoob_stb_p_i => txoob_fid_stb,
 
-      rxoob_data_o  => rxoob_data,
-      rxoob_valid_o => rxoob_valid,
-      rxoob_ack_i   => rxoob_ack,
+  --    rxoob_data_o  => rxoob_data,
+  --    rxoob_valid_o => rxoob_valid,
+  --    rxoob_ack_i   => rxoob_ack,
 
-      txtsu_port_id_o => txtsu_port_id_o,
-      txtsu_fid_o     => txtsu_frame_id_o,
-      txtsu_tsval_o   => txtsu_tsval_o,
-      txtsu_valid_o   => txtsu_valid_o,
-      txtsu_ack_i     => txtsu_ack_i,
+  --    txtsu_port_id_o => txtsu_port_id_o,
+  --    txtsu_fid_o     => txtsu_frame_id_o,
+  --    txtsu_tsval_o   => txtsu_tsval_o,
+  --    txtsu_valid_o   => txtsu_valid_o,
+  --    txtsu_ack_i     => txtsu_ack_i,
 
-      ep_tscr_en_txts_i  => regs.tscr_en_txts_o,
-      ep_tscr_en_rxts_i  => regs.tscr_en_rxts_o,
-      ep_tscr_cs_done_o  => regs.tscr_cs_done_i,
-      ep_tscr_cs_start_i => regs.tscr_cs_start_o,
-      ep_ecr_portid_i    => regs.ecr_portid_o);
+  --    ep_tscr_en_txts_i  => regs.tscr_en_txts_o,
+  --    ep_tscr_en_rxts_i  => regs.tscr_en_rxts_o,
+  --    ep_tscr_cs_done_o  => regs.tscr_cs_done_i,
+  --    ep_tscr_cs_start_i => regs.tscr_cs_start_o,
+  --    ep_ecr_portid_i    => regs.ecr_portid_o);
 
 -------------------------------------------------------------------------------
 -- DMTD phase meter
 ------------------------------------------------------------------------------  
 
-  U_DMTD : dmtd_phase_meas
-    generic map (
-      g_counter_bits         => 14,
-      g_deglitcher_threshold => 1000)
-    port map (
-      clk_sys_i => clk_sys_i,
+  --U_DMTD : dmtd_phase_meas
+  --  generic map (
+  --    g_counter_bits         => 14,
+  --    g_deglitcher_threshold => 1000)
+  --  port map (
+  --    clk_sys_i => clk_sys_i,
 
-      clk_a_i    => clk_ref_i,
-      clk_b_i    => phy_rx_clk_i,
-      clk_dmtd_i => clk_dmtd_i,
-      rst_n_i    => rst_n_i,
+  --    clk_a_i    => clk_ref_i,
+  --    clk_b_i    => phy_rx_clk_i,
+  --    clk_dmtd_i => clk_dmtd_i,
+  --    rst_n_i    => rst_n_i,
 
-      en_i           => regs.dmcr_en_o,
-      navg_i         => regs.dmcr_n_avg_o,
-      phase_meas_o   => phase_meas,
-      phase_meas_p_o => phase_meas_p);
+  --    en_i           => regs.dmcr_en_o,
+  --    navg_i         => regs.dmcr_n_avg_o,
+  --    phase_meas_o   => phase_meas,
+  --    phase_meas_p_o => phase_meas_p);
 
-  p_dmtd_update : process(clk_sys_i, rst_n_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
-        validity_cntr      <= (others => '0');
-        regs.dmsr_ps_rdy_i <= '0';
-      else
+  --p_dmtd_update : process(clk_sys_i, rst_n_i)
+  --begin
+  --  if rising_edge(clk_sys_i) then
+  --    if rst_n_i = '0' then
+  --      validity_cntr      <= (others => '0');
+  --      regs.dmsr_ps_rdy_i <= '0';
+  --    else
 
-        if(regs.dmcr_en = '0') then
-          validity_cntr      <= (others => '0');
-          regs.dmsr_ps_rdy_i <= '0';
-        elsif(regs.dmsr_ps_rdy_o = '1' and regs.dmsr_ps_rdy_load_o = '1') then
-          regs.dmsr_ps_rdy_i <= '0';
-        elsif(phase_meas_p = '1') then
+  --      if(regs.dmcr_en = '0') then
+  --        validity_cntr      <= (others => '0');
+  --        regs.dmsr_ps_rdy_i <= '0';
+  --      elsif(regs.dmsr_ps_rdy_o = '1' and regs.dmsr_ps_rdy_load_o = '1') then
+  --        regs.dmsr_ps_rdy_i <= '0';
+  --      elsif(phase_meas_p = '1') then
 
-          if(validity_cntr = "11") then
-            regs.dmsr_ps_rdy_i <= '1';
-            regs.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
-                                                            -- samples right
-                                                            -- after input change
-          else
-            regs.dmsr_ps_rdy_i <= '0';
-            validity_cntr      <= validity_cntr + 1;
-          end if;
-        end if;
-      end if;
-    end if;
-  end process;
+  --        if(validity_cntr = "11") then
+  --          regs.dmsr_ps_rdy_i <= '1';
+  --          regs.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
+  --                                                          -- samples right
+  --                                                          -- after input change
+  --        else
+  --          regs.dmsr_ps_rdy_i <= '0';
+  --          validity_cntr      <= validity_cntr + 1;
+  --        end if;
+  --      end if;
+  --    end if;
+  --  end if;
+  --end process;
 
 -------------------------------------------------------------------------------
 -- Wishbone controller & IO registers
@@ -609,9 +644,9 @@ begin
     port map (
       rst_n_i   => rst_n_i,
       wb_clk_i  => clk_sys_i,
-      wb_addr_i => wb_addr_i(5 downto 0),
-      wb_data_i => wb_data_i,
-      wb_data_o => wb_data_o,
+      wb_addr_i => wb_adr_i(5 downto 0),
+      wb_data_i => wb_dat_i,
+      wb_data_o => wb_dat_o,
       wb_cyc_i  => wb_cyc_i,
       wb_sel_i  => wb_sel_i,
       wb_stb_i  => wb_stb_i,
@@ -624,7 +659,7 @@ begin
       ep_rmon_ram_rd_i   => ep_rmon_ram_rd,
       ep_rmon_ram_data_i => ep_rmon_ram_data_i,
       ep_rmon_ram_data_o => ep_rmon_ram_data_o,
-      ep_rmon_ram_addr_i => ep_rmon_ram_addr
+      ep_rmon_ram_addr_i => ep_rmon_ram_addr,
 
       regs_b => regs
       );     
