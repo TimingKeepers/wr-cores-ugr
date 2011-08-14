@@ -117,7 +117,7 @@ peripheral {
 			
 			field {
 				name = "Receive timestamping enable";
-				description = "1: enables RX timestamping. RX timestamps are embedded into OOB field on the fabric interface\
+         description = "1: enables RX timestamping. RX timestamps are embedded into OOB field on the fabric interface. Must be enabled if used in a multi-port configuration (e.g. in a switch)\
 											 0: disables RX timestamping";
 				prefix = "EN_RXTS";
 				access_bus = READ_WRITE;
@@ -129,7 +129,7 @@ peripheral {
 				 name = "Timestamping counter synchronization start";
 				 prefix = "CS_START";
 				 description = "write 1: starts synchronizing the local PPS counter used for timestamping TX/RX packets with an external pulse provided on pps_i input.\
-                        After synchronization, SYNC_DONE flag will be set to 1. The counter value equals to 0 when PPS line is high.\
+                        After synchronization, the CS_DONE flag will be set to 1. The counter value equals to 0 when PPS line is high.\
 				                write 0: no effect";
 				 type = MONOSTABLE;
 				 clock = "tx_clk_i";
@@ -203,8 +203,8 @@ peripheral {
 		};
 
 		reg {
-			 name = "VLAN control register";
-			 prefix = "VCR";
+			 name = "VLAN control register 0";
+			 prefix = "VCR0";
 
 			 field {
 					name = "RX 802.1q port mode";
@@ -233,7 +233,7 @@ peripheral {
 			 };
 
 			 field {
-					name = "Port-assigned 802.1x priority";
+					name = "Port-assigned 802.1q priority";
 					description = "Packet priority value for retagging. When FIX_PRIO is 1, the endpoint uses this value as the packet priority. Otherwise, priority value is taken from 802.1q header if it's present. If there is no 802.1q header, the priority is assumed to be PRIO_VAL.";
 					prefix = "PRIO_VAL";
 					type = SLV;
@@ -254,6 +254,59 @@ peripheral {
 					access_bus = READ_WRITE;
 			 };
 		};
+
+    reg {
+       name = "VLAN Control Register 1";
+       prefix = "VCR1";
+       
+       field {
+          name = "Port untagged set bitmap VID";
+          prefix = "VID";
+          type = PASS_THROUGH;
+          size = 12;
+       };
+
+       field {
+          name = "Port untagged set bitmap value";
+          prefix = "VALUE";
+          type = PASS_THROUGH;
+          size = 1;
+       };
+    };
+
+    reg {
+       name = "Packet Filter Control Register";
+       prefix = "PFCR";
+       
+       field {
+          name = "Microcode Memory Address";
+          prefix = "MM_ADDR";
+          size = 7;
+          type = PASS_THROUGH;
+       };
+
+       field {
+          size = 18;
+          name = "Microcode Memory Data (half-word)";
+          prefix = "MM_DATA";
+          type = PASS_THROUGH;
+       };
+
+       field {
+          size = 1;
+          name = "Microcode Memory Write Enable";
+          prefix = "MM_WRITE";
+          type = PASS_THROUGH;
+       };
+
+       field {
+          type = BIT;
+          name = "Packet Filter Enable";
+          prefix = "ENABLE";
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
+    };
 
 	reg {
 		 name = "Flow Control Register";
@@ -418,7 +471,7 @@ peripheral {
 	 reg {
 			name = "MDIO Address/Status Register";
 			description = "Register with the current status of the MDIO interface";
-			prefix = "MDIO_SR";
+			prefix = "MDIO_ASR";
 
 
 			field {
