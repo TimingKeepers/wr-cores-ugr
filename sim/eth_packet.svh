@@ -132,16 +132,26 @@ class EthPacket;
    function bit equal(ref EthPacket b, int flags = _zero);
       
       if(src != b.src || dst != b.dst || ethertype != b.ethertype)
-        return 0;
-
+        begin
+           $display("notequal: hdr");
+           return 0;
+        end
+      
       if(is_q ^ b.is_q)
-        return 0;
+        begin
+           $display("notequal: q");
+           return 0;
+        end
 
       if(is_q && (vid != b.vid || pcp != b.pcp))
         return 0;
 
       if(payload != b.payload)
-        return 0;
+        begin
+           $display("notequal: payload");
+           return 0;
+        end
+//        return 0;
 
       if(flags & CMP_STATUS)
         if(error ^ b.error)
@@ -213,9 +223,10 @@ class EthPacketGenerator;
    static const int      DMAC       = (1<<1);
    static const int      ETHERTYPE  = (1<<2);
    static const int      VID        = (1<<3);
-   static const int      PCP        = (1<<4);
+   static const int      PCP        = (1<<4); 
    static const int      PAYLOAD    = (1<<5);
-   static const int TX_OOB             = (1<<6);
+   static const int      SEQ_PAYLOAD    = (1<<7);
+  static const int TX_OOB             = (1<<6);
    static const int      ALL        = SMAC | DMAC | VID | ETHERTYPE | PCP | PAYLOAD ;
    
 
@@ -242,11 +253,23 @@ class EthPacketGenerator;
    protected function dyn_array random_bvec(int size);
       byte v[];
       int i;
-      $display("RandomBVEC %d", size);
+//      $display("RandomBVEC %d", size);
       
       v       = new[size](v);
       for(i=0;i<size;i++)
         v[i]  = $dist_uniform(seed, 0, 256);
+   
+      return v;
+      
+   endfunction // random_bvec
+   
+   protected function dyn_array seq_payload(int size);
+      byte v[];
+      int i;
+      
+      v       = new[size](v);
+      for(i=0;i<size;i++)
+        v[i]  = i;
    
       return v;
       
@@ -266,16 +289,19 @@ class EthPacketGenerator;
       pkt.is_q                           = template.is_q;
       pkt.vid                            = template.vid;
       pkt.pcp                            = template.pcp;
+      pkt.has_smac                        = template.has_smac;
+      
 
-      $display("Size min %d max %d", min_size, max_size);
-
+//      $display("Size min %d max %d", min_size, max_size);
+ 
       if(r_flags & PAYLOAD) pkt.payload  = random_bvec($dist_uniform(seed, min_size, max_size));
+      else if(r_flags & SEQ_PAYLOAD) pkt.payload  = seq_payload($dist_uniform(seed, min_size, max_size));
       else pkt.payload                   = template.payload;
 
       if(r_flags & TX_OOB)
         begin
            pkt.ts.frame_id               = m_current_frame_id++;
-           pkt.oob_type                = TX_FID;
+           pkt.oob_type                  = TX_FID;
         end
       
       return pkt;
