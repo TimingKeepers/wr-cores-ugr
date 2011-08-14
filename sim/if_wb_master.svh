@@ -39,7 +39,6 @@ interface IWishboneMaster
    time last_access_t 	  = 0;
 
    struct {
-      wb_cycle_type_t mode;
       int gen_random_throttling;
       real throttle_prob;
       int little_endian;
@@ -95,17 +94,25 @@ interface IWishboneMaster
 
    function automatic logic[g_data_width-1:0] gen_data(uint64_t addr, uint64_t data, int xfer_size, int little_endian);
       const int dbytes  = (g_data_width/8-1);
-      $display("GenData: %x shift %d", data, (8 * (addr % xfer_size)));
+      logic[g_data_width-1:0] tmp;
+
+      tmp  = data << (8 * (dbytes - (xfer_size - 1 - (addr % xfer_size))));
+      
+//      $display("GenData: xs %d dbytes %d %x", tmp, xfer_size, dbytes);
     
   
-      return data << (8 * (dbytes - (xfer_size - 1 - (addr % xfer_size))));
+      return tmp;
+      
    endfunction // gen_data
 
-   function automatic uint64_t decode_data(uint64_t addr, int xfer_size, logic[g_data_width-1:0] data);
+   function automatic uint64_t decode_data(uint64_t addr, logic[g_data_width-1:0] data,  int xfer_size);
       int rem;
 
+//      $display("decode: %x", data);
+      
+
       rem  = addr % xfer_size;
-      return (data[rem] >> (8*rem)) & (1<<(xfer_size*8-1));
+      return (data[rem] >> (8*rem)) & ((1<<(xfer_size*8)) - 1);
    endfunction // decode_data
    
 
@@ -146,7 +153,7 @@ interface IWishboneMaster
 		break;
 	     end
 
-	   xfer[i].d 	 = decode_data(xfer[i].a, xfer[i].d, xfer[i].size);
+	   xfer[i].d 	 = decode_data(xfer[i].a, dat_i, xfer[i].size);
 	      
  	   cyc 		 <= 0;
 	   we 		 <= 0;
@@ -163,6 +170,26 @@ interface IWishboneMaster
    reg xf_idle 	     = 1;
    
 
+   int ack_cnt_int;
+
+   always@(posedge clk_i)
+     begin
+        if(!cyc)
+          ack_cnt_int <= 0;
+        else if(stb && !stall && !ack) 
+	     ack_cnt_int++;
+	else if((!stb || stall) && ack) 
+	     ack_cnt_int--;
+     end
+
+
+   task automatic count_ack(ref int ack_cnt);
+      if(stb && !stall && !ack) 
+	ack_cnt++;
+      else if((!stb || stall) && ack) 
+	ack_cnt--;
+   endtask
+   
    task automatic pipelined_write_cycle 
      (
       wb_xfer_t xfer[],
@@ -190,44 +217,9 @@ interface IWishboneMaster
       i    =0;
       
       while(i<n_xfers)
-	begin
-
-	   if(stb && !ack) 
-	     ack_count++;
-	   else if(!stb && ack) 
-	     ack_count--;
-
-	   if(err) begin
-	      result   = R_ERROR;
-	      failure  = 1;
-	      break;
-	   end
-	
-	   if(rty) begin
-	      result   = R_RETRY;
-	      failure  = 1;
-	      break;
-	      end
-	   
-	   if (stall || (settings.gen_random_throttling && probability_hit(settings.throttle_prob))) begin
-	      @(posedge clk_i);
-	   end else begin
-	      adr   <= gen_addr(xfer[i].a, xfer[i].size);
-	      stb   <= 1'b1;
-	      we    <= 1'b1;
-	      sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
-	      dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
-	      $display("wbWrite: a %x d %x xsize %d", xfer[i].a, xfer[i].d, xfer[i].size);
-		 i++;
-	      @(posedge clk_i);
-              stb <= 0;
-              we  <= 0;
-	   end
-
-	end // for (i=0;i<n_xfers;i++)
-
-      while((ack_count > 0) && !failure)
-	begin
+	begin 
+           count_ack(ack_count);
+          
            
 
 	   if(err) begin
@@ -240,6 +232,54 @@ interface IWishboneMaster
 	      result   = R_RETRY;
 	      failure  = 1;
 	      break;
+	      end
+
+          
+           if (!stall && settings.gen_random_throttling && probability_hit(settings.throttle_prob)) begin
+              stb <= 0;
+              we  <= 0;
+	      @(posedge clk_i);
+	   end else if(stall && we && stb) begin
+              stb <= 1'b1;
+              we  <= 1'b1;
+
+	      while(stall)
+                begin
+                   count_ack(ack_count);
+                   @(posedge clk_i);
+                   
+                end
+              
+	   end else begin
+	      adr   <= gen_addr(xfer[i].a, xfer[i].size);
+	      stb   <= 1'b1;
+	      we    <= 1'b1;
+	      sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
+	      dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
+	 //     $display("wbWrite:  i %d a %x d %x xsize %d",i, xfer[i].a, xfer[i].d, xfer[i].size);
+		 i++;
+	      @(posedge clk_i);
+              stb <= 1'b0;
+              we  <= 1'b0;
+              
+	   end
+
+	end // for (i=0;i<n_xfers;i++)
+
+      while((ack_count > 0) && !failure)
+	begin
+           $display("AckCount %d", ack_count);
+
+	   if(err) begin
+	      result   = R_ERROR;
+	      failure  = 1;
+	      break;
+	   end
+	   
+	   if(rty) begin
+	      result   = R_RETRY;
+	      failure  = 1;
+	      break;
 	   end
 
 	   if(stb && !ack) 
@@ -247,9 +287,11 @@ interface IWishboneMaster
 	   else if(!stb && ack) 
 	     ack_count--;
 	   @(posedge clk_i);
-	   end
+	end
 
-      cyc 	    <= 1'b0;
+      
+      
+      cyc <= 1'b0;
       @(posedge clk_i);
       
       result 	     = R_OK;
@@ -277,11 +319,8 @@ class CIWBMasterAccessor extends CWishboneAccessor;
    endtask // clear
 
    task put(ref wb_cycle_t xfer);
-       $display("WBMaster: PutCycle");
-      
+//       $display("WBMaster[%d]: PutCycle",g_data_width);
       request_queue.push_back(xfer);
-      $display("RQsize: %d", request_queue.size());
-      
    endtask // put
 
    function int idle();
@@ -311,7 +350,6 @@ endclass // CIWBMasterAccessor
        end
 
    initial begin
-      settings.mode 		      = PIPELINED;
       settings.gen_random_throttling  = 0;
       settings.throttle_prob 	      = 0.01;
    end
@@ -321,25 +359,36 @@ endclass // CIWBMasterAccessor
      begin
 	@(posedge clk_i);
 
-	
+
 	if(request_queue.size() > 0)
 	  begin
+
+             
 	     wb_cycle_t c;
+	     wb_cycle_result_t res;
 
 	     c 	= request_queue.pop_front();
 
-	     $display("WBMaster: got cycle [%d]", c.data.size());
+             case(c.ctype)
+               PIPELINED:
+                 begin
+                    if(c.rw) begin
+		       pipelined_write_cycle(c.data, c.data.size(), res);
+	               c.result  =res;
+	               c.data    = {};
+                    end
+                 end
+               CLASSIC:
+                 begin
+	         //   $display("WBMaster: got classic cycle [%d, rw %d]", c.data.size(), c.rw);
+                    classic_cycle(c.data, c.rw, c.data.size, res);
+	            c.result  =res;
 
-
-	     if(settings.mode == PIPELINED)
-	       begin
-		  wb_cycle_result_t res;
-		  pipelined_write_cycle(c.data, c.data.size(), res);
-		  c.result  =res;
-		  c.data    = {};
-		  
-		  result_queue.push_back(c);
-	       end
+                    
+                 end
+             endcase // case (c.ctype)
+             
+	     result_queue.push_back(c);
 	  end
      end
    
