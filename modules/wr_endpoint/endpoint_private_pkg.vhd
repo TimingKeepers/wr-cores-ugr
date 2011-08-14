@@ -3,6 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.ep_wbgen2_pkg.all;
+use work.wr_fabric_pkg.all;
 
 package endpoint_private_pkg is
   
@@ -99,8 +100,10 @@ package endpoint_private_pkg is
       mdio_ready_o            : out   std_logic);
   end component;
 
-
   component ep_tx_framer
+    generic (
+      g_with_vlans       : boolean;
+      g_with_timestamper : boolean);
     port (
       clk_sys_i        : in    std_logic;
       rst_n_i          : in    std_logic;
@@ -109,16 +112,8 @@ package endpoint_private_pkg is
       pcs_data_o       : out   std_logic_vector(17 downto 0);
       pcs_dreq_i       : in    std_logic;
       pcs_valid_o      : out   std_logic;
-      tx_data_i        : in    std_logic_vector(15 downto 0);
-      tx_ctrl_i        : in    std_logic_vector(4 - 1 downto 0);
-      tx_bytesel_i     : in    std_logic;
-      tx_sof_p1_i      : in    std_logic;
-      tx_eof_p1_i      : in    std_logic;
-      tx_dreq_o        : out   std_logic;
-      tx_valid_i       : in    std_logic;
-      tx_rerror_p1_i   : in    std_logic;
-      tx_tabort_p1_i   : in    std_logic;
-      tx_terror_p1_o   : out   std_logic;
+      snk_i            : in    t_wrf_sink_in;
+      snk_o            : out   t_wrf_sink_out;
       tx_pause_i       : in    std_logic;
       tx_pause_delay_i : in    std_logic_vector(15 downto 0);
       tx_pause_ack_o   : out   std_logic;
@@ -306,13 +301,21 @@ package body endpoint_private_pkg is
     variable dout : std_logic_vector(17 downto 0);
   begin
     dout(17) := bytesel;
-    if(sof = '1' or eof = '1' or error = '1') then
-      dout(16)          := '1';
+    if(sof = '1' or error = '1') then
+      -- tag = 01
+      dout(17 downto 16) := "01";
       dout(15)          := sof;
-      dout(14)          := eof;
+      dout(14) := 'X';
       dout(13)          := error;
       dout(12 downto 0) := (others => 'X');
+    elsif(eof = '1') then
+      -- tag = 1x
+      dout(17) := '1';
+      dout(16) := bytesel;
+      dout(15 downto 0) := data;
     else
+      -- tag = 00
+      dout(17) := '0';
       dout(16)          := '0';
       dout(15 downto 0) := data;
     end if;
@@ -322,7 +325,7 @@ package body endpoint_private_pkg is
   function f_is_data(data : in std_logic_vector; valid : in std_logic)
     return std_logic is
   begin
-    return data(16) and valid;
+    return not (data(16) or data(17)) and valid;
   end f_is_data;
 
 
@@ -330,7 +333,7 @@ package body endpoint_private_pkg is
     (data  : in std_logic_vector;
      valid : in std_logic) return std_logic is
   begin
-    if (valid = '1' and data(16) = '1' and data(15) = '1') then
+    if (valid = '1' and data(17) = '0' and data(16) = '1' and data(15) = '1') then
       return '1';
     else
       return '0';
@@ -341,7 +344,7 @@ package body endpoint_private_pkg is
     (data  : in std_logic_vector;
      valid : in std_logic) return std_logic is
   begin
-    if (valid = '1' and data(16) = '1' and data(14) = '1') then
+    if (valid = '1' and data(17) = '1') then
       return '1';
     else
       return '0';
@@ -352,7 +355,7 @@ package body endpoint_private_pkg is
     (data  : in std_logic_vector;
      valid : in std_logic) return std_logic is
   begin
-    if (valid = '1' and data(16) = '1' and data(13) = '1') then
+    if (valid = '1' and data(17) = '0' and data(16) = '1' and data(13) = '1') then
       return '1';
     else
       return '0';
@@ -363,8 +366,8 @@ package body endpoint_private_pkg is
     (data  : in std_logic_vector;
      valid : in std_logic) return std_logic is
   begin
-    if (valid = '1' and data(17) = '1' and data(16) = '0') then
-      return '1';
+    if (valid = '1' and data(17) = '1') then
+      return data(16);
     else
       return '0';
     end if;
