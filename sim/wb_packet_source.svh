@@ -2,7 +2,9 @@
  `define __WB_PACKET_SOURCE_SVH
 
 `include "simdrv_defs.svh"
+`include "eth_packet.svh"
 `include "if_wishbone_accessor.svh"
+
 
 virtual class EthPacketSource;
 
@@ -13,13 +15,15 @@ virtual class EthPacketSource;
 endclass // PacketSource
 
 
+
+
 class WBPacketSource extends EthPacketSource;
    protected CWishboneAccessor m_acc;
 
-   const bit [2:0] WRF_STATUS = 3'b110;
+   const bit [2:0] WRF_STATUS = 3'b100;
    const bit [2:0] WRF_DATA = 3'b000;
    const bit [2:0] WRF_OOB = 3'b010;
-   const bit [2:0] WRF_USER = 3'b100;
+   const bit [2:0] WRF_USER = 3'b110;
 
    const bit [3:0] WRF_OOB_TX_FID = 4'b0000;
    const bit [3:0] WRF_OOB_RX_TIMESTAMP = 4'b0001;
@@ -71,11 +75,13 @@ class WBPacketSource extends EthPacketSource;
       wb_xfer_t xf;
       
       cyc.ctype  = PIPELINED;
-
+      cyc.rw     = 1;
+      
+      
       /* First, the status register */
       
-      xf.a    = WRF_STATUS;
-      xf.d    = pack_status(pkt);
+      xf.a       = WRF_STATUS;
+      xf.d       = pack_status(pkt);
       xf.size    = 2;
 
       cyc.data.push_back(xf); 
@@ -112,7 +118,7 @@ class WBPacketSource extends EthPacketSource;
            
         end else begin
       
-//      $display("DataSize: %d\n", cyc.data.size());
+//      $display("WBPacketSource::send(): DataSize: %d\n", cyc.data.size());
 
            oob_p    = pack_oob(pkt);
 
