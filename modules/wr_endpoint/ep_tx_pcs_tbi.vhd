@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-08-14
+-- Last update: 2011-08-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ architecture behavioral of ep_tx_pcs_tbi is
   signal tx_catch_disparity                : std_logic;
   signal tx_odata_reg                      : std_logic_vector(7 downto 0);
   signal tx_state                          : t_tbif_tx_state;
-  signal tx_preamble_cntr                  : unsigned(2 downto 0);
+  signal tx_cntr                  : unsigned(3 downto 0);
   signal tx_cr_alternate                   : std_logic;
   signal tx_fifo_rdreq                     : std_logic;
   signal tx_newframe                       : std_logic;
@@ -284,11 +284,10 @@ begin
         tx_error           <= '0';
         tx_odata_reg       <= (others => '0');
         tx_is_k            <= '0';
-        tx_busy            <= '0';
         tx_cr_alternate    <= '0';
         tx_newframe        <= '0';
         tx_catch_disparity <= '0';
-        tx_preamble_cntr   <= (others => '0');
+        tx_cntr   <= (others => '0');
         tx_odd_length      <= '0';
         tx_rdreq_toggle    <= '0';
         rmon_o.tx_underrun <= '0';
@@ -319,31 +318,31 @@ begin
 
 -- endpoint wants to send Config_Reg
             if(an_tx_en_i = '1') then
-              tx_busy         <= '1';
               tx_state        <= TX_CR1;
               tx_cr_alternate <= '0';
               tx_fifo_rdreq   <= '0';
 
 -- we've got a new frame in the FIFO
-            elsif (tx_fifo_start = '1' and fifo_rdy = '1')then
+            elsif (tx_fifo_start = '1' and fifo_rdy = '1' and tx_cntr = "0000" )then
               tx_fifo_rdreq    <= '1';
               tx_newframe      <= '1';
               tx_state         <= TX_SPD;
-              tx_preamble_cntr <= "101";
-              tx_busy          <= '1';
+              tx_cntr <= "0101";
 
 -- host requested a calibration pattern
             elsif(mdio_wr_spec_tx_cal_i = '1') then
               tx_state        <= TX_CAL;
               tx_fifo_rdreq   <= '0';
-              tx_busy         <= '1';
               tx_cr_alternate <= '0';
             else
 -- continue sending idle sequences and checking if something has arrived in the
 -- FIFO
-              tx_fifo_rdreq <= (not tx_fifo_rdempty) and tx_fifo_enough_data;
+              if(tx_cntr /= "0000") then
+                tx_fifo_rdreq <= '0';
+              else
+                tx_fifo_rdreq <= (not tx_fifo_rdempty) and tx_fifo_enough_data;
+              end if;
               tx_state      <= TX_COMMA;
-              tx_busy       <= '0';
             end if;
 
             tx_is_k <= '0';
@@ -358,6 +357,9 @@ begin
 
             tx_catch_disparity <= '0';
 
+            if(tx_cntr /= "0000") then
+              tx_cntr <= tx_cntr - 1;
+            end if;
 -------------------------------------------------------------------------------
 -- State: CAL: transmit the calibration sequence
 -------------------------------------------------------------------------------
@@ -401,7 +403,6 @@ begin
             if(an_tx_en_i = '1') then
               tx_state <= TX_CR1;
             else
-              tx_busy  <= '0';
               tx_state <= TX_COMMA;
             end if;
 
@@ -421,13 +422,13 @@ begin
             tx_is_k      <= '0';
             tx_odata_reg <= c_preamble_char;
 
-            if (tx_preamble_cntr = "000") then
+            if (tx_cntr = "0000") then
               tx_state          <= TX_SFD;
               timestamp_stb_p_o <= '1';
               tx_rdreq_toggle   <= '1';
             end if;
 
-            tx_preamble_cntr <= tx_preamble_cntr - 1;
+            tx_cntr <= tx_cntr - 1;
 
 
 -------------------------------------------------------------------------------
@@ -447,7 +448,7 @@ begin
             -- toggle the TX FIFO request line, so we read a 16-bit word
             -- every 2 phy_tx_clk_i periods
 
-            tx_fifo_rdreq <= tx_rdreq_toggle and not tx_fifo_rdempty;
+            tx_fifo_rdreq <= tx_rdreq_toggle and not (tx_fifo_rdempty or tx_fifo_end);
 
             if((tx_fifo_rdempty = '1' or tx_fifo_abort = '1') and tx_fifo_end = '0') then  --
               -- FIFO underrun?
@@ -471,6 +472,7 @@ begin
 
               if (tx_fifo_end = '1' and (tx_rdreq_toggle = '0' or (tx_rdreq_toggle = '1' and tx_fifo_singlebyte = '1'))) then
                 tx_state <= TX_EPD;
+                tx_fifo_rdreq <= '0';
               end if;
             end if;
 
@@ -489,12 +491,13 @@ begin
           when TX_EXTEND =>
             tx_odata_reg <= c_k23_7;
             if(tx_odd_length = '0')then
-              tx_busy            <= '0';
               tx_state           <= TX_COMMA;
               tx_catch_disparity <= '1';
             else
               tx_odd_length <= '0';
             end if;
+
+            tx_cntr <= "1000";
 
 -------------------------------------------------------------------------------
 -- State GEN_ERROR: entered when an error occured. Just terminates the frame.
@@ -508,6 +511,7 @@ begin
     end if;
   end process;
 
+  tx_busy <= '1' when (tx_fifo_rdempty = '0') or (tx_state /= TX_IDLE and tx_state /= TX_COMMA) else '0';
 
 end behavioral;
 
