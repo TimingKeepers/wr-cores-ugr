@@ -101,7 +101,7 @@ end ep_tx_framer;
 
 architecture behavioral of ep_tx_framer is
 
-  constant c_IFG_LENGTH : integer := 8;
+  constant c_IFG_LENGTH : integer := 1;
 
   type t_tx_framer_state is (TXF_IDLE, TXF_ADDR, TXF_PAUSE, TXF_QHEADER, TXF_DATA, TXF_OOB, TXF_WAIT_CRC, TXF_EMBED_CRC1, TXF_EMBED_CRC2, TXF_EMBED_CRC3, TXF_GAP, TXF_PAD, TXF_ABORT);
 
@@ -269,7 +269,7 @@ begin  -- behavioral
     p_oob_fsm : process(clk_sys_i)
     begin
       if rising_edge(clk_sys_i) then
-        if (rst_n_i = '0' or snk_i.cyc = '0') then
+        if (rst_n_i = '0') then
           oob_state    <= OOB_IDLE;
           oob.valid    <= '0';
           oob.oob_type <= (others => '0');
@@ -279,6 +279,7 @@ begin  -- behavioral
             when OOB_IDLE =>
               if sof_p1 = '1' then
                 oob_state <= OOB_1;
+                OOB.valid <= '0';
               end if;
             when OOB_1 =>
               if(snk_valid = '1' and snk_i.adr = c_WRF_OOB) then
@@ -640,14 +641,14 @@ begin  -- behavioral
               snk_out.rty <= '0';
               q_bytesel   <= '0';
 
-              if(counter = c_IFG_LENGTH) then
+              if(oob.valid = '1') then
                 if(pcs_busy_i = '0') then
                   state <= TXF_IDLE;
                 end if;
-              else
-                counter <= counter + 1;
-              end if;
-
+                else
+                  state <= TXF_IDLE;
+                end if;
+                  
 -------------------------------------------------------------------------------
 -- TX FSM state ABORT: signalize underlying PCS block to abort the frame
 -- immediately, corrupting its contents
