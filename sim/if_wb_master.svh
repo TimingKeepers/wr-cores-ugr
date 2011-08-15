@@ -184,9 +184,9 @@ interface IWishboneMaster
 
 
    task automatic count_ack(ref int ack_cnt);
-      if(stb && !stall && !ack) 
-	ack_cnt++;
-      else if((!stb || stall) && ack) 
+//      if(stb && !stall && !ack) 
+//	ack_cnt++;
+      if (ack) 
 	ack_cnt--;
    endtask
    
@@ -213,8 +213,10 @@ interface IWishboneMaster
       while(stall)
 	@(posedge clk_i);
       
-      cyc <= 1'b1;
-      i    =0;
+      cyc       <= 1'b1;
+      i          =0;
+
+      ack_count  = n_xfers;
       
       while(i<n_xfers)
 	begin 
@@ -236,39 +238,43 @@ interface IWishboneMaster
 
           
            if (!stall && settings.gen_random_throttling && probability_hit(settings.throttle_prob)) begin
-              stb <= 0;
-              we  <= 0;
-	      @(posedge clk_i);
-	   end else if(stall && we && stb) begin
-              stb <= 1'b1;
-              we  <= 1'b1;
-
-	      while(stall)
-                begin
-                   count_ack(ack_count);
-                   @(posedge clk_i);
-                   
-                end
+              stb   <= 1'b0;
+              we    <= 1'b0;
+              @(posedge clk_i);
               
+             
 	   end else begin
 	      adr   <= gen_addr(xfer[i].a, xfer[i].size);
 	      stb   <= 1'b1;
 	      we    <= 1'b1;
 	      sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
 	      dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
-	 //     $display("wbWrite:  i %d a %x d %x xsize %d",i, xfer[i].a, xfer[i].d, xfer[i].size);
-		 i++;
 	      @(posedge clk_i);
-              stb <= 1'b0;
-              we  <= 1'b0;
-              
+              stb      <= 1'b0;
+              we       <= 1'b0;
+              if(stall)
+                begin
+                   stb <= 1'b1;
+                   we  <= 1'b1;
+                   while(stall)
+                     begin
+                        count_ack(ack_count);
+                        @(posedge clk_i);
+                   
+
+                     end
+                   stb      <= 1'b0;
+                   we       <= 1'b0;
+                end
+              i++;
 	   end
 
-	end // for (i=0;i<n_xfers;i++)
+	end // for (i   =0;i<n_xfers;i++)
 
+      
       while((ack_count > 0) && !failure)
 	begin
-           $display("AckCount %d", ack_count);
+      //     $display("AckCount %d", ack_count);
 
 	   if(err) begin
 	      result   = R_ERROR;
@@ -282,7 +288,10 @@ interface IWishboneMaster
 	      break;
 	   end
 
-	   if(stb && !ack) 
+
+           count_ack(ack_count);
+           
+           if(stb && !ack) 
 	     ack_count++;
 	   else if(!stb && ack) 
 	     ack_count--;
