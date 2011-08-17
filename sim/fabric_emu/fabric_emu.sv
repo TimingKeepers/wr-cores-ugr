@@ -417,6 +417,27 @@ module fabric_emu
       tx_queue.push(frame);
    endtask // send
 
+   task automatic send_raw(byte raw_data[]);
+      reg [`c_wrsw_ctrl_size - 1 : 0] ctrl_vec[0:2000];
+      reg [15:0] data_vec[0:2000];
+      int error, i;
+      
+
+      for(i=0; i<(raw_data.size()+1) / 2; i++)
+        begin
+           ctrl_vec[i]  = `c_wrsw_ctrl_payload;
+           data_vec[i][15:8] = raw_data[2*i];
+           data_vec[i][7:0] = raw_data[2*i+1];
+           
+        end
+      
+      
+      send_fabric(data_vec, ctrl_vec, ( raw_data.size() % 2) ? 1 : 0, i, i-1, error);
+      
+   endtask // send_raw
+   
+        
+
    // Handles WRF packet sink input
    task automatic rx_process();
 

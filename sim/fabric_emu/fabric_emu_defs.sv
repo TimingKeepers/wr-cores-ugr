@@ -26,7 +26,7 @@ typedef struct {
    bit[31:0] fcs;
    bit error;
    bit has_payload;
-
+   bit has_raw;
    byte raw_data[];
 } ether_frame_t;
 
