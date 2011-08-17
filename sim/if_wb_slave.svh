@@ -1,6 +1,9 @@
+`ifndef __IF_WISHBONE_SLAVE_SVH
+`define __IF_WISHBONE_SLAVE_SVH
+
 `timescale 1ns/1ps
 
-`include "if_wishbone_defs.sv"
+`include "if_wishbone_types.svh"
 
 
 
@@ -61,20 +64,20 @@ interface IWishboneSlave
 
 
    function automatic int _poll(); return poll(); endfunction
-   task automatic _get(output wb_cycle_t xfer); get(xfer); endtask
+   task automatic _get(ref wb_cycle_t xfer); get(xfer); endtask
 
-class CIWBSlaveAccessor extends CWishboneAccessor;
+   class CIWBSlaveAccessor extends CWishboneAccessor;
 
-   function automatic int poll();
-      return _poll();
-   endfunction
-	
-   task get(output wb_cycle_t xfer);
-      _get(xfer);
-   endtask
+      function automatic int poll();
+         return _poll();
+      endfunction
       
-   task clear();
-   endtask // clear
+      task get(ref wb_cycle_t xfer);
+         _get(xfer);
+      endtask
+      
+      task clear();
+      endtask // clear
       
    endclass // CIWBSlaveAccessor
    
@@ -90,7 +93,7 @@ class CIWBSlaveAccessor extends CWishboneAccessor;
       return c_queue.size() != 0;
    endfunction // poll
       
-   task automatic get(output wb_cycle_t xfer);
+   task automatic get(ref wb_cycle_t xfer);
       while(c_queue.size() <= 0)
 	@(posedge clk_i);
 	
@@ -127,10 +130,12 @@ class CIWBSlaveAccessor extends CWishboneAccessor;
       end
 
       if(cyc_end) begin
+     //    $display("IWBSlave: got cycle");
+         
 	 c_queue.push_back(current_cycle);
       end
 
-      if(stb && we) begin
+      if(stb && we && !stall) begin
 	 wb_xfer_t d;
 
 	 d.a 	 = adr;
@@ -141,11 +146,11 @@ class CIWBSlaveAccessor extends CWishboneAccessor;
 
 	 current_cycle.data.push_back(d);
 
-	// $display("ifWb: write a %x d %x sel %x", adr, dat_i, sel);
+//	$display("ifWb:[%d] write a %x d %x sel %x",current_cycle.data.size(), adr, dat_i, sel);
 	 ack <= 1;
 	 
-      end else if(stb && !we) begin
-	 $error("Sorry, no pipelined read for slave yet implemented");
+      end else if(stb && !we && !stall) begin
+//	 $error("Sorry, no pipelined read for slave yet implemented");
 	ack 			<= 0;
       end else
 	ack 			<= 0;
@@ -180,3 +185,5 @@ class CIWBSlaveAccessor extends CWishboneAccessor;
    
    
 endinterface // IWishboneSlave
+
+`endif
