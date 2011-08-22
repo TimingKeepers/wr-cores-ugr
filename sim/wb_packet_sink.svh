@@ -1,7 +1,11 @@
 `ifndef __WB_PACKET_SINK_SVH
  `define __WB_PACKET_SINK_SVH
 
-`include "wb_packet_source.svh"
+`include "simdrv_defs.svh"
+`include "eth_packet.svh"
+`include "if_wishbone_accessor.svh"
+
+`include "wb_fabric_defs.svh"
 
 virtual class EthPacketSink;
 
