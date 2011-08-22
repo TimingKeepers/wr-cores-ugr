@@ -114,6 +114,26 @@ interface IWishboneSlave
       
 	
    endtask // gen_random_stalls
+
+   function automatic int count_ones(int x, int n_bits);
+      int i, cnt;
+      cnt  = 0;
+      for(i=0;i<n_bits;i++) if(x & (1<<i)) cnt ++;
+      return cnt;
+   endfunction
+
+   function automatic int count_leading_zeroes(int x, int n_bits);
+     int i;
+      for(i=0;i<n_bits && !(x & (1<<i)); i++);
+      return i;
+   endfunction // count_leading_zeroes
+
+    function automatic int count_trailing_zeroes(int x, int n_bits);
+     int i;
+      for(i=n_bits-1;i>=0 && !(x & (1<<i)); i--);
+      return (n_bits-1-i);
+   endfunction
+
    
    task pipelined_fsm();
 
@@ -130,20 +150,26 @@ interface IWishboneSlave
       end
 
       if(cyc_end) begin
-     //    $display("IWBSlave: got cycle");
-         
 	 c_queue.push_back(current_cycle);
       end
 
       if(stb && we && !stall) begin
+         int oc, lzc, tzc;
+         
 	 wb_xfer_t d;
 
-	 d.a 	 = adr;
-	 d.d 	 = dat_i;
+         oc      = count_ones(sel, g_data_width/8);
+         lzc     = count_leading_zeroes(sel, g_data_width/8);
+         tzc     = count_trailing_zeroes(sel, g_data_width/8);
+	 d.a     = adr * (g_data_width / 8);
+         d.size  = oc;
+	 d.d     = (dat_i>>(8*lzc)) & ((1<<(oc*8)) -1);
+         
+         if(lzc + tzc + oc != g_data_width/8)
+           $error("IWishboneSlave [write a %x d %x sel %x]: non-contiguous sel", adr, dat_i, sel);
+         
 	 d.sel [g_data_width/8-1:0] = sel;
-	 
-	 d.size  = g_data_width; /* fixme */
-
+     
 	 current_cycle.data.push_back(d);
 
 //	$display("ifWb:[%d] write a %x d %x sel %x",current_cycle.data.size(), adr, dat_i, sel);
