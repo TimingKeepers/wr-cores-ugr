@@ -3,8 +3,8 @@ use ieee.std_logic_1164.all;
 
 entity ep_rx_bypass_queue is
   generic(
-    g_size : integer := 3;
-    g_width: integer := 18);
+    g_size  : integer := 3;
+    g_width : integer := 18);
 
   port(
     rst_n_i : in std_logic;
@@ -47,6 +47,8 @@ architecture behavioral of ep_rx_bypass_queue is
   signal queue         : t_queue_array;
   signal qempty, qfull : std_logic;
   signal flushing      : std_logic;
+  signal valid_mask    : std_logic;
+  signal valid_int : std_logic;
   
   
 begin  -- behavioral
@@ -59,6 +61,7 @@ begin  -- behavioral
     if rising_edge(clk_i) then
       if rst_n_i = '0' or purge_i = '1' then
         flushing <= '0';
+        valid_mask <= '0';
         for i in 0 to queue'length-1 loop
           queue(i).valid <= '0';
           queue(i).d     <= (others => '0');
@@ -71,11 +74,13 @@ begin  -- behavioral
           flushing <= '1';
         end if;
 
-        if (valid_i = '1' or (qempty = '0' and flushing = '1')) then
+        valid_mask <= dreq_i;
+        
+        if ((valid_i = '1') or (qempty = '0' and (flushing = '1' or flush_i = '1') and valid_int = '1')) then
           for i in 0 to queue'length-2 loop
-            queue(i+1) <= queue(i);
+            queue(i+1) <= queue(i);--
           end loop;  -- i
-          queue(0).d <= d_i;
+          queue(0).d     <= d_i;
           queue(0).valid <= valid_i;
         end if;
       end if;
@@ -84,6 +89,7 @@ begin  -- behavioral
 
   q_o     <= queue(queue'length-1).d;
   dreq_o  <= dreq_i and not flushing;
-  valid_o <= (qfull and valid_i) or (not qempty and flushing);
+  valid_int <= (qfull and valid_i) or (not qempty and flushing and valid_mask);
+  valid_o <= valid_int;
   
 end behavioral;
