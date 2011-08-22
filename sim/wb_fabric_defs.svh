@@ -10,3 +10,4 @@ const bit [3:0] WRF_OOB_TX_FID = 4'b0000;
 const bit [3:0] WRF_OOB_RX_TIMESTAMP = 4'b0001;
 
 `endif //  `ifndef __WB_FABRIC_DEFS_SVH
+
