@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-05-11
+-- Last update: 2011-08-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ end old_ep_rx_deframer;
 
 architecture behavioral of old_ep_rx_deframer is
 
-  component ep_rx_crc_size_check
+  component old_ep_rx_crc_size_check
     port (
       clk_sys_i           : in  std_logic;
       rst_n_i             : in  std_logic;
@@ -175,7 +175,7 @@ architecture behavioral of old_ep_rx_deframer is
 begin  -- behavioral
 
 
-  U_crc_size_checker : ep_rx_crc_size_check
+  U_crc_size_checker : old_ep_rx_crc_size_check
     port map (
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_n_i,

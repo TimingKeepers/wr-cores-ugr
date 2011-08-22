@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-05-11
+-- Last update: 2011-08-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ begin
       g_with_wr_almost_full    => true,
       g_with_wr_count          => false,
       g_almost_empty_threshold => 16,
-      g_almost_full_threshold  => 60)   -- fixme: make this a generic (or WB register)
+      g_almost_full_threshold  => 50)   -- fixme: make this a generic (or WB register)
     port map (
       rst_n_i           => tx_fifo_clear_n, 
       clk_wr_i          => clk_sys_i,

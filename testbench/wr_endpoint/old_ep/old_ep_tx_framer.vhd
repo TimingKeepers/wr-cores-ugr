@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-05-11
+-- Last update: 2011-08-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -544,7 +544,7 @@ begin  -- behavioral
 
   end process;
 
-  tx_dreq_o <= tx_ready_t or (not ep_tcr_en_fra_i);  -- /dev/null if disabled
+  tx_dreq_o <= (not pcs_fifo_almostfull_i and tx_ready_t) or (not ep_tcr_en_fra_i);  -- /dev/null if disabled
 
 -- generate the combinatorial PCS signals
   pcs_data_o       <= tx_data_t2f;
