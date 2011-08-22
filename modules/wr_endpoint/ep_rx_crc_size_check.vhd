@@ -13,16 +13,12 @@ entity ep_rx_crc_size_check is
   port(clk_sys_i : in std_logic;
        rst_n_i   : in std_logic;
 
-       enable_i : in std_logic;
-
-       snk_data_i  : in std_logic_vector(17 downto 0);
-       snk_valid_i : in std_logic;
+       snk_fab_i:in t_ep_internal_fabric;
        snk_dreq_o  : out std_logic;
 
-       src_data_o  : out std_logic_vector(17 downto 0);
-       src_valid_o : out std_logic;
+       src_fab_o:out t_ep_internal_fabric;
        src_dreq_i  : in  std_logic;
-
+      
        rmon_o : inout t_rmon_triggers;
        regs_b : inout t_ep_registers
        );
@@ -33,7 +29,7 @@ architecture behavioral of ep_rx_crc_size_check is
 
   constant c_MIN_FRAME_SIZE : integer := 64;
 
-  component ep_crc_bypass_queue
+  component ep_rx_bypass_queue
     generic (
       g_size  : integer;
       g_width : integer);
@@ -63,28 +59,20 @@ architecture behavioral of ep_rx_crc_size_check is
 
   signal state : t_state;
 
-  signal snk_sof, snk_eof, snk_bytesel, snk_error, snk_dvalid : std_logic;
 
   signal q_flush : std_logic;
   signal q_purge : std_logic;
   signal q_valid : std_logic;
-  signal q_data : std_logic_vector(17 downto 0);
-
-  signal src_eof, src_bytesel, src_error : std_logic;
-  signal valid_mask : std_logic;
-  signal last_bytesel : std_logic;
-
+  signal q_data  : std_logic_vector(15 downto 0);
+  signal q_bytesel : std_logic;
+  signal q_dvalid : std_logic;
   
 begin  -- behavioral
 
-  snk_sof     <= f_is_sof(snk_data_i, snk_valid_i);
-  snk_eof     <= f_is_eof(snk_data_i, snk_valid_i);
-  snk_bytesel <= f_is_single_byte(snk_data_i, snk_valid_i);
-  snk_error   <= f_is_error(snk_data_i, snk_valid_i);
-  snk_dvalid  <= f_is_data(snk_data_i, snk_valid_i);
+  regs_b <= c_ep_registers_init_value;
 
-  crc_gen_reset <= snk_sof or (not rst_n_i);
-
+  crc_gen_reset <= snk_fab_i.sof or (not rst_n_i);
+  
   U_rx_crc_generator : gc_crc_gen
     generic map (
       g_polynomial              => x"04C11DB7",
@@ -98,21 +86,21 @@ begin  -- behavioral
     port map (
       clk_i   => clk_sys_i,
       rst_i   => crc_gen_reset,
-      en_i    => snk_dvalid,
-      half_i  => snk_bytesel,
-      data_i  => snk_data_i(15 downto 0),
+      en_i    => snk_fab_i.dvalid,
+      half_i  => snk_fab_i.bytesel,
+      data_i  => snk_fab_i.data(15 downto 0),
       match_o => crc_match,
       crc_o   => open);
 
-  U_bypass_queue : ep_crc_bypass_queue
+  U_bypass_queue : ep_rx_bypass_queue
     generic map (
-      g_size => 3,
-      g_width => 18)
+      g_size  => 2,
+      g_width => 16)
     port map (
       rst_n_i => rst_n_i,
       clk_i   => clk_sys_i,
-      d_i     => snk_data_i,
-      valid_i => snk_dvalid,
+      d_i     => snk_fab_i.data,
+      valid_i => snk_fab_i.dvalid,
       dreq_o  => snk_dreq_o,
       q_o     => q_data,
       valid_o => q_valid,
@@ -124,17 +112,17 @@ begin  -- behavioral
   p_count_bytes : process (clk_sys_i, rst_n_i)
   begin  -- process
     if rising_edge(clk_sys_i) then
-      if (rst_n_i = '0' or enable_i = '0') then
+      if (rst_n_i = '0' or regs_b.ecr_rx_en_o = '0') then
         byte_cntr <= (others => '0');
         is_runt   <= '0';
         is_giant  <= '0';
       else
-        if(snk_sof = '1') then
+        if(snk_fab_i.sof = '1') then
           byte_cntr <= (others => '0');
         end if;
 
-        if(snk_dvalid = '1') then
-          if(snk_bytesel = '1') then
+        if(snk_fab_i.dvalid = '1') then
+          if(snk_fab_i.bytesel = '1') then
             byte_cntr <= byte_cntr + 1;
           else
             byte_cntr <= byte_cntr + 2;
@@ -165,11 +153,11 @@ begin  -- behavioral
   begin
     if rising_edge(clk_sys_i) then
 
-      if rst_n_i = '0' or enable_i = '0' then
+      if rst_n_i = '0' or regs_b.ecr_rx_en_o = '0' then
 
         q_flush    <= '0';
         q_purge    <= '0';
-        valid_mask <= '0';
+        q_bytesel <= '0';
 
         state <= ST_WAIT_FRAME;
 
@@ -181,64 +169,67 @@ begin  -- behavioral
       else
         case state is
           when ST_WAIT_FRAME =>
-            q_flush         <= '0';
-            q_purge         <= '0';
-            valid_mask      <= '1';
+            q_flush           <= '0';
+            q_purge           <= '0';
             rmon_o.rx_pcs_err <= '0';
             rmon_o.rx_giant   <= '0';
             rmon_o.rx_runt    <= '0';
             rmon_o.rx_crc_err <= '0';
+            q_bytesel <='0';
+            src_fab_o.eof     <= '0';
+            src_fab_o.error   <= '0';
 
-            src_eof     <= '0';
-            src_error   <= '0';
-            src_bytesel <= '0';
-
-            if(snk_sof = '1') then
-              state   <= ST_DATA;
+            if(snk_fab_i.sof = '1') then
+              state <= ST_DATA;
             end if;
 
           when ST_DATA =>
 
-            if (snk_dvalid = '1') then
-              last_bytesel <= snk_bytesel;
-              valid_mask   <= '1';
+            if(snk_fab_i.dvalid= '1') then
+              q_bytesel<=snk_fab_i.bytesel;
             end if;
+            
+            if(snk_fab_i.error = '1') then    -- an error from the source?
 
-            if(snk_error = '1') then    -- an error from the source?
-
-              src_error       <= '1';
+              src_fab_o.error         <= '1';
               rmon_o.rx_pcs_err <= '1';
-              state           <= ST_WAIT_FRAME;
-              q_purge         <= '1';
+              state             <= ST_WAIT_FRAME;
+              q_purge           <= '1';
 
             end if;
 
-            if(snk_eof = '1') then      -- we've got a valid frame
-              state <= ST_WAIT_FRAME;
-
-              if(size_check_ok = '0' or crc_match = '0') then  -- bad frame?
-                src_error <= '1';
-              else
-                src_eof <= '1';
-              end if;
+            if(snk_fab_i.eof = '1') then
 
               if(regs_b.rfcr_keep_crc_o = '0') then
-                valid_mask <= '0';
                 q_purge    <= '1';
               else
                 q_flush <= '1';
               end if;
+        
+            state <= ST_WAIT_FRAME;
 
-              rmon_o.rx_runt    <= is_runt and (not regs_b.rfcr_a_runt_o);
-              rmon_o.rx_giant   <= is_giant and (not regs_b.rfcr_a_giant_o);
-              rmon_o.rx_crc_err <= not crc_match;
-              
+            if(size_check_ok = '0' or crc_match = '0') then  -- bad frame?
+              src_fab_o.error <= '1';
+            else
+              src_fab_o.eof <= '1';
             end if;
+
+
+            rmon_o.rx_runt    <= is_runt and (not regs_b.rfcr_a_runt_o);
+            rmon_o.rx_giant   <= is_giant and (not regs_b.rfcr_a_giant_o);
+            rmon_o.rx_crc_err <= not crc_match;
+            
+            end if;
+   
         end case;
       end if;
     end if;
   end process;
 
+  src_fab_o.sof <= regs_b.ecr_rx_en_o and snk_fab_i.sof;
+  src_fab_o.dvalid<=q_valid;
+  src_fab_o.data <=q_data;
+  src_fab_o.bytesel<=snk_fab_i.bytesel or q_bytesel;
   
 end behavioral;
 

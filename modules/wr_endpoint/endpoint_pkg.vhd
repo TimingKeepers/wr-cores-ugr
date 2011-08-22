@@ -22,9 +22,9 @@ package endpoint_pkg is
   constant c_preamble_char : std_logic_vector(7 downto 0) := "01010101";
   constant c_preamble_sfd  : std_logic_vector(7 downto 0) := "11010101";
 
-  constant c_QMODE_PORT_ACCESS : std_logic_vector(1 downto 0) := "00";
-  constant c_QMODE_PORT_TRUNK  : std_logic_vector(1 downto 0) := "01";
-  constant c_QMODE_PORT_NONE   : std_logic_vector(1 downto 0) := "11";
+  constant c_QMODE_PORT_ACCESS          : std_logic_vector(1 downto 0) := "00";
+  constant c_QMODE_PORT_TRUNK           : std_logic_vector(1 downto 0) := "01";
+  constant c_QMODE_PORT_UNQUALIFIED     : std_logic_vector(1 downto 0) := "11";
 
 
   constant c_WRF_STATUS : std_logic_vector(1 downto 0) := "11";
@@ -312,66 +312,7 @@ package endpoint_pkg is
       rdisp_err_o : out std_logic;
       out_8b_o    : out std_logic_vector(7 downto 0));
   end component;
-
-  component ep_1000basex_pcs
-    generic (
-      g_simulation : integer;
-      g_phy_mode   : string);
-    port (
-      rst_n_i                 : in  std_logic;
-      clk_sys_i               : in  std_logic;
-      rxpcs_busy_o            : out std_logic;
-      rxpcs_data_o            : out std_logic_vector(15 downto 0);
-      rxpcs_bytesel_o         : out std_logic;
-      rxpcs_sof_o             : out std_logic;
-      rxpcs_eof_o             : out std_logic;
-      rxpcs_error_o           : out std_logic;
-      rxpcs_dreq_i            : in  std_logic;
-      rxpcs_valid_o           : out std_logic;
-      rxpcs_timestamp_stb_p_o : out std_logic;
-      txpcs_data_i            : in  std_logic_vector(15 downto 0);
-      txpcs_bytesel_i         : in  std_logic;
-      txpcs_sof_i             : in  std_logic;
-      txpcs_eof_i             : in  std_logic;
-      txpcs_abort_i           : in  std_logic;
-      txpcs_error_p_o         : out std_logic;
-      txpcs_busy_o            : out std_logic;
-      txpcs_valid_i           : in  std_logic;
-      txpcs_fifo_almostfull_o : out std_logic;
-      txpcs_timestamp_stb_p_o : out std_logic;
-      link_ok_o               : out std_logic;
-      tbi_rbclk_i             : in  std_logic;
-      tbi_rxdata_i            : in  std_logic_vector(9 downto 0);
-      tbi_txclk_i             : in  std_logic;
-      tbi_txdata_o            : out std_logic_vector(9 downto 0);
-      tbi_syncen_o            : out std_logic;
-      tbi_loopen_o            : out std_logic;
-      tbi_prbsen_o            : out std_logic;
-      tbi_enable_o            : out std_logic;
-      gtp_tx_clk_i            : in  std_logic;
-      gtp_tx_data_o           : out std_logic_vector(7 downto 0);
-      gtp_tx_k_o              : out std_logic;
-      gtp_tx_disparity_i      : in  std_logic;
-      gtp_tx_enc_err_i        : in  std_logic;
-      gtp_rx_data_i           : in  std_logic_vector(7 downto 0);
-      gtp_rx_clk_i            : in  std_logic;
-      gtp_rx_k_i              : in  std_logic;
-      gtp_rx_enc_err_i        : in  std_logic;
-      gtp_rx_bitslide_i       : in  std_logic_vector(3 downto 0);
-      gtp_rst_o               : out std_logic;
-      gtp_loopen_o            : out std_logic;
-      rmon_syncloss_p_o       : out std_logic;
-      rmon_invalid_code_p_o   : out std_logic;
-      rmon_rx_overrun_p_o     : out std_logic;
-      rmon_tx_underrun_o      : out std_logic;
-      mdio_addr_i             : in  std_logic_vector(7 downto 0);
-      mdio_data_i             : in  std_logic_vector(15 downto 0);
-      mdio_data_o             : out std_logic_vector(15 downto 0);
-      mdio_stb_i              : in  std_logic;
-      mdio_rw_i               : in  std_logic;
-      mdio_ready_o            : out std_logic);
-  end component;
-
+  
   component wrsw_endpoint
     generic (
       g_simulation          : integer := 0;

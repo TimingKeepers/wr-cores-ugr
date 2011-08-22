@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-08-14
+-- Last update: 2011-08-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ use work.endpoint_private_pkg.all;
 entity ep_1000basex_pcs is
 
   generic (
-    g_simulation : integer);
+    g_simulation : boolean);
 
   port (
     rst_n_i   : in std_logic;
@@ -58,16 +58,14 @@ entity ep_1000basex_pcs is
 
     -- PCS <-> MAC Interface
 
+    rxpcs_fab_o: out t_ep_internal_fabric;
     rxpcs_busy_o            : out std_logic;
-    rxpcs_data_o            : out std_logic_vector(17 downto 0);
     rxpcs_dreq_i            : in  std_logic;
-    rxpcs_valid_o           : out std_logic;
     rxpcs_timestamp_stb_p_o : out std_logic;
 
-    txpcs_data_i            : in  std_logic_vector(17 downto 0);
+    txpcs_fab_i: in t_ep_internal_fabric;
     txpcs_error_o           : out std_logic;
     txpcs_busy_o            : out std_logic;
-    txpcs_valid_i           : in  std_logic;
     txpcs_dreq_o            : out std_logic;
     txpcs_timestamp_stb_p_o : out std_logic;
 
@@ -111,14 +109,14 @@ end ep_1000basex_pcs;
 
 architecture rtl of ep_1000basex_pcs is
 
+
   component ep_tx_pcs_tbi
     port (
       rst_n_i               : in    std_logic;
       clk_sys_i             : in    std_logic;
-      pcs_data_i            : in    std_logic_vector(17 downto 0);
+      pcs_fab_i             : in    t_ep_internal_fabric;
       pcs_error_o           : out   std_logic;
       pcs_busy_o            : out   std_logic;
-      pcs_valid_i           : in    std_logic;
       pcs_dreq_o            : out   std_logic;
       mdio_mcr_pdown_i      : in    std_logic;
       mdio_wr_spec_tx_cal_i : in    std_logic;
@@ -135,14 +133,13 @@ architecture rtl of ep_1000basex_pcs is
 
   component ep_rx_pcs_tbi
     generic (
-      g_simulation : integer);
+      g_simulation : boolean);
     port (
       clk_sys_i                  : in    std_logic;
       rst_n_i                    : in    std_logic;
-      pcs_busy_o                 : out   std_logic;
-      pcs_data_o                 : out   std_logic_vector(17 downto 0);
       pcs_dreq_i                 : in    std_logic;
-      pcs_valid_o                : out   std_logic;
+      pcs_busy_o                 : out   std_logic;
+      pcs_fab_o                  : out   t_ep_internal_fabric;
       timestamp_stb_p_o          : out   std_logic;
       phy_rx_clk_i               : in    std_logic;
       phy_rx_data_i              : in    std_logic_vector(7 downto 0);
@@ -159,7 +156,6 @@ architecture rtl of ep_1000basex_pcs is
       an_idle_match_o            : out   std_logic;
       rmon_o                     : inout t_rmon_triggers);
   end component;
-
 
   component ep_pcs_tbi_mdio_wb
     port (
@@ -203,7 +199,7 @@ architecture rtl of ep_1000basex_pcs is
 
   component ep_autonegotiation
     generic (
-      g_simulation : integer);
+      g_simulation : boolean);
     port (
       clk_sys_i               : in  std_logic;
       rst_n_i                 : in  std_logic;
@@ -288,10 +284,10 @@ begin  -- rtl
     port map (
       rst_n_i     => pcs_reset_n,
       clk_sys_i   => clk_sys_i,
-      pcs_data_i  => txpcs_data_i,
+
+      pcs_fab_i  => txpcs_fab_i,
       pcs_error_o => txpcs_error_o,
       pcs_busy_o  => txpcs_busy_int,
-      pcs_valid_i => txpcs_valid_i,
       pcs_dreq_o  => txpcs_dreq_o,
 
       mdio_mcr_pdown_i      => mdio_mcr_pdown,
@@ -316,10 +312,10 @@ begin  -- rtl
     port map (
       clk_sys_i   => clk_sys_i,
       rst_n_i     => pcs_reset_n,
+
       pcs_busy_o  => rxpcs_busy_o,
-      pcs_data_o  => rxpcs_data_o,
+      pcs_fab_o  => rxpcs_fab_o,
       pcs_dreq_i  => rxpcs_dreq_i,
-      pcs_valid_o => rxpcs_valid_o,
 
       timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
 

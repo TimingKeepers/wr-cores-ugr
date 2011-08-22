@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-05-27
+-- Last update: 2011-08-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ use work.endpoint_private_pkg.all;
 
 entity ep_rx_pcs_tbi is
   generic (
-    g_simulation : integer);
+    g_simulation : boolean);
   port (
 -- 62.5 MHz refclk divided by 2
     clk_sys_i : in std_logic;
@@ -64,16 +64,12 @@ entity ep_rx_pcs_tbi is
 -- reset (refclk2-synchronous)
     rst_n_i : in std_logic;
 
--- RX path busy indicator (active HI),
--- asserted means that receiver is in the middle of reception
--- of a frame
-    pcs_busy_o  : out std_logic;
-    -- data FIFO output
-    pcs_data_o  : out std_logic_vector(17 downto 0);
--- HI requests a single word from RX FIFO
     pcs_dreq_i  : in  std_logic;
-    -- HI indicates that there is valid data present on pcs_data_o
-    pcs_valid_o : out std_logic;
+-- RX path busy indicator (active HI).
+-- When asserted, the receiver is in the middle of reception of a frame
+    pcs_busy_o  : out std_logic;
+-- data FIFO output
+    pcs_fab_o: out t_ep_internal_fabric;
 
     timestamp_stb_p_o : out std_logic;  -- strobe for RX timestamping
 
@@ -124,7 +120,7 @@ architecture behavioral of ep_rx_pcs_tbi is
   function f_calc_pattern_counter_bits
     return integer is
   begin  -- f_calc_pattern_counter_bits
-    if(g_simulation /= 0) then
+    if(g_simulation) then
       return 8;                         -- use smaller calibration counter to
                                         -- speed up the simulation
     else
@@ -337,26 +333,31 @@ begin
 
   -- FIFO input data formatting
   fifo_wrreq <= fifo_wr_toggle and fifo_mask_write;
-  fifo_in    <= f_encode_fabric_int(fifo_rx_data, fifo_sof, fifo_eof, fifo_bytesel, fifo_error);
+  fifo_in    <= f_pack_fifo_contents (
+    fifo_rx_data,
+    fifo_sof,
+    fifo_eof,
+    fifo_bytesel,
+    fifo_error);
 
 -- Clock adjustment FIFO
-  U_RX_FIFO : generic_async_fifo
+  U_Rx_FIFO : generic_async_fifo
     generic map (
       g_data_width             => 18,
       g_size                   => 32,
-      g_with_wr_almost_full    => true,
-      g_with_rd_almost_empty   => true,
-      g_almost_empty_threshold => 4,
-      g_almost_full_threshold  => 30)
+      g_with_wr_almost_full    => false,
+      g_with_rd_almost_empty   => false)
+--      g_almost_empty_threshold => 4,
+--      g_almost_full_threshold  => 26)
     port map (
       rst_n_i           => fifo_clear_n,
       clk_wr_i          => phy_rx_clk_i,
       d_i               => fifo_in,
       we_i              => fifo_wrreq,
       wr_empty_o        => open,
-      wr_full_o         => open,
+      wr_full_o         => fifo_almostfull,
       wr_almost_empty_o => open,
-      wr_almost_full_o  => fifo_almostfull,
+      wr_almost_full_o  => open,
       wr_count_o        => open,
       clk_rd_i          => clk_sys_i,
       q_o               => fifo_out,
@@ -382,9 +383,13 @@ begin
   end process;
 
   -- FIFO output data formatting
-  pcs_data_o  <= fifo_out;
-  pcs_valid_o <= pcs_valid_int;
-
+  pcs_fab_o.sof <= f_fifo_is_sof(fifo_out, pcs_valid_int);
+  pcs_fab_o.eof <= f_fifo_is_eof(fifo_out, pcs_valid_int);
+  pcs_fab_o.error <= f_fifo_is_error(fifo_out, pcs_valid_int);
+  pcs_fab_o.dvalid <= f_fifo_is_data(fifo_out, pcs_valid_int);
+  pcs_fab_o.bytesel <= f_fifo_is_single_byte(fifo_out, pcs_valid_int);
+  pcs_fab_o.data <= fifo_out(15 downto 0);
+  
   -- FIFO control signals
   rx_rdreq <= (not fifo_empty) and pcs_dreq_i;
 

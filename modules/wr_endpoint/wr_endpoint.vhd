@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-08-11
+-- Last update: 2011-08-22
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ use work.wr_fabric_pkg.all;
 entity wr_endpoint is
   
   generic (
-    g_simulation          : integer := 0;
+    g_simulation          : boolean := true;
     g_interface_mode      : string  := "SERDES";
     g_rx_buffer_size_log2 : integer := 12;
     g_with_timestamper    : boolean := true;
@@ -192,9 +192,8 @@ architecture syn of wr_endpoint is
 -- TX FRAMER -> TX PCS signals
 -------------------------------------------------------------------------------
 
-  signal txpcs_data            : std_logic_vector(17 downto 0);
+  signal txpcs_fab : t_ep_internal_fabric;
   signal txpcs_dreq            : std_logic;
-  signal txpcs_valid           : std_logic;
   signal txpcs_error           : std_logic;
   signal txpcs_busy            : std_logic;
 
@@ -205,9 +204,9 @@ architecture syn of wr_endpoint is
   signal txoob_fid_value : std_logic_vector(15 downto 0);
   signal txoob_fid_stb   : std_logic;
 
-  --signal rxoob_data  : std_logic_vector(47 downto 0);
-  --signal rxoob_valid : std_logic;
-  --signal rxoob_ack   : std_logic;
+  signal rxoob_data  : std_logic_vector(47 downto 0);
+  signal rxoob_valid : std_logic;
+  signal rxoob_ack   : std_logic;
 
   signal txpcs_timestamp_stb_p : std_logic;
   signal rxpcs_timestamp_stb_p : std_logic;
@@ -221,10 +220,9 @@ architecture syn of wr_endpoint is
 -- RX PCS -> RX DEFRAMER signals
 -------------------------------------------------------------------------------
 
+  signal rxpcs_fab : t_ep_internal_fabric;
   signal rxpcs_busy  : std_logic;
-  signal rxpcs_data  : std_logic_vector(17 downto 0);
   signal rxpcs_dreq  : std_logic;
-  signal rxpcs_valid : std_logic;
 
 -------------------------------------------------------------------------------
 -- RX deframer -> RX buffer signals
@@ -254,8 +252,8 @@ architecture syn of wr_endpoint is
 -------------------------------------------------------------------------------
 
   signal txfra_flow_enable : std_logic;
-  --signal rxfra_pause_p       : std_logic;
-  --signal rxfra_pause_delay   : std_logic_vector(15 downto 0);
+  signal rxfra_pause_p       : std_logic;
+  signal rxfra_pause_delay   : std_logic_vector(15 downto 0);
   --signal rxbuf_threshold_hit : std_logic;
 
   signal txfra_pause_p       : std_logic;
@@ -288,6 +286,9 @@ architecture syn of wr_endpoint is
 
   signal sink_in : t_wrf_sink_in;
   signal sink_out : t_wrf_sink_out;
+
+  signal src_in : t_wrf_source_in;
+  signal src_out : t_wrf_source_out;
     
 begin
 
@@ -306,15 +307,13 @@ begin
       rst_n_i   => rst_n_i,
       clk_sys_i => clk_sys_i,
 
+      rxpcs_fab_o => rxpcs_fab,
       rxpcs_busy_o            => rxpcs_busy,
-      rxpcs_data_o            => rxpcs_data,
       rxpcs_dreq_i            => rxpcs_dreq,
-      rxpcs_valid_o           => rxpcs_valid,
       rxpcs_timestamp_stb_p_o => rxpcs_timestamp_stb_p,
 
-      txpcs_data_i            => txpcs_data,
+      txpcs_fab_i=>txpcs_fab,
       txpcs_busy_o            => txpcs_busy,
-      txpcs_valid_i           => txpcs_valid,
       txpcs_dreq_o            => txpcs_dreq,
       txpcs_error_o           => txpcs_error,
       txpcs_timestamp_stb_p_o => txpcs_timestamp_stb_p,
@@ -363,21 +362,20 @@ begin
       rst_n_i          => rst_n_i,
       pcs_error_i      => txpcs_error,
       pcs_busy_i       => txpcs_busy,
-      pcs_data_o       => txpcs_data,
+      pcs_fab_o       => txpcs_fab,
       pcs_dreq_i       => txpcs_dreq,
-      pcs_valid_o      => txpcs_valid,
       snk_i            => sink_in,
       snk_o            => sink_out,
-      tx_pause_i       => txfra_pause_p,
-      tx_pause_delay_i => txfra_pause_delay,
-      tx_pause_ack_o   => txfra_pause_ack,
-      tx_flow_enable_i => txfra_flow_enable,
+      fc_pause_p_i       => txfra_pause_p,
+      fc_pause_delay_i => txfra_pause_delay,
+      fc_pause_ack_o   => txfra_pause_ack,
+      fc_flow_enable_i => txfra_flow_enable,
       oob_fid_value_o  => txoob_fid_value,
       oob_fid_stb_o    => txoob_fid_stb,
       regs_b           => regs);
 
 
- txfra_flow_enable <= '1';
+  txfra_flow_enable <= '1';
   txfra_pause_p <= '0';    
 
   sink_in.dat <= snk_dat_i;
@@ -391,75 +389,39 @@ begin
   snk_err_o <= sink_out.err;
   snk_rty_o <= sink_out.rty;
   
-  --U_TX_FRA : ep_tx_framer
-  --  port map (
-  --    clk_sys_i => clk_sys_i,
-  --    rst_n_i   => rst_n_i,
-
-  --    pcs_data_o  => txpcs_data,
-  --    pcs_error_i => txpcs_error,
-  --    pcs_busy_i  => txpcs_busy,
-  --    pcs_valid_o => txpcs_valid,
-  --    pcs_dreq_i  => txpcs_dreq,
-
-  --    tx_data_i      => tx_data_i,
-  --    tx_ctrl_i      => tx_ctrl_i,
-  --    tx_bytesel_i   => tx_bytesel_i,
-  --    tx_sof_p1_i    => tx_sof_p1_i,
-  --    tx_eof_p1_i    => tx_eof_p1_i,
-  --    tx_dreq_o      => tx_dreq_o,
-  --    tx_valid_i     => tx_valid_i,
-  --    tx_rerror_p1_i => tx_rerror_p1_i,
-  --    tx_tabort_p1_i => tx_tabort_p1_i,
-  --    tx_terror_p1_o => tx_terror_p1_o,
-
-  --    oob_fid_value_o => txoob_fid_value,
-  --    oob_fid_stb_o   => txoob_fid_stb,
-
-  --    tx_pause_i       => txfra_pause,
-  --    tx_pause_ack_o   => txfra_pause_ack,
-  --    tx_pause_delay_i => txfra_pause_delay,
-
-  --    tx_flow_enable_i => txfra_flow_enable,
-
-  --    regs_b => regs);
 
 -------------------------------------------------------------------------------
 -- RX deframer
 -------------------------------------------------------------------------------
   rxfra_enable <= link_ok and regs.ecr_rx_en_o;
 
---  U_RX_DFRA : ep_rx_deframer
---    port map (
---      clk_sys_i => clk_sys_i,
---      rst_n_i   => rst_n_i,
+  U_Rx_Deframer : ep_rx_deframer
+    generic map (
+      g_with_vlans          => g_with_vlans,
+      g_with_dpi_classifier => g_with_dpi_classifier,
+      g_with_rtu            => g_with_rtu)
+    port map (
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_n_i,
 
---      pcs_data_i  => rxpcs_data,
---      pcs_dreq_o  => rxpcs_dreq,
---      pcs_valid_i => rxpcs_valid,
---      pcs_busy_i  => rxpcs_busy,
+      pcs_fab_i  => rxpcs_fab,
+      pcs_dreq_o  => rxpcs_dreq,
+      pcs_busy_i  => rxpcs_busy,
 
---      oob_data_i  => rxoob_data,
---      oob_valid_i => rxoob_valid,
---      oob_ack_o   => rxoob_ack,
+      oob_data_i  => rxoob_data,
+      oob_valid_i => rxoob_valid,
+      oob_ack_o   => rxoob_ack,
 
---      rbuf_sof_p1_o    => rbuf_sof_p,
---      rbuf_eof_p1_o    => rbuf_eof_p,
---      rbuf_ctrl_o      => rbuf_ctrl,
---      rbuf_data_o      => rbuf_data,
---      rbuf_valid_o     => rbuf_valid,
---      rbuf_drop_i      => rbuf_drop,
---      rbuf_bytesel_o   => rbuf_bytesel,
---      rbuf_rerror_p1_o => rbuf_error_p,
+      fc_pause_p_o     => rxfra_pause_p,
+      fc_pause_delay_o => rxfra_pause_delay,
 
---      fc_pause_p_o     => rxfra_pause_p,
---      fc_pause_delay_o => rxfra_pause_delay,
+      rmon_o => rmon,
+      regs_b => regs,
 
---      rmon_o => rmon,
---      regs_b => regs,
-
---      rtu_full_i => rtu_full_i,
-
+    rbuf_full_i => '0',
+      rtu_full_i => rtu_full_i,
+      tmp_src_o => src_out,
+      tmp_src_i => src_in
 --      rtu_rq_smac_o      => rtu_rq_smac_o,
 --      rtu_rq_dmac_o      => rtu_rq_dmac_o,
 --      rtu_rq_vid_o       => rtu_rq_vid_o,
@@ -467,7 +429,17 @@ begin
 --      rtu_rq_prio_o      => rtu_rq_prio_o,
 --      rtu_rq_has_prio_o  => rtu_rq_has_prio_o,
 --      rtu_rq_strobe_p1_o => rtu_rq_strobe_p1_o);
+      );
 
+  src_dat_o <= src_out.dat;
+  src_adr_o<= src_out.adr;
+  src_sel_o<= src_out.sel;
+  src_cyc_o<= src_out.cyc;
+  src_stb_o<= src_out.stb;
+  src_we_o <= src_out.we;
+  src_in.stall <= src_stall_i;
+  src_in.ack <= src_ack_i;
+  
 ---------------------------------------------------------------------------------
 ---- RX buffer
 ---------------------------------------------------------------------------------
@@ -596,7 +568,6 @@ begin
   --    g_deglitcher_threshold => 1000)
   --  port map (
   --    clk_sys_i => clk_sys_i,
-
   --    clk_a_i    => clk_ref_i,
   --    clk_b_i    => phy_rx_clk_i,
   --    clk_dmtd_i => clk_dmtd_i,
@@ -674,7 +645,7 @@ begin
       else
         if(regs.dsr_lact_o = '1' and regs.dsr_lact_load_o = '1') then
           regs.dsr_lact_i <= '0';       -- clear-on-write
-        elsif(txpcs_valid = '1' or rxpcs_valid = '1') then
+        elsif(txpcs_fab.dvalid = '1' or rxpcs_fab.dvalid = '1') then
           regs.dsr_lact_i <= '1';
         end if;
       end if;

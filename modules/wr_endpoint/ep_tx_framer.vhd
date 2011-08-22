@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-08-15
+-- Last update: 2011-08-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -51,11 +51,10 @@ entity ep_tx_framer is
 -- Physical Coding Sublayer (PCS) interface
 ------------------------------------------------------------------------------
 
+    pcs_fab_o : out t_ep_internal_fabric;
     pcs_error_i : in  std_logic;
     pcs_busy_i  : in  std_logic;
-    pcs_data_o  : out std_logic_vector(17 downto 0);
     pcs_dreq_i  : in  std_logic;
-    pcs_valid_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- WRF Sink (see WRF specification for the details)
@@ -68,17 +67,18 @@ entity ep_tx_framer is
 -- Flow Control Unit signals
 -------------------------------------------------------------------------------    
 
+    
 -- TX send pause frame - when active, the framer will send a PAUSE frame
 -- as soon as possible. The pause quanta must be provided on tx_pause_delay_i input.
-    tx_pause_i       : in std_logic;
-    tx_pause_delay_i : in std_logic_vector(15 downto 0);
+    fc_pause_p_i       : in std_logic;
+    fc_pause_delay_i : in std_logic_vector(15 downto 0);
 
 -- TX send pause acknowledge - active after the current pause send request has
 -- been completed
-    tx_pause_ack_o : out std_logic;
+    fc_pause_ack_o : out std_logic;
 
 -- When active, the framer will allow for packet transmission.
-    tx_flow_enable_i : in std_logic;
+    fc_flow_enable_i : in std_logic;
 
 -------------------------------------------------------------------------------
 -- OOB/TSU signals
@@ -318,7 +318,7 @@ begin  -- behavioral
         snk_out.err <= '0';
         snk_out.rty <= '0';
 
-        tx_pause_ack_o <= '0';
+        fc_pause_ack_o <= '0';
 
         crc_gen_enable_mask <= '1';
         crc_gen_force_reset <= '0';
@@ -357,27 +357,27 @@ begin  -- behavioral
 
               q_abort <= '0';
 
-              tx_ready <= tx_flow_enable_i;
+              tx_ready <= fc_flow_enable_i;
 
                                         -- Check start-of-frame and send-pause signals and eventually
                                         -- commence frame transmission
 
-              if(pcs_dreq_i = '1' and (sof_p1 = '1' or tx_pause_i = '1') and regs_b.ecr_tx_en_o = '1') then
+              if(pcs_dreq_i = '1' and (sof_p1 = '1' or fc_pause_p_i = '1') and regs_b.ecr_tx_en_o = '1') then
                                         -- enable writing to PCS FIFO
                 q_sof      <= '1';
                 q_eof      <= '0';
                 write_mask <= '1';
 
 
-                tx_pause_ack_o <= tx_pause_i;
-                tx_pause_mode  <= tx_pause_i;
-                tx_pause_delay <= tx_pause_delay_i;
+                fc_pause_ack_o <= fc_pause_p_i;
+                tx_pause_mode  <= fc_pause_p_i;
+                tx_pause_delay <= fc_pause_delay_i;
 
                 crc_gen_force_reset <= '1';
                 crc_gen_enable_mask <= '1';
 
                 counter <= (others => '0');
-                if(tx_pause_i = '1') then
+                if(fc_pause_p_i = '1') then
                   state <= TXF_PAUSE;
                 else
                   state <= TXF_ADDR;
@@ -396,7 +396,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
             when TXF_PAUSE =>
               tx_ready            <= '0';
-              tx_pause_ack_o      <= '0';
+              fc_pause_ack_o      <= '0';
               q_sof               <= '0';
               crc_gen_force_reset <= '0';
 
@@ -684,14 +684,12 @@ begin  -- behavioral
 
   snk_o <= snk_out;
 
-  pcs_data_o <= f_encode_fabric_int(
-    q_data,
-    q_sof,
-    q_eof,
-    q_bytesel,
-    q_abort);
-
-  pcs_valid_o <= q_sof or q_eof or (q_valid and write_mask);
+  pcs_fab_o.data <= q_data;
+  pcs_fab_o.sof <= q_sof;
+  pcs_fab_o.eof <= q_eof;
+  pcs_fab_o.bytesel <= q_bytesel;
+  pcs_fab_o.error <= q_abort;
+  pcs_fab_o.dvalid <= (q_valid and write_mask);
 
 end behavioral;
 

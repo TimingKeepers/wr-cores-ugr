@@ -1,7 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity ep_crc_bypass_queue is
+entity ep_rx_bypass_queue is
   generic(
     g_size : integer := 3;
     g_width: integer := 18);
@@ -22,9 +22,9 @@ entity ep_crc_bypass_queue is
     purge_i : in std_logic
     );
 
-end ep_crc_bypass_queue;
+end ep_rx_bypass_queue;
 
-architecture behavioral of ep_crc_bypass_queue is
+architecture behavioral of ep_rx_bypass_queue is
 
   type t_queue_entry is record
     d     : std_logic_vector(g_width-1 downto 0);

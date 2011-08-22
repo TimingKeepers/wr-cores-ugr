@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-05-27
+-- Last update: 2011-08-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ use work.endpoint_private_pkg.all;
 
 entity ep_autonegotiation is
   generic (
-    g_simulation : integer);
+    g_simulation : boolean);
   port (
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
@@ -96,7 +96,7 @@ architecture syn of ep_autonegotiation is
   function f_eval_link_timer_size
     return integer is
   begin  -- f_eval_link_timer_size
-    if(g_simulation = 0) then
+    if(g_simulation = false) then
       return 20;
       else
         return 11;
@@ -131,12 +131,10 @@ begin  -- syn
   p_link_timer : process(clk_sys_i, rst_n_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
+      if rst_n_i = '0' or link_timer_restart ='1'  then
         link_timer <= (others => '0');
       else
-        if(link_timer_restart = '1') then
-          link_timer <= (others => '0');
-        elsif(link_timer_expired = '0') then
+        if(link_timer_expired = '0') then
           link_timer <= link_timer + 1;
         end if;
       end if;
