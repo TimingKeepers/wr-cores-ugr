@@ -192,6 +192,16 @@ peripheral {
 			 };
 
        field {
+          name = "RX Fiter HP Priorities";
+          prefix = "HPAP";
+          description = "Map of 802.1q PCP values which qualify the incoming frame as HP. Each bit corresponds to one PCP value (bit 7: PCP == 7, bit 0: PCP == 0).";
+          size = 8;
+          type = SLV;
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+       };
+
+       field {
           name = "Maximum receive unit (MRU)";
           description = "Maximum size of a frame which is considered valid (in bytes)";
           prefix = "MRU";
@@ -246,7 +256,7 @@ peripheral {
 			 field {
 					name = "Port-assigned VID";
 					description = "VLAN id value for tagging incoming packets if the port is in ACCESS mode. For TRUNK/unqualified the value of VID is ignored.";
-					prefix = "vid_VAL";
+					prefix = "PVID";
 					type = SLV;
 					align = 16;
 					size = 12;
@@ -257,17 +267,28 @@ peripheral {
 
     reg {
        name = "VLAN Control Register 1";
+       description = "Controls the access to the egress VLAN untagged set.\
+                      Each write can enable (VALUE=1) / disable (VALUE=0) untagging frames\
+                      with given VID";
+                     
        prefix = "VCR1";
        
        field {
-          name = "Port untagged set bitmap VID";
+          name = "Egress untagged set bitmap VID";
+          description = "write: the VID to be tagged/untagged\
+                         read: undefined";
+
           prefix = "VID";
           type = PASS_THROUGH;
           size = 12;
        };
 
        field {
-          name = "Port untagged set bitmap value";
+          name = "Egress untagged set bitmap value";
+          description = "write 1: frames with matching VID are untagged\
+                         write 0: frames with matching VID are not modified\
+                         read: undefined";
+
           prefix = "VALUE";
           type = PASS_THROUGH;
           size = 1;
@@ -275,20 +296,16 @@ peripheral {
     };
 
     reg {
-       name = "Packet Filter Control Register";
-       prefix = "PFCR";
+       name = "Packet Filter Control Register 0";
+       description = "Controls the microcode memory access of the Packet Filter Unit. \
+                      See the Endpoint documentation for more details";
+
+       prefix = "PFCR0";
        
        field {
           name = "Microcode Memory Address";
           prefix = "MM_ADDR";
-          size = 7;
-          type = PASS_THROUGH;
-       };
-
-       field {
-          size = 18;
-          name = "Microcode Memory Data (half-word)";
-          prefix = "MM_DATA";
+          size = 6;
           type = PASS_THROUGH;
        };
 
@@ -306,6 +323,47 @@ peripheral {
           access_bus = READ_WRITE;
           access_dev = READ_ONLY;
        };
+
+       field {
+          size = 24;
+          name = "Microcode Memory Data (24 MSBs)";
+          prefix = "MM_DATA_MSB";
+          type = PASS_THROUGH;
+       };
+    };
+
+    reg {
+       name = "Packet Filter Control Register 1";
+       description = "Controls the microcode memory access of the Packet Filter Unit. \
+                      See the Endpoint documentation for more details";
+
+       prefix= "PFCR1";
+
+       field{
+          size = 12;
+          name = "Microcode Memory Data (12 LSBs)";
+          prefix = "MM_DATA_LSB";
+          type = SLV;
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
+    };
+
+    reg {
+       name = "Traffic Class Assignment Register";
+       description = "Controls the mapping of VLAN priority fields into Swcore's traffic classes.. See Endpoint's documentation for more details.";
+       prefix = "TCAR";
+
+       field { 
+          name = "802.1Q priority tag to Traffic Class map";
+          prefix = "PCP_MAP";
+          description = "Controls the mapping of PCP into Traffic Classes. The mapping algorithm                          is: TC = PCP_MAP[PCP * 3 + 2 : PCP * 3]; ";
+          size = 24;
+          type = SLV;
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
+
     };
 
 	reg {
