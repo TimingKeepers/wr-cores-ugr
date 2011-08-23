@@ -317,11 +317,144 @@ endclass // WRFPacketSource
 //             pkt.dump();
              rx_queue.push_back(pkt);
              
-          end
+             end
         end
    end
    
 endmodule
+
+/* Packet Filter microcode definitions */
+
+class PFilterMicrocode;
+   typedef enum 
+    {
+     AND = 0,
+     NAND = 4,
+     OR = 1,
+     NOR = 5,
+     XOR = 2,
+     XNOR = 6,
+     MOV = 3,
+     NOT = 7
+     } pfilter_op_t;
+
+
+   const uint64_t PF_MODE_LOGIC    = (1<<34);
+   const uint64_t PF_MODE_CMP    = 0;
+
+   const int max_size         = 64;
+   
+   protected int code_pos;
+   protected uint64_t code_buf[];
+
+   function new();
+      code_pos  = 0;
+      code_buf  = new[max_size];
+   endfunction // new
+
+   task check_size();
+      if(code_pos == max_size - 1)
+        $error("microcode: code too big (max size: %d)", max_size);
+   endtask // check_size
+
+   task check_reg_range(int val, int minval, int maxval, string name);
+      if(val < minval || val > maxval)
+        $error("microcode: %s register out of range (%d to %d)", name, minval,maxval);
+   endtask // check_reg_range
+   
+   // rd = (packet[offset] & mask == value) op rd
+   task cmp(int offset, int value, int mask, pfilter_op_t op, int rd);
+      uint64_t ir;
+
+      check_size();
+      
+      if(offset > code_pos-1)
+        $error("microcode: comparison offset is bigger than current PC. Insert some nops before comparing");
+
+      check_reg_range(rd, 1, 15, "ra/rd");
+   
+      ir  = (PF_MODE_CMP | (offset << 7)
+            | ((mask & 'h1) ? (1<<29) : 0)
+            | ((mask & 'h10) ? (1<<30) : 0)
+            | ((mask & 'h100) ? (1<<31) : 0)
+            | ((mask & 'h1000) ? (1<<32) : 0))
+        | op | (rd << 3);
+
+      ir                    = ir | (value & 'hffff) << 13;
+
+      code_buf[code_pos++]  = ir;
+   endtask // cmp
+
+
+   // rd                    = (packet[offset] & (1<<bit_index)) op rd
+   task btst(int offset, int bit_index, pfilter_op_t op, int rd);
+      uint64_t ir;
+
+      check_size();
+      
+      if(offset > code_pos-1)
+        $error("microcode: comparison offset is bigger than current PC. Insert some nops before comparing");
+
+      check_reg_range(rd, 1, 15, "ra/rd");
+      check_reg_range(bit_index, 0, 15, "bit index");
+   
+      ir                    = ((1<<33) | PF_MODE_CMP | (offset << 7) | (bit_index << 29) | op | (rd << 3));
+      
+      code_buf[code_pos++]  = ir;
+   endtask // cmp
+         
+   task nop();
+      uint64_t ir;
+      check_size();
+      ir  = PF_MODE_LOGIC;
+      code_buf[code_pos++]  = ir;
+   endtask // nop
+         
+
+   // rd  = ra op rb
+   task logic2(int rd, int ra, pfilter_op_t op, int rb);
+      uint64_t ir;
+      check_size();
+      check_reg_range(ra, 0, 31, "ra");
+      check_reg_range(rb, 0, 31, "rb");
+      check_reg_range(rd, 1, 31, "rd");
+
+      ir  = (ra << 8) | (rb << 13) | ((rd & 'hf) << 3) | ((rd & 'h10) ? (1<<7) : 0) | op;
+      ir  = ir | PF_MODE_LOGIC | (3<<23);
+      code_buf[code_pos++]  = ir;
+   endtask // logic2
+
+   // rd  = (ra op rb) op2 rc
+   task logic3(int rd, int ra, pfilter_op_t op, int rb, pfilter_op_t op2, int rc);
+      uint64_t ir;
+      check_size();
+      check_reg_range(ra, 0, 31, "ra");
+      check_reg_range(rb, 0, 31, "rb");
+      check_reg_range(rc, 0, 31, "rb");
+      check_reg_range(rd, 1, 31, "rd");
+
+      ir  = (ra << 8) | (rb << 13) | (rc << 18) | ((rd & 'hf) << 3) | ((rd & 'h10) ? (1<<7) : 0) | op;
+      ir  = ir | PF_MODE_LOGIC | (op2<<23);
+      code_buf[code_pos++]  = ir;
+   endtask // logic3
+
+   typedef uint64_t u64_array[];
+   
+   
+   function u64_array assemble();
+      u64_array tmp;
+      code_buf[code_pos++]  = (1<<35); // insert FIN instruction
+      tmp                   = new [code_pos](code_buf);
+      return tmp;
+   endfunction // assemble
+   
+   
+endclass // PFilterMicrocode
+         
+         
+
+
+
 
 class CSimDrv_WR_Endpoint;
 
@@ -329,8 +462,7 @@ class CSimDrv_WR_Endpoint;
    protected uint64_t m_base;
    
    
-   function new(CBusAccessor acc, uint64_t base);
-      m_acc   = acc;
+   function new(CBusAccessor acc, uint64_t base);      m_acc   = acc;
       m_base  = base;
       
    endfunction // new
@@ -339,7 +471,26 @@ class CSimDrv_WR_Endpoint;
       $display("VLAN_Write");
       m_acc.write(m_base + `ADDR_EP_VCR1, vid | ((untag ? 1: 0) << 12));
    endtask // vlan_egress_untag
-   
+
+
+   task pfilter_load_microcode(uint64_t mcode[]);
+      int i;
+
+      for(i=0;i<mcode.size();i++)
+        begin
+           m_acc.write(m_base + `ADDR_EP_PFCR1, (mcode[i] & 'hfff) << `EP_PFCR1_MM_DATA_LSB_OFFSET);
+           
+           m_acc.write(m_base + `ADDR_EP_PFCR0, 
+                       (i << `EP_PFCR0_MM_ADDR_OFFSET) | 
+                       (((mcode[i] >> 12) & 'hffffff) << `EP_PFCR0_MM_DATA_MSB_OFFSET) |
+                       `EP_PFCR0_MM_WRITE);
+        end
+   endtask // pfilter_load_microcde
+
+   task pfilter_enable(int enable);
+      m_acc.write(m_base + `ADDR_EP_PFCR0, enable ? `EP_PFCR0_ENABLE: 0);
+   endtask
+        
 
 endclass // CSimDrv_WR_Endpoint
 
@@ -558,25 +709,20 @@ module main;
 
 
     
-         for(i=0;i<n_tries;i++)
+      for(i=0;i<n_tries;i++)
            begin
               pkt  = gen.gen();
+              $display("Tx %d", i);
               //   pkt.dump();
-           
               src.send(pkt);
-              $display("i %d size: %d", i, pkt.payload.size());
-              
               arr[i]  = pkt;
            end
 
          for(i=0;i<n_tries;i++)
            begin
-           $display("rx %d", i);
-           
            sink.recv(pkt2);
-
-           $display("rx_done", i);
-
+              $display("rx %d", i);
+              
            if(unvid)
              arr[i].is_q  = 0;
            
@@ -594,7 +740,32 @@ module main;
    
    
      
-     
+   task test_tx_with_vlans(EthPacketSource src, EthPacketSink snk, CSimDrv_WR_Endpoint ep_drv);
+
+
+   endtask // test_tx_with_vlans
+
+   task init_pfilter(CSimDrv_WR_Endpoint ep_drv);
+      PFilterMicrocode mc  = new;
+
+      mc.cmp(0, 'h0a0b, 'hffff, PFilterMicrocode::MOV, 1);
+      mc.cmp(1, 'h0c0a, 'hffff, PFilterMicrocode::AND, 1);
+      mc.cmp(2, 'h0e0f, 'hffff, PFilterMicrocode::AND, 1);
+      mc.logic2(2, 1, PFilterMicrocode::MOV, 0);
+      mc.cmp(3, 'h0102, 'hffff, PFilterMicrocode::MOV, 1);
+      mc.cmp(4, 'h030a, 'hffff, PFilterMicrocode::AND, 1);
+      mc.cmp(5, 'h0506, 'hffff, PFilterMicrocode::AND, 1);
+      mc.logic2(3, 1, PFilterMicrocode::MOV, 0);
+      mc.cmp(6,'h86ba, 'hffff,  PFilterMicrocode::MOV, 4);
+
+      mc.logic3(5, 2, PFilterMicrocode::AND, 3, PFilterMicrocode::OR, 4);
+      
+      ep_drv.pfilter_load_microcode(mc.assemble());
+      ep_drv.pfilter_enable(1);
+   endtask // init_pfilter
+   
+
+  
    
    initial begin
       CWishboneAccessor sys_bus;
@@ -638,29 +809,27 @@ module main;
       U_wrf_source.settings.throttle_prob          = 0.02;
       
       ep_drv.vlan_egress_untag(100, 1);
-
 /* -----\/----- EXCLUDED -----\/-----
+
       for(i=0;i<100;i++)
         begin
            $display("Iter: %d", i);
-           tx_test(100, 0, 0, src, sink);
-           tx_test(100, 1, 1, src, sink);
+           tx_test(100, 0, 0, src, o_sink);
+           tx_test(100, 1, 1, src, o_sink);
         end // initial begin
-      #1000ns;
  -----/\----- EXCLUDED -----/\----- */
 
-      
       #10000ns;
+
+      init_pfilter(ep_drv);
       
 
-      for(i=0;i<20;i++)
+      for(i=0;i<1;i++)
         begin
-      tx_test(100, 0, 0, o_src, sink);
-           end
+           $display("Iter: %d", i);
+           tx_test(10, 0, 0, o_src, sink);
+        end
    
-
-   
-                
                 
                 
    //   pkt2.dump();
@@ -668,7 +837,7 @@ module main;
       
       
    end // initial begin
-/*
+
    typedef struct {
       bit[31:0] crc;
       bit[15:0] data;
@@ -677,22 +846,24 @@ module main;
 
 
    crc_tuple orig[1000], dut[1000];
-   int orig_pos                = 0, dut_pos = 0;
+   int orig_pos     = 0, dut_pos = 0;
    
    
-
-   always@(posedge DUT.U_Rx_Deframer.U_crc_size_checker.clk_sys_i)
+ /*always@(posedge DUT.U_Rx_Deframer.U_crc_size_checker.clk_sys_i)
      begin
-        if(DUT.U_Rx_Deframer.U_crc_size_checker.snk_dvalid) begin
-           dut[dut_pos].data  = DUT.U_Rx_Deframer.U_crc_size_checker.snk_data_i[15:0];
-           dut[dut_pos].crc   = DUT.U_Rx_Deframer.U_crc_size_checker.U_rx_crc_generator.crc_o;
-           dut[dut_pos].half  = DUT.U_Rx_Deframer.U_crc_size_checker.snk_bytesel;
-           dut_pos++;
+        if(DUT.U_Rx_Deframer.U_crc_size_checker.src_fab_o.sof)
+          orig_pos  = 0;
+
+        if(DUT.U_Rx_Deframer.U_crc_size_checker.src_fab_o.dvalid) begin
+           $display("d:%x %X", (orig_pos - 14) & 'hff, DUT.U_Rx_Deframer.U_crc_size_checker.src_fab_o.data[15:0]);
+           orig_pos=orig_pos+2;
            
            end
-     end
+     end*/ // UNMATCHED !!
 
-    always@(posedge U_oldep_wrap.clk_sys_i)
+   
+
+/*    always@(posedge U_oldep_wrap.clk_sys_i)
       begin
          
         if(U_oldep_wrap.DUT.U_TX_FRA.U_tx_crc_generator.en_i) begin
@@ -715,8 +886,8 @@ module main;
       for(i=0;i<100;i++)
       $display("orig: %x %x dut: %x %x", orig[i].data, orig[i].crc, dut[i].data, dut[i].crc);
       
-   end
-   */
+   end*/
+  
    
 endmodule // main
 
