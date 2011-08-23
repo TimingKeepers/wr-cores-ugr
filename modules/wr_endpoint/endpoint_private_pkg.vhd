@@ -283,6 +283,23 @@ package endpoint_private_pkg is
       regs_b             : inout t_ep_registers);
   end component;
 
+  component ep_rx_bypass_queue
+    generic (
+      g_size  : integer;
+      g_width : integer);
+    port (
+      rst_n_i : in  std_logic;
+      clk_i   : in  std_logic;
+      d_i     : in  std_logic_vector(g_width-1 downto 0);
+      valid_i : in  std_logic;
+      dreq_o  : out std_logic;
+      q_o     : out std_logic_vector(g_width-1 downto 0);
+      valid_o : out std_logic;
+      dreq_i  : in  std_logic;
+      flush_i : in  std_logic;
+      purge_i : in  std_logic);
+  end component;
+
   function f_pack_fifo_contents (
     data      : std_logic_vector;
     sof       : std_logic;

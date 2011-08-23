@@ -166,6 +166,8 @@ begin  -- behavioral
         rmon_o.rx_runt    <= '0';
         rmon_o.rx_crc_err <= '0';
 
+        src_fab_o.sof <= '0';
+
       else
         case state is
           when ST_WAIT_FRAME =>
@@ -178,13 +180,17 @@ begin  -- behavioral
             q_bytesel <='0';
             src_fab_o.eof     <= '0';
             src_fab_o.error   <= '0';
+            src_fab_o.sof <= '0';
 
             if(snk_fab_i.sof = '1') then
               state <= ST_DATA;
+              src_fab_o.sof <= '1';
             end if;
 
           when ST_DATA =>
 
+            src_fab_o.sof<='0';
+            
             if(snk_fab_i.dvalid= '1') then
               q_bytesel<=snk_fab_i.bytesel;
             end if;
@@ -226,7 +232,7 @@ begin  -- behavioral
     end if;
   end process;
 
-  src_fab_o.sof <= regs_b.ecr_rx_en_o and snk_fab_i.sof;
+--  src_fab_o.sof <= regs_b.ecr_rx_en_o and snk_fab_i.sof;
   src_fab_o.dvalid<=q_valid;
   src_fab_o.data <=q_data;
   src_fab_o.bytesel<=snk_fab_i.bytesel or q_bytesel;

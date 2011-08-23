@@ -117,6 +117,7 @@ architecture behavioral of ep_packet_filter is
   signal pmem_addr  : unsigned(c_PC_SIZE-1 downto 0);
   signal pmem_rdata : std_logic_vector(15 downto 0);
 
+  signal mm_addr  : std_logic_vector(c_PC_SIZE-1 downto 0);
   signal mm_write           : std_logic;
   signal mm_rdata, mm_wdata : std_logic_vector(35 downto 0);
 
@@ -127,7 +128,7 @@ architecture behavioral of ep_packet_filter is
 begin  -- behavioral
   regs_b  <= c_ep_registers_init_value;
 
-  mm_write <= not regs_b.ecr_rx_en_o and regs_b.pfcr0_mm_write_o and regs_b.pfcr0_mm_write_wr_o;
+  mm_write <= not regs_b.pfcr0_enable_o and regs_b.pfcr0_mm_write_o and regs_b.pfcr0_mm_write_wr_o;
   mm_wdata <= regs_b.pfcr0_mm_data_msb_o & regs_b.pfcr1_mm_data_lsb_o;
 
   U_microcode_ram : generic_spram
@@ -139,10 +140,12 @@ begin  -- behavioral
       clk_i   => clk_sys_i,
       bwe_i   => "11111",
       we_i    => mm_write,
-      a_i     => regs_b.pfcr0_mm_addr_o,
+      a_i     => mm_addr,
       d_i     => mm_wdata,
       q_o     => mm_rdata);
 
+  mm_addr <= regs_b.pfcr0_mm_addr_o when mm_write = '1' else std_logic_vector(pc);
+  
 
   U_backlog_ram : generic_dpram
     generic map (
@@ -225,7 +228,7 @@ begin  -- behavioral
     end if;
   end process;
 
-  result_cmp <= '1' when ((pmem_rdata and mask) xor mask) = x"0000" else '0';
+  result_cmp <= '1' when ((pmem_rdata and mask) xor insn.cmp_value) = x"0000" else '0';
 
   insn <= f_decode_insn(ir);
   ra   <= f_pick_reg(regs, insn.ra) when insn.mode = c_MODE_LOGIC else result_cmp;
@@ -235,7 +238,7 @@ begin  -- behavioral
   result1 <= f_eval(ra, rb, insn.op);
   result2 <= f_eval(result1, rc, insn.op2);
 
-  rd <= result1 when insn.mode = c_MODE_LOGIC else result2;
+  rd <= result2 when insn.mode = c_MODE_LOGIC else result1;
 
   p_execute : process(clk_sys_i)
   begin
@@ -257,7 +260,11 @@ begin  -- behavioral
         done_int <= '0';
         drop_o   <= '0';
       else
-        if(stage2 = '1' and insn.fin = '1') then
+        if(regs_b.pfcr0_enable_o = '0') then
+          done_int <= '1';
+          drop_o <= '0';
+          pclass_o <= (others => '0');
+        elsif(stage2 = '1' and insn.fin = '1') then
           done_int   <= '1';
           pclass_o <= regs(31 downto 24);
           drop_o   <= regs(23);
