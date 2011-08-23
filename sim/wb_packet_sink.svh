@@ -55,7 +55,7 @@ class WBPacketSink extends EthPacketSink;
 
       tmp                = new[size];
 
-      $display("CDS %d size: %d\n", cyc.data.size(), size);
+//      $display("CDS %d size: %d\n", cyc.data.size(), size);
       
       
       for(i=0;i<cyc.data.size(); i++)
