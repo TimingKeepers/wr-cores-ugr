@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-08-23
+-- Last update: 2011-08-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -151,7 +151,8 @@ architecture behavioral of ep_rx_deframer is
       src_fab_o      : out   t_ep_internal_fabric;
       src_dreq_i     : in    std_logic;
       tclass_o       : out   std_logic_vector(2 downto 0);
-      tclass_valid_o : out   std_logic;
+      vid_o : out   std_logic_vector(11 downto 0);
+      tag_done_o : out std_logic;
       rmon_o         : inout t_rmon_triggers;
       regs_b         : inout t_ep_registers);
   end component;
@@ -201,7 +202,11 @@ architecture behavioral of ep_rx_deframer is
   signal pfilter_drop   : std_logic;
   signal pfilter_done   : std_logic;
   
+  signal vlan_tclass : std_logic_vector(2 downto 0);
+  signal vlan_vid : std_logic_vector(11 downto 0);
+  signal vlan_tag_done : std_logic;
 
+  
 begin  -- behavioral
   regs_b <= c_ep_registers_init_value;
 
@@ -255,12 +260,24 @@ begin  -- behavioral
 
 
   gen_with_vlan_unit: if(g_with_vlans) generate
-    
+    U_vlan_unit: ep_rx_vlan_unit
+      port map (
+        clk_sys_i      => clk_sys_i,
+        rst_n_i        => rst_n_i,
+        snk_fab_i      => fab_pipe(3),
+        snk_dreq_o     => dreq_pipe(3),
+        src_fab_o      => fab_pipe(4),
+        src_dreq_i     => dreq_pipe(4),
+        tclass_o       => vlan_tclass,
+        vid_o => vlan_vid,
+        tag_done_o => vlan_tag_done,
+        rmon_o         => rmon_o,
+        regs_b         => regs_b);
   end generate gen_with_vlan_unit;
   
 
-  fab_int <= fab_pipe(3);
- dreq_pipe(3) <= dreq_int;
+  fab_int <= fab_pipe(4);
+  dreq_pipe(4) <= dreq_int;
   
   dreq_int <= not tmp_src_i.stall;
 
@@ -296,6 +313,8 @@ begin  -- behavioral
       else
         case state is
           when RXF_IDLE =>
+            src_out_int.adr <= c_WRF_DATA;
+
             if(tmp_src_i.stall = '0' and fab_int.sof = '1') then
               src_out_int.cyc <= '1';
               state           <= RXF_DATA;
@@ -333,12 +352,21 @@ begin  -- behavioral
               state              <= RXF_DATA;
             end if;
 
+          when RXF_THROW_ERROR =>
+            if(tmp_src_i.stall = '0') then
+              stat.error := '1';
+              src_out_int.adr <= c_WRF_STATUS;
+              src_out_int.dat    <= f_marshall_wrf_status(stat);
+              stb_int <= '1';
+              state <= RXF_FINISH_CYCLE;        
+            end if;
+            
           when RXF_FINISH_CYCLE =>
             if(tmp_src_i.stall = '0') then
               stb_int <= '0';
             end if;
 
-            if(ack_count = 0) then
+            if(ack_count = 0 and stb_int = '0') then
               src_out_int.cyc <= '0';
               state           <= RXF_IDLE;
             end if;
