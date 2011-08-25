@@ -68,8 +68,13 @@ class EthPacket;
    endfunction // new
 
    task deserialize(byte data[]);
-      int i, hsize;
+      int i, hsize, psize;
 
+      if(data.size < 14)
+        begin
+           error         = 1;
+           return;
+           end
       
       for(i=0; i<6;i++)
         begin
@@ -91,12 +96,20 @@ class EthPacket;
            ethertype  = {data[12], data[13]};
         end
 
-      payload         = new[data.size() - hsize](payload);
+      psize           = data.size() - hsize;
+
+      if(psize <= 0)
+      begin
+         error    = 1;
+         return;
+      end
+      
+      payload       = new[psize];
 
       for(i=0;i<data.size() - hsize;i++)
-        payload[i]    = data[hsize + i];
+        payload[i]  = data[hsize + i];
 
-      error           = 0;
+//      error           = 0;
    endtask
   
    task automatic serialize(ref byte data[]); 
