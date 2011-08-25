@@ -28,6 +28,7 @@ package endpoint_private_pkg is
   constant c_QMODE_PORT_ACCESS : std_logic_vector(1 downto 0) := "00";
   constant c_QMODE_PORT_TRUNK  : std_logic_vector(1 downto 0) := "01";
   constant c_QMODE_PORT_UNQUALIFIED   : std_logic_vector(1 downto 0) := "11";
+  constant c_QMODE_PORT_VLAN_DISABLED   : std_logic_vector(1 downto 0) := "10";
 
   -- fixme: remove these along with the non-WB version of the endpoint
   constant c_wrsw_ctrl_none      : std_logic_vector(4 - 1 downto 0) := x"0";
