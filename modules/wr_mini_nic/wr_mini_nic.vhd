@@ -1111,3 +1111,172 @@ begin  -- behavioral
   minic_rx_avail_cur (minic_rx_avail_cur'high downto nrx_avail'high+1) <= (others => '0');
 
 end behavioral;
+
+
+--==========================================================--
+--      ENTITY USING RECORDS DEFINED FOR PIPELINED WB       --
+--==========================================================--
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.wr_fabric_pkg.all;
+
+entity wr_mini_nic_rec is
+
+  generic (
+    g_memsize_log2         : integer := 14;
+    g_buffer_little_endian : boolean := true;
+    g_class_mask           : std_logic_vector(7 downto 0) := "00000001");
+
+  port (
+    clk_sys_i : in std_logic;
+    rst_n_i   : in std_logic;
+
+    ---------------------------------------------------------------------------
+    -- System memory i/f
+    ---------------------------------------------------------------------------
+    mem_data_o : out std_logic_vector(31 downto 0);
+    mem_addr_o : out std_logic_vector(g_memsize_log2-1 downto 0);
+    mem_data_i : in  std_logic_vector(31 downto 0);
+    mem_wr_o   : out std_logic;
+
+    ---------------------------------------------------------------------------
+    -- Pipelined Wishbone interface
+    ---------------------------------------------------------------------------
+    wbm_o      : out t_wrf_source_out;
+    wbm_i      : in  t_wrf_source_in;
+    wbs_o      : out t_wrf_sink_out;
+    wbs_i      : in  t_wrf_sink_in;
+
+    ---------------------------------------------------------------------------
+    -- TXTSU i/f
+    ---------------------------------------------------------------------------
+    txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
+    txtsu_frame_id_i : in  std_logic_vector(16 - 1 downto 0);
+    txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
+    txtsu_valid_i    : in  std_logic;
+    txtsu_ack_o      : out std_logic;
+
+    ---------------------------------------------------------------------------
+    -- Wishbone slave
+    ---------------------------------------------------------------------------    
+
+    wb_cyc_i  : in  std_logic;
+    wb_stb_i  : in  std_logic;
+    wb_we_i   : in  std_logic;
+    wb_sel_i  : in  std_logic_vector(3 downto 0);
+    wb_addr_i : in  std_logic_vector(3 downto 0);
+    wb_data_i : in  std_logic_vector(31 downto 0);
+    wb_data_o : out std_logic_vector(31 downto 0);
+    wb_ack_o  : out std_logic;
+    wb_irq_o  : out std_logic
+  );
+end wr_mini_nic_rec;
+
+
+architecture behavioral of wr_mini_nic_rec is
+
+  component wr_mini_nic
+  generic (
+    g_memsize_log2         : integer := 14;
+    g_buffer_little_endian : boolean := true;
+    g_class_mask           : std_logic_vector(7 downto 0) := "00000001");
+  port (
+    clk_sys_i : in std_logic;
+    rst_n_i   : in std_logic;
+    mem_data_o : out std_logic_vector(31 downto 0);
+    mem_addr_o : out std_logic_vector(g_memsize_log2-1 downto 0);
+    mem_data_i : in  std_logic_vector(31 downto 0);
+    mem_wr_o   : out std_logic;
+
+    wbm_dat_o     : out std_logic_vector(15 downto 0);
+    wbm_adr_o     : out std_logic_vector(1 downto 0);
+    wbm_sel_o     : out std_logic_vector(1 downto 0);
+    wbm_cyc_o     : out std_logic;
+    wbm_stb_o     : out std_logic;
+    wbm_we_o      : out std_logic;
+    wbm_stall_i   : in  std_logic;
+    wbm_err_i     : in  std_logic;
+    wbm_ack_i     : in  std_logic;
+
+    wbs_dat_i     : in  std_logic_vector(15 downto 0);
+    wbs_adr_i     : in  std_logic_vector(1 downto 0);
+    wbs_sel_i     : in  std_logic_vector(1 downto 0);
+    wbs_cyc_i     : in  std_logic;
+    wbs_stb_i     : in  std_logic;
+    wbs_we_i      : in  std_logic;
+    wbs_stall_o   : out std_logic;
+    wbs_err_o     : out std_logic;
+    wbs_ack_o     : out std_logic;
+
+    txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
+    txtsu_frame_id_i : in  std_logic_vector(16 - 1 downto 0);
+    txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
+    txtsu_valid_i    : in  std_logic;
+    txtsu_ack_o      : out std_logic;
+
+    wb_cyc_i  : in  std_logic;
+    wb_stb_i  : in  std_logic;
+    wb_we_i   : in  std_logic;
+    wb_sel_i  : in  std_logic_vector(3 downto 0);
+    wb_addr_i : in  std_logic_vector(3 downto 0);
+    wb_data_i : in  std_logic_vector(31 downto 0);
+    wb_data_o : out std_logic_vector(31 downto 0);
+    wb_ack_o  : out std_logic;
+    wb_irq_o  : out std_logic);
+  end component;
+
+begin
+  WR_MINI_NIC_STDLOGIC: wr_mini_nic
+    generic map(
+        g_memsize_log2          => g_memsize_log2,
+        g_buffer_little_endian  => g_buffer_little_endian,
+        g_class_mask            => g_class_mask
+      )
+    port map(
+        clk_sys_i => clk_sys_i,
+        rst_n_i   => rst_n_i,
+        
+        mem_data_o  => mem_data_o,
+        mem_addr_o  => mem_addr_o,
+        mem_data_i  => mem_data_i,
+        mem_wr_o    => mem_wr_o,
+
+        wbm_dat_o   => wbm_o.dat,
+        wbm_adr_o   => wbm_o.adr,
+        wbm_sel_o   => wbm_o.sel,
+        wbm_cyc_o   => wbm_o.cyc,
+        wbm_stb_o   => wbm_o.stb,
+        wbm_we_o    => wbm_o.we,
+        wbm_stall_i => wbm_i.stall,
+        wbm_err_i   => wbm_i.err,
+        wbm_ack_i   => wbm_i.ack,
+
+        wbs_dat_i   => wbs_i.dat, 
+        wbs_adr_i   => wbs_i.adr,
+        wbs_sel_i   => wbs_i.sel,
+        wbs_cyc_i   => wbs_i.cyc,
+        wbs_stb_i   => wbs_i.stb,
+        wbs_we_i    => wbs_i.we,
+        wbs_stall_o => wbs_o.stall,
+        wbs_err_o   => wbs_o.err,
+        wbs_ack_o   => wbs_o.ack,
+        
+        txtsu_port_id_i  => txtsu_port_id_i,
+        txtsu_frame_id_i => txtsu_frame_id_i,
+        txtsu_tsval_i    => txtsu_tsval_i,
+        txtsu_valid_i    => txtsu_valid_i,
+        txtsu_ack_o      => txtsu_ack_o,
+        
+        wb_cyc_i    => wb_cyc_i,
+        wb_stb_i    => wb_stb_i,
+        wb_we_i     => wb_we_i,
+        wb_sel_i    => wb_sel_i,
+        wb_addr_i   => wb_addr_i,
+        wb_data_i   => wb_data_i,
+        wb_data_o   => wb_data_o,
+        wb_ack_o    => wb_ack_o,
+        wb_irq_o    => wb_irq_o
+      );
+
+end behavioral;
