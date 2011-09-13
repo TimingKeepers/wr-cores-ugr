@@ -25,10 +25,10 @@ package endpoint_private_pkg is
   constant c_preamble_char : std_logic_vector(7 downto 0) := "01010101";
   constant c_preamble_sfd  : std_logic_vector(7 downto 0) := "11010101";
 
-  constant c_QMODE_PORT_ACCESS : std_logic_vector(1 downto 0) := "00";
-  constant c_QMODE_PORT_TRUNK  : std_logic_vector(1 downto 0) := "01";
+  constant c_QMODE_PORT_ACCESS        : std_logic_vector(1 downto 0) := "00";
+  constant c_QMODE_PORT_TRUNK         : std_logic_vector(1 downto 0) := "01";
   constant c_QMODE_PORT_UNQUALIFIED   : std_logic_vector(1 downto 0) := "11";
-  constant c_QMODE_PORT_VLAN_DISABLED   : std_logic_vector(1 downto 0) := "10";
+  constant c_QMODE_PORT_VLAN_DISABLED : std_logic_vector(1 downto 0) := "10";
 
   -- fixme: remove these along with the non-WB version of the endpoint
   constant c_wrsw_ctrl_none      : std_logic_vector(4 - 1 downto 0) := x"0";
@@ -67,9 +67,8 @@ package endpoint_private_pkg is
     dvalid  : std_logic;
     bytesel : std_logic;
     data    : std_logic_vector(15 downto 0);
+    addr    : std_logic_vector(1 downto 0);
   end record;
-
-
 
   component ep_1000basex_pcs
     generic (
@@ -111,7 +110,6 @@ package endpoint_private_pkg is
       mdio_ready_o            : out   std_logic);
   end component;
 
- 
   component ep_rmon_counters
     generic (
       g_num_counters   : integer;
@@ -126,45 +124,6 @@ package endpoint_private_pkg is
       ram_data_o      : out std_logic_vector(31 downto 0);
       ram_wr_o        : out std_logic;
       cntr_overflow_o : out std_logic);
-  end component;
-
-  component ep_rx_deframer
-    generic (
-      g_with_vlans          : boolean;
-      g_with_dpi_classifier : boolean;
-      g_with_rtu            : boolean);
-    port (
-      clk_sys_i          : in    std_logic;
-      rst_n_i            : in    std_logic;
-      pcs_fab_i          : in    t_ep_internal_fabric;
-      pcs_dreq_o         : out   std_logic;
-      pcs_busy_i         : in    std_logic;
-      oob_data_i         : in    std_logic_vector(47 downto 0);
-      oob_valid_i        : in    std_logic;
-      oob_ack_o          : out   std_logic;
-      rbuf_sof_p1_o      : out   std_logic;
-      rbuf_eof_p1_o      : out   std_logic;
-      rbuf_bytesel_o     : out   std_logic;
-      rbuf_is_oob_o      : out   std_logic;
-      rbuf_dat_o         : out   std_logic_vector(15 downto 0);
-      rbuf_we_o          : out   std_logic;
-      rbuf_full_i        : in    std_logic;
-      rbuf_accept_o      : out   std_logic;
-      rbuf_drop_o        : out   std_logic;
-      tmp_src_o          : out   t_wrf_source_out;
-      tmp_src_i          : in    t_wrf_source_in;
-      fc_pause_p_o       : out   std_logic;
-      fc_pause_delay_o   : out   std_logic_vector(15 downto 0);
-      rmon_o             : inout t_rmon_triggers;
-      regs_b             : inout t_ep_registers;
-      rtu_rq_smac_o      : out   std_logic_vector(48 - 1 downto 0);
-      rtu_rq_dmac_o      : out   std_logic_vector(48 - 1 downto 0);
-      rtu_rq_vid_o       : out   std_logic_vector(12 - 1 downto 0);
-      rtu_rq_has_vid_o   : out   std_logic;
-      rtu_rq_prio_o      : out   std_logic_vector(3 - 1 downto 0);
-      rtu_rq_has_prio_o  : out   std_logic;
-      rtu_full_i         : in    std_logic;
-      rtu_rq_strobe_p1_o : out   std_logic);
   end component;
 
   component ep_tx_framer
@@ -186,7 +145,8 @@ package endpoint_private_pkg is
       fc_flow_enable_i : in    std_logic;
       oob_fid_value_o  : out   std_logic_vector(15 downto 0);
       oob_fid_stb_o    : out   std_logic;
-      regs_b           : inout t_ep_registers);
+      regs_i           : in t_ep_out_registers;
+      regs_o: out t_ep_in_registers);
   end component;
 
   component ep_timestamping_unit
@@ -236,33 +196,6 @@ package endpoint_private_pkg is
       rmon_sent_pause_o  : out std_logic);
   end component;
 
-  component ep_rx_buffer
-    generic (
-      g_size_log2 : integer);
-    port (
-      clk_sys_i          : in  std_logic;
-      rst_n_i            : in  std_logic;
-      fra_data_i         : in  std_logic_vector(15 downto 0);
-      fra_ctrl_i         : in  std_logic_vector(4 -1 downto 0);
-      fra_sof_p_i        : in  std_logic;
-      fra_eof_p_i        : in  std_logic;
-      fra_error_p_i      : in  std_logic;
-      fra_valid_i        : in  std_logic;
-      fra_drop_o         : out std_logic;
-      fra_bytesel_i      : in  std_logic;
-      fab_data_o         : out std_logic_vector(15 downto 0);
-      fab_ctrl_o         : out std_logic_vector(4 -1 downto 0);
-      fab_sof_p_o        : out std_logic;
-      fab_eof_p_o        : out std_logic;
-      fab_error_p_o      : out std_logic;
-      fab_valid_o        : out std_logic;
-      fab_bytesel_o      : out std_logic;
-      fab_dreq_i         : in  std_logic;
-      ep_ecr_rx_en_fra_i : in  std_logic;
-      buffer_used_o      : out std_logic_vector(7 downto 0);
-      rmon_rx_overflow_o : out std_logic);
-  end component;
-
   component ep_wishbone_controller
     port (
       rst_n_i            : in    std_logic;
@@ -281,7 +214,8 @@ package endpoint_private_pkg is
       ep_rmon_ram_rd_i   : in    std_logic;
       ep_rmon_ram_data_i : in    std_logic_vector(31 downto 0);
       ep_rmon_ram_wr_i   : in    std_logic;
-      regs_b             : inout t_ep_registers);
+      regs_o             : out t_ep_out_registers;
+      regs_i: in t_ep_in_registers);
   end component;
 
   component ep_rx_bypass_queue

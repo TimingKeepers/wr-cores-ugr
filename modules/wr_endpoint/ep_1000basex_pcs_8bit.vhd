@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-08-22
+-- Last update: 2011-09-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ use ieee.numeric_std.all;
 library work;
 use work.endpoint_private_pkg.all;
 
-entity ep_1000basex_pcs is
+entity ep_1000basex_pcs_8bit is
 
   generic (
     g_simulation : boolean);
@@ -58,12 +58,12 @@ entity ep_1000basex_pcs is
 
     -- PCS <-> MAC Interface
 
-    rxpcs_fab_o: out t_ep_internal_fabric;
+    rxpcs_fab_o             : out t_ep_internal_fabric;
+    rxpcs_fifo_almostfull_i : in  std_logic;
     rxpcs_busy_o            : out std_logic;
-    rxpcs_dreq_i            : in  std_logic;
     rxpcs_timestamp_stb_p_o : out std_logic;
 
-    txpcs_fab_i: in t_ep_internal_fabric;
+    txpcs_fab_i             : in  t_ep_internal_fabric;
     txpcs_error_o           : out std_logic;
     txpcs_busy_o            : out std_logic;
     txpcs_dreq_o            : out std_logic;
@@ -105,12 +105,12 @@ entity ep_1000basex_pcs is
 
     );
 
-end ep_1000basex_pcs;
+end ep_1000basex_pcs_8bit;
 
-architecture rtl of ep_1000basex_pcs is
+architecture rtl of ep_1000basex_pcs_8bit is
 
 
-  component ep_tx_pcs_tbi
+  component ep_tx_pcs_8bit
     port (
       rst_n_i               : in    std_logic;
       clk_sys_i             : in    std_logic;
@@ -131,13 +131,13 @@ architecture rtl of ep_1000basex_pcs is
       phy_tx_enc_err_i      : in    std_logic);
   end component;
 
-  component ep_rx_pcs_tbi
+  component ep_rx_pcs_8bit
     generic (
       g_simulation : boolean);
     port (
       clk_sys_i                  : in    std_logic;
       rst_n_i                    : in    std_logic;
-      pcs_dreq_i                 : in    std_logic;
+      pcs_fifo_almostfull_i      : in    std_logic;
       pcs_busy_o                 : out   std_logic;
       pcs_fab_o                  : out   t_ep_internal_fabric;
       timestamp_stb_p_o          : out   std_logic;
@@ -280,12 +280,12 @@ begin  -- rtl
 
 -- the PCS state machines themselves
 
-  U_TX_PCS : ep_tx_pcs_tbi
+  U_TX_PCS : ep_tx_pcs_8bit
     port map (
-      rst_n_i     => pcs_reset_n,
-      clk_sys_i   => clk_sys_i,
+      rst_n_i   => pcs_reset_n,
+      clk_sys_i => clk_sys_i,
 
-      pcs_fab_i  => txpcs_fab_i,
+      pcs_fab_i   => txpcs_fab_i,
       pcs_error_o => txpcs_error_o,
       pcs_busy_o  => txpcs_busy_int,
       pcs_dreq_o  => txpcs_dreq_o,
@@ -306,16 +306,16 @@ begin  -- rtl
       );
 
 
-  U_RX_PCS : ep_rx_pcs_tbi
+  U_RX_PCS : ep_rx_pcs_8bit
     generic map (
       g_simulation => g_simulation)
     port map (
-      clk_sys_i   => clk_sys_i,
-      rst_n_i     => pcs_reset_n,
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => pcs_reset_n,
 
-      pcs_busy_o  => rxpcs_busy_o,
-      pcs_fab_o  => rxpcs_fab_o,
-      pcs_dreq_i  => rxpcs_dreq_i,
+      pcs_busy_o            => rxpcs_busy_o,
+      pcs_fab_o             => rxpcs_fab_o,
+      pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
 
       timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
 
@@ -341,7 +341,7 @@ begin  -- rtl
   txpcs_busy_o <= txpcs_busy_int;
   --'1' when (synced = '0' and mdio_mcr_uni_en = '0') else txpcs_busy_int;
 
-  serdes_rst_o           <= (not pcs_reset_n) or mdio_mcr_pdown;
+  serdes_rst_o        <= (not pcs_reset_n) or mdio_mcr_pdown;
   mdio_wr_spec_bslide <= serdes_rx_bitslide_i;
 
   U_MDIO_WB : ep_pcs_tbi_mdio_wb

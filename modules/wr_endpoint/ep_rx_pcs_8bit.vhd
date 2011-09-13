@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-08-22
+-- Last update: 2011-09-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -64,12 +64,12 @@ entity ep_rx_pcs_tbi is
 -- reset (refclk2-synchronous)
     rst_n_i : in std_logic;
 
-    pcs_dreq_i  : in  std_logic;
+    pcs_fifo_almostfull_i : in  std_logic;
 -- RX path busy indicator (active HI).
 -- When asserted, the receiver is in the middle of reception of a frame
-    pcs_busy_o  : out std_logic;
+    pcs_busy_o : out std_logic;
 -- data FIFO output
-    pcs_fab_o: out t_ep_internal_fabric;
+    pcs_fab_o  : out t_ep_internal_fabric;
 
     timestamp_stb_p_o : out std_logic;  -- strobe for RX timestamping
 
@@ -101,7 +101,7 @@ entity ep_rx_pcs_tbi is
     an_idle_match_o : out std_logic;
 
     -- RMON statistic counters
-    rmon_o: inout t_rmon_triggers
+    rmon_o : inout t_rmon_triggers
     );
 
 end ep_rx_pcs_tbi;
@@ -161,14 +161,12 @@ architecture behavioral of ep_rx_pcs_tbi is
 
   -- Clock alignment FIFO signals
   signal fifo_wr_toggle     : std_logic;
-  signal fifo_in, fifo_out  : std_logic_vector(17 downto 0);
   signal fifo_rx_data       : std_logic_vector(15 downto 0);
   signal fifo_mask_write    : std_logic;
   signal fifo_bytesel       : std_logic;
   signal fifo_sof, fifo_eof : std_logic;
   signal fifo_error         : std_logic;
   signal fifo_almostfull    : std_logic;
-  signal fifo_empty         : std_logic;
   signal fifo_clear_n       : std_logic;
 
 -- Synchronization detection FSM signals
@@ -333,68 +331,15 @@ begin
 
   -- FIFO input data formatting
   fifo_wrreq <= fifo_wr_toggle and fifo_mask_write;
-  fifo_in    <= f_pack_fifo_contents (
-    fifo_rx_data,
-    fifo_sof,
-    fifo_eof,
-    fifo_bytesel,
-    fifo_error);
 
--- Clock adjustment FIFO
-  U_Rx_FIFO : generic_async_fifo
-    generic map (
-      g_data_width             => 18,
-      g_size                   => 32,
-      g_with_wr_almost_full    => false,
-      g_with_rd_almost_empty   => false)
---      g_almost_empty_threshold => 4,
---      g_almost_full_threshold  => 26)
-    port map (
-      rst_n_i           => fifo_clear_n,
-      clk_wr_i          => phy_rx_clk_i,
-      d_i               => fifo_in,
-      we_i              => fifo_wrreq,
-      wr_empty_o        => open,
-      wr_full_o         => fifo_almostfull,
-      wr_almost_empty_o => open,
-      wr_almost_full_o  => open,
-      wr_count_o        => open,
-      clk_rd_i          => clk_sys_i,
-      q_o               => fifo_out,
-      rd_i              => rx_rdreq,
-      rd_empty_o        => fifo_empty,
-      rd_full_o         => open,
-      rd_almost_empty_o => open,
-      rd_almost_full_o  => open,
-      rd_count_o        => open);
+  pcs_fab_o.data    <= fifo_rx_data;
+  pcs_fab_o.sof     <= fifo_sof and fifo_wrreq;
+  pcs_fab_o.eof     <= fifo_eof and fifo_wrreq;
+  pcs_fab_o.bytesel <= fifo_bytesel;
+  pcs_fab_o.error   <= fifo_error and fifo_wrreq;
+  pcs_fab_o.dvalid  <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
 
-  -- process generates the data ready signal for the RX deframer
-  -- reads: rx_rdreq
-  -- writers: pcs_valid_o
-  p_gen_valid : process (clk_sys_i, rst_n_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if(rst_n_i = '0') then
-        pcs_valid_int <= '0';
-      else
-        pcs_valid_int <= rx_rdreq;
-      end if;
-    end if;
-  end process;
-
-  -- FIFO output data formatting
-  pcs_fab_o.sof <= f_fifo_is_sof(fifo_out, pcs_valid_int);
-  pcs_fab_o.eof <= f_fifo_is_eof(fifo_out, pcs_valid_int);
-  pcs_fab_o.error <= f_fifo_is_error(fifo_out, pcs_valid_int);
-  pcs_fab_o.dvalid <= f_fifo_is_data(fifo_out, pcs_valid_int);
-  pcs_fab_o.bytesel <= f_fifo_is_single_byte(fifo_out, pcs_valid_int);
-  pcs_fab_o.data <= fifo_out(15 downto 0);
-  
-  -- FIFO control signals
-  rx_rdreq <= (not fifo_empty) and pcs_dreq_i;
-
-  -- the FIFO is cleared during the reset or when the PCS is disabled
-  fifo_clear_n <= '1' when (reset_synced_rxclk = '0') or (mdio_mcr_pdown_synced = '1');
+  fifo_almostfull <= pcs_fifo_almostfull_i;
 
   -- process postprocesses the raw 8b10b decoder output (phy_rx_data_i, phy_rx_k_i, phy_rx_enc_err_ior)
   -- providing 1-bit signals indicating various 8b10b control patterns

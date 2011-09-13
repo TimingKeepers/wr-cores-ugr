@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-08-22
+-- Last update: 2011-09-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ entity ep_tx_framer is
 -- Physical Coding Sublayer (PCS) interface
 ------------------------------------------------------------------------------
 
-    pcs_fab_o : out t_ep_internal_fabric;
+    pcs_fab_o   : out t_ep_internal_fabric;
     pcs_error_i : in  std_logic;
     pcs_busy_i  : in  std_logic;
     pcs_dreq_i  : in  std_logic;
@@ -67,10 +67,10 @@ entity ep_tx_framer is
 -- Flow Control Unit signals
 -------------------------------------------------------------------------------    
 
-    
+
 -- TX send pause frame - when active, the framer will send a PAUSE frame
 -- as soon as possible. The pause quanta must be provided on tx_pause_delay_i input.
-    fc_pause_p_i       : in std_logic;
+    fc_pause_p_i     : in std_logic;
     fc_pause_delay_i : in std_logic_vector(15 downto 0);
 
 -- TX send pause acknowledge - active after the current pause send request has
@@ -92,7 +92,7 @@ entity ep_tx_framer is
 -- control registers
 -------------------------------------------------------------------------------
 
-    regs_b : inout t_ep_registers
+    regs_i : in  t_ep_out_registers
 
     );
 
@@ -146,10 +146,10 @@ architecture behavioral of ep_tx_framer is
 
   signal snk_out : t_wrf_sink_out;
 
-  signal abort_now : std_logic;
-  signal stall_int : std_logic;
-  signal stall_int_d0: std_logic;
-  signal untagging : std_logic;
+  signal abort_now    : std_logic;
+  signal stall_int    : std_logic;
+  signal stall_int_d0 : std_logic;
+  signal untagging    : std_logic;
 
 
 
@@ -183,14 +183,14 @@ begin  -- behavioral
   gen_with_vlans : if(g_with_vlans) generate
 
     vut_rd_vid <= to_integer(unsigned(snk_i.dat(11 downto 0)));
-    vut_wr_vid <= to_integer(unsigned(regs_b.vcr1_vid_o));
+    vut_wr_vid <= to_integer(unsigned(regs_i.vcr1_vid_o));
 
     p_untagged_set_access : process(clk_sys_i)
       variable vut_set : std_logic_vector(4095 downto 0);
     begin
       if rising_edge(clk_sys_i) then
-        if(regs_b.vcr1_value_wr_o = '1') then
-          vut_set(vut_wr_vid) := regs_b.vcr1_value_o;
+        if(regs_i.vcr1_value_wr_o = '1') then
+          vut_set(vut_wr_vid) := regs_i.vcr1_value_o;
         end if;
 
         if(snk_valid = '1') then
@@ -200,8 +200,6 @@ begin  -- behavioral
     end process;
 
   end generate gen_with_vlans;
-
-  regs_b <= c_ep_registers_init_value;
 
   crc_gen_reset <= '1' when rst_n_i = '0' else ((sof_p1 and (not tx_pause_mode)) or crc_gen_force_reset);
 
@@ -246,7 +244,7 @@ begin  -- behavioral
 
   error_p1 <= snk_valid and b2s(snk_i.adr = c_WRF_STATUS) and decoded_status.error;
 
-  abort_now <= '1' when (state /= TXF_IDLE and state /= TXF_GAP) and (regs_b.ecr_tx_en_o = '0' or error_p1 = '1') else '0';
+  abort_now <= '1' when (state /= TXF_IDLE and state /= TXF_GAP) and (regs_i.ecr_tx_en_o = '0' or error_p1 = '1') else '0';
 
 
   p_store_status : process(clk_sys_i)
@@ -362,7 +360,7 @@ begin  -- behavioral
                                         -- Check start-of-frame and send-pause signals and eventually
                                         -- commence frame transmission
 
-              if(pcs_dreq_i = '1' and (sof_p1 = '1' or fc_pause_p_i = '1') and regs_b.ecr_tx_en_o = '1') then
+              if(pcs_dreq_i = '1' and (sof_p1 = '1' or fc_pause_p_i = '1') and regs_i.ecr_tx_en_o = '1') then
                                         -- enable writing to PCS FIFO
                 q_sof      <= '1';
                 q_eof      <= '0';
@@ -406,9 +404,9 @@ begin  -- behavioral
                   when x"0" => q_data <= x"0180";
                   when x"1" => q_data <= x"c200";
                   when x"2" => q_data <= x"0001";
-                  when x"3" => q_data <= regs_b.mach_o;
-                  when x"4" => q_data <= regs_b.macl_o(31 downto 16);
-                  when x"5" => q_data <= regs_b.macl_o(15 downto 0);
+                  when x"3" => q_data <= regs_i.mach_o;
+                  when x"4" => q_data <= regs_i.macl_o(31 downto 16);
+                  when x"5" => q_data <= regs_i.macl_o(15 downto 0);
                   when x"6" => q_data <= x"8808";
                   when x"7" => q_data <= tx_pause_delay;
                                state <= TXF_PAD;
@@ -433,21 +431,21 @@ begin  -- behavioral
                     if(stored_status.has_smac = '1') then
                       q_data <= snk_i.dat;
                     else
-                      q_data <= regs_b.mach_o;
+                      q_data <= regs_i.mach_o;
                     end if;
                     q_valid <= '1';
                   when x"4" =>
                     if(stored_status.has_smac = '1') then
                       q_data <= snk_i.dat;
                     else
-                      q_data <= regs_b.macl_o(31 downto 16);
+                      q_data <= regs_i.macl_o(31 downto 16);
                     end if;
                     q_valid <= '1';
                   when x"5" =>
                     if(stored_status.has_smac = '1') then
                       q_data <= snk_i.dat;
                     else
-                      q_data <= regs_b.macl_o(15 downto 0);
+                      q_data <= regs_i.macl_o(15 downto 0);
                     end if;
                     q_valid <= '1';
                   when x"6" =>
@@ -474,38 +472,38 @@ begin  -- behavioral
                 case counter(3 downto 0) is
                   when x"0" =>          -- TPID
                     if(snk_valid = '1' and snk_i.adr = c_WRF_DATA) then
-                      counter <= counter + 1;
+                      counter              <= counter + 1;
                       vut_stored_ethertype <= snk_i.dat;
                     end if;
 
                   when x"1" =>          -- VLAN Tag
                     if(snk_valid = '1' and snk_i.adr = c_WRF_DATA) then
-                      counter             <= counter + 1;
+                      counter        <= counter + 1;
                       vut_stored_tag <= snk_i.dat;
-                      tx_ready <= '0';
+                      tx_ready       <= '0';
                     end if;
 
                   when x"2" =>
 
                     if(vut_untag = '1' or untagging = '1') then  -- VID is in the untagged set
-                      untagging           <= '1';
-                      tx_ready <= '1';
-                      q_data              <= vut_stored_ethertype;
-                      q_valid             <= '1';
-                      counter  <= counter  +1;
+                      untagging <= '1';
+                      tx_ready  <= '1';
+                      q_data    <= vut_stored_ethertype;
+                      q_valid   <= '1';
+                      counter   <= counter +1;
                     else
-                      untagging           <= '0';
-                      q_data              <= x"8100";
-                      q_valid             <= '1';
-                      counter             <= counter + 1;
+                      untagging <= '0';
+                      q_data    <= x"8100";
+                      q_valid   <= '1';
+                      counter   <= counter + 1;
                     end if;
 
                   when x"3" =>
                     if(untagging = '1') then
                       if(snk_valid = '1') then
-                        q_data <= snk_i.dat;
+                        q_data  <= snk_i.dat;
                         q_valid <= '1';
-                        state <= TXF_DATA;
+                        state   <= TXF_DATA;
                       else
                         q_valid <= '0';
                       end if;
@@ -523,7 +521,7 @@ begin  -- behavioral
                       q_data   <= vut_stored_tag;
                       q_valid  <= '1';
                       tx_ready <= '1';
-                      state <= TXF_DATA;
+                      state    <= TXF_DATA;
                     end if;
                   when others => null;
                 end case;
@@ -556,7 +554,7 @@ begin  -- behavioral
             when TXF_DATA =>
 
               tx_ready <= '1';
-              
+
               if(eof_p1 = '1') then
 
                 if(stored_status.has_crc = '0') then
@@ -645,10 +643,10 @@ begin  -- behavioral
                 if(pcs_busy_i = '0') then
                   state <= TXF_IDLE;
                 end if;
-                else
-                  state <= TXF_IDLE;
-                end if;
-                  
+              else
+                state <= TXF_IDLE;
+              end if;
+
 -------------------------------------------------------------------------------
 -- TX FSM state ABORT: signalize underlying PCS block to abort the frame
 -- immediately, corrupting its contents
@@ -671,7 +669,7 @@ begin  -- behavioral
   oob_fid_value_o <= oob.frame_id;
 
 
-  stall_int <= not (pcs_dreq_i and tx_ready) and regs_b.ecr_tx_en_o;  -- /dev/null if disabled
+  stall_int <= not (pcs_dreq_i and tx_ready) and regs_i.ecr_tx_en_o;  -- /dev/null if disabled
 
   snk_out.stall <= stall_int;
 
@@ -684,12 +682,12 @@ begin  -- behavioral
 
   snk_o <= snk_out;
 
-  pcs_fab_o.data <= q_data;
-  pcs_fab_o.sof <= q_sof;
-  pcs_fab_o.eof <= q_eof;
+  pcs_fab_o.data    <= q_data;
+  pcs_fab_o.sof     <= q_sof;
+  pcs_fab_o.eof     <= q_eof;
   pcs_fab_o.bytesel <= q_bytesel;
-  pcs_fab_o.error <= q_abort;
-  pcs_fab_o.dvalid <= (q_valid and write_mask);
+  pcs_fab_o.error   <= q_abort;
+  pcs_fab_o.dvalid  <= (q_valid and write_mask);
 
 end behavioral;
 

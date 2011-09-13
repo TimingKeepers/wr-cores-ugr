@@ -23,7 +23,7 @@ entity ep_rx_vlan_unit is
        tag_done_o : out std_logic;
 
        rmon_o : inout t_rmon_triggers;
-       regs_b : inout t_ep_registers
+       regs_i : in t_ep_out_registers
        );
 
 end ep_rx_vlan_unit;
@@ -141,11 +141,7 @@ begin  -- behavioral
   at_tpid      <= hdr_offset(7) and snk_fab_i.dvalid and is_tagged;
   at_vid       <= hdr_offset(8) and snk_fab_i.dvalid and is_tagged;
 
-  regs_b <= c_ep_registers_init_value;
-
-
   snk_dreq_o <= src_dreq_i and dreq_mask and not at_ethertype;
-
 
   p_decode_tag_type : process(snk_fab_i, is_tagged)
   begin
@@ -168,7 +164,7 @@ begin  -- behavioral
     variable v_next_state                    : t_state;
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or regs_b.ecr_rx_en_o = '0' then
+      if rst_n_i = '0' or regs_i.ecr_rx_en_o = '0' then
         hdr_offset(hdr_offset'left downto 1) <= (others => '0');
         hdr_offset(0)                        <= '1';
         state                                <= WAIT_FRAME;
@@ -190,7 +186,7 @@ begin  -- behavioral
               src_fab_o.eof   <= '0';
               src_fab_o.error <= '0';
               is_tagged       <= '0';
-              prio_int        <= regs_b.vcr0_prio_val_o;
+              prio_int        <= regs_i.vcr0_prio_val_o;
 
               if(snk_fab_i.sof = '1') then
                 hdr_offset(hdr_offset'left downto 1) <= (others => '0');
@@ -222,13 +218,13 @@ begin  -- behavioral
                 if(snk_fab_i.data = x"8100") then  -- got a 802.1q tagged frame
                   is_tagged <= '1';
                 else
-                  if (regs_b.vcr0_qmode_o = c_QMODE_PORT_ACCESS or regs_b.vcr0_qmode_o = c_QMODE_PORT_UNQUALIFIED) then
-                    prio_int <= regs_b.vcr0_prio_val_o;
+                  if (regs_i.vcr0_qmode_o = c_QMODE_PORT_ACCESS or regs_i.vcr0_qmode_o = c_QMODE_PORT_UNQUALIFIED) then
+                    prio_int <= regs_i.vcr0_prio_val_o;
 
                     v_src_fab.dvalid := '0';
                     v_next_state     := INSERT_TAG;
                     v_dreq_mask      := '0';
-                  elsif (regs_b.vcr0_qmode_o = c_QMODE_PORT_TRUNK) then
+                  elsif (regs_i.vcr0_qmode_o = c_QMODE_PORT_TRUNK) then
                     v_src_fab.dvalid := '0';
                     v_next_state     := DISCARD_FRAME;
                   end if;
@@ -250,7 +246,7 @@ begin  -- behavioral
                 -- decide what to do with the frame, basing on the port mode
                 -- (ACCESS, TRUNK, UNQUALIFIED), and whether the frame is tagged
                 -- or not.
-                f_vlan_decision(comb_tag_type, regs_b.vcr0_qmode_o, admit, use_pvid, use_fixed_prio);
+                f_vlan_decision(comb_tag_type, regs_i.vcr0_qmode_o, admit, use_pvid, use_fixed_prio);
 
 
                 -- assign the VID
@@ -259,15 +255,15 @@ begin  -- behavioral
                 end if;
 
                 if(use_pvid = '1')then
-                  v_stored_fab.data(11 downto 0) := regs_b.vcr0_pvid_o;
-                  v_src_fab.data(11 downto 0)    := regs_b.vcr0_pvid_o;
+                  v_stored_fab.data(11 downto 0) := regs_i.vcr0_pvid_o;
+                  v_src_fab.data(11 downto 0)    := regs_i.vcr0_pvid_o;
                 end if;
 
                 -- assign the priority 
-                if(regs_b.vcr0_fix_prio_o = '1' or use_fixed_prio = '1') then
+                if(regs_i.vcr0_fix_prio_o = '1' or use_fixed_prio = '1') then
                   -- Forced priority (or a non-priority tagged frame)? Take the priority
                   -- value from VCR0 register
-                  prio_int <= regs_b.vcr0_prio_val_o;
+                  prio_int <= regs_i.vcr0_prio_val_o;
                 else
                   -- Got a priority tag - use the value from the VLAN tag
                   prio_int <= snk_fab_i.data(15 downto 13);
@@ -330,7 +326,7 @@ begin  -- behavioral
                 end if;
 
                 if(hdr_offset(9) = '1') then
-                  src_fab_o.data   <= regs_b.vcr0_prio_val_o & '0' & regs_b.vcr0_pvid_o;
+                  src_fab_o.data   <= regs_i.vcr0_prio_val_o & '0' & regs_i.vcr0_pvid_o;
                   state            <= DATA;
                   src_fab_o.dvalid <= '1';
                 end if;
@@ -352,28 +348,28 @@ begin  -- behavioral
   p_map_prio_to_tc : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if(rst_n_i = '0' or regs_b.ecr_rx_en_o = '0' or snk_fab_i.sof = '1')then
+      if(rst_n_i = '0' or regs_i.ecr_rx_en_o = '0' or snk_fab_i.sof = '1')then
         tag_done_o <= '0';
       elsif(hdr_offset(9) = '1') then
         -- we're already after the headers, so prio_int is
         -- certainly valid
         tag_done_o <= '1';
         case prio_int is
-          when "000"  => tclass_o <= regs_b.tcar_pcp_map_o(2 downto 0);
-          when "001"  => tclass_o <= regs_b.tcar_pcp_map_o(5 downto 3);
-          when "010"  => tclass_o <= regs_b.tcar_pcp_map_o(8 downto 6);
-          when "011"  => tclass_o <= regs_b.tcar_pcp_map_o(11 downto 9);
-          when "100"  => tclass_o <= regs_b.tcar_pcp_map_o(14 downto 12);
-          when "101"  => tclass_o <= regs_b.tcar_pcp_map_o(17 downto 15);
-          when "110"  => tclass_o <= regs_b.tcar_pcp_map_o(20 downto 18);
-          when "111"  => tclass_o <= regs_b.tcar_pcp_map_o(23 downto 21);
+          when "000"  => tclass_o <= regs_i.tcar_pcp_map_o(2 downto 0);
+          when "001"  => tclass_o <= regs_i.tcar_pcp_map_o(5 downto 3);
+          when "010"  => tclass_o <= regs_i.tcar_pcp_map_o(8 downto 6);
+          when "011"  => tclass_o <= regs_i.tcar_pcp_map_o(11 downto 9);
+          when "100"  => tclass_o <= regs_i.tcar_pcp_map_o(14 downto 12);
+          when "101"  => tclass_o <= regs_i.tcar_pcp_map_o(17 downto 15);
+          when "110"  => tclass_o <= regs_i.tcar_pcp_map_o(20 downto 18);
+          when "111"  => tclass_o <= regs_i.tcar_pcp_map_o(23 downto 21);
           when others => tclass_o <= "XXX";  -- packet probably contains porn
         end case;
       end if;
     end if;
   end process;
 
-  src_fab_o.sof <= regs_b.ecr_rx_en_o and snk_fab_i.sof;
+  src_fab_o.sof <= regs_i.ecr_rx_en_o and snk_fab_i.sof;
 
 end behavioral;
 

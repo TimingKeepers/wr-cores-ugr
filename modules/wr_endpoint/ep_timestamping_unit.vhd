@@ -7,7 +7,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-05-11
+-- Last update: 2011-08-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ entity ep_timestamping_unit is
     txoob_stb_p_i : in std_logic;
 
 -- RX OOB data vector (timestamps + port ID) passed to the RX deframer
-    rxoob_data_o : out std_logic_vector(47 downto 0);
+    rxoob_data_o : out std_logic_vector(31 downto 0);
 
 -- RX OOB valid (HI indicates there is valid data on rxoob_data_o). Stays HI until
 -- rxoob_ack_i gets HI.
@@ -351,7 +351,7 @@ begin  -- syn
           rxoob_valid_o <= '0';
         elsif(rx_ts_done = '1' and ep_tscr_en_rxts_i = '1') then
           rxoob_valid_o <= '1';
-          rxoob_data_o  <= ep_ecr_portid_i & "XXXXXXXXXXX" & cntr_rx_f & cntr_rx_r;
+          rxoob_data_o  <= cntr_rx_f & cntr_rx_r;
         end if;
       end if;
     end if;

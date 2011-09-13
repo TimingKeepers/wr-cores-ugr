@@ -20,7 +20,7 @@ entity ep_rx_crc_size_check is
        src_dreq_i  : in  std_logic;
       
        rmon_o : inout t_rmon_triggers;
-       regs_b : inout t_ep_registers
+       regs_i : in t_ep_out_registers
        );
 
 end ep_rx_crc_size_check;
@@ -69,8 +69,6 @@ architecture behavioral of ep_rx_crc_size_check is
   
 begin  -- behavioral
 
-  regs_b <= c_ep_registers_init_value;
-
   crc_gen_reset <= snk_fab_i.sof or (not rst_n_i);
   
   U_rx_crc_generator : gc_crc_gen
@@ -112,7 +110,7 @@ begin  -- behavioral
   p_count_bytes : process (clk_sys_i, rst_n_i)
   begin  -- process
     if rising_edge(clk_sys_i) then
-      if (rst_n_i = '0' or regs_b.ecr_rx_en_o = '0') then
+      if (rst_n_i = '0' or regs_i.ecr_rx_en_o = '0') then
         byte_cntr <= (others => '0');
         is_runt   <= '0';
         is_giant  <= '0';
@@ -135,7 +133,7 @@ begin  -- behavioral
           is_runt <= '0';
         end if;
 
-        if(byte_cntr > unsigned(regs_b.rfcr_mru_o)) then
+        if(byte_cntr > unsigned(regs_i.rfcr_mru_o)) then
           is_giant <= '1';
         else
           is_giant <= '0';
@@ -145,15 +143,15 @@ begin  -- behavioral
     end if;
   end process;
 
-  size_check_ok <= '0' when (is_runt = '1' and regs_b.rfcr_a_runt_o = '0') or
-                   (is_giant = '1' and regs_b.rfcr_a_giant_o = '0') else '1';
+  size_check_ok <= '0' when (is_runt = '1' and regs_i.rfcr_a_runt_o = '0') or
+                   (is_giant = '1' and regs_i.rfcr_a_giant_o = '0') else '1';
 
 
   p_gen_output : process(clk_sys_i, rst_n_i)
   begin
     if rising_edge(clk_sys_i) then
 
-      if rst_n_i = '0' or regs_b.ecr_rx_en_o = '0' then
+      if rst_n_i = '0' or regs_i.ecr_rx_en_o = '0' then
 
         q_flush    <= '0';
         q_purge    <= '0';
@@ -206,7 +204,7 @@ begin  -- behavioral
 
             if(snk_fab_i.eof = '1') then
 
-              if(regs_b.rfcr_keep_crc_o = '0') then
+              if(regs_i.rfcr_keep_crc_o = '0') then
                 q_purge    <= '1';
               else
                 q_flush <= '1';
@@ -221,8 +219,8 @@ begin  -- behavioral
             end if;
 
 
-            rmon_o.rx_runt    <= is_runt and (not regs_b.rfcr_a_runt_o);
-            rmon_o.rx_giant   <= is_giant and (not regs_b.rfcr_a_giant_o);
+            rmon_o.rx_runt    <= is_runt and (not regs_i.rfcr_a_runt_o);
+            rmon_o.rx_giant   <= is_giant and (not regs_i.rfcr_a_giant_o);
             rmon_o.rx_crc_err <= not crc_match;
             
             end if;

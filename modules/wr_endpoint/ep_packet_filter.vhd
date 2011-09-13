@@ -22,7 +22,7 @@ entity ep_packet_filter is
     pclass_o : out std_logic_vector(7 downto 0);
     drop_o   : out std_logic;
 
-    regs_b : inout t_ep_registers
+    regs_i : in t_ep_out_registers
     );
 
 end ep_packet_filter;
@@ -126,10 +126,9 @@ architecture behavioral of ep_packet_filter is
   signal stage1, stage2 : std_logic;
   
 begin  -- behavioral
-  regs_b  <= c_ep_registers_init_value;
 
-  mm_write <= not regs_b.pfcr0_enable_o and regs_b.pfcr0_mm_write_o and regs_b.pfcr0_mm_write_wr_o;
-  mm_wdata <= regs_b.pfcr0_mm_data_msb_o & regs_b.pfcr1_mm_data_lsb_o;
+  mm_write <= not regs_i.pfcr0_enable_o and regs_i.pfcr0_mm_write_o and regs_i.pfcr0_mm_write_wr_o;
+  mm_wdata <= regs_i.pfcr0_mm_data_msb_o & regs_i.pfcr1_mm_data_lsb_o;
 
   U_microcode_ram : generic_spram
     generic map (
@@ -144,7 +143,7 @@ begin  -- behavioral
       d_i     => mm_wdata,
       q_o     => mm_rdata);
 
-  mm_addr <= regs_b.pfcr0_mm_addr_o when mm_write = '1' else std_logic_vector(pc);
+  mm_addr <= regs_i.pfcr0_mm_addr_o when mm_write = '1' else std_logic_vector(pc);
   
 
   U_backlog_ram : generic_dpram
@@ -260,7 +259,7 @@ begin  -- behavioral
         done_int <= '0';
         drop_o   <= '0';
       else
-        if(regs_b.pfcr0_enable_o = '0') then
+        if(regs_i.pfcr0_enable_o = '0') then
           done_int <= '1';
           drop_o <= '0';
           pclass_o <= (others => '0');
