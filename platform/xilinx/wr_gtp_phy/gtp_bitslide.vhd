@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-04-11
+-- Last update: 2011-09-12
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -24,6 +24,7 @@
 -- Date        Version  Author    Description
 -- 2010-11-18  0.4      twlostow  Ported EASE design to VHDL 
 -- 2011-02-07  0.5      twlostow  Verified on Spartan6 GTP
+-- 2011-09-12  0.6      twlostow  Virtex6 port
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -31,19 +32,20 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity gtp_bitslide is
-
+  
   generic (
 -- set to non-zero value to enable some simulation speedups (reduce delays)
-    g_simulation : integer);
+    g_simulation : integer;
+    g_target     : string := "spartan6");
 
   port (
-    gtp_rst_i                : in std_logic;
+    gtp_rst_i : in std_logic;
 
 -- GTP
-    gtp_rx_clk_i             : in std_logic;
+    gtp_rx_clk_i : in std_logic;
 
 -- '1' indicates that the GTP has detected a comma in the incoming serial stream
-    gtp_rx_comma_det_i       : in std_logic;
+    gtp_rx_comma_det_i : in std_logic;
 
 
     gtp_rx_byte_is_aligned_i : in std_logic;
@@ -52,17 +54,17 @@ entity gtp_bitslide is
     serdes_ready_i : in std_logic;
 
 -- GTP manual bitslip control line
-    gtp_rx_slide_o   : out std_logic;
+    gtp_rx_slide_o : out std_logic;
 
 -- GTP CDR reset, asserted when the link is lost to set the bitslide to a known
 -- value
     gtp_rx_cdr_rst_o : out std_logic;
 
 -- Current bitslide, in UIs
-    bitslide_o : out std_logic_vector(3 downto 0);
+    bitslide_o : out std_logic_vector(4 downto 0);
 
 -- '1' when the bitsliding has been completed and the link is up
-    synced_o   : out std_logic
+    synced_o : out std_logic
     );
 
 end gtp_bitslide;
@@ -77,19 +79,29 @@ architecture behavioral of gtp_bitslide is
   begin
     if(g_simulation /= 0) then
       return 256;
-    else
+    elsif(g_target = "spartan6") then
       return 8192;
+    else
+      return 16384;
     end if;
   end f_eval_sync_detect_threshold;
 
+  function f_eval_pause_tics return integer is
+  begin
+    if(g_target = "spartan6") then
+      return 31;
+    else
+      return 63;
+    end if;
+  end f_eval_pause_tics;
 
 
-  constant c_pause_tics            : integer := 31;
+  constant c_pause_tics            : integer := f_eval_pause_tics;
   constant c_sync_detect_threshold : integer := f_eval_sync_detect_threshold;
 
 
   type t_bitslide_fsm_state is (S_SYNC_LOST, S_STABILIZE, S_SLIDE, S_PAUSE, S_GOT_SYNC, S_RESET_CDR);
-  signal cur_slide : unsigned(3 downto 0);
+  signal cur_slide : unsigned(4 downto 0);
   signal state     : t_bitslide_fsm_state;
   signal counter   : unsigned(15 downto 0);
 
