@@ -13,14 +13,14 @@ entity ep_rx_crc_size_check is
   port(clk_sys_i : in std_logic;
        rst_n_i   : in std_logic;
 
-       snk_fab_i:in t_ep_internal_fabric;
-       snk_dreq_o  : out std_logic;
+       snk_fab_i  : in  t_ep_internal_fabric;
+       snk_dreq_o : out std_logic;
 
-       src_fab_o:out t_ep_internal_fabric;
-       src_dreq_i  : in  std_logic;
-      
+       src_fab_o  : out t_ep_internal_fabric;
+       src_dreq_i : in  std_logic;
+
        rmon_o : inout t_rmon_triggers;
-       regs_i : in t_ep_out_registers
+       regs_i : in    t_ep_out_registers
        );
 
 end ep_rx_crc_size_check;
@@ -60,17 +60,17 @@ architecture behavioral of ep_rx_crc_size_check is
   signal state : t_state;
 
 
-  signal q_flush : std_logic;
-  signal q_purge : std_logic;
-  signal q_valid : std_logic;
-  signal q_data  : std_logic_vector(15 downto 0);
+  signal q_flush   : std_logic;
+  signal q_purge   : std_logic;
+  signal q_valid   : std_logic;
+  signal q_data    : std_logic_vector(15 downto 0);
   signal q_bytesel : std_logic;
-  signal q_dvalid : std_logic;
+  signal q_dvalid  : std_logic;
   
 begin  -- behavioral
 
   crc_gen_reset <= snk_fab_i.sof or (not rst_n_i);
-  
+
   U_rx_crc_generator : gc_crc_gen
     generic map (
       g_polynomial              => x"04C11DB7",
@@ -153,8 +153,8 @@ begin  -- behavioral
 
       if rst_n_i = '0' or regs_i.ecr_rx_en_o = '0' then
 
-        q_flush    <= '0';
-        q_purge    <= '0';
+        q_flush   <= '0';
+        q_purge   <= '0';
         q_bytesel <= '0';
 
         state <= ST_WAIT_FRAME;
@@ -175,27 +175,27 @@ begin  -- behavioral
             rmon_o.rx_giant   <= '0';
             rmon_o.rx_runt    <= '0';
             rmon_o.rx_crc_err <= '0';
-            q_bytesel <='0';
+            q_bytesel         <= '0';
             src_fab_o.eof     <= '0';
             src_fab_o.error   <= '0';
-            src_fab_o.sof <= '0';
+            src_fab_o.sof     <= '0';
 
             if(snk_fab_i.sof = '1') then
-              state <= ST_DATA;
+              state         <= ST_DATA;
               src_fab_o.sof <= '1';
             end if;
 
           when ST_DATA =>
 
-            src_fab_o.sof<='0';
-            
-            if(snk_fab_i.dvalid= '1') then
-              q_bytesel<=snk_fab_i.bytesel;
-            end if;
-            
-            if(snk_fab_i.error = '1') then    -- an error from the source?
+            src_fab_o.sof <= '0';
 
-              src_fab_o.error         <= '1';
+            if(snk_fab_i.dvalid = '1') then
+              q_bytesel <= snk_fab_i.bytesel;
+            end if;
+
+            if(snk_fab_i.error = '1') then  -- an error from the source?
+
+              src_fab_o.error   <= '1';
               rmon_o.rx_pcs_err <= '1';
               state             <= ST_WAIT_FRAME;
               q_purge           <= '1';
@@ -205,35 +205,35 @@ begin  -- behavioral
             if(snk_fab_i.eof = '1') then
 
               if(regs_i.rfcr_keep_crc_o = '0') then
-                q_purge    <= '1';
+                q_purge <= '1';
               else
                 q_flush <= '1';
               end if;
-        
-            state <= ST_WAIT_FRAME;
 
-            if(size_check_ok = '0' or crc_match = '0') then  -- bad frame?
-              src_fab_o.error <= '1';
-            else
-              src_fab_o.eof <= '1';
+              state <= ST_WAIT_FRAME;
+
+              if(size_check_ok = '0' or crc_match = '0') then  -- bad frame?
+                src_fab_o.error <= '1';
+              else
+                src_fab_o.eof <= '1';
+              end if;
+
+
+              rmon_o.rx_runt    <= is_runt and (not regs_i.rfcr_a_runt_o);
+              rmon_o.rx_giant   <= is_giant and (not regs_i.rfcr_a_giant_o);
+              rmon_o.rx_crc_err <= not crc_match;
+              
             end if;
-
-
-            rmon_o.rx_runt    <= is_runt and (not regs_i.rfcr_a_runt_o);
-            rmon_o.rx_giant   <= is_giant and (not regs_i.rfcr_a_giant_o);
-            rmon_o.rx_crc_err <= not crc_match;
             
-            end if;
-   
         end case;
       end if;
     end if;
   end process;
 
 --  src_fab_o.sof <= regs_b.ecr_rx_en_o and snk_fab_i.sof;
-  src_fab_o.dvalid<=q_valid;
-  src_fab_o.data <=q_data;
-  src_fab_o.bytesel<=snk_fab_i.bytesel or q_bytesel;
+  src_fab_o.dvalid  <= q_valid;
+  src_fab_o.data    <= q_data;
+  src_fab_o.bytesel <= snk_fab_i.bytesel or q_bytesel;
   
 end behavioral;
 

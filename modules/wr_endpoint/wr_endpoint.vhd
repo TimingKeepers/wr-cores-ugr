@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-09-11
+-- Last update: 2011-09-26
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ architecture syn of wr_endpoint is
       fc_buffer_occupation_o : out   std_logic_vector(7 downto 0);
       rmon_o                 : inout t_rmon_triggers;
       regs_i                 : in    t_ep_out_registers;
-      regs_o                 : out   t_ep_in_registers;
+--      regs_o                 : out   t_ep_in_registers;
       rtu_rq_smac_o          : out   std_logic_vector(48 - 1 downto 0);
       rtu_rq_dmac_o          : out   std_logic_vector(48 - 1 downto 0);
       rtu_rq_vid_o           : out   std_logic_vector(12 - 1 downto 0);
@@ -491,7 +491,7 @@ begin
 -------------------------------------------------------------------------------
   rxfra_enable <= link_ok and regs_fromwb.ecr_rx_en_o;
 
-  U_Rx_Deframer : ep_rx_path
+  U_Rx_Path: ep_rx_path
     generic map (
       g_with_vlans          => g_with_vlans,
       g_with_dpi_classifier => g_with_dpi_classifier,

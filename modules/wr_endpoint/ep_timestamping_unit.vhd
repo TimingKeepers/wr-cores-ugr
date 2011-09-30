@@ -7,7 +7,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-08-25
+-- Last update: 2011-09-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -52,8 +52,13 @@ entity ep_timestamping_unit is
 -- reference / 2 (bus-side logic)
     clk_sys_i : in std_logic;
 
--- sync reset, active LO, clock refclk2_i
-    rst_n_i : in std_logic;
+-- RX clock
+    clk_rx_i : in std_logic;
+
+    -- resets
+    rst_n_rx_i  : in std_logic;
+    rst_n_ref_i : in std_logic;
+    rst_n_sys_i : in std_logic;
 
 -- PPS pulse input (active HI for 1 clk_ref_i cycle) for internal TS counter synchronization
     pps_csync_p1_i : in std_logic;
@@ -63,7 +68,18 @@ entity ep_timestamping_unit is
     rx_timestamp_stb_p_i : in std_logic;
 
 -------------------------------------------------------------------------------
--- OOB stuff
+-- RX Timestamp outpt
+-------------------------------------------------------------------------------
+
+    -- RX timestamp
+    rxts_timestamp_o : out std_logic_vector(31 downto 0);
+
+-- RX timestamp valid
+    rxts_valid_o : out std_logic;
+
+
+-------------------------------------------------------------------------------
+-- TX OOB stuff
 -------------------------------------------------------------------------------
 
 -- TX OOB frame ID (extracted from OOB fields from fabric interface by TX framer)
@@ -71,16 +87,6 @@ entity ep_timestamping_unit is
 -- TX OOB strobe, denotes valid FID on txoob_fid_i.
     txoob_stb_p_i : in std_logic;
 
--- RX OOB data vector (timestamps + port ID) passed to the RX deframer
-    rxoob_data_o : out std_logic_vector(31 downto 0);
-
--- RX OOB valid (HI indicates there is valid data on rxoob_data_o). Stays HI until
--- rxoob_ack_i gets HI.
-    rxoob_valid_o : out std_logic;
-
--- RX OOB acknowledge. HI indicates that RX deframes has sucessfully passed the
--- timestamp onto fabric interface.
-    rxoob_ack_i : in std_logic;
 
 -------------------------------------------------------------------------------
 -- TXTSU interface
@@ -149,8 +155,8 @@ architecture syn of ep_timestamping_unit is
   signal take_tx_synced_p, take_rx_synced_p             : std_logic;
   signal take_tx_synced_p_fedge, take_rx_synced_p_fedge : std_logic;
 
-  signal tx_sync_delay : std_logic_vector(7 downto 0);
-  signal rx_sync_delay : std_logic_vector(7 downto 0);
+  signal tx_sync_delay : std_logic_vector(4 downto 0);
+  signal rx_sync_delay : std_logic_vector(4 downto 0);
   signal rx_ts_done    : std_logic;
   signal tx_ts_done    : std_logic;
 
@@ -175,7 +181,7 @@ begin  -- syn
     port map (
 
       clk_i          => clk_ref_i,
-      rst_n_i        => rst_n_i,
+      rst_n_i        => rst_n_ref_i,
       pps_p_i        => pps_csync_p1_i,
       overflow_o     => open,
       value_r_o      => cntr_r,
@@ -190,7 +196,7 @@ begin  -- syn
       g_sync_edge => "positive")
     port map (
       clk_i    => clk_ref_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => rst_n_ref_i,
       data_i   => tx_timestamp_stb_p_i,
       synced_o => open,
       npulse_o => open,
@@ -201,7 +207,7 @@ begin  -- syn
       g_sync_edge => "positive")
     port map (
       clk_i    => clk_ref_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => rst_n_ref_i,
       data_i   => rx_timestamp_stb_p_i,
       synced_o => open,
       npulse_o => open,
@@ -213,7 +219,7 @@ begin  -- syn
       g_sync_edge => "negative")
     port map (
       clk_i    => clk_ref_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => rst_n_ref_i
       data_i   => tx_timestamp_stb_p_i,
       synced_o => open,
       npulse_o => open,
@@ -224,7 +230,7 @@ begin  -- syn
       g_sync_edge => "negative")
     port map (
       clk_i    => clk_ref_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => rst_n_ref_i,
       data_i   => rx_timestamp_stb_p_i,
       synced_o => open,
       npulse_o => open,
@@ -232,49 +238,47 @@ begin  -- syn
 
   
 
-  take_r : process(clk_ref_i, rst_n_i)
+  take_r : process(clk_ref_i)
   begin
-    if(rst_n_i = '0') then
-      cntr_rx_r <= (others => '0');
-      cntr_tx_r <= (others => '0');
+    if rising_edge(clk_ref_i) then
+      if(rst_n_ref_i = '0') then
+        cntr_rx_r <= (others => '0');
+        cntr_tx_r <= (others => '0');
 
-      rx_sync_delay <= (others => '0');
-      tx_sync_delay <= (others => '0');
-      
-    elsif rising_edge(clk_ref_i) then
+        rx_sync_delay <= (others => '0');
+        tx_sync_delay <= (others => '0');
+      else
+        -- shift reg
+        rx_sync_delay <= '0' & rx_sync_delay(rx_sync_delay'length-1 downto 1);
+        tx_sync_delay <= '0' & tx_sync_delay(tx_sync_delay'length-1 downto 1);
 
-      -- shift reg
-      rx_sync_delay <= '0' & rx_sync_delay(rx_sync_delay'length-1 downto 1);
-      tx_sync_delay <= '0' & tx_sync_delay(tx_sync_delay'length-1 downto 1);
+        if take_rx_synced_p = '1' then
+          cntr_rx_r                                                           <= cntr_r;
+          rx_sync_delay(rx_sync_delay'length-1 downto rx_sync_delay'length-4) <= (others => '1');
+        end if;
 
-      if take_rx_synced_p = '1' then
-        cntr_rx_r                                                           <= cntr_r;
-        rx_sync_delay(rx_sync_delay'length-1 downto rx_sync_delay'length-4) <= (others => '1');
-      end if;
-
-      if take_tx_synced_p = '1' then
-        cntr_tx_r                                                           <= cntr_r;
-        tx_sync_delay(tx_sync_delay'length-1 downto tx_sync_delay'length-4) <= (others => '1');
+        if take_tx_synced_p = '1' then
+          cntr_tx_r                                                           <= cntr_r;
+          tx_sync_delay(tx_sync_delay'length-1 downto tx_sync_delay'length-4) <= (others => '1');
+        end if;
       end if;
     end if;
   end process;
 
-  take_f : process(clk_ref_i, rst_n_i)
+  take_f : process(clk_ref_i)
   begin
-    if rst_n_i = '0' then
-      cntr_rx_f <= (others => '0');
-      cntr_tx_f <= (others => '0');
-    elsif falling_edge(clk_ref_i) then
-
-      if take_rx_synced_p_fedge = '1' then
-        cntr_rx_f <= cntr_f;
+    if falling_edge(clk_ref_i) then
+      if rst_n_ref_i = '0' then
+        cntr_rx_f <= (others => '0');
+        cntr_tx_f <= (others => '0');
+      else
+        if take_rx_synced_p_fedge = '1' then
+          cntr_rx_f <= cntr_f;
+        end if;
+        if take_tx_synced_p_fedge = '1' then
+          cntr_tx_f <= cntr_f;
+        end if;
       end if;
-
-      if take_tx_synced_p_fedge = '1' then
-        cntr_tx_f <= cntr_f;
-      end if;
-
-      
     end if;
   end process;
 
@@ -285,18 +289,19 @@ begin  -- syn
       g_sync_edge => "positive")
     port map (
       clk_i    => clk_sys_i,
-      rst_n_i  => rst_n_i,
+      rst_n_i  => rst_n_sys_i,
       data_i   => tx_sync_delay(0),
       synced_o => open,
       npulse_o => tx_ts_done,
       ppulse_o => open);
 
+  -- timestamping "done" signals sync chains (refclk/rbclk -> refclk2)
   rx_done_gen : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
-      clk_i    => clk_sys_i,
-      rst_n_i  => rst_n_i,
+      clk_i    => clk_rx_i,
+      rst_n_i  => rst_n_sys_i,
       data_i   => rx_sync_delay(0),
       synced_o => open,
       npulse_o => rx_ts_done,
@@ -304,15 +309,15 @@ begin  -- syn
 
 -- TX OOB & timestamp combiner
 
-  tx_oob_stuff : process (clk_sys_i, rst_n_i)
+  tx_oob_stuff : process (clk_sys_i)
   begin  -- process
     if rising_edge(clk_sys_i) then
       
-      if(rst_n_i = '0') then
+      if(rst_n_sys_i = '0') then
         txtsu_fid_o   <= (others => '0');
         txtsu_valid_o <= '0';
         txts_valid    <= '0';
-        got_tx_oob <= '0';
+        got_tx_oob    <= '0';
       else
 
         if(txtsu_ack_i = '1' and (got_tx_oob = '0' or txts_valid = '0')) then
@@ -323,14 +328,14 @@ begin  -- syn
 -- send we have a TX timestamp for this frame, send it to the TXTSU
           txtsu_valid_o <= ep_tscr_en_txts_i;
           txts_valid    <= '0';
-          got_tx_oob <= '0';
+          got_tx_oob    <= '0';
         end if;
 
         if(txoob_stb_p_i = '1' and ep_tscr_en_txts_i = '1') then
-          txtsu_fid_o   <= txoob_fid_i;
-          got_tx_oob <= '1';
+          txtsu_fid_o <= txoob_fid_i;
+          got_tx_oob  <= '1';
         end if;
-        
+
         if(tx_ts_done = '1' and ep_tscr_en_txts_i = '1') then
           txtsu_tsval_o <= cntr_tx_f & cntr_tx_r;
           txts_valid    <= '1';
@@ -340,18 +345,18 @@ begin  -- syn
   end process;
 
 
-  rx_oob_stuff : process (clk_sys_i, rst_n_i)
+  p_output_rx_ts : process (clk_rx_i)
   begin
-    if rising_edge(clk_sys_i) then
-      if(rst_n_i = '0') then
-        rxoob_data_o  <= (others => '0');
-        rxoob_valid_o <= '0';
+    if rising_edge(clk_rx_i) then
+      if(rst_n_rx_i = '0') then
+        rxts_valid_o <= '0';
+        rxts_timestamp_o <= (others => '0');
       else
-        if(rxoob_ack_i = '1') then
-          rxoob_valid_o <= '0';
+        if(ep_tscr_en_rxts_i = '0') then
+          rxts_valid_o <= '0';
         elsif(rx_ts_done = '1' and ep_tscr_en_rxts_i = '1') then
-          rxoob_valid_o <= '1';
-          rxoob_data_o  <= cntr_rx_f & cntr_rx_r;
+          rxts_valid_o <= '1';
+          rxts_timestamp_o  <= cntr_rx_f & cntr_rx_r;
         end if;
       end if;
     end if;

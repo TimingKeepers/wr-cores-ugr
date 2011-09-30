@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-09-11
+-- Last update: 2011-09-26
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ use work.gencores_pkg.all;
 use work.genram_pkg.all;
 use work.endpoint_private_pkg.all;
 
-entity ep_rx_pcs_tbi is
+entity ep_rx_pcs_8bit is
   generic (
     g_simulation : boolean);
   port (
@@ -67,11 +67,14 @@ entity ep_rx_pcs_tbi is
     pcs_fifo_almostfull_i : in  std_logic;
 -- RX path busy indicator (active HI).
 -- When asserted, the receiver is in the middle of reception of a frame
-    pcs_busy_o : out std_logic;
+    pcs_busy_o            : out std_logic;
 -- data FIFO output
-    pcs_fab_o  : out t_ep_internal_fabric;
+    pcs_fab_o             : out t_ep_internal_fabric;
+
 
     timestamp_stb_p_o : out std_logic;  -- strobe for RX timestamping
+    timestamp_i       : in  std_logic_vector(31 downto 0);
+    timestamp_valid_i : in  std_logic;
 
 -------------------------------------------------------------------------------
 -- PHY interface
@@ -104,9 +107,9 @@ entity ep_rx_pcs_tbi is
     rmon_o : inout t_rmon_triggers
     );
 
-end ep_rx_pcs_tbi;
+end ep_rx_pcs_8bit;
 
-architecture behavioral of ep_rx_pcs_tbi is
+architecture behavioral of ep_rx_pcs_8bit is
 
 -- RX state machine definitions
   type t_tbif_rx_state is (RX_NOFRAME, RX_COMMA, RX_CR3, RX_CR4, RX_SPD_PREAMBLE, RX_PAYLOAD, RX_EXTEND);
@@ -168,6 +171,7 @@ architecture behavioral of ep_rx_pcs_tbi is
   signal fifo_error         : std_logic;
   signal fifo_almostfull    : std_logic;
   signal fifo_clear_n       : std_logic;
+  signal fifo_with_rx_ts    : std_logic;
 
 -- Synchronization detection FSM signals
   signal rx_synced, rx_even : std_logic;
@@ -196,9 +200,9 @@ architecture behavioral of ep_rx_pcs_tbi is
   signal mdio_mcr_pdown_synced : std_logic;
 
 
-  signal pcs_valid_int : std_logic;
+  signal pcs_valid_int     : std_logic;
+  signal timestamp_pending : std_logic_vector(1 downto 0);
   
-
 begin
 -------------------------------------------------------------------------------
 -- synchronizer chains for Wishbone-accessible control signals
@@ -332,12 +336,13 @@ begin
   -- FIFO input data formatting
   fifo_wrreq <= fifo_wr_toggle and fifo_mask_write;
 
-  pcs_fab_o.data    <= fifo_rx_data;
-  pcs_fab_o.sof     <= fifo_sof and fifo_wrreq;
-  pcs_fab_o.eof     <= fifo_eof and fifo_wrreq;
-  pcs_fab_o.bytesel <= fifo_bytesel;
-  pcs_fab_o.error   <= fifo_error and fifo_wrreq;
-  pcs_fab_o.dvalid  <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
+  pcs_fab_o.data       <= fifo_rx_data;
+  pcs_fab_o.sof        <= fifo_sof and fifo_wrreq;
+  pcs_fab_o.eof        <= fifo_eof and fifo_wrreq;
+  pcs_fab_o.bytesel    <= fifo_bytesel;
+  pcs_fab_o.error      <= fifo_error and fifo_wrreq;
+  pcs_fab_o.with_rx_ts <= fifo_with_rx_ts;
+  pcs_fab_o.dvalid     <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
 
   fifo_almostfull <= pcs_fifo_almostfull_i;
 
@@ -455,6 +460,7 @@ begin
         fifo_error      <= '0';
         fifo_wr_toggle  <= '0';
         fifo_mask_write <= '0';
+        fifo_with_rx_ts <= '0';
 
         lcr_ready         <= '0';
         lcr_cur_val       <= (others => '0');
@@ -467,6 +473,7 @@ begin
         rmon_invalid_code_p_int <= '0';
 
         timestamp_stb_p_o <= '0';
+        timestamp_pending <= "00";
       else                              -- normal PCS operation
 
         -- clear the autogotiation variables if the autonegotiation is disabled
@@ -489,16 +496,30 @@ begin
           when RX_NOFRAME =>
 
             
-            fifo_sof        <= '0';
-            fifo_eof        <= '0';
-            fifo_error      <= '0';
-            fifo_bytesel    <= '0';
-            fifo_mask_write <= '0';
-            fifo_wr_toggle  <= '1';
+            fifo_sof     <= '0';
+            fifo_eof     <= '0';
+            fifo_error   <= '0';
+            fifo_bytesel <= '0';
 
             rx_busy           <= '0';
             timestamp_stb_p_o <= '0';
 
+            -- insert the RX timestamp into the FIFO
+            if(timestamp_pending /= "00") then
+              fifo_mask_write <= '1';
+              fifo_wr_toggle  <= '1';
+            else
+              fifo_mask_write <= '0';
+              fifo_wr_toggle  <= '0';
+            end if;
+
+            if(timestamp_pending(0) = '1')then
+              fifo_rx_data <= timestamp_i(31 downto 16);
+            else
+              fifo_rx_data <= timestamp_i(15 downto 0);
+            end if;
+
+            timestamp_pending <= timestamp_pending(0) & '0';
 
             if (rx_synced = '0') then
 -- PCS is not synced: stay in NOFRAME state and ignore the incoming codes.
@@ -532,6 +553,9 @@ begin
           when RX_COMMA =>
 -- received a code with error (or a control code group) or a misaligned code:
 -- go to the initial NOFRAME state and account the error.
+
+            fifo_mask_write <= '0';
+            fifo_wr_toggle  <= '0';
 
             if (d_err = '1' or d_is_k = '1' or d_is_even = '1' or rx_synced = '0') then
               rmon_invalid_code_p_int <= d_err;
@@ -738,11 +762,14 @@ begin
               rx_state        <= RX_EXTEND;
             elsif d_is_comma = '1' then  -- got comma, real end-of-frame
               -- indicate the correct ending of the current frame in the RX FIFO
-              fifo_eof        <= '1';
-              fifo_mask_write <= '1';
-              fifo_wr_toggle  <= '1';
+              fifo_eof          <= '1';
+              fifo_with_rx_ts   <= timestamp_valid_i;
+              fifo_mask_write   <= '1';
+              fifo_wr_toggle    <= '1';
+              timestamp_pending <= "11";
 
               rx_state <= RX_COMMA;
+              
             else
               -- got anything else than comma (for example, the /V/ code):
 

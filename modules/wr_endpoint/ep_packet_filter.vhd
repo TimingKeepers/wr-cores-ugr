@@ -9,14 +9,13 @@ use work.ep_wbgen2_pkg.all;
 entity ep_packet_filter is
   
   port (
-    clk_sys_i : in std_logic;
-    rst_n_i   : in std_logic;
+    clk_rx_i    : in std_logic;
+    clk_sys_i   : in std_logic;
+    rst_n_rx_i  : in std_logic;
+    rst_n_sys_i : in std_logic;
 
-    snk_fab_i  : in  t_ep_internal_fabric;
-    snk_dreq_o : out std_logic;
-
-    src_fab_o  : out t_ep_internal_fabric;
-    src_dreq_i : in  std_logic;
+    snk_fab_i : in  t_ep_internal_fabric;
+    src_fab_o : out t_ep_internal_fabric;
 
     done_o   : out std_logic;
     pclass_o : out std_logic_vector(7 downto 0);
@@ -117,7 +116,7 @@ architecture behavioral of ep_packet_filter is
   signal pmem_addr  : unsigned(c_PC_SIZE-1 downto 0);
   signal pmem_rdata : std_logic_vector(15 downto 0);
 
-  signal mm_addr  : std_logic_vector(c_PC_SIZE-1 downto 0);
+  signal mm_addr            : std_logic_vector(c_PC_SIZE-1 downto 0);
   signal mm_write           : std_logic;
   signal mm_rdata, mm_wdata : std_logic_vector(35 downto 0);
 
@@ -130,21 +129,27 @@ begin  -- behavioral
   mm_write <= not regs_i.pfcr0_enable_o and regs_i.pfcr0_mm_write_o and regs_i.pfcr0_mm_write_wr_o;
   mm_wdata <= regs_i.pfcr0_mm_data_msb_o & regs_i.pfcr1_mm_data_lsb_o;
 
-  U_microcode_ram : generic_spram
+  U_microcode_ram : generic_dpram
     generic map (
       g_data_width => 36,
-      g_size       => 2**c_PC_SIZE)
+      g_size       => 2**c_PC_SIZE
+      g_dual_clock => true)
     port map (
-      rst_n_i => rst_n_i,
-      clk_i   => clk_sys_i,
-      bwe_i   => "11111",
-      we_i    => mm_write,
-      a_i     => mm_addr,
-      d_i     => mm_wdata,
-      q_o     => mm_rdata);
+      rst_n_i => rst_n_sys_i,
+      clka_i  => clk_rx_i,
+      bwea_i  => "00000",
+      wea_i   => '0',
+      aa_i    => std_logic_vector(pc),
+      da_i    => x"000000000",
+      qa_o    => mm_rdata,
+      clkb_i  => clk_sys_i,
+      bwea_i  => "11111",
+      wea_i   => mm_write,
+      aa_i    => regs_i.pfcr0_mm_addr_o,
+      da_i    => mm_wdata
+      );
 
-  mm_addr <= regs_i.pfcr0_mm_addr_o when mm_write = '1' else std_logic_vector(pc);
-  
+
 
   U_backlog_ram : generic_dpram
     generic map (
@@ -167,8 +172,7 @@ begin  -- behavioral
       db_i    => x"0000",
       qb_o    => pmem_rdata);
 
-  snk_dreq_o <= src_dreq_i;
-  src_fab_o  <= snk_fab_i;
+  src_fab_o <= snk_fab_i;
 
   p_pc_counter : process(clk_sys_i)
   begin
@@ -200,10 +204,10 @@ begin  -- behavioral
   p_gen_mask : process(insn)
   begin
     if(insn.cmp_bit = '0') then
-      mask(3 downto 0)   <= (insn.cmp_mask(0) & insn.cmp_mask(0) & insn.cmp_mask(0) & insn.cmp_mask(0));
-      mask(7 downto 4)   <= (insn.cmp_mask(1) & insn.cmp_mask(1) & insn.cmp_mask(1) & insn.cmp_mask(1));
-      mask(11 downto 8)  <= (insn.cmp_mask(2) & insn.cmp_mask(2) & insn.cmp_mask(2) & insn.cmp_mask(2));
-      mask(15 downto 12) <= (insn.cmp_mask(3) & insn.cmp_mask(3) & insn.cmp_mask(3) & insn.cmp_mask(3));
+      mask <= (3 downto 0   => insn.cmp_mask(0),
+               7 downto 4   => insn.cmp_mask(1),
+               11 downto 8  => insn.cmp_mask(2),
+               15 downto 12 => insn.cmp_mask(3));
     else
       case insn.cmp_mask is
         when x"0"   => mask <= x"0001";
@@ -261,10 +265,10 @@ begin  -- behavioral
       else
         if(regs_i.pfcr0_enable_o = '0') then
           done_int <= '1';
-          drop_o <= '0';
+          drop_o   <= '0';
           pclass_o <= (others => '0');
         elsif(stage2 = '1' and insn.fin = '1') then
-          done_int   <= '1';
+          done_int <= '1';
           pclass_o <= regs(31 downto 24);
           drop_o   <= regs(23);
         end if;

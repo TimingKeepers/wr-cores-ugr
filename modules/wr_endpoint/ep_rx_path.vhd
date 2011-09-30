@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-09-11
+-- Last update: 2011-09-26
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -96,6 +96,8 @@ end ep_rx_path;
 architecture behavioral of ep_rx_path is
 
   component ep_rx_early_address_match
+    generic (
+      g_with_rtu : boolean);
     port (
       clk_sys_i            : in  std_logic;
       clk_rx_i             : in  std_logic;
@@ -107,9 +109,15 @@ architecture behavioral of ep_rx_path is
       match_is_hp_o        : out std_logic;
       match_is_pause_o     : out std_logic;
       match_pause_quanta_o : out std_logic_vector(15 downto 0);
+      rtu_smac_o           : out std_logic_vector(47 downto 0);
+      rtu_dmac_o           : out std_logic_vector(47 downto 0);
+      rtu_vid_o            : out std_logic_vector(11 downto 0);
+      rtu_has_vid_o        : out std_logic;
+      rtu_prio_o           : out std_logic_vector(2 downto 0);
+      rtu_has_prio_o       : out std_logic;
       regs_i               : in  t_ep_out_registers);
   end component;
-
+  
   component ep_clock_alignment_fifo
     generic (
       g_size                 : integer;
@@ -224,8 +232,8 @@ architecture behavioral of ep_rx_path is
 
   type t_fab_pipe is array(integer range <>) of t_ep_internal_fabric;
 
-  signal fab_pipe  : t_fab_pipe(0 to 4);
-  signal dreq_pipe : std_logic_vector(4 downto 0);
+  signal fab_pipe  : t_fab_pipe(0 to 5);
+  signal dreq_pipe : std_logic_vector(5 downto 0);
 
   signal ematch_done         : std_logic;
   signal ematch_is_hp        : std_logic;
@@ -246,6 +254,9 @@ begin  -- behavioral
   fab_pipe(0) <= pcs_fab_i;
 
   U_early_addr_match : ep_rx_early_address_match
+    generic map (
+      g_with_rtu => g_with_rtu)
+    
     port map (
       clk_sys_i            => clk_sys_i,
       clk_rx_i             => clk_rx_i,
@@ -270,7 +281,7 @@ begin  -- behavioral
       rst_n_rd_i      => rst_n_sys_i,
       clk_wr_i     => clk_rx_i,
       clk_rd_i     => clk_sys_i,
-      dreq_i       => dreq_pipe(1),
+      dreq_i       => dreq_pipe(2),
       fab_i        => fab_pipe(1),
       fab_o        => fab_pipe(2),
       full_o       => open,
@@ -283,10 +294,10 @@ begin  -- behavioral
       port map (
         clk_sys_i  => clk_sys_i,
         rst_n_i    => rst_n_sys_i,
-        snk_fab_i  => fab_pipe(1),
-        snk_dreq_o => dreq_pipe(1),
-        src_fab_o  => fab_pipe(2),
-        src_dreq_i => dreq_pipe(2),
+        snk_fab_i  => fab_pipe(2),
+        snk_dreq_o => dreq_pipe(2),
+        src_fab_o  => fab_pipe(3),
+        src_dreq_i => dreq_pipe(3),
         done_o     => pfilter_done,
         pclass_o   => pfilter_pclass,
         drop_o     => pfilter_drop,
@@ -294,18 +305,18 @@ begin  -- behavioral
   end generate gen_with_packet_filter;
 
   gen_without_packet_filter : if(not g_with_dpi_classifier) generate
-    fab_pipe(2)  <= fab_pipe(1);
-    dreq_pipe(1) <= dreq_pipe(2);
+    fab_pipe(3)  <= fab_pipe(2);
+    dreq_pipe(2) <= dreq_pipe(3);
   end generate gen_without_packet_filter;
 
   U_crc_size_checker : ep_rx_crc_size_check
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
-      snk_fab_i  => fab_pipe(2),
-      snk_dreq_o => dreq_pipe(2),
-      src_dreq_i => dreq_pipe(3),
-      src_fab_o  => fab_pipe(3),
+      snk_fab_i  => fab_pipe(3),
+      snk_dreq_o => dreq_pipe(3),
+      src_dreq_i => dreq_pipe(4),
+      src_fab_o  => fab_pipe(4),
       rmon_o     => rmon_o,
       regs_i     => regs_i);
 
@@ -315,10 +326,10 @@ begin  -- behavioral
       port map (
         clk_sys_i  => clk_sys_i,
         rst_n_i    => rst_n_sys_i,
-        snk_fab_i  => fab_pipe(3),
-        snk_dreq_o => dreq_pipe(3),
-        src_fab_o  => fab_pipe(4),
-        src_dreq_i => dreq_pipe(4),
+        snk_fab_i  => fab_pipe(4),
+        snk_dreq_o => dreq_pipe(4),
+        src_fab_o  => fab_pipe(5),
+        src_dreq_i => dreq_pipe(5),
         tclass_o   => vlan_tclass,
         vid_o      => vlan_vid,
         tag_done_o => vlan_tag_done,
@@ -331,8 +342,8 @@ begin  -- behavioral
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
-      snk_fab_i  => fab_pipe(4),
-      snk_dreq_o => dreq_pipe(4),
+      snk_fab_i  => fab_pipe(5),
+      snk_dreq_o => dreq_pipe(5),
       src_wb_i   => src_wb_i,
       src_wb_o   => src_wb_o);
   

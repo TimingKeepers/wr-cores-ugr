@@ -11,22 +11,32 @@ use work.ep_wbgen2_pkg.all;
 -- to filter out pause and HP frames in advance.
 
 entity ep_rx_early_address_match is
-  port(clk_sys_i : in std_logic;
-       clk_rx_i: in std_logic;
-       
-       rst_n_sys_i   : in std_logic;
-       rst_n_rx_i: in std_logic;
+  generic (
+    g_with_rtu : boolean);
+  port(
+    clk_sys_i : in std_logic;
+    clk_rx_i  : in std_logic;
 
-       snk_fab_i  : in  t_ep_internal_fabric;
-       src_fab_o  : out t_ep_internal_fabric;
+    rst_n_sys_i : in std_logic;
+    rst_n_rx_i  : in std_logic;
 
-       match_done_o         : out std_logic;
-       match_is_hp_o        : out std_logic;
-       match_is_pause_o     : out std_logic;
-       match_pause_quanta_o : out std_logic_vector(15 downto 0);
+    snk_fab_i : in  t_ep_internal_fabric;
+    src_fab_o : out t_ep_internal_fabric;
 
-       regs_i : in t_ep_out_registers
-       );
+    match_done_o         : out std_logic;
+    match_is_hp_o        : out std_logic;
+    match_is_pause_o     : out std_logic;
+    match_pause_quanta_o : out std_logic_vector(15 downto 0);
+
+    rtu_rq_smac_o     : out std_logic_vector(47 downto 0);
+    rtu_rq_dmac_o     : out std_logic_vector(47 downto 0);
+    rtu_rq_vid_o      : out std_logic_vector(11 downto 0);
+    rtu_rq_has_vid_o  : out std_logic;
+    rtu_rq_prio_o     : out std_logic_vector(2 downto 0);
+    rtu_rq_has_prio_o : out std_logic;
+
+    regs_i : in t_ep_out_registers
+    );
 
 end ep_rx_early_address_match;
 
@@ -40,7 +50,7 @@ architecture behavioral of ep_rx_early_address_match is
   signal pause_match_int : std_logic_vector(7 downto 0);
 
   signal comb_pcp_matches_hp : std_logic;
-  signal done_int : std_logic;
+  signal done_int            : std_logic;
 
   function f_compare_slv (a : std_logic_vector; b : std_logic_vector) return std_logic is
   begin
@@ -51,14 +61,22 @@ architecture behavioral of ep_rx_early_address_match is
     end if;
   end f_compare_slv;
 
-
+  procedure f_extract_rtu(signal q         : out std_logic_vector;
+                          signal fab       : t_ep_internal_fabric;
+                          signal at_offset : std_logic) is
+  begin
+    if(at_offset = '1' and fab.dvalid = '1') then
+      q <= fab.data;
+    end if;
+  end f_extract_rtu;
+  
 begin  -- behavioral
 
   at_ethertype <= hdr_offset(5) and snk_fab_i.dvalid;
   at_vid       <= hdr_offset(7) and snk_fab_i.dvalid and is_tagged;
 
   src_fab_o <= snk_fab_i;
-  
+
   p_hdr_offset_sreg : process(clk_rx_i)
   begin
     if rising_edge(clk_rx_i) then
@@ -113,6 +131,38 @@ begin  -- behavioral
     end if;
   end process;
 
+  gen_with_rtu : if(g_with_rtu) generate
+    p_gen_rtu_request : process(clk_rx_i)
+    begin
+      if rising_edge(clk_rx_i) then
+        if rst_n_rx_i = '0' then
+          rtu_rq_smac_o  <= (others => '0');
+          rtu_rq_dmac_o  <= (others => '0');
+          rtu_rq_has_prio_o <= '0';
+          rtu_rq_has_vid_o  <= '0';
+        else
+          f_extract_rtu(rtu_rq_dmac_o(47 downto 32), snk_fab_i, hdr_offset(0));
+          f_extract_rtu(rtu_rq_dmac_o(31 downto 16), snk_fab_i, hdr_offset(1));
+          f_extract_rtu(rtu_rq_dmac_o(15 downto 0), snk_fab_i, hdr_offset(2));
+          f_extract_rtu(rtu_rq_smac_o(47 downto 32), snk_fab_i, hdr_offset(3));
+          f_extract_rtu(rtu_rq_smac_o(31 downto 16), snk_fab_i, hdr_offset(4));
+          f_extract_rtu(rtu_rq_smac_o(15 downto 0), snk_fab_i, hdr_offset(5));
+
+          if(snk_fab_i.sof = '1') then
+            rtu_rq_has_vid_o  <= '0';
+            rtu_rq_has_prio_o <= '0';
+          elsif(at_vid = '1') then
+            rtu_rq_vid_o      <= snk_fab_i.data(11 downto 0);
+            rtu_rq_prio_o     <= snk_fab_i.data(15 downto 13);
+            rtu_rq_has_vid_o  <= '1';
+            rtu_rq_has_prio_o <= '1';
+          end if;
+        end if;
+      end if;
+    end process;
+  end generate gen_with_rtu;
+
+
   p_match_hp : process(clk_rx_i)
     variable index : integer;
   begin
@@ -151,8 +201,8 @@ begin  -- behavioral
       end if;
     end if;
   end process;
-  
-  U_sync_done: gc_sync_ffs
+
+  U_sync_done : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (

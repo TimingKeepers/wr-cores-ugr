@@ -37,7 +37,7 @@ architecture structural of ep_clock_alignment_fifo is
   signal rx_rdreq  : std_logic;
   signal empty_int : std_logic;
   signal valid_int : std_logic;
-  signal count     : std_logic_vector(6 downto 0);
+  signal count     : std_logic_vector(f_log2_size(g_size)-1 downto 0);
   signal dreq_mask : std_logic;
 
   type t_state is (OUTSIDE_FRAME, INSIDE_FRAME);
