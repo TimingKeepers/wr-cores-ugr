@@ -19,10 +19,6 @@ entity ep_rx_oob_insert is
        src_fab_o  : out t_ep_internal_fabric;
        src_dreq_i : in  std_logic;
 
-       oob_data_i  : in  std_logic_vector(31 downto 0);
-       oob_valid_i : in  std_logic;
-       oob_ack_o   : out std_logic;
-
        regs_i : in  t_ep_out_registers
      );
 
@@ -78,14 +74,13 @@ begin  -- behavioral
             when WAIT_EOF =>
               dreq_mask <= '1';
 
-              if(snk_fab_i.eof = '1')then
-                if(regs_i.tscr_en_rxts_o = '1' and oob_valid_i = '1') then
+              if(snk_fab_i.eof = '1' and snk_fab_i.has_rx_timestamp = '1') then
                   state     <= INSERT_1;
-                  oob_ack_o <= '1';
                   dreq_mask <= '0';
                 else
                   state <= END_FRAME;
                 end if;
+
               elsif (snk_fab_i.dvalid = '1' and src_dreq_i = '0') then
                 stored_fab.bytesel <= snk_fab_i.bytesel;
                 stored_fab.data    <= snk_fab_i.data;
@@ -127,7 +122,6 @@ begin  -- behavioral
               end if;
 
             when INSERT_1 =>
-              oob_ack_o <= '0';
               f_insert_oob(src_dreq_i, src_fab_o, c_WRF_OOB_TYPE_RX & "0000000" & regs_i.ecr_portid_o);
               if(src_dreq_i = '1')then
                 state <= INSERT_2;
@@ -138,6 +132,7 @@ begin  -- behavioral
               if(src_dreq_i = '1')then
                 state <= INSERT_3;
               end if;
+
 
             when INSERT_3 =>
               f_insert_oob(src_dreq_i, src_fab_o, oob_data_i(15 downto 0));

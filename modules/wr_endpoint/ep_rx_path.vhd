@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-09-26
+-- Last update: 2011-10-06
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
+use work.genram_pkg.all;
 use work.endpoint_private_pkg.all;
 use work.ep_wbgen2_pkg.all;
 use work.wr_fabric_pkg.all;
@@ -45,9 +46,9 @@ entity ep_rx_path is
     rst_n_rx_i  : in std_logic;
 
 -- physical coding sublayer (PCS) interface
-    pcs_fab_i  : in  t_ep_internal_fabric;
-    pcs_fifo_almostfull_o: out std_logic;
-    pcs_busy_i : in  std_logic;
+    pcs_fab_i             : in  t_ep_internal_fabric;
+    pcs_fifo_almostfull_o : out std_logic;
+    pcs_busy_i            : in  std_logic;
 
 -- OOB frame tag value and strobing signal
     oob_data_i  : in  std_logic_vector(47 downto 0);
@@ -68,27 +69,13 @@ entity ep_rx_path is
 --    regs_o : out   t_ep_in_registers;
 
 
-    ------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- RTU interface
 -------------------------------------------------------------------------------
 
--- source/MAC address
-    rtu_rq_smac_o : out std_logic_vector(48 - 1 downto 0);
-    rtu_rq_dmac_o : out std_logic_vector(48 - 1 downto 0);
-
--- VLAN Id/VID present flag
-    rtu_rq_vid_o     : out std_logic_vector(12 - 1 downto 0);
-    rtu_rq_has_vid_o : out std_logic;
-
--- packet priority / priority present flag
-    rtu_rq_prio_o     : out std_logic_vector(3 - 1 downto 0);
-    rtu_rq_has_prio_o : out std_logic;
-
--- RTU idle input (indicates that the RTU is ready to serve another request)
-    rtu_full_i : in std_logic;
-
--- RTU request output: HI pulse initiates RTU matching procedure
-    rtu_rq_strobe_p1_o : out std_logic
+    rtu_rq_o       : out t_ep_internal_rtu_request;
+    rtu_full_i     : in  std_logic;
+    rtu_rq_valid_o : out std_logic
     );
 
 end ep_rx_path;
@@ -109,12 +96,7 @@ architecture behavioral of ep_rx_path is
       match_is_hp_o        : out std_logic;
       match_is_pause_o     : out std_logic;
       match_pause_quanta_o : out std_logic_vector(15 downto 0);
-      rtu_smac_o           : out std_logic_vector(47 downto 0);
-      rtu_dmac_o           : out std_logic_vector(47 downto 0);
-      rtu_vid_o            : out std_logic_vector(11 downto 0);
-      rtu_has_vid_o        : out std_logic;
-      rtu_prio_o           : out std_logic_vector(2 downto 0);
-      rtu_has_prio_o       : out std_logic;
+      rtu_rq_o             : out t_ep_internal_rtu_request;
       regs_i               : in  t_ep_out_registers);
   end component;
   
@@ -122,32 +104,32 @@ architecture behavioral of ep_rx_path is
     generic (
       g_size                 : integer;
       g_almostfull_threshold : integer;
-      g_early_eof            : boolean;
-      g_min_latency          : integer);
+      g_early_eof            : boolean);
     port (
-      rst_n_rd_i   : in  std_logic;
-      clk_wr_i     : in  std_logic;
-      clk_rd_i     : in  std_logic;
-      dreq_i       : in  std_logic;
-      fab_i        : in  t_ep_internal_fabric;
-      fab_o        : out t_ep_internal_fabric;
-      full_o       : out std_logic;
-      empty_o      : out std_logic;
-      almostfull_o : out std_logic);
+      rst_n_rd_i       : in  std_logic;
+      clk_wr_i         : in  std_logic;
+      clk_rd_i         : in  std_logic;
+      dreq_i           : in  std_logic;
+      fab_i            : in  t_ep_internal_fabric;
+      fab_o            : out t_ep_internal_fabric;
+      full_o           : out std_logic;
+      empty_o          : out std_logic;
+      almostfull_o     : out std_logic;
+      pass_threshold_i : in  std_logic_vector(f_log2_size(g_size)-1 downto 0));
   end component;
 
   component ep_packet_filter
     port (
-      clk_sys_i  : in  std_logic;
-      rst_n_i    : in  std_logic;
-      snk_fab_i  : in  t_ep_internal_fabric;
-      snk_dreq_o : out std_logic;
-      src_fab_o  : out t_ep_internal_fabric;
-      src_dreq_i : in  std_logic;
-      done_o     : out std_logic;
-      pclass_o   : out std_logic_vector(7 downto 0);
-      drop_o     : out std_logic;
-      regs_i     : in  t_ep_out_registers);
+      clk_rx_i    : in  std_logic;
+      clk_sys_i   : in  std_logic;
+      rst_n_rx_i  : in  std_logic;
+      rst_n_sys_i : in  std_logic;
+      snk_fab_i   : in  t_ep_internal_fabric;
+      src_fab_o   : out t_ep_internal_fabric;
+      done_o      : out std_logic;
+      pclass_o    : out std_logic_vector(7 downto 0);
+      drop_o      : out std_logic;
+      regs_i      : in  t_ep_out_registers);
   end component;
 
   component ep_rx_vlan_unit
@@ -256,7 +238,7 @@ begin  -- behavioral
   U_early_addr_match : ep_rx_early_address_match
     generic map (
       g_with_rtu => g_with_rtu)
-    
+
     port map (
       clk_sys_i            => clk_sys_i,
       clk_rx_i             => clk_rx_i,
@@ -270,44 +252,46 @@ begin  -- behavioral
       match_pause_quanta_o => ematch_pause_quanta,
       regs_i               => regs_i);
 
+
+  gen_with_packet_filter : if(g_with_dpi_classifier) generate
+    U_packet_filter : ep_packet_filter
+      port map (
+        clk_sys_i   => clk_sys_i,
+        clk_rx_i    => clk_rx_i,
+        rst_n_sys_i => rst_n_sys_i,
+        rst_n_rx_i  => rst_n_rx_i,
+
+        snk_fab_i => fab_pipe(1),
+        src_fab_o => fab_pipe(2),
+        done_o    => pfilter_done,
+        pclass_o  => pfilter_pclass,
+        drop_o    => pfilter_drop,
+        regs_i    => regs_i);
+  end generate gen_with_packet_filter;
+
+  gen_without_packet_filter : if(not g_with_dpi_classifier) generate
+    fab_pipe(2)  <= fab_pipe(1);
+  end generate gen_without_packet_filter;
+
   
   U_Rx_Clock_Align_FIFO : ep_clock_alignment_fifo
     generic map (
       g_size                 => 64,
       g_almostfull_threshold => 52,
-      g_early_eof            => false,
-      g_min_latency          => 8)
+      g_early_eof            => false)
     port map (
-      rst_n_rd_i      => rst_n_sys_i,
-      clk_wr_i     => clk_rx_i,
-      clk_rd_i     => clk_sys_i,
-      dreq_i       => dreq_pipe(2),
-      fab_i        => fab_pipe(1),
-      fab_o        => fab_pipe(2),
-      full_o       => open,
-      empty_o      => open,
-      almostfull_o => pcs_fifo_almostfull_o);
+      rst_n_rd_i       => rst_n_sys_i,
+      clk_wr_i         => clk_rx_i,
+      clk_rd_i         => clk_sys_i,
+      dreq_i           => dreq_pipe(3),
+      fab_i            => fab_pipe(2),
+      fab_o            => fab_pipe(3),
+      full_o           => open,
+      empty_o          => open,
+      almostfull_o     => pcs_fifo_almostfull_o,
+      pass_threshold_i => std_logic_vector(to_unsigned(16, 6)));
 
   
-  gen_with_packet_filter : if(g_with_dpi_classifier) generate
-    U_packet_filter : ep_packet_filter
-      port map (
-        clk_sys_i  => clk_sys_i,
-        rst_n_i    => rst_n_sys_i,
-        snk_fab_i  => fab_pipe(2),
-        snk_dreq_o => dreq_pipe(2),
-        src_fab_o  => fab_pipe(3),
-        src_dreq_i => dreq_pipe(3),
-        done_o     => pfilter_done,
-        pclass_o   => pfilter_pclass,
-        drop_o     => pfilter_drop,
-        regs_i     => regs_i);
-  end generate gen_with_packet_filter;
-
-  gen_without_packet_filter : if(not g_with_dpi_classifier) generate
-    fab_pipe(3)  <= fab_pipe(2);
-    dreq_pipe(2) <= dreq_pipe(3);
-  end generate gen_without_packet_filter;
 
   U_crc_size_checker : ep_rx_crc_size_check
     port map (
@@ -338,7 +322,7 @@ begin  -- behavioral
   end generate gen_with_vlan_unit;
 
 
-  U_RX_Wishbone_Master: ep_rx_wb_master
+  U_RX_Wishbone_Master : ep_rx_wb_master
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
@@ -346,6 +330,6 @@ begin  -- behavioral
       snk_dreq_o => dreq_pipe(5),
       src_wb_i   => src_wb_i,
       src_wb_o   => src_wb_o);
-  
+
 end behavioral;
 

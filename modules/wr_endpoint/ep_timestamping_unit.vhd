@@ -7,7 +7,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-09-27
+-- Last update: 2011-10-06
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -36,6 +36,7 @@ use ieee.numeric_std.all;
 library work;
 use work.gencores_pkg.all;
 use work.endpoint_private_pkg.all;
+use work.ep_wbgen2_pkg.all;
 
 entity ep_timestamping_unit is
   generic (
@@ -75,7 +76,7 @@ entity ep_timestamping_unit is
     rxts_timestamp_o : out std_logic_vector(31 downto 0);
 
 -- RX timestamp valid
-    rxts_valid_o : out std_logic;
+    rxts_timestamp_valid_o : out std_logic;
 
 
 -------------------------------------------------------------------------------
@@ -112,13 +113,9 @@ entity ep_timestamping_unit is
 -- Wishbone regs
 -------------------------------------------------------------------------------
 
-    ep_tscr_en_txts_i  : in  std_logic;
-    ep_tscr_en_rxts_i  : in  std_logic;
-    ep_tscr_cs_start_i : in  std_logic;
-    ep_tscr_cs_done_o  : out std_logic;
-
-    ep_ecr_portid_i : in std_logic_vector(4 downto 0)
-    );
+    regs_i: in t_ep_out_registers;
+    regs_o: out t_ep_in_registers
+);
 
 end ep_timestamping_unit;
 
@@ -186,8 +183,8 @@ begin  -- syn
       overflow_o     => open,
       value_r_o      => cntr_r,
       value_f_o      => cntr_f,
-      sync_start_p_i => ep_tscr_cs_start_i,
-      sync_done_o    => ep_tscr_cs_done_o
+      sync_start_p_i => regs_i.tscr_cs_start_o,
+      sync_done_o    => regs_o.tscr_cs_done_i
       );
 
   -- Sync chains for timestamp strobes: 4 combinations - (TX-RX) -> (rising/falling)
@@ -219,7 +216,7 @@ begin  -- syn
       g_sync_edge => "negative")
     port map (
       clk_i    => clk_ref_i,
-      rst_n_i  => rst_n_ref_i
+      rst_n_i  => rst_n_ref_i,
       data_i   => tx_timestamp_stb_p_i,
       synced_o => open,
       npulse_o => open,
@@ -301,7 +298,7 @@ begin  -- syn
       g_sync_edge => "positive")
     port map (
       clk_i    => clk_rx_i,
-      rst_n_i  => rst_n_sys_i,
+      rst_n_i  => rst_n_rx_i,
       data_i   => rx_sync_delay(0),
       synced_o => open,
       npulse_o => rx_ts_done,
@@ -326,17 +323,17 @@ begin  -- syn
 
         if(got_tx_oob = '1' and txts_valid = '1') then
 -- send we have a TX timestamp for this frame, send it to the TXTSU
-          txtsu_valid_o <= ep_tscr_en_txts_i;
+          txtsu_valid_o <= regs_i.tscr_en_txts_o;
           txts_valid    <= '0';
           got_tx_oob    <= '0';
         end if;
 
-        if(txoob_stb_p_i = '1' and ep_tscr_en_txts_i = '1') then
+        if(txoob_stb_p_i = '1' and regs_i.tscr_en_txts_o = '1') then
           txtsu_fid_o <= txoob_fid_i;
           got_tx_oob  <= '1';
         end if;
 
-        if(tx_ts_done = '1' and ep_tscr_en_txts_i = '1') then
+        if(tx_ts_done = '1' and regs_i.tscr_en_txts_o = '1') then
           txtsu_tsval_o <= cntr_tx_f & cntr_tx_r;
           txts_valid    <= '1';
         end if;
@@ -349,13 +346,13 @@ begin  -- syn
   begin
     if rising_edge(clk_rx_i) then
       if(rst_n_rx_i = '0') then
-        rxts_valid_o <= '0';
+        rxts_timestamp_valid_o <= '0';
         rxts_timestamp_o <= (others => '0');
       else
-        if(ep_tscr_en_rxts_i = '0') then
-          rxts_valid_o <= '0';
-        elsif(rx_ts_done = '1' and ep_tscr_en_rxts_i = '1') then
-          rxts_valid_o <= '1';
+        if(regs_i.      tscr_en_rxts_o = '0') then
+          rxts_timestamp_valid_o <= '0';
+        elsif(rx_ts_done = '1' and regs_i.tscr_en_rxts_o = '1') then
+          rxts_timestamp_valid_o <= '1';
           rxts_timestamp_o  <= cntr_rx_f & cntr_rx_r;
         end if;
       end if;

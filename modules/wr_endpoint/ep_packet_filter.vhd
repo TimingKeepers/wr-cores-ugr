@@ -2,6 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+use work.gencores_pkg.all;
 use work.genram_pkg.all;
 use work.endpoint_private_pkg.all;
 use work.ep_wbgen2_pkg.all;
@@ -132,7 +133,7 @@ begin  -- behavioral
   U_microcode_ram : generic_dpram
     generic map (
       g_data_width => 36,
-      g_size       => 2**c_PC_SIZE
+      g_size       => 2**c_PC_SIZE,
       g_dual_clock => true)
     port map (
       rst_n_i => rst_n_sys_i,
@@ -143,10 +144,10 @@ begin  -- behavioral
       da_i    => x"000000000",
       qa_o    => mm_rdata,
       clkb_i  => clk_sys_i,
-      bwea_i  => "11111",
-      wea_i   => mm_write,
-      aa_i    => regs_i.pfcr0_mm_addr_o,
-      da_i    => mm_wdata
+      bweb_i  => "11111",
+      web_i   => mm_write,
+      ab_i    => regs_i.pfcr0_mm_addr_o,
+      db_i    => mm_wdata
       );
 
 
@@ -158,8 +159,8 @@ begin  -- behavioral
       g_with_byte_enable => false,
       g_dual_clock       => false)
     port map (
-      rst_n_i => rst_n_i,
-      clka_i  => clk_sys_i,
+      rst_n_i => rst_n_rx_i,
+      clka_i  => clk_rx_i,
       bwea_i  => "11",
       wea_i   => snk_fab_i.dvalid,
       aa_i    => std_logic_vector(pc),
@@ -174,10 +175,10 @@ begin  -- behavioral
 
   src_fab_o <= snk_fab_i;
 
-  p_pc_counter : process(clk_sys_i)
+  p_pc_counter : process(clk_rx_i)
   begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or snk_fab_i.eof = '1' or snk_fab_i.error = '1' or done_int = '1' then
+    if rising_edge(clk_rx_i) then
+      if rst_n_rx_i = '0' or snk_fab_i.eof = '1' or snk_fab_i.error = '1' or done_int = '1' then
         pc     <= (others => '0');
         stage1 <= '0';
       elsif(snk_fab_i.dvalid = '1') then
@@ -189,10 +190,10 @@ begin  -- behavioral
     end if;
   end process;
 
-  p_stage2 : process(clk_sys_i)
+  p_stage2 : process(clk_rx_i)
   begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or done_int = '1' then
+    if rising_edge(clk_rx_i) then
+      if rst_n_rx_i = '0' or done_int = '1' then
         stage2 <= '0';
       else
         stage2 <= stage1;
@@ -243,10 +244,10 @@ begin  -- behavioral
 
   rd <= result2 when insn.mode = c_MODE_LOGIC else result1;
 
-  p_execute : process(clk_sys_i)
+  p_execute : process(clk_rx_i)
   begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or snk_fab_i.eof = '1' or snk_fab_i.error = '1' or done_int = '1' then
+    if rising_edge(clk_rx_i) then
+      if rst_n_rx_i = '0' or snk_fab_i.eof = '1' or snk_fab_i.error = '1' or done_int = '1' then
         regs <= (others => '0');
       else
         if(stage2 = '1') then
@@ -256,10 +257,10 @@ begin  -- behavioral
     end if;
   end process;
 
-  p_gen_status : process(clk_sys_i)
+  p_gen_status : process(clk_rx_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or snk_fab_i.eof = '1' or snk_fab_i.error = '1' then
+      if (rst_n_rx_i = '0' or snk_fab_i.sof = '1' or snk_fab_i.eof = '1' or snk_fab_i.error = '1') then
         done_int <= '0';
         drop_o   <= '0';
       else
@@ -276,8 +277,16 @@ begin  -- behavioral
     end if;
   end process;
 
-  done_o <= done_int;
-  
+
+  U_Sync_Done : gc_sync_ffs
+    generic map (
+      g_sync_edge => "positive")
+    port map (
+      clk_i    => clk_sys_i,
+      rst_n_i  => rst_n_sys_i,
+      data_i   => done_int,
+      synced_o => done_o);
+
 end behavioral;
 
 

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-09-11
+-- Last update: 2011-10-05
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -62,12 +62,15 @@ entity ep_1000basex_pcs_8bit is
     rxpcs_fifo_almostfull_i : in  std_logic;
     rxpcs_busy_o            : out std_logic;
     rxpcs_timestamp_stb_p_o : out std_logic;
+    rxpcs_timestamp_valid_i : in  std_logic;
+    rxpcs_timestamp_i       : in  std_logic_vector(31 downto 0);
 
     txpcs_fab_i             : in  t_ep_internal_fabric;
     txpcs_error_o           : out std_logic;
     txpcs_busy_o            : out std_logic;
     txpcs_dreq_o            : out std_logic;
     txpcs_timestamp_stb_p_o : out std_logic;
+
 
     link_ok_o : out std_logic;
 
@@ -109,7 +112,6 @@ end ep_1000basex_pcs_8bit;
 
 architecture rtl of ep_1000basex_pcs_8bit is
 
-
   component ep_tx_pcs_8bit
     port (
       rst_n_i               : in    std_logic;
@@ -141,6 +143,8 @@ architecture rtl of ep_1000basex_pcs_8bit is
       pcs_busy_o                 : out   std_logic;
       pcs_fab_o                  : out   t_ep_internal_fabric;
       timestamp_stb_p_o          : out   std_logic;
+      timestamp_i                : in    std_logic_vector(31 downto 0);
+      timestamp_valid_i          : in    std_logic;
       phy_rx_clk_i               : in    std_logic;
       phy_rx_data_i              : in    std_logic_vector(7 downto 0);
       phy_rx_k_i                 : in    std_logic;
@@ -318,6 +322,8 @@ begin  -- rtl
       pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
 
       timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
+      timestamp_i       => rxpcs_timestamp_i,
+      timestamp_valid_i => rxpcs_timestamp_valid_i,
 
       mdio_mcr_pdown_i           => mdio_mcr_pdown,
       mdio_wr_spec_cal_crst_i    => mdio_wr_spec_cal_crst,

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-09-12
+-- Last update: 2011-10-05
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -120,7 +120,6 @@ entity ep_tx_pcs_8bit is
 end ep_tx_pcs_8bit;
 
 
-
 architecture behavioral of ep_tx_pcs_8bit is
 
 -- TX state machine definitions
@@ -128,38 +127,35 @@ architecture behavioral of ep_tx_pcs_8bit is
 
 -- TX state machine signals
 
-  signal tx_is_k, tx_enc_err, tx_disparity : std_logic;
-  signal tx_catch_disparity                : std_logic;
-  signal tx_odata_reg                      : std_logic_vector(7 downto 0);
-  signal tx_state                          : t_tbif_tx_state;
-  signal tx_cntr                           : unsigned(3 downto 0);
-  signal tx_cr_alternate                   : std_logic;
-  signal tx_fifo_rdreq                     : std_logic;
+  signal tx_is_k            : std_logic;
+  signal tx_catch_disparity : std_logic;
+  signal tx_odata_reg       : std_logic_vector(7 downto 0);
+  signal tx_state           : t_tbif_tx_state;
+  signal tx_cntr            : unsigned(3 downto 0);
+  signal tx_cr_alternate    : std_logic;
 
 -- TX clock alignment FIFO signals
+  signal fifo_packed_in, fifo_packed_out : std_logic_vector(17 downto 0);
+  signal fifo_empty                      : std_logic;
+  signal fifo_almost_empty               : std_logic;
+  signal fifo_almost_full                : std_logic;
+  signal fifo_enough_data                : std_logic;
+  signal fifo_wr                         : std_logic;
+  signal fifo_rd                         : std_logic;
+  signal fifo_ready                      : std_logic;
+  signal fifo_clear_n                    : std_logic;
+  signal fifo_fab                        : t_ep_internal_fabric;
 
-  signal tx_fifo_data_in, tx_fifo_data_out : std_logic_vector(17 downto 0);
-  signal tx_fifo_msb, tx_fifo_lsb          : std_logic_vector(7 downto 0);
-  signal tx_fifo_singlebyte, tx_fifo_end   : std_logic;
-  signal tx_fifo_start                     : std_logic;
-  signal tx_fifo_rdempty                   : std_logic;
-  signal tx_fifo_almostempty               : std_logic;
-  signal tx_fifo_write : std_logic;
-
-  signal tx_fifo_abort   : std_logic;
   signal tx_rdreq_toggle : std_logic;
   signal tx_odd_length   : std_logic;
-  signal tx_fifo_clear_n : std_logic;
 
-  signal fifo_rdy           : std_logic;
   signal tx_busy            : std_logic;
   signal tx_error           : std_logic;
   signal reset_synced_txclk : std_logic;
 
   signal mdio_mcr_pdown_synced : std_logic;
 
-  signal tx_fifo_enough_data : std_logic;
-  signal fifo_almost_full    : std_logic;
+  signal s_one : std_logic := '1';
 
 begin
 
@@ -170,9 +166,7 @@ begin
       clk_i    => clk_sys_i,
       rst_n_i  => rst_n_i,
       data_i   => tx_busy,
-      synced_o => pcs_busy_o,
-      npulse_o => open,
-      ppulse_o => open);
+      synced_o => pcs_busy_o);
 
   U_sync_pcs_error_o : gc_sync_ffs
     generic map (
@@ -181,8 +175,6 @@ begin
       clk_i    => clk_sys_i,
       rst_n_i  => rst_n_i,
       data_i   => tx_error,
-      synced_o => open,
-      npulse_o => open,
       ppulse_o => pcs_error_o);
 
   U_sync_tx_reset : gc_sync_ffs
@@ -192,9 +184,7 @@ begin
       clk_i    => phy_tx_clk_i,
       rst_n_i  => '1',
       data_i   => rst_n_i,
-      synced_o => reset_synced_txclk,
-      npulse_o => open,
-      ppulse_o => open);
+      synced_o => reset_synced_txclk);
 
   U_sync_power_down : gc_sync_ffs
     generic map (
@@ -203,13 +193,7 @@ begin
       clk_i    => phy_tx_clk_i,
       rst_n_i  => '1',
       data_i   => mdio_mcr_pdown_i,
-      synced_o => mdio_mcr_pdown_synced,
-      npulse_o => open,
-      ppulse_o => open);
-
-
-  tx_disparity <= phy_tx_disparity_i;
-  tx_enc_err   <= phy_tx_enc_err_i;
+      synced_o => mdio_mcr_pdown_synced);
 
   phy_tx_data_o <= tx_odata_reg;
   phy_tx_k_o    <= tx_is_k;
@@ -218,20 +202,9 @@ begin
 -- Clock alignment FIFO
 -------------------------------------------------------------------------------  
 
-  tx_fifo_clear_n <= '0' when (rst_n_i = '0') or (mdio_mcr_pdown_synced = '1') else '1';
+  fifo_clear_n <= '0' when (rst_n_i = '0') or (mdio_mcr_pdown_synced = '1') else '1';
 
-  pcs_dreq_o <= not fifo_almost_full;
-
-  tx_fifo_data_in <= f_pack_fifo_contents (
-    pcs_fab_i.data,
-    pcs_fab_i.sof,
-    pcs_fab_i.eof,
-    pcs_fab_i.bytesel,
-    pcs_fab_i.error,
-    true
-    );
-
-  tx_fifo_write <= pcs_fab_i.sof or pcs_fab_i.dvalid;
+  f_pack_fifo_contents(pcs_fab_i, fifo_packed_in, fifo_wr, true);
 
   U_TX_FIFO : generic_async_fifo
     generic map (
@@ -244,47 +217,42 @@ begin
       g_almost_empty_threshold => 16,
       g_almost_full_threshold  => 56)  -- fixme: make this a generic (or WB register)
     port map (
-      rst_n_i           => tx_fifo_clear_n,
+      rst_n_i           => fifo_clear_n,
       clk_wr_i          => clk_sys_i,
-      d_i               => tx_fifo_data_in,
-      we_i              => tx_fifo_write,
+      d_i               => fifo_packed_in,
+      we_i              => fifo_wr,
       wr_empty_o        => open,
       wr_full_o         => open,
       wr_almost_empty_o => open,
       wr_almost_full_o  => fifo_almost_full,
       wr_count_o        => open,
       clk_rd_i          => phy_tx_clk_i,
-      q_o               => tx_fifo_data_out,
-      rd_i              => tx_fifo_rdreq,
-      rd_empty_o        => tx_fifo_rdempty,
+      q_o               => fifo_packed_out,
+      rd_i              => fifo_rd,
+      rd_empty_o        => fifo_empty,
       rd_full_o         => open,
-      rd_almost_empty_o => tx_fifo_almostempty,
+      rd_almost_empty_o => fifo_almost_empty,
       rd_almost_full_o  => open,
       rd_count_o        => open);
 
-  tx_fifo_enough_data <= not tx_fifo_almostempty;
+  fifo_enough_data <= not fifo_almost_empty;
 
-  tx_fifo_msb <= tx_fifo_data_out(15 downto 8);
-  tx_fifo_lsb <= tx_fifo_data_out(7 downto 0);
-
-  tx_fifo_singlebyte <= f_fifo_is_single_byte(tx_fifo_data_out, '1', true);
-  tx_fifo_abort      <= f_fifo_is_error (tx_fifo_data_out, '1', true);
-  tx_fifo_start      <= f_fifo_is_sof (tx_fifo_data_out, '1', true);
-  tx_fifo_end        <= f_fifo_is_eof (tx_fifo_data_out, '1', true);
+  f_unpack_fifo_contents(fifo_packed_out, s_one, fifo_fab, true);
 
   -----------------------------------------------------------------------------
-  -- Main TX PCS state machine
+  -- TX PCS state machine
   -----------------------------------------------------------------------------
 
   p_tx_fsm : process (phy_tx_clk_i)
   begin
     
     if rising_edge(phy_tx_clk_i) then
--- PCS is reset or disabled
+
+-- The PCS is reset or disabled
       if(reset_synced_txclk = '0' or mdio_mcr_pdown_synced = '1') then
         tx_state           <= TX_COMMA;
         timestamp_stb_p_o  <= '0';
-        tx_fifo_rdreq      <= '0';
+        fifo_rd            <= '0';
         tx_error           <= '0';
         tx_odata_reg       <= (others => '0');
         tx_is_k            <= '0';
@@ -303,11 +271,11 @@ begin
 -- State COMMA: sends K28.5 comma character (first byte of /I/ sequence)
 -------------------------------------------------------------------------------            
           when TX_COMMA =>
-            tx_is_k       <= '1';
-            tx_odata_reg  <= c_K28_5;
-            tx_state      <= TX_IDLE;
-            tx_fifo_rdreq <= '0';
-            fifo_rdy      <= tx_fifo_rdreq;
+            tx_is_k      <= '1';
+            tx_odata_reg <= c_K28_5;
+            tx_state     <= TX_IDLE;
+            fifo_rd      <= '0';
+            fifo_ready   <= fifo_rd;
 
 -------------------------------------------------------------------------------
 -- State IDLE: sends the second code of the /I/ sequence with proper disparity\
@@ -323,26 +291,26 @@ begin
             if(an_tx_en_i = '1') then
               tx_state        <= TX_CR1;
               tx_cr_alternate <= '0';
-              tx_fifo_rdreq   <= '0';
+              fifo_rd         <= '0';
 
 -- we've got a new frame in the FIFO
-            elsif (tx_fifo_start = '1' and fifo_rdy = '1' and tx_cntr = "0000")then
-              tx_fifo_rdreq <= '1';
-              tx_state      <= TX_SPD;
-              tx_cntr       <= "0101";
+            elsif (fifo_fab.sof = '1' and fifo_ready = '1' and tx_cntr = "0000")then
+              fifo_rd  <= '1';
+              tx_state <= TX_SPD;
+              tx_cntr  <= "0101";
 
 -- host requested a calibration pattern
             elsif(mdio_wr_spec_tx_cal_i = '1') then
               tx_state        <= TX_CAL;
-              tx_fifo_rdreq   <= '0';
+              fifo_rd         <= '0';
               tx_cr_alternate <= '0';
             else
 -- continue sending idle sequences and checking if something has arrived in the
 -- FIFO
               if(tx_cntr /= "0000") then
-                tx_fifo_rdreq <= '0';
+                fifo_rd <= '0';
               else
-                tx_fifo_rdreq <= (not tx_fifo_rdempty) and tx_fifo_enough_data;
+                fifo_rd <= (not fifo_empty) and fifo_enough_data;
               end if;
               tx_state <= TX_COMMA;
             end if;
@@ -351,7 +319,7 @@ begin
 
 -- check the disparity of the previously emitted code and choose whether to send
 -- /I1/ or /I2/
-            if (tx_disparity = '1' and tx_catch_disparity = '1') then
+            if (phy_tx_disparity_i = '1' and tx_catch_disparity = '1') then
               tx_odata_reg <= c_d5_6;
             else
               tx_odata_reg <= c_d16_2;
@@ -412,10 +380,10 @@ begin
 -- State SPD: sends a start-of-packet delimeter
 -------------------------------------------------------------------------------
           when TX_SPD =>
-            tx_fifo_rdreq <= '0';
-            tx_is_k       <= '1';
-            tx_odata_reg  <= c_k27_7;
-            tx_state      <= TX_PREAMBLE;
+            fifo_rd      <= '0';
+            tx_is_k      <= '1';
+            tx_odata_reg <= c_k27_7;
+            tx_state     <= TX_PREAMBLE;
 
 -------------------------------------------------------------------------------
 -- State PREAMBLE: produces an Ethernet preamble
@@ -449,31 +417,31 @@ begin
             -- toggle the TX FIFO request line, so we read a 16-bit word
             -- every 2 phy_tx_clk_i periods
 
-            tx_fifo_rdreq <= tx_rdreq_toggle and not (tx_fifo_rdempty or tx_fifo_end);
+            fifo_rd <= tx_rdreq_toggle and not (fifo_empty or fifo_fab.eof);
 
-            if((tx_fifo_rdempty = '1' or tx_fifo_abort = '1') and tx_fifo_end = '0') then  --
+            if((fifo_empty = '1' or fifo_fab.error = '1') and fifo_fab.eof = '0') then  --
               -- FIFO underrun?
               tx_odata_reg       <= c_k30_7;  -- emit error propagation code
               tx_is_k            <= '1';
               tx_state           <= TX_GEN_ERROR;
-              tx_error           <= not tx_fifo_abort;
+              tx_error           <= not fifo_fab.error;
               rmon_o.tx_underrun <= '1';
             else
 
               if tx_rdreq_toggle = '1' then  -- send 16-bit word MSB or LSB
-                tx_odata_reg <= tx_fifo_msb;
+                tx_odata_reg <= fifo_fab.data(15 downto 8);
               else
-                tx_odata_reg <= tx_fifo_lsb;
+                tx_odata_reg <= fifo_fab.data(7 downto 0);
               end if;
 
               tx_rdreq_toggle <= not tx_rdreq_toggle;
 
               -- handle the end of frame both for even- and odd-length frames
-              tx_odd_length <= tx_fifo_singlebyte;
+              tx_odd_length <= fifo_fab.bytesel;
 
-              if (tx_fifo_end = '1' and (tx_rdreq_toggle = '0' or (tx_rdreq_toggle = '1' and tx_fifo_singlebyte = '1'))) then
-                tx_state      <= TX_EPD;
-                tx_fifo_rdreq <= '0';
+              if (fifo_fab.eof = '1' and (tx_rdreq_toggle = '0' or (tx_rdreq_toggle = '1' and fifo_fab.bytesel = '1'))) then
+                tx_state <= TX_EPD;
+                fifo_rd  <= '0';
               end if;
             end if;
 
@@ -512,7 +480,10 @@ begin
     end if;
   end process;
 
-  tx_busy <= '1' when (tx_fifo_rdempty = '0') or (tx_state /= TX_IDLE and tx_state /= TX_COMMA) else '0';
+  tx_busy <= '1' when (fifo_empty = '0') or (tx_state /= TX_IDLE and tx_state /= TX_COMMA) else '0';
+
+  pcs_dreq_o <= not fifo_almost_full;
+
 
 end behavioral;
 

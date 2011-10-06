@@ -28,13 +28,8 @@ entity ep_rx_early_address_match is
     match_is_pause_o     : out std_logic;
     match_pause_quanta_o : out std_logic_vector(15 downto 0);
 
-    rtu_rq_smac_o     : out std_logic_vector(47 downto 0);
-    rtu_rq_dmac_o     : out std_logic_vector(47 downto 0);
-    rtu_rq_vid_o      : out std_logic_vector(11 downto 0);
-    rtu_rq_has_vid_o  : out std_logic;
-    rtu_rq_prio_o     : out std_logic_vector(2 downto 0);
-    rtu_rq_has_prio_o : out std_logic;
-
+    rtu_rq_o: out t_ep_internal_rtu_request;
+    
     regs_i : in t_ep_out_registers
     );
 
@@ -136,26 +131,26 @@ begin  -- behavioral
     begin
       if rising_edge(clk_rx_i) then
         if rst_n_rx_i = '0' then
-          rtu_rq_smac_o  <= (others => '0');
-          rtu_rq_dmac_o  <= (others => '0');
-          rtu_rq_has_prio_o <= '0';
-          rtu_rq_has_vid_o  <= '0';
+          rtu_rq_o.smac  <= (others => '0');
+          rtu_rq_o.dmac  <= (others => '0');
+          rtu_rq_o.has_prio <= '0';
+          rtu_rq_o.has_vid  <= '0';
         else
-          f_extract_rtu(rtu_rq_dmac_o(47 downto 32), snk_fab_i, hdr_offset(0));
-          f_extract_rtu(rtu_rq_dmac_o(31 downto 16), snk_fab_i, hdr_offset(1));
-          f_extract_rtu(rtu_rq_dmac_o(15 downto 0), snk_fab_i, hdr_offset(2));
-          f_extract_rtu(rtu_rq_smac_o(47 downto 32), snk_fab_i, hdr_offset(3));
-          f_extract_rtu(rtu_rq_smac_o(31 downto 16), snk_fab_i, hdr_offset(4));
-          f_extract_rtu(rtu_rq_smac_o(15 downto 0), snk_fab_i, hdr_offset(5));
+          f_extract_rtu(rtu_rq_o.dmac(47 downto 32), snk_fab_i, hdr_offset(0));
+          f_extract_rtu(rtu_rq_o.dmac(31 downto 16), snk_fab_i, hdr_offset(1));
+          f_extract_rtu(rtu_rq_o.dmac(15 downto 0), snk_fab_i, hdr_offset(2));
+          f_extract_rtu(rtu_rq_o.smac(47 downto 32), snk_fab_i, hdr_offset(3));
+          f_extract_rtu(rtu_rq_o.smac(31 downto 16), snk_fab_i, hdr_offset(4));
+          f_extract_rtu(rtu_rq_o.smac(15 downto 0), snk_fab_i, hdr_offset(5));
 
           if(snk_fab_i.sof = '1') then
-            rtu_rq_has_vid_o  <= '0';
-            rtu_rq_has_prio_o <= '0';
+            rtu_rq_o.has_vid  <= '0';
+            rtu_rq_o.has_prio <= '0';
           elsif(at_vid = '1') then
-            rtu_rq_vid_o      <= snk_fab_i.data(11 downto 0);
-            rtu_rq_prio_o     <= snk_fab_i.data(15 downto 13);
-            rtu_rq_has_vid_o  <= '1';
-            rtu_rq_has_prio_o <= '1';
+            rtu_rq_o.vid      <= snk_fab_i.data(11 downto 0);
+            rtu_rq_o.prio     <= snk_fab_i.data(15 downto 13);
+            rtu_rq_o.has_vid  <= '1';
+            rtu_rq_o.has_prio <= '1';
           end if;
         end if;
       end if;

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-09-26
+-- Last update: 2011-10-06
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -336,13 +336,13 @@ begin
   -- FIFO input data formatting
   fifo_wrreq <= fifo_wr_toggle and fifo_mask_write;
 
-  pcs_fab_o.data       <= fifo_rx_data;
-  pcs_fab_o.sof        <= fifo_sof and fifo_wrreq;
-  pcs_fab_o.eof        <= fifo_eof and fifo_wrreq;
-  pcs_fab_o.bytesel    <= fifo_bytesel;
-  pcs_fab_o.error      <= fifo_error and fifo_wrreq;
-  pcs_fab_o.with_rx_ts <= fifo_with_rx_ts;
-  pcs_fab_o.dvalid     <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
+  pcs_fab_o.data        <= fifo_rx_data;
+  pcs_fab_o.sof         <= fifo_sof and fifo_wrreq;
+  pcs_fab_o.eof         <= fifo_eof and fifo_wrreq;
+  pcs_fab_o.bytesel     <= fifo_bytesel;
+  pcs_fab_o.error       <= fifo_error and fifo_wrreq;
+  pcs_fab_o.has_rx_timestamp <= fifo_with_rx_ts;
+  pcs_fab_o.dvalid      <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
 
   fifo_almostfull <= pcs_fifo_almostfull_i;
 
@@ -766,7 +766,8 @@ begin
               fifo_with_rx_ts   <= timestamp_valid_i;
               fifo_mask_write   <= '1';
               fifo_wr_toggle    <= '1';
-              timestamp_pending <= "11";
+              timestamp_pending <= (others => timestamp_valid_i);
+                                   
 
               rx_state <= RX_COMMA;
               

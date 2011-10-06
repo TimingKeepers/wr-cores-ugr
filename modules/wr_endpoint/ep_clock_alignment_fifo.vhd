@@ -10,8 +10,7 @@ entity ep_clock_alignment_fifo is
   generic(
     g_size                 : integer := 64;
     g_almostfull_threshold : integer := 56;
-    g_early_eof            : boolean := false;
-    g_min_latency          : integer
+    g_early_eof            : boolean := false
     );
 
   port(
@@ -27,7 +26,9 @@ entity ep_clock_alignment_fifo is
 
     full_o       : out std_logic;
     empty_o      : out std_logic;
-    almostfull_o : out std_logic
+    almostfull_o : out std_logic;
+
+    pass_threshold_i : in std_logic_vector(f_log2_size(g_size)-1 downto 0)
     );
 end ep_clock_alignment_fifo;
 
@@ -46,17 +47,12 @@ architecture structural of ep_clock_alignment_fifo is
 
   signal fab_int : t_ep_internal_fabric;
   signal fifo_we : std_logic;
+  signal s_dummy : std_logic;
 begin
 
-  fifo_in <= f_pack_fifo_contents (
-    fab_i.data,
-    fab_i.sof,
-    fab_i.eof,
-    fab_i.bytesel,
-    fab_i.error,
-    g_early_eof);
+  f_pack_fifo_contents (fab_i, fifo_in, fifo_we, g_early_eof);
 
-  fifo_we <= fab_i.dvalid or fab_i.sof or fab_i.eof or fab_i.error;
+--  fifo_we <= fab_i.dvalid or fab_i.sof or fab_i.eof or fab_i.error;
 
 -- Clock adjustment FIFO
   U_FIFO : generic_async_fifo
@@ -101,7 +97,7 @@ begin
 
         case state is
           when OUTSIDE_FRAME =>
-            if(unsigned(count) >= g_min_latency) then
+            if(unsigned(count) >= unsigned(pass_threshold_i)) then
               dreq_mask <= '1';
             else
               dreq_mask <= '0';
@@ -122,12 +118,7 @@ begin
   end process;
 
   -- FIFO output data formatting
-  fab_int.sof     <= f_fifo_is_sof(fifo_out, valid_int);
-  fab_int.eof     <= f_fifo_is_eof(fifo_out, valid_int);
-  fab_int.error   <= f_fifo_is_error(fifo_out, valid_int);
-  fab_int.dvalid  <= f_fifo_is_data(fifo_out, valid_int);
-  fab_int.bytesel <= f_fifo_is_single_byte(fifo_out, valid_int);
-  fab_int.data    <= fifo_out(15 downto 0);
+  f_unpack_fifo_contents(fifo_out, valid_int, fab_int, g_early_eof);
 
   fab_o   <= fab_int;
   empty_o <= empty_int;

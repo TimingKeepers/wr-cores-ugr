@@ -41,6 +41,16 @@ package endpoint_private_pkg is
   constant c_wrsw_ctrl_payload   : std_logic_vector(4 - 1 downto 0) := x"7";
   constant c_wrsw_ctrl_fcs       : std_logic_vector(4 - 1 downto 0) := x"8";
 
+  type t_ep_internal_rtu_request is record
+    smac: std_logic_vector(47 downto 0);
+    dmac: std_logic_vector(47 downto 0);
+    vid: std_logic_vector(11 downto 0);
+    prio: std_logic_vector(2 downto 0);
+    has_vid: std_logic;
+    has_prio:std_logic;
+     
+  end record;
+  
   type t_rmon_triggers is record
     rx_sync_lost      : std_logic;
     rx_invalid_code   : std_logic;
@@ -298,11 +308,13 @@ package body endpoint_private_pkg is
         dout(17)          <= '1';
         dout(16)          <= fab.bytesel;
         dout(15 downto 0) <= fab.data;
+        dout_valid <= '1';
       elsif(fab.dvalid = '1') then
         -- tag = 00
         dout(17)          <= '0';
         dout(16)          <= '0';
         dout(15 downto 0) <= fab.data;
+        dout_valid <= '1';
       else
         dout(17 downto 0)       <= (others => 'X');
         dout_valid <= '0';
@@ -337,6 +349,8 @@ package body endpoint_private_pkg is
       signal fab       : out t_ep_internal_fabric;
       early_eof        :     boolean := false) is
   begin
+
+    fab.data <= din(15 downto 0);
     if(din_valid = '1') then
       if(early_eof) then
         fab.dvalid           <= not (not din(17) and din(16));
@@ -347,7 +361,7 @@ package body endpoint_private_pkg is
         fab.bytesel          <= din(17) and din(16);
 
       else
-        fab.dvalid           <= din(16) and din_valid;
+        fab.dvalid           <= not din(16) and din_valid;
         fab.sof              <= din(16) and din(15);
         fab.eof              <= din(16) and din(14);
         fab.error            <= din(16) and din(13);
