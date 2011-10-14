@@ -28,8 +28,8 @@ entity ep_rx_early_address_match is
     match_is_pause_o     : out std_logic;
     match_pause_quanta_o : out std_logic_vector(15 downto 0);
 
-    rtu_rq_o: out t_ep_internal_rtu_request;
-    
+    rtu_rq_o : out t_ep_internal_rtu_request;
+
     regs_i : in t_ep_out_registers
     );
 
@@ -57,8 +57,8 @@ architecture behavioral of ep_rx_early_address_match is
   end f_compare_slv;
 
   procedure f_extract_rtu(signal q         : out std_logic_vector;
-                          signal fab       : t_ep_internal_fabric;
-                          signal at_offset : std_logic) is
+                          signal fab       :     t_ep_internal_fabric;
+                          signal at_offset :     std_logic) is
   begin
     if(at_offset = '1' and fab.dvalid = '1') then
       q <= fab.data;
@@ -131,10 +131,8 @@ begin  -- behavioral
     begin
       if rising_edge(clk_rx_i) then
         if rst_n_rx_i = '0' then
-          rtu_rq_o.smac  <= (others => '0');
-          rtu_rq_o.dmac  <= (others => '0');
-          rtu_rq_o.has_prio <= '0';
-          rtu_rq_o.has_vid  <= '0';
+          rtu_rq_o.smac <= (others => '0');
+          rtu_rq_o.dmac <= (others => '0');
         else
           f_extract_rtu(rtu_rq_o.dmac(47 downto 32), snk_fab_i, hdr_offset(0));
           f_extract_rtu(rtu_rq_o.dmac(31 downto 16), snk_fab_i, hdr_offset(1));
@@ -142,16 +140,6 @@ begin  -- behavioral
           f_extract_rtu(rtu_rq_o.smac(47 downto 32), snk_fab_i, hdr_offset(3));
           f_extract_rtu(rtu_rq_o.smac(31 downto 16), snk_fab_i, hdr_offset(4));
           f_extract_rtu(rtu_rq_o.smac(15 downto 0), snk_fab_i, hdr_offset(5));
-
-          if(snk_fab_i.sof = '1') then
-            rtu_rq_o.has_vid  <= '0';
-            rtu_rq_o.has_prio <= '0';
-          elsif(at_vid = '1') then
-            rtu_rq_o.vid      <= snk_fab_i.data(11 downto 0);
-            rtu_rq_o.prio     <= snk_fab_i.data(15 downto 13);
-            rtu_rq_o.has_vid  <= '1';
-            rtu_rq_o.has_prio <= '1';
-          end if;
         end if;
       end if;
     end process;
@@ -174,7 +162,7 @@ begin  -- behavioral
         end if;
 
         if (at_vid = '1') then
-          if(regs_i.rfcr_a_hp_o = '1' and regs_i.rfcr_hpap_o(index) = '1') then
+          if(regs_i.rfcr_a_hp_o = '1' and regs_i.rfcr_hpap_o(index) = '1' and is_tagged = '1') then
             match_is_hp_o <= '1';
           else
             match_is_hp_o <= '0';
