@@ -5,6 +5,8 @@ use ieee.numeric_std.all;
 library work;
 use work.endpoint_private_pkg.all;
 use work.ep_wbgen2_pkg.all;
+use work.wr_fabric_pkg.all;
+
 
 -- 3rd deframing pipeline stage - VLAN Unit
 
@@ -23,7 +25,7 @@ entity ep_rx_vlan_unit is
        tag_done_o : out std_logic;
 
        rmon_o : inout t_rmon_triggers;
-       regs_i : in t_ep_out_registers
+       regs_i : in    t_ep_out_registers
        );
 
 end ep_rx_vlan_unit;
@@ -204,9 +206,11 @@ begin  -- behavioral
               if (snk_fab_i.dvalid = '1' and src_dreq_i = '0') then
                 v_stored_fab.bytesel := snk_fab_i.bytesel;
                 v_stored_fab.data    := snk_fab_i.data;
+                v_stored_fab.addr    := snk_fab_i.addr;
                 v_stored_fab.dvalid  := '1';
                 v_next_state         := FLUSH_STALL;
               else
+                v_src_fab.addr    := snk_fab_i.addr;
                 v_src_fab.data    := snk_fab_i.data;
                 v_src_fab.dvalid  := src_dreq_i and snk_fab_i.dvalid;
                 v_src_fab.bytesel := snk_fab_i.bytesel;
@@ -277,6 +281,7 @@ begin  -- behavioral
               src_fab_o.eof     <= v_src_fab.eof;
               src_fab_o.dvalid  <= v_src_fab.dvalid;
               src_fab_o.error   <= v_src_fab.error;
+              src_fab_o.addr    <= v_src_fab.addr;
               src_fab_o.data    <= v_src_fab.data;
               src_fab_o.bytesel <= v_src_fab.bytesel;
 
@@ -286,24 +291,25 @@ begin  -- behavioral
               
             when END_FRAME =>
               if(src_dreq_i = '1')then
-                src_fab_o.eof <= '1';
+                src_fab_o.eof    <= '1';
                 src_fab_o.dvalid <= '0';
-                state         <= WAIT_FRAME;
+                state            <= WAIT_FRAME;
               end if;
               
             when DISCARD_FRAME =>
               if(src_dreq_i = '1') then
-                src_fab_o.error <= '1';
+                src_fab_o.error  <= '1';
                 src_fab_o.dvalid <= '0';
-                state           <= WAIT_FRAME;
+                state            <= WAIT_FRAME;
               end if;
 
             when FLUSH_STALL =>
               if(src_dreq_i = '1')then
-                src_fab_o.data   <= stored_fab.data;
-                src_fab_o.dvalid <= stored_fab.dvalid;
+                src_fab_o.addr    <= stored_fab.addr;
+                src_fab_o.data    <= stored_fab.data;
+                src_fab_o.dvalid  <= stored_fab.dvalid;
                 src_fab_o.bytesel <= stored_fab.bytesel;
-                state            <= DATA;
+                state             <= DATA;
               else
                 src_fab_o.DATA   <= (others => 'X');
                 src_fab_o.dvalid <= '0';
@@ -316,16 +322,19 @@ begin  -- behavioral
 -- we are at 7th word from the beginning of the frame, but the sink reception
 -- is disabled, so we can insert the original ethertype as the TPID
                 if(hdr_offset(7) = '1') then
+                  src_fab_o.addr   <= c_WRF_DATA;
                   src_fab_o.data   <= x"8100";
                   src_fab_o.dvalid <= '1';
                 end if;
 
                 if(hdr_offset(8) = '1') then
+                  src_fab_o.addr   <= c_WRF_DATA;
                   src_fab_o.data   <= stored_ethertype;
                   src_fab_o.dvalid <= '1';
                 end if;
 
                 if(hdr_offset(9) = '1') then
+                  src_fab_o.addr   <= c_WRF_DATA;
                   src_fab_o.data   <= regs_i.vcr0_prio_val_o & '0' & regs_i.vcr0_pvid_o;
                   state            <= DATA;
                   src_fab_o.dvalid <= '1';
