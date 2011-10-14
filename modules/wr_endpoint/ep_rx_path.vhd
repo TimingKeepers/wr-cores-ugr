@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-06
+-- Last update: 2011-10-14
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -99,7 +99,7 @@ architecture behavioral of ep_rx_path is
       rtu_rq_o             : out t_ep_internal_rtu_request;
       regs_i               : in  t_ep_out_registers);
   end component;
-  
+
   component ep_clock_alignment_fifo
     generic (
       g_size                 : integer;
@@ -149,16 +149,13 @@ architecture behavioral of ep_rx_path is
 
   component ep_rx_oob_insert
     port (
-      clk_sys_i   : in  std_logic;
-      rst_n_i     : in  std_logic;
-      snk_fab_i   : in  t_ep_internal_fabric;
-      snk_dreq_o  : out std_logic;
-      src_fab_o   : out t_ep_internal_fabric;
-      src_dreq_i  : in  std_logic;
-      oob_data_i  : in  std_logic_vector(31 downto 0);
-      oob_valid_i : in  std_logic;
-      oob_ack_o   : out std_logic;
-      regs_i      : in  t_ep_out_registers);
+      clk_sys_i  : in  std_logic;
+      rst_n_i    : in  std_logic;
+      snk_fab_i  : in  t_ep_internal_fabric;
+      snk_dreq_o : out std_logic;
+      src_fab_o  : out t_ep_internal_fabric;
+      src_dreq_i : in  std_logic;
+      regs_i     : in  t_ep_out_registers);
   end component;
 
   component ep_rx_crc_size_check
@@ -181,6 +178,23 @@ architecture behavioral of ep_rx_path is
       snk_dreq_o : out std_logic;
       src_wb_i   : in  t_wrf_source_in;
       src_wb_o   : out t_wrf_source_out);
+  end component;
+
+  component ep_rx_status_reg_insert
+    port (
+      clk_sys_i         : in  std_logic;
+      rst_n_i           : in  std_logic;
+      snk_fab_i         : in  t_ep_internal_fabric;
+      snk_dreq_o        : out std_logic;
+      src_fab_o         : out t_ep_internal_fabric;
+      src_dreq_i        : in  std_logic;
+      pfilter_drop_i    : in  std_logic;
+      pfilter_pclass_i  : in  std_logic_vector(7 downto 0);
+      pfilter_done_i    : in  std_logic;
+      ematch_done_i     : in  std_logic;
+      ematch_is_hp_i    : in  std_logic;
+      ematch_is_pause_i : in  std_logic;
+      rmon_o            : out t_rmon_triggers);
   end component;
 
   type t_rx_deframer_state is (RXF_IDLE, RXF_DATA, RXF_FLUSH_STALL, RXF_FINISH_CYCLE, RXF_THROW_ERROR);
@@ -214,8 +228,8 @@ architecture behavioral of ep_rx_path is
 
   type t_fab_pipe is array(integer range <>) of t_ep_internal_fabric;
 
-  signal fab_pipe  : t_fab_pipe(0 to 5);
-  signal dreq_pipe : std_logic_vector(5 downto 0);
+  signal fab_pipe  : t_fab_pipe(0 to 7);
+  signal dreq_pipe : std_logic_vector(7 downto 0);
 
   signal ematch_done         : std_logic;
   signal ematch_is_hp        : std_logic;
@@ -230,6 +244,8 @@ architecture behavioral of ep_rx_path is
   signal vlan_vid      : std_logic_vector(11 downto 0);
   signal vlan_tag_done : std_logic;
 
+  signal pcs_fifo_almostfull : std_logic;
+  
   
 begin  -- behavioral
 
@@ -270,10 +286,10 @@ begin  -- behavioral
   end generate gen_with_packet_filter;
 
   gen_without_packet_filter : if(not g_with_dpi_classifier) generate
-    fab_pipe(2)  <= fab_pipe(1);
+    fab_pipe(2) <= fab_pipe(1);
   end generate gen_without_packet_filter;
 
-  
+
   U_Rx_Clock_Align_FIFO : ep_clock_alignment_fifo
     generic map (
       g_size                 => 64,
@@ -289,11 +305,12 @@ begin  -- behavioral
       full_o           => open,
       empty_o          => open,
       almostfull_o     => pcs_fifo_almostfull_o,
-      pass_threshold_i => std_logic_vector(to_unsigned(16, 6)));
+      pass_threshold_i => std_logic_vector(to_unsigned(12, 6)));
 
-  
 
-  U_crc_size_checker : ep_rx_crc_size_check
+
+
+  U_Insert_OOB : ep_rx_oob_insert
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
@@ -301,19 +318,30 @@ begin  -- behavioral
       snk_dreq_o => dreq_pipe(3),
       src_dreq_i => dreq_pipe(4),
       src_fab_o  => fab_pipe(4),
-      rmon_o     => rmon_o,
       regs_i     => regs_i);
 
+  
+
+  U_crc_size_checker : ep_rx_crc_size_check
+    port map (
+      clk_sys_i  => clk_sys_i,
+      rst_n_i    => rst_n_sys_i,
+      snk_fab_i  => fab_pipe(4),
+      snk_dreq_o => dreq_pipe(4),
+      src_dreq_i => dreq_pipe(5),
+      src_fab_o  => fab_pipe(5),
+      rmon_o     => rmon_o,
+      regs_i     => regs_i);
 
   gen_with_vlan_unit : if(g_with_vlans) generate
     U_vlan_unit : ep_rx_vlan_unit
       port map (
         clk_sys_i  => clk_sys_i,
         rst_n_i    => rst_n_sys_i,
-        snk_fab_i  => fab_pipe(4),
-        snk_dreq_o => dreq_pipe(4),
-        src_fab_o  => fab_pipe(5),
-        src_dreq_i => dreq_pipe(5),
+        snk_fab_i  => fab_pipe(5),
+        snk_dreq_o => dreq_pipe(5),
+        src_fab_o  => fab_pipe(6),
+        src_dreq_i => dreq_pipe(6),
         tclass_o   => vlan_tclass,
         vid_o      => vlan_vid,
         tag_done_o => vlan_tag_done,
@@ -321,15 +349,32 @@ begin  -- behavioral
         regs_i     => regs_i);
   end generate gen_with_vlan_unit;
 
+  U_Gen_Status : ep_rx_status_reg_insert
+    port map (
+      clk_sys_i         => clk_sys_i,
+      rst_n_i           => rst_n_sys_i,
+      snk_fab_i         => fab_pipe(6),
+      snk_dreq_o        => dreq_pipe(6),
+      src_fab_o         => fab_pipe(7),
+      src_dreq_i        => dreq_pipe(7),
+      pfilter_drop_i    => pfilter_drop,
+      pfilter_pclass_i  => pfilter_pclass,
+      pfilter_done_i    => pfilter_done,
+      ematch_done_i     => ematch_done,
+      ematch_is_hp_i    => ematch_is_hp,
+      ematch_is_pause_i => ematch_is_pause,
+      rmon_o            => open);
+
 
   U_RX_Wishbone_Master : ep_rx_wb_master
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
-      snk_fab_i  => fab_pipe(5),
-      snk_dreq_o => dreq_pipe(5),
+      snk_fab_i  => fab_pipe(7),
+      snk_dreq_o => dreq_pipe(7),
       src_wb_i   => src_wb_i,
-      src_wb_o   => src_wb_o);
+      src_wb_o   => src_wb_o
+      );
 
 end behavioral;
 
