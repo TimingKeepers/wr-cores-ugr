@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-08-25
+-- Last update: 2011-10-14
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ entity ep_rx_wb_master is
     snk_fab_i  : in  t_ep_internal_fabric;
     snk_dreq_o : out std_logic;
 
+-- Wishbone I/O (master)
     src_wb_i : in  t_wrf_source_in;
     src_wb_o : out t_wrf_source_out
     );
@@ -99,6 +100,7 @@ begin  -- behavioral
             
           when DATA =>
             if(src_wb_i.stall = '0') then
+              src_out_int.adr <= snk_fab_i.addr;
               src_out_int.dat    <= snk_fab_i.data;
               src_out_int.stb    <= snk_fab_i.dvalid;
               src_out_int.sel(1) <= '1';
@@ -107,9 +109,6 @@ begin  -- behavioral
 
             if(src_wb_i.stall = '1' and snk_fab_i.dvalid = '1') then
               state   <= FLUSH_STALL;
-              tmp_dat <= snk_fab_i.data;
-              tmp_adr <= snk_fab_i.addr;
-              tmp_sel <= snk_fab_i.bytesel;
             end if;
 
             if(snk_fab_i.eof = '1')then
@@ -119,6 +118,10 @@ begin  -- behavioral
             if(snk_fab_i.error = '1') then
               state <= THROW_ERROR;
             end if;
+            
+            tmp_adr <= snk_fab_i.addr;
+            tmp_dat <= snk_fab_i.data;
+            tmp_sel <= snk_fab_i.bytesel;
 
           when FLUSH_STALL =>
             if(src_wb_i.stall = '0') then
@@ -138,6 +141,7 @@ begin  -- behavioral
               src_out_int.stb <= '1';
               state           <= FINISH_CYCLE;
             end if;
+              
             
           when FINISH_CYCLE =>
             if(src_wb_i.stall = '0') then
