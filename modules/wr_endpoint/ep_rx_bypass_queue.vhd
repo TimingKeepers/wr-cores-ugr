@@ -22,7 +22,8 @@ entity ep_rx_bypass_queue is
     dreq_i  : in  std_logic;
 
     flush_i : in std_logic;
-    purge_i : in std_logic
+    purge_i : in std_logic;
+    empty_o: out std_logic
     );
 
 end ep_rx_bypass_queue;
@@ -68,6 +69,8 @@ begin  -- behavioral
   qempty <= f_queue_occupation(q_valid, '1');
   qfull  <= f_queue_occupation(q_valid, '0');
 
+  empty_o <= qempty;
+  
   gen_sreg : for i in 0 to g_width-1 generate
 
     U_sreg: ep_shift_reg
