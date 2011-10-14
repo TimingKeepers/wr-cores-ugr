@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-10-06
+-- Last update: 2011-10-07
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ architecture behavioral of ep_rx_pcs_8bit is
 
 
   signal pcs_valid_int     : std_logic;
-  signal timestamp_pending : std_logic_vector(1 downto 0);
+  signal timestamp_pending : std_logic_vector(2 downto 0);
   
 begin
 -------------------------------------------------------------------------------
@@ -473,7 +473,7 @@ begin
         rmon_invalid_code_p_int <= '0';
 
         timestamp_stb_p_o <= '0';
-        timestamp_pending <= "00";
+        timestamp_pending <= "000";
       else                              -- normal PCS operation
 
         -- clear the autogotiation variables if the autonegotiation is disabled
@@ -505,7 +505,7 @@ begin
             timestamp_stb_p_o <= '0';
 
             -- insert the RX timestamp into the FIFO
-            if(timestamp_pending /= "00") then
+            if(timestamp_pending /= "000") then
               fifo_mask_write <= '1';
               fifo_wr_toggle  <= '1';
             else
@@ -515,11 +515,13 @@ begin
 
             if(timestamp_pending(0) = '1')then
               fifo_rx_data <= timestamp_i(31 downto 16);
-            else
+            elsif(timestamp_pending(1) = '1')then
               fifo_rx_data <= timestamp_i(15 downto 0);
+            elsif(timestamp_pending(2) = '1')then
+              fifo_eof <= '1';
             end if;
 
-            timestamp_pending <= timestamp_pending(0) & '0';
+            timestamp_pending <= timestamp_pending(1 downto 0) & '0';
 
             if (rx_synced = '0') then
 -- PCS is not synced: stay in NOFRAME state and ignore the incoming codes.
@@ -556,7 +558,8 @@ begin
 
             fifo_mask_write <= '0';
             fifo_wr_toggle  <= '0';
-
+            fifo_with_rx_ts <= '0';
+            
             if (d_err = '1' or d_is_k = '1' or d_is_even = '1' or rx_synced = '0') then
               rmon_invalid_code_p_int <= d_err;
               rx_state                <= RX_NOFRAME;
@@ -762,7 +765,7 @@ begin
               rx_state        <= RX_EXTEND;
             elsif d_is_comma = '1' then  -- got comma, real end-of-frame
               -- indicate the correct ending of the current frame in the RX FIFO
-              fifo_eof          <= '1';
+              fifo_eof          <= not timestamp_valid_i;
               fifo_with_rx_ts   <= timestamp_valid_i;
               fifo_mask_write   <= '1';
               fifo_wr_toggle    <= '1';
