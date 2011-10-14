@@ -42,27 +42,29 @@ package endpoint_private_pkg is
   constant c_wrsw_ctrl_fcs       : std_logic_vector(4 - 1 downto 0) := x"8";
 
   type t_ep_internal_rtu_request is record
-    smac: std_logic_vector(47 downto 0);
-    dmac: std_logic_vector(47 downto 0);
-    vid: std_logic_vector(11 downto 0);
-    prio: std_logic_vector(2 downto 0);
-    has_vid: std_logic;
-    has_prio:std_logic;
-     
+    smac     : std_logic_vector(47 downto 0);
+    dmac     : std_logic_vector(47 downto 0);
+    vid      : std_logic_vector(11 downto 0);
+    prio     : std_logic_vector(2 downto 0);
+    has_vid  : std_logic;
+    has_prio : std_logic;
+    
   end record;
-  
+
   type t_rmon_triggers is record
     rx_sync_lost      : std_logic;
     rx_invalid_code   : std_logic;
     rx_overrun        : std_logic;
     rx_crc_err        : std_logic;
     rx_ok             : std_logic;
+    rx_pfilter_drop   : std_logic;
     rx_runt           : std_logic;
     rx_giant          : std_logic;
     rx_pause          : std_logic;
     rx_pcs_err        : std_logic;
     rx_buffer_overrun : std_logic;
     rx_rtu_overrun    : std_logic;
+    rx_path_timing_failure: std_logic;
 
     tx_pause    : std_logic;
     tx_underrun : std_logic;
@@ -71,14 +73,14 @@ package endpoint_private_pkg is
   -- Endpoint's internal fabric used to connect the submodules with each other.
   -- Easier to handle than pipelined Wishbone.
   type t_ep_internal_fabric is record
-    sof        : std_logic;
-    eof        : std_logic;
-    error      : std_logic;
-    dvalid     : std_logic;
-    bytesel    : std_logic;
-   has_rx_timestamp : std_logic;
-    data       : std_logic_vector(15 downto 0);
-    addr       : std_logic_vector(1 downto 0);
+    sof              : std_logic;
+    eof              : std_logic;
+    error            : std_logic;
+    dvalid           : std_logic;
+    bytesel          : std_logic;
+    has_rx_timestamp : std_logic;
+    data             : std_logic_vector(15 downto 0);
+    addr             : std_logic_vector(1 downto 0);
   end record;
 
   component ep_1000basex_pcs
@@ -276,7 +278,7 @@ package endpoint_private_pkg is
     signal din_valid : in  std_logic;
     signal fab       : out t_ep_internal_fabric;
     early_eof        :     boolean := false);
-  
+
 end endpoint_private_pkg;
 
 -------------------------------------------------------------------------------
@@ -308,19 +310,19 @@ package body endpoint_private_pkg is
         dout(17)          <= '1';
         dout(16)          <= fab.bytesel;
         dout(15 downto 0) <= fab.data;
-        dout_valid <= '1';
+        dout_valid        <= '1';
       elsif(fab.dvalid = '1') then
         -- tag = 00
         dout(17)          <= '0';
         dout(16)          <= '0';
         dout(15 downto 0) <= fab.data;
-        dout_valid <= '1';
+        dout_valid        <= '1';
       else
-        dout(17 downto 0)       <= (others => 'X');
-        dout_valid <= '0';
+        dout(17 downto 0) <= (others => 'X');
+        dout_valid        <= '0';
       end if;
     else
-      if(fab.sof = '1' or fab.error = '1' or fab.eof = '1') then
+      if(fab.sof = '1' or fab.error = '1' or fab.eof = '1' or fab.has_rx_timestamp = '1') then
         -- tag = 01
         dout(16)          <= '1';
         dout(15)          <= fab.sof;
@@ -330,13 +332,13 @@ package body endpoint_private_pkg is
         dout(11 downto 0) <= (others => 'X');
         dout_valid        <= '1';
       elsif(fab.dvalid = '1') then
-        dout(17)<= fab.bytesel;
+        dout(17)          <= fab.bytesel;
         dout(16)          <= '0';
         dout(15 downto 0) <= fab.data;
         dout_valid        <= '1';
       else
-        dout(17 downto 0)       <= (others => 'X');
-        dout_valid <= '0';
+        dout(17 downto 0) <= (others => 'X');
+        dout_valid        <= '0';
       end if;
 
     end if;
@@ -361,11 +363,11 @@ package body endpoint_private_pkg is
         fab.bytesel          <= din(17) and din(16);
 
       else
-        fab.dvalid           <= not din(16) and din_valid;
+        fab.dvalid           <= not din(16);
         fab.sof              <= din(16) and din(15);
         fab.eof              <= din(16) and din(14);
         fab.error            <= din(16) and din(13);
-        fab.has_rx_timestamp <= din(16) and din(14) and din(12);
+        fab.has_rx_timestamp <= din(16) and din(12);
         fab.bytesel          <= (not din(16)) and din(17);
       end if;
     else
@@ -456,7 +458,7 @@ package body endpoint_private_pkg is
   --   valid     : in std_logic;
   --   early_eof :    boolean := false) return std_logic is
   --begin
-    
+
   --  if (early_eof and valid = '1' and data(17) = '0' and data(16) = '1' and data(15) = '1') then
   --    return '1';
   --  elsif(not early_eof and valid = '1' and data(16) = '1' and data(15) = '1') then
