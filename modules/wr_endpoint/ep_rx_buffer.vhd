@@ -1,16 +1,16 @@
 -------------------------------------------------------------------------------
--- Title      : 
--- Project    : WhiteRabbit Switch
+-- Title      : WR Endpoint - RX Buffer
+-- Project    : White Rabbit 
 -------------------------------------------------------------------------------
 -- File       : ep_rx_buffer.vhd
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-05-27
--- Platform   : FPGA-generics
+-- Last update: 2011-10-16
+-- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
--- Description: 
+-- Description: A simple synchronous packet buffer of programmable size.
 -------------------------------------------------------------------------------
 -- Copyright (c) 2010 Tomasz Wlostowski
 -------------------------------------------------------------------------------
@@ -28,251 +28,230 @@ library work;
 
 use work.genram_pkg.all;
 use work.endpoint_private_pkg.all;
+use work.wr_fabric_pkg.all;
+use work.ep_wbgen2_pkg.all;
 
 entity ep_rx_buffer is
   generic (
-    g_size_log2 : integer := 12
+    g_size : integer := 1024
     );
   port(
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
 
--------------------------------------------------------------------------------
--- Framer interface
--------------------------------------------------------------------------------
+    snk_fab_i  : in  t_ep_internal_fabric;
+    snk_dreq_o : out std_logic;
+    src_fab_o  : out t_ep_internal_fabric;
+    src_dreq_i : in  std_logic;
 
-    fra_data_i    : in  std_logic_vector(15 downto 0);
-    fra_ctrl_i    : in  std_logic_vector(4 -1 downto 0);
-    fra_sof_p_i   : in  std_logic;
-    fra_eof_p_i   : in  std_logic;
-    fra_error_p_i : in  std_logic;
-    fra_valid_i   : in  std_logic;
-    fra_drop_o    : out std_logic;
-    fra_bytesel_i : in  std_logic;
-
--------------------------------------------------------------------------------
--- WRF source
--------------------------------------------------------------------------------
-
-    fab_data_o    : out std_logic_vector(15 downto 0);
-    fab_ctrl_o    : out std_logic_vector(4 -1 downto 0);
-    fab_sof_p_o   : out std_logic;
-    fab_eof_p_o   : out std_logic;
-    fab_error_p_o : out std_logic;
-    fab_valid_o   : out std_logic;
-    fab_bytesel_o : out std_logic;
-    fab_dreq_i    : in  std_logic;
-
-    ep_ecr_rx_en_fra_i : in std_logic;
-
-    buffer_used_o : out std_logic_vector(7 downto 0);
-
-    rmon_rx_overflow_o : out std_logic
+    level_o : out std_logic_vector(7 downto 0);
+    regs_i  : in  t_ep_out_registers;
+    rmon_o  : out t_rmon_triggers
     );
 
 end ep_rx_buffer;
 
 architecture behavioral of ep_rx_buffer is
 
-  constant c_drop_threshold    : integer := 2**g_size_log2 - 800;
-  constant c_release_threshold : integer := 2**(g_size_log2-1);
+  constant c_drop_threshold    : integer := g_size * 7 / 8;
+  constant c_release_threshold : integer := g_size * 6 / 8;
 
-  constant c_ctrl_sof        : std_logic_vector(4 - 1 downto 0) := x"8";
-  constant c_ctrl_payload_1b : std_logic_vector(4 - 1 downto 0) := x"9";
-  constant c_ctrl_eof        : std_logic_vector(4 - 1 downto 0) := x"a";
-  constant c_ctrl_eof_1b     : std_logic_vector(4 - 1 downto 0) := x"b";
-  constant c_ctrl_eof_2b     : std_logic_vector(4 - 1 downto 0) := x"c";
-  constant c_ctrl_eof_error  : std_logic_vector(4 - 1 downto 0) := x"d";
+  procedure f_pack_rbuf_contents
+    (
+      signal fab        : in  t_ep_internal_fabric;
+      signal prev_addr  : in  std_logic_vector;
+      signal dout       : out std_logic_vector;
+      signal dout_valid : out std_logic) is
+  begin
+    if(fab.sof = '1' or fab.error = '1' or fab.eof = '1') then
+      -- tag = 11
+      dout(17)          <= '1';
+      dout(16)          <= '1';
+      dout(15)          <= fab.sof;
+      dout(14)          <= fab.eof;
+      dout(13)          <= fab.error;
+      dout(11 downto 0) <= (others => 'X');
+      dout_valid        <= '1';
+    elsif(fab.dvalid = '1') then
 
-  signal threshold_hit : std_logic;
+      if(prev_addr /= fab.addr) then
+        dout(17 downto 16) <= "10";     -- reg-change
+      else
+        dout(17 downto 16) <= '0' & fab.bytesel;
+      end if;
 
-  signal wr_packed_ctrl : std_logic_vector(4-1 downto 0);
-  signal wr_valid       : std_logic;
+      dout(15 downto 0) <= fab.data;
+      dout_valid        <= '1';
+    else
+      dout(17 downto 0) <= (others => 'X');
+      dout_valid        <= '0';
+    end if;
 
-  signal rd_packed_ctrl : std_logic_vector(4-1 downto 0);
-  signal rd_valid       : std_logic;
+  end f_pack_rbuf_contents;
 
-  signal fifo_reset_n                 : std_logic;
-  signal fifo_usedw                 : std_logic_vector(g_size_log2-1 downto 0);
-  signal fifo_wr_req, fifo_rd_req   : std_logic;
-  signal fifo_empty                 : std_logic;
-  signal fifo_rd_data, fifo_wr_data : std_logic_vector(19 downto 0);
+  procedure f_unpack_rbuf_contents
+    (
+      signal din       : in  std_logic_vector;
+      signal cur_addr  : in  std_logic_vector;
+      signal din_valid : in  std_logic;
+      signal fab       : out t_ep_internal_fabric;
+      early_eof        :     boolean := false) is
+  begin
 
-  signal s_ones       : std_logic_vector(31 downto 0) := (others => '1');
-  signal fra_drop_int : std_logic;
-  
+    fab.data <= din(15 downto 0);
+    if(din_valid = '1') then
+      if(din(17 downto 16) = "10") then  -- some fancy encoding is necessary here
+        case cur_addr(1 downto 0) is
+          when c_WRF_DATA =>
+            fab.addr <= c_WRF_OOB;
+          when c_WRF_STATUS =>
+            fab.addr <= c_WRF_DATA;
+          when others => fab.addr <= "XX";
+        end case;
+
+      else
+        fab.addr <= cur_addr;
+      end if;
+
+      fab.dvalid  <= not din(17) or (din(17) and not din(16));
+      fab.sof     <= din(15) and din(17) and din(16);
+      fab.eof     <= din(14) and din(17) and din(16);
+      fab.error   <= din(13) and din(17) and din(16);
+      fab.bytesel <= not din(17) and din(16);
+    else
+      fab.dvalid <= '0';
+      fab.sof    <= '0';
+      fab.eof    <= '0';
+      fab.error  <= '0';
+      fab.data   <= (others => 'X');
+    end if;
+  end f_unpack_rbuf_contents;
+
+
+  signal q_in, q_out             : std_logic_vector(17 downto 0);
+  signal q_usedw                 : std_logic_vector(f_log2_size(g_size)-1 downto 0);
+  signal q_empty                 : std_logic;
+  signal q_reset                 : std_logic;
+  signal q_wr, q_rd              : std_logic;
+  signal q_drop                  : std_logic;
+  signal q_in_valid, q_out_valid : std_logic;
+
+
+  type t_write_state is(WAIT_FRAME, DATA);
+  signal state         : t_write_state;
+  signal fab_to_encode : t_ep_internal_fabric;
+  signal src_fab_int   : t_ep_internal_fabric;
+
+  signal in_prev_addr : std_logic_vector(1 downto 0);
+  signal out_cur_addr : std_logic_vector(1 downto 0);
+
 begin
 
-  -- pack the control lines (sof_p, eof_p, error_p, valid, bytesel, ctrl) into
-  -- 4-bit control field to reduce the memory size
-
-  pack_ctrl : process(fra_sof_p_i, fra_eof_p_i, fra_error_p_i, fra_valid_i, fra_bytesel_i, fra_ctrl_i)
+  p_fifo_write : process(clk_sys_i)
   begin
-    if(fra_sof_p_i = '1') then
-      wr_packed_ctrl <= c_ctrl_sof;
-      wr_valid       <= '1';
-    elsif(fra_eof_p_i = '1') then
-      if(fra_valid_i = '1') then        -- valid data on EOF?
-        if(fra_bytesel_i = '1') then
-          wr_packed_ctrl <= c_ctrl_eof_1b;
-        else
-          wr_packed_ctrl <= c_ctrl_eof_2b;
-        end if;
-      else                              -- no data on EOF
-        wr_packed_ctrl <= c_ctrl_eof;
-      end if;
-      wr_valid <= '1';
-    elsif(fra_error_p_i = '1') then     -- fabric error
-      wr_packed_ctrl <= c_ctrl_eof_error;
-      wr_valid       <= '1';
-    elsif(fra_valid_i = '1') then       -- valid data
-      if(fra_bytesel_i = '1' and fra_ctrl_i = c_wrsw_ctrl_payload) then
-        wr_packed_ctrl <= c_ctrl_payload_1b;
+    if rising_edge(clk_sys_i) then
+      if rst_n_i = '0' then
+        q_wr         <= '0';
+        q_drop       <= '0';
+        state        <= WAIT_FRAME;
+        in_prev_addr <= (others => '0');
       else
-        wr_packed_ctrl <= fra_ctrl_i;
+
+        if(snk_fab_i.dvalid = '1') then
+          in_prev_addr <= snk_fab_i.addr;
+        end if;
+
+        if(unsigned(q_usedw) = c_drop_threshold) then
+          q_drop <= '1';
+        end if;
+
+        if(unsigned(q_usedw) = c_release_threshold) then
+          q_drop <= '0';
+        end if;
+
+        case state is
+          when WAIT_FRAME =>
+            in_prev_addr <= c_WRF_STATUS;
+            if(snk_fab_i.sof = '1' and q_drop = '0') then
+              state <= DATA;
+            end if;
+
+          when DATA =>
+            if(q_drop = '1' or snk_fab_i.eof = '1' or snk_fab_i.error = '1') then
+              state <= WAIT_FRAME;
+            end if;
+            
+          when others => null;
+        end case;
       end if;
-      wr_valid <= '1';
-    else
-      wr_packed_ctrl <= (others => 'X');
-      wr_valid       <= '0';
     end if;
   end process;
 
-  fifo_reset_n <= '0' when (rst_n_i = '0' or ep_ecr_rx_en_fra_i = '0') else '1';
-  fifo_wr_req  <= wr_valid and not fra_drop_int;
-  fifo_wr_data <= wr_packed_ctrl & fra_data_i;
+  f_pack_rbuf_contents(fab_to_encode, in_prev_addr, q_in, q_in_valid);
+
+
+  p_encode_fifo_in : process(snk_fab_i, state, q_drop)
+    variable fab_pre_encode : t_ep_internal_fabric;
+    
+  begin
+    fab_pre_encode := snk_fab_i;
+
+    if(fab_pre_encode.sof = '1' and q_drop = '1') then
+      fab_pre_encode.sof := '0';
+    end if;
+
+    if(state = DATA and q_drop = '1') then
+      fab_pre_encode.dvalid := '0';
+      fab_pre_encode.error  := '1';
+    end if;
+
+    fab_to_encode <= fab_pre_encode;
+  end process;
+
+  q_reset <= rst_n_i or regs_i.ecr_rx_en_o;
 
   BUF_FIFO : generic_sync_fifo
     generic map (
-      g_data_width => 20,
-      g_size       => 2 ** g_size_log2,
+      g_data_width => 18,
+      g_size       => g_size,
       g_with_count => true)
     port map (
-      rst_n_i        => fifo_reset_n,
+      rst_n_i        => q_reset,
       clk_i          => clk_sys_i,
-      d_i            => fifo_wr_data,
-      we_i           => fifo_wr_req,
-      q_o            => fifo_rd_data,
-      rd_i           => fifo_rd_req,
-      empty_o        => fifo_empty,
+      d_i            => q_in,
+      we_i           => q_in_valid,
+      q_o            => q_out,
+      rd_i           => q_rd,
+      empty_o        => q_empty,
       full_o         => open,
       almost_empty_o => open,
       almost_full_o  => open,
-      count_o        => fifo_usedw);
+      count_o        => q_usedw);
 
-  fifo_rd_req <= (not fifo_empty) and fab_dreq_i;
-
+  q_rd <= (not q_empty) and src_dreq_i;
+  
   rd_valid_gen : process(clk_sys_i, rst_n_i)
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_i = '0') then
-        rd_valid <= '0';
+        q_out_valid <= '0';
       else
-        rd_valid <= fifo_rd_req;
-      end if;
-    end if;
-  end process;
-
-  rd_packed_ctrl <= fifo_rd_data(19 downto 16);
-  fab_data_o     <= fifo_rd_data(15 downto 0);
-
-  unpack_ctrl : process(rd_packed_ctrl, rd_valid)
-  begin
-    if(rd_valid = '1') then
-      case rd_packed_ctrl is
-        when c_ctrl_eof =>
-          fab_eof_p_o   <= '1';
-          fab_sof_p_o   <= '0';
-          fab_error_p_o <= '0';
-          fab_bytesel_o <= '0';
-          fab_valid_o   <= '0';
-          fab_ctrl_o    <= c_wrsw_ctrl_none;
-
-        when c_ctrl_eof_error =>
-          fab_eof_p_o   <= '0';
-          fab_sof_p_o   <= '0';
-          fab_error_p_o <= '1';
-          fab_bytesel_o <= '0';
-          fab_valid_o   <= '0';
-          fab_ctrl_o    <= c_wrsw_ctrl_none;
-
-        when c_ctrl_eof_1b =>
-          fab_eof_p_o   <= '1';
-          fab_sof_p_o   <= '0';
-          fab_error_p_o <= '0';
-          fab_bytesel_o <= '1';
-          fab_valid_o   <= '1';
-          fab_ctrl_o    <= c_wrsw_ctrl_payload;
-
-        when c_ctrl_eof_2b =>
-          fab_eof_p_o   <= '1';
-          fab_sof_p_o   <= '0';
-          fab_error_p_o <= '0';
-          fab_bytesel_o <= '0';
-          fab_valid_o   <= '1';
-          fab_ctrl_o    <= c_wrsw_ctrl_payload;
-
-        when c_ctrl_sof =>
-          fab_eof_p_o   <= '0';
-          fab_sof_p_o   <= '1';
-          fab_error_p_o <= '0';
-          fab_bytesel_o <= '0';
-          fab_valid_o   <= '0';
-          fab_ctrl_o    <= c_wrsw_ctrl_none;
-
-        when c_ctrl_payload_1b =>
-          fab_eof_p_o   <= '0';
-          fab_sof_p_o   <= '0';
-          fab_error_p_o <= '0';
-          fab_bytesel_o <= '1';
-          fab_valid_o   <= '1';
-          fab_ctrl_o    <= c_wrsw_ctrl_payload;
-        when others =>
-          fab_sof_p_o   <= '0';
-          fab_eof_p_o   <= '0';
-          fab_bytesel_o <= '0';
-          fab_error_p_o <= '0';
-          fab_valid_o   <= '1';
-          fab_ctrl_o    <= rd_packed_ctrl;
-      end case;
-      
-    else
-      fab_sof_p_o   <= '0';
-      fab_eof_p_o   <= '0';
-      fab_error_p_o <= '0';
-      fab_valid_o   <= '0';
-      fab_bytesel_o <= '0';
-      fab_ctrl_o    <= (others => 'X');
-    end if;
-  end process;
-
-  check_overflow : process(clk_sys_i, rst_n_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or ep_ecr_rx_en_fra_i = '0' then
-        fra_drop_int  <= '0';
-        buffer_used_o <= (others => '0');
-      else
-
--- check if we've reached the flow control threshold
-        buffer_used_o <= fifo_usedw(fifo_usedw'high downto fifo_usedw'high - 8 + 1);
-
--- check if the buffer is almost full (3 words remaining) and eventually start
--- dropping packets
-
-        if(fra_eof_p_i = '1') then
-          if(unsigned(fifo_usedw) > to_unsigned(c_drop_threshold, fifo_usedw'length)) then
-            fra_drop_int <= '1';
-          end if;
-        elsif(unsigned(fifo_usedw) = to_unsigned(c_release_threshold, fifo_usedw'length)) then
-          fra_drop_int <= '0';
+        q_out_valid <= q_rd;
+        if(src_fab_int.sof = '1')then
+          out_cur_addr <= c_WRF_STATUS;
+        end if;
+        if(src_fab_int.dvalid = '1') then
+          out_cur_addr <= src_fab_int.addr;
         end if;
       end if;
     end if;
   end process;
 
+  f_unpack_rbuf_contents(q_out, out_cur_addr, q_out_valid, src_fab_int);
 
-  rmon_rx_overflow_o <= fra_drop_int;
-  fra_drop_o         <= fra_drop_int;
+  src_fab_o  <= src_fab_int;
+  snk_dreq_o <= '1';
+
+  level_o <= q_usedw(q_usedw'left downto q_usedw'left - 7);
 
 end behavioral;
