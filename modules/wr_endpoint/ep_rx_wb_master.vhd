@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-14
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ architecture behavioral of ep_rx_wb_master is
 
 begin  -- behavioral
   
-  snk_dreq_o <= not src_wb_i.stall;
+  snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0') else '0';
 
   p_count_acks : process(clk_sys_i)
   begin
