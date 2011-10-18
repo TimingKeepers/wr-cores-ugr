@@ -195,6 +195,7 @@ begin  -- behavioral
     if rising_edge(clk_rx_i) then
       if rst_n_rx_i = '0' or done_int = '1' then
         stage2 <= '0';
+        ir <= (others => '0');
       else
         stage2 <= stage1;
         ir     <= mm_rdata;
