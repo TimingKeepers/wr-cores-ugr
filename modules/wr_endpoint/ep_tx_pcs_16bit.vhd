@@ -1,9 +1,9 @@
 -------------------------------------------------------------------------------
--- Title      : 1000BaseT/X MAC Endpoint - receive path PCS for 1000BaseX
--- Project    : White Rabbit Switch
+-- Title      : 16-bit transmit path for 1000Base-X PCS
+-- Project    : White Rabbit MAC/Endpoint
 -------------------------------------------------------------------------------
 -- File       : ep_tx_pcs_16bit.vhd
--- Author     : Tomasz Wlostowski
+-- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
 -- Last update: 2011-10-05
@@ -21,7 +21,7 @@
 -- exchange between these clock domains is done using an async FIFO.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2011 Tomasz Wlostowski / CERN
+-- Copyright (c) 2011 CERN / BE-CO-HT
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
@@ -45,11 +45,9 @@
 -- 2011-10-15  0.2      twlostow 16-bit version for Virtex 6 GTX
 -------------------------------------------------------------------------------
 
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-
 
 library work;
 use work.gencores_pkg.all;

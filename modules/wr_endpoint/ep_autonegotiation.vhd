@@ -1,12 +1,12 @@
 -------------------------------------------------------------------------------
--- Title      : 1000BaseT/X MAC Endpoint - 1000BaseX autonegotiation 
--- Project    : White Rabbit Switch
+-- Title      : 1000Base-X Autonegotiation 
+-- Project    : White Rabbit MAC/Endpoint
 -------------------------------------------------------------------------------
 -- File       : ep_autonegotiation.vhd
--- Author     : Tomasz Wlostowski
+-- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-08-22
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 -- defined in IEEE802.3.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2009 Tomasz Wlostowski / CERN
+-- Copyright (c) 2009 CERN / BE-CO-HT
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
@@ -30,7 +30,7 @@
 --
 -- You should have received a copy of the GNU Lesser General    
 -- Public License along with this source; if not, download it   
--- from http://www.gnu.org/licenses/lgpl-2.1.html
+-- from http://www.gnu.org/licenses/lgpl-2.1l.html
 --
 -------------------------------------------------------------------------------
 -- Revisions  :
@@ -38,8 +38,6 @@
 -- 2010-11-18  0.4      twlostow  Initial release
 -- 2011-02-07  0.5      twlostow  Tested on Spartan6 GTP
 -------------------------------------------------------------------------------
-
-
 
 library ieee;
 use ieee.std_logic_1164.all;

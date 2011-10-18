@@ -1,24 +1,38 @@
 -------------------------------------------------------------------------------
--- Title      : WR Endpoint - RX Buffer
--- Project    : White Rabbit 
+-- Title      : RX Packet Buffer
+-- Project    : White Rabbit MAC/Endpoint
 -------------------------------------------------------------------------------
 -- File       : ep_rx_buffer.vhd
--- Author     : Tomasz Wlostowski
--- Company    : CERN BE-Co-HT
--- Created    : 2010-04-26
--- Last update: 2011-10-16
+-- Author     : Tomasz Włostowski
+-- Company    : CERN BE-CO-HT
+-- Created    : 2010-11-18
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generic
--- Standard   : VHDL
+-- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: A simple synchronous packet buffer of programmable size.
+-- Description: A simple RX packet buffer, optimized for 18-bit Block RAM-based
+-- FIFOs.
 -------------------------------------------------------------------------------
--- Copyright (c) 2010 Tomasz Wlostowski
+--
+-- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1l.html
+--
 -------------------------------------------------------------------------------
--- Revisions  :
--- Date        Version  Author          Description
--- 2010-04-26  0.2      twlostow        Created
--------------------------------------------------------------------------------
-
 
 library ieee;
 use ieee.std_logic_1164.all;

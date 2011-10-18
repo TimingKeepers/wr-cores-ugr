@@ -1,12 +1,12 @@
 -------------------------------------------------------------------------------
--- Title      : 1000BaseT/X MAC Endpoint - flow control unit
--- Project    : White Rabbit Switch
+-- Title      : Ethernet Flow Control Unit
+-- Project    : White Rabbit MAC/Endpoint
 -------------------------------------------------------------------------------
 -- File       : ep_flow_control.vhd
--- Author     : Tomasz Wlostowski
+-- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-05-27
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 -- TX and RX path of the MAC. 
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2009 Tomasz Wlostowski / CERN
+-- Copyright (c) 2009 - 2011 CERN / BE-CO-HT
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   

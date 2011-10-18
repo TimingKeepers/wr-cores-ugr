@@ -1,20 +1,21 @@
 -------------------------------------------------------------------------------
--- Title      : 1000BaseT/X MAC Endpoint - Statistic Counters (RMON)
--- Project    : White Rabbit Switch
+-- Title      : Programmable Statistics Counters (RMON)
+-- Project    : White Rabbit MAC/Endpoint
 -------------------------------------------------------------------------------
 -- File       : ep_rmon_counters.vhd
--- Author     : Tomasz Wlostowski
+-- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-05-27
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
 -- Description: Module implements a configurable counter block for gathering
--- RMON statistics. The block is RAM-based to reduce the FPGA footprint
+-- RMON statistics. The block is RAM-based to reduce the FPGA footprint and hence
+-- has some limitations on the maximum frequency of the incoming triggers.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2009 Tomasz Wlostowski / CERN
+-- Copyright (c) 2009-2011 CERN / BE-CO-HT
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
