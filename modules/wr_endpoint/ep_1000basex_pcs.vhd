@@ -1,21 +1,23 @@
 -------------------------------------------------------------------------------
--- Title      : 1000BaseT/X MAC Endpoint - PCS for 1000BaseX
--- Project    : White Rabbit Switch
+-- Title      : 1000Base-X Physical Coding Sublayer (PCS)
+-- Project    : White Rabbit MAC/Endpoint
 -------------------------------------------------------------------------------
 -- File       : ep_1000basex_pcs.vhd
--- Author     : Tomasz Wlostowski
+-- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-05
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: Module implements the top level of a 1000BaseX PCS
--- (Physical Coding Sublayer) dedicated for 10-bit interface PHYs and Xilinx
--- GTP transceivers.  
+-- Description: Module implements the top level of a 1000Base-X compliant PCS
+-- (Physical Coding Sublayer). This includes:
+-- - 8/16-bit RX/TX data paths,
+-- - TX clock alignment FIFO,
+-- - 802.3 Autonegotiation.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2009 Tomasz Wlostowski / CERN
+-- Copyright (c) 2009-2011 CERN / BE-CO-HT
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
@@ -38,6 +40,7 @@
 -- Date        Version  Author    Description
 -- 2010-11-18  0.4      twlostow  Created (separeted from wrsw_endpoint)
 -- 2011-02-07  0.5      twlostow  Tested on Spartan6 GTP
+-- 2011-10-18  0.6      twlostow  Virtex-6 GTX port
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -47,17 +50,17 @@ use ieee.numeric_std.all;
 library work;
 use work.endpoint_private_pkg.all;
 
-entity ep_1000basex_pcs_8bit is
+entity ep_1000basex_pcs is
 
   generic (
-    g_simulation : boolean);
+    g_simulation : boolean;
+    g_16bit      : boolean);
 
   port (
     rst_n_i   : in std_logic;
     clk_sys_i : in std_logic;
 
     -- PCS <-> MAC Interface
-
     rxpcs_fab_o             : out t_ep_internal_fabric;
     rxpcs_fifo_almostfull_i : in  std_logic;
     rxpcs_busy_o            : out std_logic;
@@ -71,33 +74,30 @@ entity ep_1000basex_pcs_8bit is
     txpcs_dreq_o            : out std_logic;
     txpcs_timestamp_stb_p_o : out std_logic;
 
-
     link_ok_o : out std_logic;
 
-    -- GTP Serdes interface
-
+    -- GTP/GTX/TBI Serdes interface
     serdes_rst_o    : out std_logic;
     serdes_syncen_o : out std_logic;
     serdes_loopen_o : out std_logic;
-    serdes_prbsen_o : out std_logic;
     serdes_enable_o : out std_logic;
 
     serdes_tx_clk_i       : in  std_logic;
-    serdes_tx_data_o      : out std_logic_vector(7 downto 0);
-    serdes_tx_k_o         : out std_logic;
+    serdes_tx_data_o      : out std_logic_vector(15 downto 0);
+    serdes_tx_k_o         : out std_logic_vector(1 downto 0);
     serdes_tx_disparity_i : in  std_logic;
     serdes_tx_enc_err_i   : in  std_logic;
 
-    serdes_rx_data_i     : in std_logic_vector(7 downto 0);
     serdes_rx_clk_i      : in std_logic;
-    serdes_rx_k_i        : in std_logic;
+    serdes_rx_data_i     : in std_logic_vector(15 downto 0);
+    serdes_rx_k_i        : in std_logic_vector(1 downto 0);
     serdes_rx_enc_err_i  : in std_logic;
-    serdes_rx_bitslide_i : in std_logic_vector(3 downto 0);
+    serdes_rx_bitslide_i : in std_logic_vector(4 downto 0);
 
     -- RMON statistic counters
     rmon_o : inout t_rmon_triggers;
 
---  MDIO interface
+    --  MDIO interface
 
     mdio_addr_i  : in  std_logic_vector(15 downto 0);
     mdio_data_i  : in  std_logic_vector(15 downto 0);
@@ -105,12 +105,11 @@ entity ep_1000basex_pcs_8bit is
     mdio_stb_i   : in  std_logic;
     mdio_rw_i    : in  std_logic;
     mdio_ready_o : out std_logic
-
     );
 
-end ep_1000basex_pcs_8bit;
+end ep_1000basex_pcs;
 
-architecture rtl of ep_1000basex_pcs_8bit is
+architecture rtl of ep_1000basex_pcs is
 
   component ep_tx_pcs_8bit
     port (
@@ -133,6 +132,27 @@ architecture rtl of ep_1000basex_pcs_8bit is
       phy_tx_enc_err_i      : in    std_logic);
   end component;
 
+  component ep_tx_pcs_16bit
+    port (
+      rst_n_i               : in    std_logic;
+      clk_sys_i             : in    std_logic;
+      pcs_fab_i             : in    t_ep_internal_fabric;
+      pcs_error_o           : out   std_logic;
+      pcs_busy_o            : out   std_logic;
+      pcs_dreq_o            : out   std_logic;
+      mdio_mcr_pdown_i      : in    std_logic;
+      mdio_wr_spec_tx_cal_i : in    std_logic;
+      an_tx_en_i            : in    std_logic;
+      an_tx_val_i           : in    std_logic_vector(15 downto 0);
+      timestamp_stb_p_o     : out   std_logic;
+      rmon_o                : inout t_rmon_triggers;
+      phy_tx_clk_i          : in    std_logic;
+      phy_tx_data_o         : out   std_logic_vector(15 downto 0);
+      phy_tx_k_o            : out   std_logic_vector(1 downto 0);
+      phy_tx_disparity_i    : in    std_logic;
+      phy_tx_enc_err_i      : in    std_logic);
+  end component;
+
   component ep_rx_pcs_8bit
     generic (
       g_simulation : boolean);
@@ -148,6 +168,34 @@ architecture rtl of ep_1000basex_pcs_8bit is
       phy_rx_clk_i               : in    std_logic;
       phy_rx_data_i              : in    std_logic_vector(7 downto 0);
       phy_rx_k_i                 : in    std_logic;
+      phy_rx_enc_err_i           : in    std_logic;
+      mdio_mcr_pdown_i           : in    std_logic;
+      mdio_wr_spec_cal_crst_i    : in    std_logic;
+      mdio_wr_spec_rx_cal_stat_o : out   std_logic;
+      synced_o                   : out   std_logic;
+      sync_lost_o                : out   std_logic;
+      an_rx_en_i                 : in    std_logic;
+      an_rx_val_o                : out   std_logic_vector(15 downto 0);
+      an_rx_valid_o              : out   std_logic;
+      an_idle_match_o            : out   std_logic;
+      rmon_o                     : inout t_rmon_triggers);
+  end component;
+
+    component ep_rx_pcs_16bit
+    generic (
+      g_simulation : boolean);
+    port (
+      clk_sys_i                  : in    std_logic;
+      rst_n_i                    : in    std_logic;
+      pcs_fifo_almostfull_i      : in    std_logic;
+      pcs_busy_o                 : out   std_logic;
+      pcs_fab_o                  : out   t_ep_internal_fabric;
+      timestamp_stb_p_o          : out   std_logic;
+      timestamp_i                : in    std_logic_vector(31 downto 0);
+      timestamp_valid_i          : in    std_logic;
+      phy_rx_clk_i               : in    std_logic;
+      phy_rx_data_i              : in    std_logic_vector(15 downto 0);
+      phy_rx_k_i                 : in    std_logic_vector(1 downto 0);
       phy_rx_enc_err_i           : in    std_logic;
       mdio_mcr_pdown_i           : in    std_logic;
       mdio_wr_spec_cal_crst_i    : in    std_logic;
@@ -195,7 +243,7 @@ architecture rtl of ep_1000basex_pcs_8bit is
       mdio_wr_spec_tx_cal_o      : out std_logic;
       mdio_wr_spec_rx_cal_stat_i : in  std_logic;
       mdio_wr_spec_cal_crst_o    : out std_logic;
-      mdio_wr_spec_bslide_i      : in  std_logic_vector(3 downto 0);
+      mdio_wr_spec_bslide_i      : in  std_logic_vector(4 downto 0);
       lstat_read_notify_o        : out std_logic);
   end component;
 
@@ -249,7 +297,7 @@ architecture rtl of ep_1000basex_pcs_8bit is
   signal mdio_wr_spec_tx_cal      : std_logic;
   signal mdio_wr_spec_rx_cal_stat : std_logic;
   signal mdio_wr_spec_cal_crst    : std_logic;
-  signal mdio_wr_spec_bslide      : std_logic_vector(3 downto 0);
+  signal mdio_wr_spec_bslide      : std_logic_vector(4 downto 0);
 
   signal lstat_read_notify : std_logic;
 
@@ -282,73 +330,137 @@ begin  -- rtl
 
   pcs_reset_n <= '0' when (mdio_mcr_reset = '1' or rst_n_i = '0') else '1';
 
--- the PCS state machines themselves
+  gen_16bit : if(g_16bit) generate
+    U_TX_PCS : ep_tx_pcs_16bit
+      port map (
+        rst_n_i   => pcs_reset_n,
+        clk_sys_i => clk_sys_i,
 
-  U_TX_PCS : ep_tx_pcs_8bit
-    port map (
-      rst_n_i   => pcs_reset_n,
-      clk_sys_i => clk_sys_i,
+        pcs_fab_i   => txpcs_fab_i,
+        pcs_error_o => txpcs_error_o,
+        pcs_busy_o  => txpcs_busy_int,
+        pcs_dreq_o  => txpcs_dreq_o,
 
-      pcs_fab_i   => txpcs_fab_i,
-      pcs_error_o => txpcs_error_o,
-      pcs_busy_o  => txpcs_busy_int,
-      pcs_dreq_o  => txpcs_dreq_o,
+        mdio_mcr_pdown_i      => mdio_mcr_pdown,
+        mdio_wr_spec_tx_cal_i => mdio_wr_spec_tx_cal,
 
-      mdio_mcr_pdown_i      => mdio_mcr_pdown,
-      mdio_wr_spec_tx_cal_i => mdio_wr_spec_tx_cal,
+        an_tx_en_i        => an_tx_en,
+        an_tx_val_i       => an_tx_val,
+        timestamp_stb_p_o => txpcs_timestamp_stb_p_o,
+        rmon_o            => rmon_o,
 
-      an_tx_en_i        => an_tx_en,
-      an_tx_val_i       => an_tx_val,
-      timestamp_stb_p_o => txpcs_timestamp_stb_p_o,
-      rmon_o            => rmon_o,
+        phy_tx_clk_i       => serdes_tx_clk_i,
+        phy_tx_data_o      => serdes_tx_data_o,
+        phy_tx_k_o         => serdes_tx_k_o,
+        phy_tx_disparity_i => serdes_tx_disparity_i,
+        phy_tx_enc_err_i   => serdes_tx_enc_err_i
+        );
 
-      phy_tx_clk_i       => serdes_tx_clk_i,
-      phy_tx_data_o      => serdes_tx_data_o,
-      phy_tx_k_o         => serdes_tx_k_o,
-      phy_tx_disparity_i => serdes_tx_disparity_i,
-      phy_tx_enc_err_i   => serdes_tx_enc_err_i
-      );
+    U_RX_PCS : ep_rx_pcs_16bit
+      generic map (
+        g_simulation => g_simulation)
+      port map (
+        clk_sys_i => clk_sys_i,
+        rst_n_i   => pcs_reset_n,
 
+        pcs_busy_o            => rxpcs_busy_o,
+        pcs_fab_o             => rxpcs_fab_o,
+        pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
 
-  U_RX_PCS : ep_rx_pcs_8bit
-    generic map (
-      g_simulation => g_simulation)
-    port map (
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => pcs_reset_n,
+        timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
+        timestamp_i       => rxpcs_timestamp_i,
+        timestamp_valid_i => rxpcs_timestamp_valid_i,
 
-      pcs_busy_o            => rxpcs_busy_o,
-      pcs_fab_o             => rxpcs_fab_o,
-      pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
+        mdio_mcr_pdown_i           => mdio_mcr_pdown,
+        mdio_wr_spec_cal_crst_i    => mdio_wr_spec_cal_crst,
+        mdio_wr_spec_rx_cal_stat_o => mdio_wr_spec_rx_cal_stat,
 
-      timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
-      timestamp_i       => rxpcs_timestamp_i,
-      timestamp_valid_i => rxpcs_timestamp_valid_i,
+        synced_o        => synced,
+        sync_lost_o     => sync_lost,
+        an_rx_en_i      => an_rx_en,
+        an_rx_val_o     => an_rx_val,
+        an_rx_valid_o   => an_rx_valid,
+        an_idle_match_o => an_idle_match,
 
-      mdio_mcr_pdown_i           => mdio_mcr_pdown,
-      mdio_wr_spec_cal_crst_i    => mdio_wr_spec_cal_crst,
-      mdio_wr_spec_rx_cal_stat_o => mdio_wr_spec_rx_cal_stat,
+        rmon_o => rmon_o,
 
-      synced_o        => synced,
-      sync_lost_o     => sync_lost,
-      an_rx_en_i      => an_rx_en,
-      an_rx_val_o     => an_rx_val,
-      an_rx_valid_o   => an_rx_valid,
-      an_idle_match_o => an_idle_match,
+        phy_rx_clk_i     => serdes_rx_clk_i,
+        phy_rx_data_i    => serdes_rx_data_i,
+        phy_rx_k_i       => serdes_rx_k_i,
+        phy_rx_enc_err_i => serdes_rx_enc_err_i
+        );
 
-      rmon_o => rmon_o,
+    
+  end generate gen_16bit;
 
-      phy_rx_clk_i     => serdes_rx_clk_i,
-      phy_rx_data_i    => serdes_rx_data_i,
-      phy_rx_k_i       => serdes_rx_k_i,
-      phy_rx_enc_err_i => serdes_rx_enc_err_i
-      );
+  gen_8bit : if(not g_16bit) generate
+    U_TX_PCS : ep_tx_pcs_8bit
+      port map (
+        rst_n_i   => pcs_reset_n,
+        clk_sys_i => clk_sys_i,
 
-  txpcs_busy_o <= txpcs_busy_int;
-  --'1' when (synced = '0' and mdio_mcr_uni_en = '0') else txpcs_busy_int;
+        pcs_fab_i   => txpcs_fab_i,
+        pcs_error_o => txpcs_error_o,
+        pcs_busy_o  => txpcs_busy_int,
+        pcs_dreq_o  => txpcs_dreq_o,
+
+        mdio_mcr_pdown_i      => mdio_mcr_pdown,
+        mdio_wr_spec_tx_cal_i => mdio_wr_spec_tx_cal,
+
+        an_tx_en_i        => an_tx_en,
+        an_tx_val_i       => an_tx_val,
+        timestamp_stb_p_o => txpcs_timestamp_stb_p_o,
+        rmon_o            => rmon_o,
+
+        phy_tx_clk_i       => serdes_tx_clk_i,
+        phy_tx_data_o      => serdes_tx_data_o(7 downto 0),
+        phy_tx_k_o         => serdes_tx_k_o(0),
+        phy_tx_disparity_i => serdes_tx_disparity_i,
+        phy_tx_enc_err_i   => serdes_tx_enc_err_i
+        );
+
+    
+
+    U_RX_PCS : ep_rx_pcs_8bit
+      generic map (
+        g_simulation => g_simulation)
+      port map (
+        clk_sys_i => clk_sys_i,
+        rst_n_i   => pcs_reset_n,
+
+        pcs_busy_o            => rxpcs_busy_o,
+        pcs_fab_o             => rxpcs_fab_o,
+        pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
+
+        timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
+        timestamp_i       => rxpcs_timestamp_i,
+        timestamp_valid_i => rxpcs_timestamp_valid_i,
+
+        mdio_mcr_pdown_i           => mdio_mcr_pdown,
+        mdio_wr_spec_cal_crst_i    => mdio_wr_spec_cal_crst,
+        mdio_wr_spec_rx_cal_stat_o => mdio_wr_spec_rx_cal_stat,
+
+        synced_o        => synced,
+        sync_lost_o     => sync_lost,
+        an_rx_en_i      => an_rx_en,
+        an_rx_val_o     => an_rx_val,
+        an_rx_valid_o   => an_rx_valid,
+        an_idle_match_o => an_idle_match,
+
+        rmon_o => rmon_o,
+
+        phy_rx_clk_i     => serdes_rx_clk_i,
+        phy_rx_data_i    => serdes_rx_data_i(7 downto 0),
+        phy_rx_k_i       => serdes_rx_k_i(0),
+        phy_rx_enc_err_i => serdes_rx_enc_err_i
+        );
+
+  end generate gen_8bit;
+
+  txpcs_busy_o <= '1' when (synced = '0' and mdio_mcr_uni_en = '0') else txpcs_busy_int;
 
   serdes_rst_o        <= (not pcs_reset_n) or mdio_mcr_pdown;
-  mdio_wr_spec_bslide <= serdes_rx_bitslide_i;
+  mdio_wr_spec_bslide <= serdes_rx_bitslide_i(4 downto 0);
 
   U_MDIO_WB : ep_pcs_tbi_mdio_wb
     port map (
