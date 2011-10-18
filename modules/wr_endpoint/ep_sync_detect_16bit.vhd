@@ -81,7 +81,7 @@ begin  -- behavioral
 
   valid_idle <= '1' when (k_i = "10" and data_i(15 downto 8) = c_k28_5 and err_i = '0') else '0';
 
-  invalid_code <= '1' when (err_i = '1' or (k_i(0) = '1' and data_i(7 downto 0) = c_k28_5));
+  invalid_code <= '1' when (err_i = '1' or (k_i(0) = '1' and data_i(7 downto 0) = c_k28_5)) else '0';
 
 
   sync_fsm : process (rbclk_i, rst_n_i)
