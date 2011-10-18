@@ -677,9 +677,9 @@ peripheral {
 		field {
 			 name = "GTP RX Bitslide";
 			 prefix = "BSLIDE";
-			 description = "Current receive path bit slide (valid only for Xilinx GTP version)";
+			 description = "Current receive path bit slide (valid only for Xilinx GTP/GTX versions)";
 			 type = SLV;
-			 size = 4;
+			 size = 5;
 			 align = 4;
 			 access_bus = READ_ONLY;
 			 access_dev = WRITE_ONLY;
