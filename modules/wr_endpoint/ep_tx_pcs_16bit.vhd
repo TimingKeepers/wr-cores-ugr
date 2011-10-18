@@ -13,14 +13,12 @@
 -- Description: Module implements a 16-bit transmit path for 802.3z 1000BaseX PCS.
 -- This block interfaces the Ethernet framer to TX PMA (Physical Medium Attachment).
 -- It performs preamble generation, insertion of idle patterns, all the low-level
--- signalling (including 8b10b coding). Strobing signal for taking TX timestamps
--- is also generated.
+-- signalling. Strobing signal for taking TX timestamps is also generated.
 --
--- Module uses two separate clocks: 62.5 MHz tbi_tx_clk (or gtp_tx_clk)
+-- Module uses two separate clocks: 62.5 MHz phy_tx_clk_i
 -- (Transmit clock for PHY) which clocks 8b10b signalling layer, and an async
--- (clk_sys_i) which is used for data exchange with the rest of switch. Data
--- exchange between these clock domains  is done using an async FIFO.
---
+-- (clk_sys_i) which is used for data exchange with the rest of MAC data path. Data
+-- exchange between these clock domains is done using an async FIFO.
 -------------------------------------------------------------------------------
 --
 -- Copyright (c) 2011 Tomasz Wlostowski / CERN
@@ -44,7 +42,7 @@
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
--- 2011-10-15  0.2      twlostow 16-bit version
+-- 2011-10-15  0.2      twlostow 16-bit version for Virtex 6 GTX
 -------------------------------------------------------------------------------
 
 
@@ -120,7 +118,7 @@ end ep_tx_pcs_16bit;
 architecture behavioral of ep_tx_pcs_16bit is
 
 -- TX state machine definitions
-  type t_tbif_tx_state is (TX_CAL, TX_CR12, TX_CR34, TX_SPD_PREAMBLE, TX_COMMA_IDLE, TX_DATA, TX_PREAMBLE, TX_SFD, TX_EPD, TX_EXTEND, TX_GEN_ERROR);
+  type t_tbif_tx_state is (TX_COMMA_IDLE, TX_CAL, TX_CR12, TX_CR34, TX_SPD_PREAMBLE, TX_DATA, TX_PREAMBLE, TX_SFD, TX_EPD, TX_EXTEND, TX_GEN_ERROR);
 
 -- TX state machine signals
 
@@ -141,6 +139,7 @@ architecture behavioral of ep_tx_pcs_16bit is
   signal fifo_rd                         : std_logic;
   signal fifo_ready                      : std_logic;
   signal fifo_clear_n                    : std_logic;
+  signal fifo_read_int                   : std_logic;
   signal fifo_fab                        : t_ep_internal_fabric;
 
   signal tx_busy            : std_logic;
@@ -148,7 +147,6 @@ architecture behavioral of ep_tx_pcs_16bit is
   signal reset_synced_txclk : std_logic;
 
   signal mdio_mcr_pdown_synced : std_logic;
-
   signal s_one : std_logic := '1';
 
 begin
@@ -200,6 +198,8 @@ begin
 
   f_pack_fifo_contents(pcs_fab_i, fifo_packed_in, fifo_wr, true);
 
+  fifo_read_int <= fifo_rd and not (fifo_fab.eof or fifo_fab.error or fifo_fab.sof);
+
   U_TX_FIFO : generic_async_fifo
     generic map (
       g_data_width             => 18,
@@ -222,7 +222,7 @@ begin
       wr_count_o        => open,
       clk_rd_i          => phy_tx_clk_i,
       q_o               => fifo_packed_out,
-      rd_i              => fifo_rd,
+      rd_i              => fifo_read_int,
       rd_empty_o        => fifo_empty,
       rd_full_o         => open,
       rd_almost_empty_o => fifo_almost_empty,
@@ -231,12 +231,18 @@ begin
 
   fifo_enough_data <= not fifo_almost_empty;
 
-  f_unpack_fifo_contents(fifo_packed_out, s_one, fifo_fab, true);
+  p_gen_fifo_ready_flag : process(phy_tx_clk_i)
+  begin
+    if rising_edge(phy_tx_clk_i) then
+      fifo_ready <= fifo_read_int;
+    end if;
+  end process;
+
+  f_unpack_fifo_contents(fifo_packed_out, fifo_ready, fifo_fab, true);
 
   -----------------------------------------------------------------------------
   -- TX PCS state machine
   -----------------------------------------------------------------------------
-
   p_tx_fsm : process (phy_tx_clk_i)
   begin
     
@@ -254,11 +260,8 @@ begin
         tx_catch_disparity <= '0';
         tx_cntr            <= (others => '0');
         rmon_o.tx_underrun <= '0';
-        
       else
-        
         case tx_state is
-
 -------------------------------------------------------------------------------
 -- State COMMA: sends the /I/ sequence (K28.5 + D5.6/D16.2)
 -------------------------------------------------------------------------------            
@@ -270,7 +273,7 @@ begin
             tx_error           <= '0';
 
             tx_is_k                   <= "10";
-            tx_odata_reg(15 downto 0) <= c_K28_5;
+            tx_odata_reg(15 downto 8) <= c_K28_5;
 
             if (phy_tx_disparity_i = '1' and tx_catch_disparity = '1') then
               tx_odata_reg(7 downto 0) <= c_d5_6;
@@ -278,7 +281,6 @@ begin
               tx_odata_reg(7 downto 0) <= c_d16_2;
             end if;
 
-            fifo_ready <= fifo_rd;
 
 -- endpoint wants to send Config_Reg
             if(an_tx_en_i = '1') then
@@ -288,7 +290,7 @@ begin
 
 -- we've got a new frame in the FIFO
             elsif (fifo_fab.sof = '1' and fifo_ready = '1' and tx_cntr = "0000")then
-              fifo_rd  <= '1';
+              fifo_rd  <= '0';
               tx_state <= TX_SPD_PREAMBLE;
               tx_cntr  <= "0001";
 
@@ -372,7 +374,7 @@ begin
             if (tx_cntr = "0000") then
               tx_state          <= TX_SFD;
               timestamp_stb_p_o <= '1';
-              fifo_rd   <= '1';
+              fifo_rd           <= '1';
             end if;
 
             tx_cntr <= tx_cntr - 1;
@@ -381,12 +383,11 @@ begin
 -- State SFD: outputs the start-of-frame delimeter (last byte of the preamble)
 -------------------------------------------------------------------------------            
           when TX_SFD =>
-            tx_is_k         <= "00";
-            tx_odata_reg    <= c_preamble_char & c_preamble_sfd;
-            tx_state        <= TX_DATA;
+            tx_is_k      <= "00";
+            tx_odata_reg <= c_preamble_char & c_preamble_sfd;
+            tx_state     <= TX_DATA;
 
           when TX_DATA =>
-
             timestamp_stb_p_o <= '0';
 
             if((fifo_empty = '1' or fifo_fab.error = '1') and fifo_fab.eof = '0') then  -- FIFO underrun?
@@ -395,6 +396,7 @@ begin
               tx_state           <= TX_GEN_ERROR;
               tx_error           <= not fifo_fab.error;
               rmon_o.tx_underrun <= '1';
+              fifo_rd            <= '0';
             else
 
               if(fifo_fab.bytesel = '1') then
@@ -417,7 +419,7 @@ begin
 
 -------------------------------------------------------------------------------
 -- State EPD: send End-of-frame delimeter
--------------------------------------------------------------------------------            
+-------------------------------------------------------------------------------
           when TX_EPD =>
             tx_is_k            <= "11";
             tx_odata_reg       <= c_k29_7 & c_k23_7;
@@ -433,7 +435,7 @@ begin
             tx_odata_reg       <= c_k23_7 & c_k23_7;
             tx_catch_disparity <= '1';
             tx_cntr            <= "1000";
-            tx_state <= TX_COMMA_IDLE;
+            tx_state           <= TX_COMMA_IDLE;
 
 -------------------------------------------------------------------------------
 -- State GEN_ERROR: entered when an error occured. Just terminates the frame.
@@ -447,10 +449,7 @@ begin
   end process;
 
   tx_busy <= '1' when (fifo_empty = '0') or (tx_state /= TX_COMMA_IDLE) else '0';
-
   pcs_dreq_o <= not fifo_almost_full;
-
-
 end behavioral;
 
 
