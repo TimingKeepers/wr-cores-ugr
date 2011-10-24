@@ -2,6 +2,8 @@
  `define SIMDRV_DEFS_SV 1
 
 typedef longint unsigned uint64_t;
+typedef shortint unsigned uint16_t;
+
 
 typedef uint64_t u64_array_t[];
 typedef byte byte_array_t[];

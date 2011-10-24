@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-10-05
+-- Last update: 2011-10-18
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -44,16 +44,17 @@ use work.wr_fabric_pkg.all;
 entity wr_endpoint is
   
   generic (
-    g_simulation          : boolean := true;
-    g_interface_mode      : string  := "SERDES";
-    g_rx_buffer_size_log2 : integer := 12;
+    g_simulation          : boolean := false;
+    g_pcs_16bit           : boolean := false;
+    g_rx_buffer_size      : integer := 1024;
     g_with_rx_buffer      : boolean := true;
     g_with_flow_control   : boolean := true;
     g_with_timestamper    : boolean := true;
     g_with_dmtd           : boolean := true;
     g_with_dpi_classifier : boolean := true;
     g_with_vlans          : boolean := true;
-    g_with_rtu            : boolean := true
+    g_with_rtu            : boolean := true;
+    g_with_leds           : boolean := true
     );
   port (
 
@@ -77,26 +78,43 @@ entity wr_endpoint is
     pps_csync_p1_i : in std_logic;
 
 -------------------------------------------------------------------------------
--- Xilinx GTP PHY Interace
+-- PHY Interace (8/16 bit PCS)
 -------------------------------------------------------------------------------    
 
     phy_rst_o    : out std_logic;
     phy_loopen_o : out std_logic;
-    phy_prbsen_o : out std_logic;
     phy_enable_o : out std_logic;
     phy_syncen_o : out std_logic;
 
     phy_ref_clk_i      : in  std_logic;
-    phy_tx_data_o      : out std_logic_vector(7 downto 0);
-    phy_tx_k_o         : out std_logic;
+    phy_tx_data_o      : out std_logic_vector(15 downto 0);
+    phy_tx_k_o         : out std_logic_vector(1 downto 0);
     phy_tx_disparity_i : in  std_logic;
     phy_tx_enc_err_i   : in  std_logic;
 
-    phy_rx_data_i     : in std_logic_vector(7 downto 0);
+    phy_rx_data_i     : in std_logic_vector(15 downto 0);
     phy_rx_clk_i      : in std_logic;
-    phy_rx_k_i        : in std_logic;
+    phy_rx_k_i        : in std_logic_vector(1 downto 0);
     phy_rx_enc_err_i  : in std_logic;
-    phy_rx_bitslide_i : in std_logic_vector(3 downto 0);
+    phy_rx_bitslide_i : in std_logic_vector(4 downto 0);
+
+-------------------------------------------------------------------------------
+-- GMII Interface (8-bit)
+-------------------------------------------------------------------------------
+
+    gmii_tx_clk_i : in  std_logic;
+    gmii_txd_o    : out std_logic_vector(7 downto 0);
+    gmii_tx_en_o  : out std_logic;
+    gmii_tx_er_o  : out std_logic;
+
+    gmii_rx_clk_i : in std_logic;
+    gmii_rxd_i    : in std_logic_vector(7 downto 0);
+    gmii_rx_er_i  : in std_logic;
+    gmii_rx_dv_i  : in std_logic;
+
+    ---------------------------------------------------------------------------
+    -- Wishbone I/O
+    ---------------------------------------------------------------------------
 
     src_dat_o   : out std_logic_vector(15 downto 0);
     src_adr_o   : out std_logic_vector(1 downto 0);
@@ -178,7 +196,14 @@ entity wr_endpoint is
     wb_adr_i : in  std_logic_vector(5 downto 0);
     wb_dat_i : in  std_logic_vector(31 downto 0);
     wb_dat_o : out std_logic_vector(31 downto 0);
-    wb_ack_o : out std_logic
+    wb_ack_o : out std_logic;
+
+-------------------------------------------------------------------------------
+-- Misc stuff
+-------------------------------------------------------------------------------
+
+    led_link_o: out std_logic;
+    led_act_o: out std_logic
 
     );
 
@@ -215,7 +240,9 @@ architecture syn of wr_endpoint is
     generic (
       g_with_vlans          : boolean;
       g_with_dpi_classifier : boolean;
-      g_with_rtu            : boolean);
+      g_with_rtu            : boolean;
+      g_with_rx_buffer      : boolean;
+      g_rx_buffer_size      : integer);
     port (
       clk_sys_i              : in    std_logic;
       clk_rx_i               : in    std_logic;
@@ -224,9 +251,6 @@ architecture syn of wr_endpoint is
       pcs_fab_i              : in    t_ep_internal_fabric;
       pcs_fifo_almostfull_o  : out   std_logic;
       pcs_busy_i             : in    std_logic;
-      oob_data_i             : in    std_logic_vector(47 downto 0);
-      oob_valid_i            : in    std_logic;
-      oob_ack_o              : out   std_logic;
       src_wb_o               : out   t_wrf_source_out;
       src_wb_i               : in    t_wrf_source_in;
       fc_pause_p_o           : out   std_logic;
@@ -240,9 +264,10 @@ architecture syn of wr_endpoint is
   end component;
 
 
-  component ep_1000basex_pcs_8bit
+  component ep_1000basex_pcs
     generic (
-      g_simulation : boolean); 
+      g_simulation : boolean;
+      g_16bit      : boolean);
     port (
       rst_n_i                 : in    std_logic;
       clk_sys_i               : in    std_logic;
@@ -261,25 +286,24 @@ architecture syn of wr_endpoint is
       serdes_rst_o            : out   std_logic;
       serdes_syncen_o         : out   std_logic;
       serdes_loopen_o         : out   std_logic;
-      serdes_prbsen_o         : out   std_logic;
       serdes_enable_o         : out   std_logic;
       serdes_tx_clk_i         : in    std_logic;
-      serdes_tx_data_o        : out   std_logic_vector(7 downto 0);
-      serdes_tx_k_o           : out   std_logic;
+      serdes_tx_data_o        : out   std_logic_vector(15 downto 0);
+      serdes_tx_k_o           : out   std_logic_vector(1 downto 0);
       serdes_tx_disparity_i   : in    std_logic;
       serdes_tx_enc_err_i     : in    std_logic;
-      serdes_rx_data_i        : in    std_logic_vector(7 downto 0);
       serdes_rx_clk_i         : in    std_logic;
-      serdes_rx_k_i           : in    std_logic;
+      serdes_rx_data_i        : in    std_logic_vector(15 downto 0);
+      serdes_rx_k_i           : in    std_logic_vector(1 downto 0);
       serdes_rx_enc_err_i     : in    std_logic;
-      serdes_rx_bitslide_i    : in    std_logic_vector(3 downto 0);
+      serdes_rx_bitslide_i    : in    std_logic_vector(4 downto 0);
       rmon_o                  : inout t_rmon_triggers;
       mdio_addr_i             : in    std_logic_vector(15 downto 0);
       mdio_data_i             : in    std_logic_vector(15 downto 0);
       mdio_data_o             : out   std_logic_vector(15 downto 0);
       mdio_stb_i              : in    std_logic;
       mdio_rw_i               : in    std_logic;
-      mdio_ready_o            : out   std_logic); 
+      mdio_ready_o            : out   std_logic);
   end component;
 
   component ep_timestamping_unit
@@ -324,10 +348,6 @@ architecture syn of wr_endpoint is
 
   signal txoob_fid_value : std_logic_vector(15 downto 0);
   signal txoob_fid_stb   : std_logic;
-
-  signal rxoob_data  : std_logic_vector(47 downto 0);
-  signal rxoob_valid : std_logic;
-  signal rxoob_ack   : std_logic;
 
   signal txpcs_timestamp_stb_p : std_logic;
   signal rxpcs_timestamp_stb_p : std_logic;
@@ -448,9 +468,10 @@ begin
 
   mdio_addr <= regs_fromwb.mdio_asr_phyad_o & regs_fromwb.mdio_cr_addr_o;
 
-  U_PCS_1000BASEX : ep_1000basex_pcs_8bit
+  U_PCS_1000BASEX : ep_1000basex_pcs
     generic map (
-      g_simulation => g_simulation)
+      g_simulation => g_simulation,
+      g_16bit      => g_pcs_16bit)
     port map (
       rst_n_i   => rst_n_i,
       clk_sys_i => clk_sys_i,
@@ -472,7 +493,6 @@ begin
 
       serdes_rst_o    => phy_rst_o,
       serdes_loopen_o => phy_loopen_o,
-      serdes_prbsen_o => phy_prbsen_o,
       serdes_enable_o => phy_enable_o,
       serdes_syncen_o => phy_syncen_o,
 
@@ -485,7 +505,7 @@ begin
       serdes_rx_clk_i       => phy_rx_clk_i,
       serdes_rx_k_i         => phy_rx_k_i,
       serdes_rx_enc_err_i   => phy_rx_enc_err_i,
-      serdes_rx_bitslide_i  => phy_rx_bitslide_i,
+      serdes_rx_bitslide_i  => phy_rx_bitslide_i(4 downto 0),
 
       rmon_o => rmon,
 
@@ -549,7 +569,9 @@ begin
     generic map (
       g_with_vlans          => g_with_vlans,
       g_with_dpi_classifier => g_with_dpi_classifier,
-      g_with_rtu            => g_with_rtu)
+      g_with_rtu            => g_with_rtu,
+      g_with_rx_buffer      => g_with_rx_buffer,
+      g_rx_buffer_size      => g_rx_buffer_size)
     port map (
       clk_sys_i => clk_sys_i,
       clk_rx_i  => phy_rx_clk_i,
@@ -560,10 +582,6 @@ begin
       pcs_fab_i             => rxpcs_fab,
       pcs_fifo_almostfull_o => rxpcs_fifo_almostfull,
       pcs_busy_i            => rxpcs_busy,
-
-      oob_data_i  => rxoob_data,
-      oob_valid_i => rxoob_valid,
-      oob_ack_o   => rxoob_ack,
 
       fc_pause_p_o     => rxfra_pause_p,
       fc_pause_delay_o => rxfra_pause_delay,

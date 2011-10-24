@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-09-15
+-- Last update: 2011-10-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,6 +50,8 @@ use unisim.all;
 
 library work;
 use work.gencores_pkg.all;
+use work.disparity_gen_pkg.all;
+
 
 entity wr_gtp_phy_spartan6 is
 
@@ -251,7 +253,7 @@ architecture rtl of wr_gtp_phy_spartan6 is
   component gtp_bitslide
     generic(
       g_simulation : integer;
-      g_target : string := "spartan6");
+      g_target     : string := "spartan6");
     port (
       gtp_rst_i                : in  std_logic;
       gtp_rx_clk_i             : in  std_logic;
@@ -338,8 +340,8 @@ architecture rtl of wr_gtp_phy_spartan6 is
 
   signal ch0_rx_bitslide_int : std_logic_vector(4 downto 0);
   signal ch1_rx_bitslide_int : std_logic_vector(4 downto 0);
-  
-  
+
+
   component enc_8b10b
     port (
       clk_i     : in  std_logic;
@@ -351,35 +353,50 @@ architecture rtl of wr_gtp_phy_spartan6 is
       out_10b_o : out std_logic_vector(9 downto 0));
   end component;
 
-signal ch0_rst_n : std_logic;
-signal ch1_rst_n : std_logic;
-  
+  signal ch0_rst_n : std_logic;
+  signal ch1_rst_n : std_logic;
+
+  signal ch0_cur_disp : t_8b10b_disparity;
+  signal ch0_disp_pipe : std_logic_vector(1 downto 0);
+  signal ch1_cur_disp : t_8b10b_disparity;
+  signal ch1_disp_pipe : std_logic_vector(1 downto 0);
   
 begin  -- rtl
 
   ch0_rst_n <= not ch0_gtp_reset;
   ch1_rst_n <= not ch1_gtp_reset;
 
-  U_disp_gen: enc_8b10b
-    port map (
-      clk_i     => ch0_ref_clk,
-      rst_n_i   => ch0_rst_n,
-      ctrl_i    => ch0_tx_k_i,
-      in_8b_i   => ch0_tx_data_i,
-      err_o     => open,
-      dispar_o  => ch0_tx_disparity_o,
-      out_10b_o => open);
+  gen_disp_ch0 : process(ch0_ref_clk)
+  begin
+    if rising_edge(ch0_ref_clk) then
+      if(ch0_rst_n = '0') then
+        ch0_cur_disp <= RD_MINUS;
+        ch0_disp_pipe <= (others => '0');
+      else
+        ch0_cur_disp <= f_next_8b10b_disparity8(ch0_cur_disp, ch0_tx_k_i, ch0_tx_data_i);
+        ch0_disp_pipe(0) <= to_std_logic(ch0_cur_disp);
+        ch0_disp_pipe(1) <= ch0_disp_pipe(0);
+      end if;
+    end if;
+  end process;
 
-  U_disp_gen2: enc_8b10b
-    port map (
-      clk_i     => ch1_ref_clk,
-      rst_n_i   => ch1_rst_n,
-      ctrl_i    => ch1_tx_k_i,
-      in_8b_i   => ch1_tx_data_i,
-      err_o     => open,
-      dispar_o  => ch1_tx_disparity_o,
-      out_10b_o => open);
-  
+  gen_disp_ch1 : process(ch1_ref_clk)
+  begin
+    if rising_edge(ch1_ref_clk) then
+      if(ch1_rst_n = '0') then
+        ch1_cur_disp <= RD_MINUS;
+        ch1_disp_pipe <= (others => '0');
+      else
+        ch1_cur_disp <= f_next_8b10b_disparity8(ch1_cur_disp, ch1_tx_k_i, ch1_tx_data_i);
+        ch1_disp_pipe(0) <= to_std_logic(ch1_cur_disp);
+        ch1_disp_pipe(1) <= ch1_disp_pipe(0);
+      end if;
+    end if;
+  end process;
+
+  ch0_tx_disparity_o <= ch0_disp_pipe(0);
+  ch1_tx_disparity_o <= ch1_disp_pipe(1);
+
   p_gen_reset_ch0 : process(ch0_ref_clk)
   begin
     if rising_edge(ch0_ref_clk) then
@@ -431,7 +448,7 @@ begin  -- rtl
         SERDESSTROBE => open,
         I            => ch0_gtp_clkout_int(0));
 
-    refbufg_ch0: BUFG
+    refbufg_ch0 : BUFG
       port map (
         I => ch0_ref_clk_out_buf,
         O => ch0_ref_clk);
@@ -446,13 +463,13 @@ begin  -- rtl
         SERDESSTROBE => open,
         I            => ch1_gtp_clkout_int(0));
 
-    refbufg_ch1: BUFG
+    refbufg_ch1 : BUFG
       port map (
         I => ch1_ref_clk_out_buf,
         O => ch1_ref_clk);
   end generate gen2;
 
-    
+
 
   gen3 : if(not g_ch0_use_refclk_out) generate
     ch0_ref_clk <= ch0_ref_clk_i;
@@ -601,6 +618,7 @@ begin  -- rtl
       align_en_i                  => ch0_gtp_locked,
       align_done_o                => ch0_align_done);
 
+  
   U_align_ch1 : gtp_phase_align
     generic map (
       g_simulation => g_simulation) 
@@ -645,7 +663,7 @@ begin  -- rtl
 
   ch1_rx_bitslide_o <= ch1_rx_bitslide_int(3 downto 0);
 
-  
+
   ch0_rx_enable_output <= ch0_rx_synced and ch0_align_done;
   ch1_rx_enable_output <= ch1_rx_synced and ch1_align_done;
 
@@ -717,10 +735,10 @@ begin  -- rtl
 
 
 -- drive the recovered clock output
-  ch0_rx_rbclk_o     <= ch0_rx_rec_clk;
+  ch0_rx_rbclk_o <= ch0_rx_rec_clk;
 --  ch0_tx_disparity_o <= ch0_tx_rundisp_vec(0);
 
-  ch1_rx_rbclk_o     <= ch1_rx_rec_clk;
+  ch1_rx_rbclk_o <= ch1_rx_rec_clk;
 --  ch1_tx_disparity_o <= ch1_tx_rundisp_vec(0);
 
   ch0_ref_clk_o <= ch0_ref_clk;

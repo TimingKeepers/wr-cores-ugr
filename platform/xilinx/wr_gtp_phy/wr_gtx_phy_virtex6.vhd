@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-09-13
+-- Last update: 2011-10-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -49,6 +49,7 @@ use unisim.all;
 
 library work;
 use work.gencores_pkg.all;
+use work.disparity_gen_pkg.all;
 
 entity wr_gtx_phy_virtex6 is
 
@@ -145,6 +146,7 @@ architecture rtl of wr_gtx_phy_virtex6 is
       TXDATA_IN             : in  std_logic_vector(15 downto 0);
       TXOUTCLK_OUT          : out std_logic;
       TXUSRCLK2_IN          : in  std_logic;
+      TXRUNDISP_OUT         : out std_logic_vector(1 downto 0);
       TXN_OUT               : out std_logic;
       TXP_OUT               : out std_logic;
       TXDLYALIGNDISABLE_IN  : in  std_logic;
@@ -246,9 +248,16 @@ architecture rtl of wr_gtx_phy_virtex6 is
   signal rx_data_int : std_logic_vector(15 downto 0);
 
   signal rx_disp_err, rx_code_err : std_logic_vector(1 downto 0);
-  
-  
+
+  signal tx_is_k_swapped : std_logic_vector(1 downto 0);
+  signal tx_data_swapped : std_logic_vector(15 downto 0);
+
+  signal cur_disp : t_8b10b_disparity;
+
+  signal tx_rundisp_v6 : std_logic_vector(1 downto 0);
 begin  -- rtl
+
+  tx_enc_err_o <= '0';
 
 
   p_gen_reset : process(clk_ref_i)
@@ -292,6 +301,9 @@ begin  -- rtl
   rx_rbclk_o <= rx_rec_clk;
   tx_clk_o   <= tx_out_clk;
 
+  tx_is_k_swapped <= tx_k_i(0) & tx_k_i(1);
+  tx_data_swapped <= tx_data_i(7 downto 0) & tx_data_i(15 downto 8);
+
   U_GTX_INST : WHITERABBITGTX_WRAPPER_GTX
     generic map (
       GTX_SIM_GTXRESET_SPEEDUP => 1,
@@ -316,13 +328,14 @@ begin  -- rtl
       PLLRXRESET_IN         => '0',
       RXPLLLKDET_OUT        => rxpll_lockdet,
       RXRESETDONE_OUT       => rx_rst_done,
-      TXCHARISK_IN          => tx_k_i,
+      TXCHARISK_IN          => tx_is_k_swapped,
       GTXTEST_IN            => gtx_test,
-      TXDATA_IN             => tx_data_i,
+      TXDATA_IN             => tx_data_swapped,
       TXOUTCLK_OUT          => tx_out_clk_bufin,
       TXUSRCLK2_IN          => tx_out_clk,
-      TXN_OUT               => pad_txp_o,
-      TXP_OUT               => pad_txn_o,
+      TXRUNDISP_OUT => tx_rundisp_v6,
+      TXN_OUT               => pad_txn_o,
+      TXP_OUT               => pad_txp_o,
       TXDLYALIGNDISABLE_IN  => tx_dly_align_disable,
       TXDLYALIGNMONENB_IN   => '1',
       TXDLYALIGNMONITOR_OUT => open,
@@ -379,15 +392,27 @@ begin  -- rtl
       rx_enc_err_o <= '0';
     elsif rising_edge(rx_rec_clk) then
       if(everything_ready = '1' and rx_synced = '1') then
-        rx_data_o    <= rx_data_int;
-        rx_k_o       <= rx_k_int;
+        rx_data_o    <= rx_data_int(7 downto 0) & rx_data_int(15 downto 8);
+        rx_k_o       <= rx_k_int(0) & rx_k_int(1);
         rx_enc_err_o <= rx_disp_err(0) or rx_disp_err(1) or rx_code_err(0) or rx_code_err(1);
       else
-        rx_data_o  <= (others => '1');
-        rx_k_o     <= (others => '1');
+        rx_data_o    <= (others => '1');
+        rx_k_o       <= (others => '1');
         rx_enc_err_o <= '1';
-      end if;   
+      end if;
     end if;
   end process;
 
+  p_gen_tx_disparity : process(tx_out_clk)
+  begin
+    if rising_edge(tx_out_clk) then
+      if gtx_rst = '1' then
+        cur_disp       <= RD_MINUS;
+      else
+        cur_disp       <= f_next_8b10b_disparity16(cur_disp, tx_k_i, tx_data_i);
+      end if;
+    end if;
+  end process;
+
+  tx_disparity_o <= to_std_logic(cur_disp);
 end rtl;

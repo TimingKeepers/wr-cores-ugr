@@ -59,11 +59,22 @@ peripheral {
 				 name = "RX DMA enable";
 				 prefix = "RX_EN";
 				 description = "1: RX buffer is allocated and initialized by the host, the miNIC can receive packets\n0: RX buffer not ready, reception is disabled";
-				 type = BIT;
-				 access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
-			};
-	 };
+       type = BIT;
+       access_bus = READ_WRITE;
+       access_dev = READ_ONLY;
+    };
+
+    field {
+       name = "RX Accepted Packet Classes";
+       prefix = "RX_CLASS";
+       size = 8;
+       align = 8;
+       type = SLV;
+       access_bus = READ_WRITE;
+       access_dev = READ_ONLY;
+    };
+
+ };
 	
 	 reg {
 			name = "TX DMA Address";
@@ -116,27 +127,26 @@ peripheral {
 			};
 	 };
 
-	 fifo_reg {
-			name = "TX timestamp FIFO";
-			prefix = "TSFIFO";
+	 reg {
+			name = "TX timestamp register 0";
+			prefix = "TSR0";
 
-			size = 16;
-			direction = CORE_TO_BUS;
-		  flags_bus = {FIFO_EMPTY};
-			flags_dev = {FIFO_FULL, FIFO_EMPTY};
 
-			field {
-				 name = "Timestamp value";
-prefix = "TSVAL";
-				 size = 32;
-				 type = SLV;
-			};
+      field {
+         name = "Timestamp valid";
+         prefix = "VALID";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
 
 			field {
 				 name = "Port ID";
 				 prefix = "PID";
 				 size = 5;
 				 type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
 			};
 
 			field {
@@ -144,8 +154,28 @@ prefix = "TSVAL";
 				 prefix = "FID";
 				 size = 16;
 				 type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
 			};
 	 };
+
+
+   reg {
+      name = "TX timestamp register 1";
+      prefix = "TSR1";
+
+
+      field {
+         name = "Timestamp value";
+         prefix = "TSVAL";
+         ack_read = "tx_ts_read_ack_o";
+				 size = 32;
+				 type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+			};
+   };
+
 
 	 reg {
 			name = "Debug register";

@@ -58,8 +58,9 @@ interface IWishboneSlave
    struct {
       wb_cycle_type_t mode;
       int gen_random_stalls;
+      int stall_min_duration;
+      int stall_max_duration;
       real stall_prob;
-
    } settings;
 
 
@@ -107,10 +108,24 @@ interface IWishboneSlave
 
 
    task gen_random_stalls();
-      if(settings.gen_random_stalls && probability_hit(settings.stall_prob))
-	stall <= 1;
-      else
-	stall <= 0;
+      static int stall_remaining  = 0;
+      static int seed             = 0;
+
+//      $display("stallr: %d\n", stall_remaining);
+      
+      if(settings.gen_random_stalls && (probability_hit(settings.stall_prob) || stall_remaining > 0))
+        begin
+           
+           if(stall_remaining == 0)
+             stall_remaining           = $dist_uniform(seed, 
+                                                    settings.stall_min_duration,
+                                                    settings.stall_max_duration);
+           if(stall_remaining) 
+             stall_remaining--;
+           
+	   stall <= 1;
+        end else
+	  stall <= 0;
       
 	
    endtask // gen_random_stalls

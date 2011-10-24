@@ -30,7 +30,7 @@ class WBPacketSink extends EthPacketSink;
       endfunction // poll
 
    protected task decode_status(uint64_t stat, ref EthPacket pkt);
-     if(stat & 'h2)
+      if(stat & 'h2)
        pkt.error      = 1'b1;
      else begin
         pkt.has_smac  = (stat & 'h4 ? 1'b1 : 1'b0);
@@ -38,14 +38,23 @@ class WBPacketSink extends EthPacketSink;
      end
    endtask // decode_status
    
+   protected task decode_oob(uint64_t oob, ref EthPacket pkt);
 
+      $display("DecodeOOB: %x", oob);
+      
+   endtask // decode_oob
+   
+   
    task recv(ref EthPacket pkt, ref int result = _null);
+      uint64_t oob = 0;
       byte tmp[];
       wb_cycle_t cyc;
-      int i, size = 0, n = 0;
+      int i, size  = 0, n = 0, n_oob = 0;
+      bit with_oob = 0;
+      
 
       
-      pkt  = new;
+      pkt          = new;
       m_acc.get(cyc);
 
       
@@ -79,9 +88,19 @@ class WBPacketSink extends EthPacketSink;
                      tmp[n++]  = (xf.d  & 'hff);
                   end
                end
+
+             WRF_OOB:
+               begin
+                  oob       = (oob << 16) | xf.d;
+                  with_oob  = 1;
+               end
+             
              endcase // case (xf.a)
         end
       pkt.deserialize(tmp);
+      if(with_oob)
+        decode_oob(oob, pkt);
+      
       
 
 endtask // recv

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-18
+-- Last update: 2011-10-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ begin  -- behavioral
   p_count_acks : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
+      if rst_n_i = '0' or src_out_int.cyc = '0' then
         ack_count <= (others => '0');
       else
         if(src_out_int.stb = '1' and src_wb_i.stall = '0' and src_wb_i.ack = '0') then

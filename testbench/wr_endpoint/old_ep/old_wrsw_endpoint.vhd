@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-05-11
+-- Last update: 2011-10-17
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -572,7 +572,7 @@ begin
 -- TX FRAMER
 -------------------------------------------------------------------------------
 
-  txfra_enable <= link_ok and ep_ecr_tx_en_fra;
+  txfra_enable <= ep_ecr_tx_en_fra;
 
   U_TX_FRA : old_ep_tx_framer
     port map (
