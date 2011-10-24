@@ -27,8 +27,8 @@ class EthPacket;
 
    static  int _zero             = 0;
    
-   const int CMP_OOB                  = 1;
-   const int CMP_STATUS               = 2;
+   static const int CMP_OOB                  = 1;
+   static const int CMP_STATUS               = 2;
    
    byte payload[];
    int size;
@@ -142,7 +142,7 @@ class EthPacket;
         data[i + hsize]  = payload[i];
    endtask // serialize
 
-   function bit equal(ref EthPacket b, int flags = _zero);
+   function bit equal(ref EthPacket b, input int flags = 0);
       
       if(src != b.src || dst != b.dst || ethertype != b.ethertype)
         begin
@@ -166,10 +166,19 @@ class EthPacket;
         end
 //        return 0;
 
+      
       if(flags & CMP_STATUS)
         if(error ^ b.error)
           return 0;
 
+      if(flags & CMP_OOB) begin
+         if (b.oob_type != oob_type)
+          return 0;
+
+         if(oob_type == TX_FID && (b.ts.frame_id != ts.frame_id))
+           return 0;
+      end 
+      
       return 1;
    endfunction // equal
    
@@ -215,11 +224,15 @@ class EthPacket;
 
       $sformat(str, "%s DST [%02x:%02x:%02x:%02x:%02x:%02x] SRC: [%02x:%02x:%02x:%02x:%02x:%02x] Type = 0x%04x size = %d F:(%s%s)", str, dst[0],dst[1],dst[2],dst[3],dst[4],dst[5], src[0],src[1],src[2],src[3],src[4], src[5], ethertype, (is_q ? 18 : 14) + payload.size(), 
 is_hp ? "H" : " ", has_crc ? "C" : " ");
-      $display(str);
 
+      if(oob_type == TX_FID)
+        begin
+           $sformat(tmp, "TxOOB: %x", ts.frame_id);
+           str  = {str, tmp};
+        end
+
+      $display(str);
       hexdump(payload);
-      
-       
    endtask // dump
    
       
@@ -240,6 +253,7 @@ class EthPacketGenerator;
    static const int      PAYLOAD    = (1<<5);
    static const int      SEQ_PAYLOAD    = (1<<7);
   static const int TX_OOB             = (1<<6);
+  static const int EVEN_LENGTH             = (1<<8);
    static const int      ALL        = SMAC | DMAC | VID | ETHERTYPE | PCP | PAYLOAD ;
    
 
@@ -291,30 +305,38 @@ class EthPacketGenerator;
    
    function automatic EthPacket gen();
       EthPacket pkt;
+      int len;
+      
 
-      pkt                                = new;
+      pkt                                         = new;
       
       
-      if (r_flags & SMAC) pkt.src        = random_bvec(6); else pkt.src = template.src;
-      if (r_flags & DMAC) pkt.dst        = random_bvec(6); else pkt.dst =  template.dst;
+      if (r_flags & SMAC) pkt.src                 = random_bvec(6); else pkt.src = template.src;
+      if (r_flags & DMAC) pkt.dst                 = random_bvec(6); else pkt.dst =  template.dst;
 
-      pkt.ethertype                      = (r_flags & ETHERTYPE ? $dist_uniform(seed, 0, 1<<16) : template.ethertype);
-      pkt.is_q                           = template.is_q;
-      pkt.vid                            = template.vid;
-      pkt.pcp                            = template.pcp;
-      pkt.has_smac                        = template.has_smac;
+      pkt.ethertype                               = (r_flags & ETHERTYPE ? $dist_uniform(seed, 0, 1<<16) : template.ethertype);
+      pkt.is_q                                    = template.is_q;
+      pkt.vid                                     = template.vid;
+      pkt.pcp                                     = template.pcp;
+      pkt.has_smac                                = template.has_smac;
       
 
 //      $display("Size min %d max %d", min_size, max_size);
- 
-      if(r_flags & PAYLOAD) pkt.payload  = random_bvec($dist_uniform(seed, min_size, max_size));
-      else if(r_flags & SEQ_PAYLOAD) pkt.payload  = seq_payload($dist_uniform(seed, min_size, max_size));
-      else pkt.payload                   = template.payload;
+
+      len                                         = $dist_uniform(seed, min_size, max_size);
+
+      if((len & 1) && (r_flags & EVEN_LENGTH))
+        len++;
+      
+      
+      if(r_flags & PAYLOAD) pkt.payload           = random_bvec(len);
+      else if(r_flags & SEQ_PAYLOAD) pkt.payload  = seq_payload(len);
+      else pkt.payload                            = template.payload;
 
       if(r_flags & TX_OOB)
         begin
-           pkt.ts.frame_id               = m_current_frame_id++;
-           pkt.oob_type                  = TX_FID;
+           pkt.ts.frame_id                        = m_current_frame_id++;
+           pkt.oob_type                           = TX_FID;
         end
       
       return pkt;
