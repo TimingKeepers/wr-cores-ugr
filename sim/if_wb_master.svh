@@ -108,19 +108,19 @@ interface IWishboneMaster
    function automatic uint64_t decode_data(uint64_t addr, logic[g_data_width-1:0] data,  int xfer_size);
       int rem;
 
-//      $display("decode: %x", data);
+    //  $display("decode: a %x d %x xs %x", addr, data ,xfer_size);
       
 
       rem  = addr % xfer_size;
-      return (data[rem] >> (8*rem)) & ((1<<(xfer_size*8)) - 1);
+      return (data >> (8*rem)) & ((1<<(xfer_size*8)) - 1);
    endfunction // decode_data
    
 
    task automatic classic_cycle 
      (
-      wb_xfer_t xfer[],
-      bit rw,
-      int n_xfers,
+      inout wb_xfer_t xfer[],
+      input bit rw,
+      input int n_xfers,
       output wb_cycle_result_t result
       );
       
@@ -154,7 +154,7 @@ interface IWishboneMaster
 	     end
 
 	   xfer[i].d 	 = decode_data(xfer[i].a, dat_i, xfer[i].size);
-	      
+           
  	   cyc 		 <= 0;
 	   we 		 <= 0;
 	   stb 		 <= 0;
@@ -328,7 +328,7 @@ class CIWBMasterAccessor extends CWishboneAccessor;
    endtask // clear
 
    task put(ref wb_cycle_t xfer);
-//       $display("WBMaster[%d]: PutCycle",g_data_width);
+      //       $display("WBMaster[%d]: PutCycle",g_data_width);
       request_queue.push_back(xfer);
    endtask // put
 
