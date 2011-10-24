@@ -168,11 +168,11 @@ interface IWishboneSlave
 	 c_queue.push_back(current_cycle);
       end
 
-      if(stb && we && !stall) begin
+      if(stb && we && !stall && cyc) begin
          int oc, lzc, tzc;
          
 	 wb_xfer_t d;
-
+         
          oc      = count_ones(sel, g_data_width/8);
          lzc     = count_leading_zeroes(sel, g_data_width/8);
          tzc     = count_trailing_zeroes(sel, g_data_width/8);
@@ -195,6 +195,8 @@ interface IWishboneSlave
 	ack 			<= 0;
       end else
 	ack 			<= 0;
+
+
       
    endtask // pipelined_fsm
       
@@ -218,9 +220,12 @@ interface IWishboneSlave
      end
    
    initial begin
-      settings.mode 		  = PIPELINED;
-      settings.gen_random_stalls  = 1;
-      settings.stall_prob 	  = 0.1;
+      settings.mode                = PIPELINED;
+      settings.gen_random_stalls   = 1;
+      settings.stall_prob          = 0.1;
+      settings.stall_min_duration  = 1;
+      settings.stall_max_duration  = 2;
+      
    end
    
    
