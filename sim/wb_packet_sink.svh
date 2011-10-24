@@ -38,9 +38,24 @@ class WBPacketSink extends EthPacketSink;
      end
    endtask // decode_status
    
-   protected task decode_oob(uint64_t oob, ref EthPacket pkt);
-
-      $display("DecodeOOB: %x", oob);
+   protected task decode_oob(uint64_t oob, int size, ref EthPacket pkt);
+      if(!size)
+        return;
+      else if(size == 2 && (oob >> 28) == WRF_OOB_TX_FID)
+        begin
+         //  $display("GotTxOOB");
+           pkt.oob_type     = TX_FID;
+           pkt.ts.frame_id  = oob & 'hffff;
+        end 
+      else if (size == 3 && (oob >> 46) == WRF_OOB_RX_TIMESTAMP)
+        begin
+           $display("GotRXOOB");
+           
+        end else begin
+           $error("Invalid OOB!");
+           $stop;
+        end
+      
       
    endtask // decode_oob
    
@@ -50,7 +65,7 @@ class WBPacketSink extends EthPacketSink;
       byte tmp[];
       wb_cycle_t cyc;
       int i, size  = 0, n = 0, n_oob = 0;
-      bit with_oob = 0;
+      int oob_size = 0;
       
 
       
@@ -92,14 +107,13 @@ class WBPacketSink extends EthPacketSink;
              WRF_OOB:
                begin
                   oob       = (oob << 16) | xf.d;
-                  with_oob  = 1;
+                  oob_size ++;
                end
              
              endcase // case (xf.a)
         end
       pkt.deserialize(tmp);
-      if(with_oob)
-        decode_oob(oob, pkt);
+      decode_oob(oob, oob_size, pkt);
       
       
 
