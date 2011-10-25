@@ -302,8 +302,8 @@ interface IWishboneMaster
       
       cyc <= 1'b0;
       @(posedge clk_i);
-      
-      result 	     = R_OK;
+      if(!failure)
+        result 	     = R_OK;
       xf_idle 	     = 1;
       last_access_t  = $time;
    endtask // automatic
@@ -359,8 +359,8 @@ endclass // CIWBMasterAccessor
        end
 
    initial begin
-      settings.gen_random_throttling  = 0;
-      settings.throttle_prob 	      = 0.01;
+      settings.gen_random_throttling  = 1;
+      settings.throttle_prob 	      = 0.1;
    end
 
    
@@ -383,6 +383,7 @@ endclass // CIWBMasterAccessor
                  begin
                     if(c.rw) begin
 		       pipelined_write_cycle(c.data, c.data.size(), res);
+
 	               c.result  =res;
 	               c.data    = {};
                     end
@@ -391,6 +392,7 @@ endclass // CIWBMasterAccessor
                  begin
 	         //   $display("WBMaster: got classic cycle [%d, rw %d]", c.data.size(), c.rw);
                     classic_cycle(c.data, c.rw, c.data.size, res);
+                    
 	            c.result  =res;
 
                     
