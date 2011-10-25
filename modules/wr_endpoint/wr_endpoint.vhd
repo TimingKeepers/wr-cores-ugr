@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-10-18
+-- Last update: 2011-10-25
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -17,10 +17,9 @@
 -- - VLANs: inserting/removing tags (for ACCESS/TRUNK port support)
 -- - RX/TX precise timestaping
 -- - full PCS for optical Gigabit Ethernet 
--- - clock phase measurement (DMTD)
 -- - decodes MAC addresses, VIDs and priorities and passes them to the RTU.
 -------------------------------------------------------------------------------
--- Copyright (c) 2010 Tomasz Wlostowski
+-- Copyright (c) 2010, 2011 Tomasz Wlostowski
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author          Description
@@ -39,22 +38,23 @@ use work.gencores_pkg.all;
 use work.endpoint_private_pkg.all;
 use work.ep_wbgen2_pkg.all;
 use work.wr_fabric_pkg.all;
-
+use work.wishbone_pkg.all;
 
 entity wr_endpoint is
   
   generic (
-    g_simulation          : boolean := false;
-    g_pcs_16bit           : boolean := false;
-    g_rx_buffer_size      : integer := 1024;
-    g_with_rx_buffer      : boolean := true;
-    g_with_flow_control   : boolean := true;
-    g_with_timestamper    : boolean := true;
-    g_with_dmtd           : boolean := true;
-    g_with_dpi_classifier : boolean := true;
-    g_with_vlans          : boolean := true;
-    g_with_rtu            : boolean := true;
-    g_with_leds           : boolean := true
+    g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
+    g_address_granularity : t_wishbone_address_granularity := WORD;
+    g_simulation          : boolean                        := false;
+    g_pcs_16bit           : boolean                        := false;
+    g_rx_buffer_size      : integer                        := 1024;
+    g_with_rx_buffer      : boolean                        := true;
+    g_with_flow_control   : boolean                        := true;
+    g_with_timestamper    : boolean                        := true;
+    g_with_dpi_classifier : boolean                        := true;
+    g_with_vlans          : boolean                        := true;
+    g_with_rtu            : boolean                        := true;
+    g_with_leds           : boolean                        := true
     );
   port (
 
@@ -67,9 +67,6 @@ entity wr_endpoint is
 
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
     clk_sys_i : in std_logic;
-
--- DMTD sampling clock (125.x MHz)
-    clk_dmtd_i : in std_logic;
 
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
@@ -193,17 +190,18 @@ entity wr_endpoint is
     wb_stb_i : in  std_logic;
     wb_we_i  : in  std_logic;
     wb_sel_i : in  std_logic_vector(3 downto 0);
-    wb_adr_i : in  std_logic_vector(5 downto 0);
+    wb_adr_i : in  std_logic_vector(7 downto 0);
     wb_dat_i : in  std_logic_vector(31 downto 0);
     wb_dat_o : out std_logic_vector(31 downto 0);
     wb_ack_o : out std_logic;
+    wb_stall_o:out std_logic;
 
 -------------------------------------------------------------------------------
 -- Misc stuff
 -------------------------------------------------------------------------------
 
-    led_link_o: out std_logic;
-    led_act_o: out std_logic
+    led_link_o : out std_logic;
+    led_act_o  : out std_logic
 
     );
 
@@ -438,6 +436,11 @@ architecture syn of wr_endpoint is
   signal src_out : t_wrf_source_out;
 
   signal rst_n_rx, rst_n_sys, rst_n_ref : std_logic;
+
+  signal wb_in  : t_wishbone_slave_in;
+  signal wb_out : t_wishbone_slave_out;
+
+  signal extended_ADDR : std_logic_vector(c_wishbone_address_width-1 downto 0);
   
 begin
 
@@ -592,13 +595,6 @@ begin
       rtu_full_i => rtu_full_i,
       src_wb_o   => src_out,
       src_wb_i   => src_in
---      rtu_rq_smac_o      => rtu_rq_smac_o,
---      rtu_rq_dmac_o      => rtu_rq_dmac_o,
---      rtu_rq_vid_o       => rtu_rq_vid_o,
---      rtu_rq_has_vid_o   => rtu_rq_has_vid_o,
---      rtu_rq_prio_o      => rtu_rq_prio_o,
---      rtu_rq_has_prio_o  => rtu_rq_has_prio_o,
---      rtu_rq_strobe_p1_o => rtu_rq_strobe_p1_o);
       );
 
   src_dat_o    <= src_out.dat;
@@ -728,71 +724,48 @@ begin
       regs_i => regs_fromwb,
       regs_o => regs_towb_tsu);
 
-------------------------------------------------------------------------------
--- DMTD phase meter
-------------------------------------------------------------------------------  
-
-  --U_DMTD : dmtd_phase_meas
-  --  generic map (
-  --    g_counter_bits         => 14,
-  --    g_deglitcher_threshold => 1000)
-  --  port map (
-  --    clk_sys_i => clk_sys_i,
-  --    clk_a_i    => clk_ref_i,
-  --    clk_b_i    => phy_rx_clk_i,
-  --    clk_dmtd_i => clk_dmtd_i,
-  --    rst_n_i    => rst_n_i,
-
-  --    en_i           => regs.dmcr_en_o,
-  --    navg_i         => regs.dmcr_n_avg_o,
-  --    phase_meas_o   => phase_meas,
-  --    phase_meas_p_o => phase_meas_p);
-
-  --p_dmtd_update : process(clk_sys_i, rst_n_i)
-  --begin
-  --  if rising_edge(clk_sys_i) then
-  --    if rst_n_i = '0' then
-  --      validity_cntr      <= (others => '0');
-  --      regs.dmsr_ps_rdy_i <= '0';
-  --    else
-
-  --      if(regs.dmcr_en = '0') then
-  --        validity_cntr      <= (others => '0');
-  --        regs.dmsr_ps_rdy_i <= '0';
-  --      elsif(regs.dmsr_ps_rdy_o = '1' and regs.dmsr_ps_rdy_load_o = '1') then
-  --        regs.dmsr_ps_rdy_i <= '0';
-  --      elsif(phase_meas_p = '1') then
-
-  --        if(validity_cntr = "11") then
-  --          regs.dmsr_ps_rdy_i <= '1';
-  --          regs.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
-  --                                                          -- samples right
-  --                                                          -- after input change
-  --        else
-  --          regs.dmsr_ps_rdy_i <= '0';
-  --          validity_cntr      <= validity_cntr + 1;
-  --        end if;
-  --      end if;
-  --    end if;
-  --  end if;
-  --end process;
 
 -------------------------------------------------------------------------------
 -- Wishbone controller & IO registers
 -------------------------------------------------------------------------------
 
+  extended_ADDR <= std_logic_vector(resize(unsigned(wb_adr_i), c_wishbone_address_width));
+  
+  U_Slave_adapter: wb_slave_adapter
+    generic map (
+      g_master_use_struct  => true,
+      g_master_mode        => CLASSIC,
+      g_master_granularity => WORD,
+      g_slave_use_struct   => false,
+      g_slave_mode         => g_interface_mode,
+      g_slave_granularity  => g_address_granularity)
+    port map (
+      clk_sys_i  => clk_sys_i,
+      rst_n_i    => rst_n_sys,
+      sl_adr_i   => extended_ADDR,
+      sl_dat_i   => wb_dat_i,
+      sl_sel_i   => wb_sel_i,
+      sl_cyc_i   => wb_cyc_i,
+      sl_stb_i   => wb_stb_i,
+      sl_we_i    => wb_we_i,
+      sl_dat_o   => wb_dat_o,
+      sl_ack_o   => wb_ack_o,
+      sl_stall_o => wb_stall_o,
+      master_i   => wb_out,
+      master_o   => wb_in);
+  
   U_WB_SLAVE : ep_wishbone_controller
     port map (
-      rst_n_i   => rst_n_i,
+      rst_n_i   => rst_n_sys,
       wb_clk_i  => clk_sys_i,
-      wb_addr_i => wb_adr_i(5 downto 0),
-      wb_data_i => wb_dat_i,
-      wb_data_o => wb_dat_o,
-      wb_cyc_i  => wb_cyc_i,
-      wb_sel_i  => wb_sel_i,
-      wb_stb_i  => wb_stb_i,
-      wb_we_i   => wb_we_i,
-      wb_ack_o  => wb_ack_o,
+      wb_addr_i => wb_in.adr(5 downto 0),
+      wb_data_i => wb_in.dat,
+      wb_data_o => wb_out.dat,
+      wb_cyc_i  => wb_in.cyc,
+      wb_sel_i  => wb_in.sel,
+      wb_stb_i  => wb_in.stb,
+      wb_we_i   => wb_in.we,
+      wb_ack_o  => wb_out.ack,
 
       tx_clk_i => clk_ref_i,
 
