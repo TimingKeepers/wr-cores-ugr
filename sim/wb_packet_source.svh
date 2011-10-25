@@ -121,8 +121,9 @@ class WBPacketSource extends EthPacketSource;
         end // else: !if(pkt.error)
       
       m_acc.put(cyc);
-      
-      
+      m_acc.get(cyc);
+
+      result  = cyc.result;
       
    endtask // send
    
