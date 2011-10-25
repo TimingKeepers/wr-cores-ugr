@@ -20,15 +20,16 @@ files = [	"endpoint_private_pkg.vhd",
                 "ep_rx_status_reg_insert.vhd",
                 "ep_timestamping_unit.vhd",
   
-               #					"ep_flow_control.vhd",
-                #					"ep_timestamping_unit.vhd",
-                #					"ep_rmon_counters.vhd",
+#					"ep_flow_control.vhd",
+#					"ep_timestamping_unit.vhd",
+#					"ep_rmon_counters.vhd",
                 "ep_rx_buffer.vhd",
                 "ep_sync_detect.vhd",
                 "ep_sync_detect_16bit.vhd",
                 "ep_wishbone_controller.vhd",
-                #					"wrsw_endpoint.vhd",
                 "ep_registers_pkg.vhd",
+                "endpoint_pkg.vhd",
                 "wr_fabric_pkg.vhd",
-                "wr_endpoint.vhd"
+                "wr_endpoint.vhd",
+                "xwr_endpoint.vhd"
                 ];

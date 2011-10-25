@@ -2,88 +2,161 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+use work.wishbone_pkg.all;
+use work.wr_fabric_pkg.all;
+
 package endpoint_pkg is
-  
-  constant c_endpoint_rx_buffer_size      : integer := 4096;
-  constant c_endpoint_rx_buffer_size_log2 : integer := 12;
 
-  -- special/control characters
-  constant c_k28_5 : std_logic_vector(7 downto 0) := "10111100";  -- bc
-  constant c_k23_7 : std_logic_vector(7 downto 0) := "11110111";  -- f7
-  constant c_k27_7 : std_logic_vector(7 downto 0) := "11111011";  -- fb
-  constant c_k29_7 : std_logic_vector(7 downto 0) := "11111101";  -- fd
-  constant c_k30_7 : std_logic_vector(7 downto 0) := "11111110";  -- fe
-  constant c_k28_7 : std_logic_vector(7 downto 0) := "11111100";  -- fc
-  constant c_d21_5 : std_logic_vector(7 downto 0) := "10110101";  -- b5
+  component wr_endpoint
+    generic (
+      g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
+        g_address_granularity : t_wishbone_address_granularity := WORD;
+      g_simulation          : boolean := false;
+      g_pcs_16bit           : boolean := false;
+      g_rx_buffer_size      : integer := 1024;
+      g_with_rx_buffer      : boolean := true;
+      g_with_flow_control   : boolean := true;
+      g_with_timestamper    : boolean := true;
+      g_with_dpi_classifier : boolean := false;
+      g_with_vlans          : boolean := false;
+      g_with_rtu            : boolean := false;
+      g_with_leds           : boolean := false);
+    port (
+      clk_ref_i          : in  std_logic;
+      clk_sys_i          : in  std_logic;
+      rst_n_i            : in  std_logic;
+      pps_csync_p1_i     : in  std_logic                     := '0';
+      phy_rst_o          : out std_logic;
+      phy_loopen_o       : out std_logic;
+      phy_enable_o       : out std_logic;
+      phy_syncen_o       : out std_logic;
+      phy_ref_clk_i      : in  std_logic                     := '0';
+      phy_tx_data_o      : out std_logic_vector(15 downto 0);
+      phy_tx_k_o         : out std_logic_vector(1 downto 0);
+      phy_tx_disparity_i : in  std_logic                     := '0';
+      phy_tx_enc_err_i   : in  std_logic                     := '0';
+      phy_rx_data_i      : in  std_logic_vector(15 downto 0) := x"0000";
+      phy_rx_clk_i       : in  std_logic                     := '0';
+      phy_rx_k_i         : in  std_logic_vector(1 downto 0)  := "00";
+      phy_rx_enc_err_i   : in  std_logic                     := '0';
+      phy_rx_bitslide_i  : in  std_logic_vector(4 downto 0)  := "00000";
+      gmii_tx_clk_i      : in  std_logic                     := '0';
+      gmii_txd_o         : out std_logic_vector(7 downto 0);
+      gmii_tx_en_o       : out std_logic;
+      gmii_tx_er_o       : out std_logic;
+      gmii_rx_clk_i      : in  std_logic                     := '0';
+      gmii_rxd_i         : in  std_logic_vector(7 downto 0)  := x"00";
+      gmii_rx_er_i       : in  std_logic                     := '0';
+      gmii_rx_dv_i       : in  std_logic := '0';
+      src_dat_o          : out std_logic_vector(15 downto 0);
+      src_adr_o          : out std_logic_vector(1 downto 0);
+      src_sel_o          : out std_logic_vector(1 downto 0);
+      src_cyc_o          : out std_logic;
+      src_stb_o          : out std_logic;
+      src_we_o           : out std_logic;
+      src_stall_i        : in  std_logic;
+      src_ack_i          : in  std_logic;
+      snk_dat_i          : in  std_logic_vector(15 downto 0);
+      snk_adr_i          : in  std_logic_vector(1 downto 0);
+      snk_sel_i          : in  std_logic_vector(1 downto 0);
+      snk_cyc_i          : in  std_logic;
+      snk_stb_i          : in  std_logic;
+      snk_we_i           : in  std_logic;
+      snk_stall_o        : out std_logic;
+      snk_ack_o          : out std_logic;
+      snk_err_o          : out std_logic;
+      snk_rty_o          : out std_logic;
+      txtsu_port_id_o    : out std_logic_vector(4 downto 0);
+      txtsu_frame_id_o   : out std_logic_vector(16 - 1 downto 0);
+      txtsu_tsval_o      : out std_logic_vector(28 + 4 - 1 downto 0);
+      txtsu_valid_o      : out std_logic;
+      txtsu_ack_i        : in  std_logic                     := '1';
+      rtu_full_i         : in  std_logic                     := '0';
+      rtu_almost_full_i  : in  std_logic                     := '0';
+      rtu_rq_strobe_p1_o : out std_logic;
+      rtu_rq_smac_o      : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_dmac_o      : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_vid_o       : out std_logic_vector(12 - 1 downto 0);
+      rtu_rq_has_vid_o   : out std_logic;
+      rtu_rq_prio_o      : out std_logic_vector(3 - 1 downto 0);
+      rtu_rq_has_prio_o  : out std_logic;
+      wb_cyc_i           : in  std_logic;
+      wb_stb_i           : in  std_logic;
+      wb_we_i            : in  std_logic;
+      wb_sel_i           : in  std_logic_vector(3 downto 0);
+      wb_adr_i           : in  std_logic_vector(7 downto 0);
+      wb_dat_i           : in  std_logic_vector(31 downto 0);
+      wb_dat_o           : out std_logic_vector(31 downto 0);
+      wb_ack_o           : out std_logic;
+      wb_stall_o: out std_logic;
+      led_link_o         : out std_logic;
+      led_act_o          : out std_logic);
+  end component;
 
-  constant c_d2_2          : std_logic_vector(7 downto 0) := "01000010";  -- 42
-  constant c_d5_6          : std_logic_vector(7 downto 0) := "11000101";  -- c5
-  constant c_d16_2         : std_logic_vector(7 downto 0) := "01010000";  -- 50
-  constant c_preamble_char : std_logic_vector(7 downto 0) := "01010101";
-  constant c_preamble_sfd  : std_logic_vector(7 downto 0) := "11010101";
-
-  constant c_QMODE_PORT_ACCESS          : std_logic_vector(1 downto 0) := "00";
-  constant c_QMODE_PORT_TRUNK           : std_logic_vector(1 downto 0) := "01";
-  constant c_QMODE_PORT_UNQUALIFIED     : std_logic_vector(1 downto 0) := "11";
-
-
-  constant c_WRF_STATUS : std_logic_vector(1 downto 0) := "11";
-  constant c_WRF_DATA   : std_logic_vector(1 downto 0) := "00";
-  constant c_WRF_OOB    : std_logic_vector(1 downto 0) := "01";
-
-  -- fixme: remove these along with the non-WB version of the endpoint
-  constant c_wrsw_ctrl_none : std_logic_vector(4 - 1 downto 0) := x"0";
-  constant c_wrsw_ctrl_dst_mac   : std_logic_vector(4 - 1 downto 0) := x"1";
-  constant c_wrsw_ctrl_src_mac   : std_logic_vector(4 - 1 downto 0) := x"2";
-  constant c_wrsw_ctrl_ethertype : std_logic_vector(4 - 1 downto 0) := x"3";
-  constant c_wrsw_ctrl_vid_prio  : std_logic_vector(4 - 1 downto 0) := x"4";
-  constant c_wrsw_ctrl_tx_oob    : std_logic_vector(4 - 1 downto 0) := x"5";
-  constant c_wrsw_ctrl_rx_oob    : std_logic_vector(4 - 1 downto 0) := x"6";
-  constant c_wrsw_ctrl_payload   : std_logic_vector(4 - 1 downto 0) := x"7";
-  constant c_wrsw_ctrl_fcs       : std_logic_vector(4 - 1 downto 0) := x"8";
-
-
-  
-  type t_wrf_status_reg is record
-    is_hp       : std_logic;
-    has_smac    : std_logic;
-    has_crc     : std_logic;
-    rx_error    : std_logic;
-    match_class : std_logic_vector(7 downto 0);
-  end record;
-
-
-  function f_marshall_wrf_status (stat  : t_wrf_status_reg) return std_logic_vector;
-  function f_unmarshall_wrf_status(stat : std_logic_vector) return t_wrf_status_reg;
-  
-end endpoint_pkg;
-
--------------------------------------------------------------------------------
-
-package body endpoint_pkg is
-
-  function f_marshall_wrf_status(stat : t_wrf_status_reg)
-    return std_logic_vector is
-    variable tmp : std_logic_vector(15 downto 0);
-  begin
-    tmp(0)           := stat.is_hp;
-    tmp(1)           := stat.rx_error;
-    tmp(2)           := stat.has_smac;
-    tmp(15 downto 8) := stat.match_class;
-    return tmp;
-  end function;
-
-  function f_unmarshall_wrf_status(stat : std_logic_vector) return t_wrf_status_reg is
-    variable tmp : t_wrf_status_reg;
-  begin
-    tmp.is_hp       := stat(0);
-    tmp.rx_error    := stat(1);
-    tmp.has_smac    := stat(2);
-    tmp.match_class := stat(15 downto 8);
-    return tmp;
-    
-  end function;
-    
+  component xwr_endpoint
+    generic (
+      g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
+      g_address_granularity : t_wishbone_address_granularity := WORD;
+      g_simulation          : boolean := false;
+      g_pcs_16bit           : boolean := false;
+      g_rx_buffer_size      : integer := 1024;
+      g_with_rx_buffer      : boolean := true;
+      g_with_flow_control   : boolean := true;
+      g_with_timestamper    : boolean := true;
+      g_with_dpi_classifier : boolean := false;
+      g_with_vlans          : boolean := false;
+      g_with_rtu            : boolean := false;
+      g_with_leds           : boolean := false);
+    port (
+      clk_ref_i          : in  std_logic;
+      clk_sys_i          : in  std_logic;
+      rst_n_i            : in  std_logic;
+      pps_csync_p1_i     : in  std_logic                    := '0';
+      phy_rst_o          : out std_logic;
+      phy_loopen_o       : out std_logic;
+      phy_enable_o       : out std_logic;
+      phy_syncen_o       : out std_logic;
+      phy_ref_clk_i      : in  std_logic;
+      phy_tx_data_o      : out std_logic_vector(15 downto 0);
+      phy_tx_k_o         : out std_logic_vector(1 downto 0);
+      phy_tx_disparity_i : in  std_logic;
+      phy_tx_enc_err_i   : in  std_logic;
+      phy_rx_data_i      : in  std_logic_vector(15 downto 0);
+      phy_rx_clk_i       : in  std_logic;
+      phy_rx_k_i         : in  std_logic_vector(1 downto 0);
+      phy_rx_enc_err_i   : in  std_logic;
+      phy_rx_bitslide_i  : in  std_logic_vector(4 downto 0);
+      gmii_tx_clk_i      : in  std_logic                    := '0';
+      gmii_txd_o         : out std_logic_vector(7 downto 0);
+      gmii_tx_en_o       : out std_logic;
+      gmii_tx_er_o       : out std_logic;
+      gmii_rx_clk_i      : in  std_logic                    := '0';
+      gmii_rxd_i         : in  std_logic_vector(7 downto 0) := x"00";
+      gmii_rx_er_i       : in  std_logic                    := '0';
+      gmii_rx_dv_i       : in  std_logic                    := '0';
+      src_o              : out t_wrf_source_out;
+      src_i              : in  t_wrf_source_in;
+      snk_o              : out t_wrf_sink_out;
+      snk_i              : in  t_wrf_sink_in;
+      txtsu_port_id_o    : out std_logic_vector(4 downto 0);
+      txtsu_frame_id_o   : out std_logic_vector(16 - 1 downto 0);
+      txtsu_tsval_o      : out std_logic_vector(28 + 4 - 1 downto 0);
+      txtsu_valid_o      : out std_logic;
+      txtsu_ack_i        : in  std_logic                    := '1';
+      rtu_full_i         : in  std_logic                    := '0';
+      rtu_almost_full_i  : in  std_logic                    := '0';
+      rtu_rq_strobe_p1_o : out std_logic;
+      rtu_rq_smac_o      : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_dmac_o      : out std_logic_vector(48 - 1 downto 0);
+      rtu_rq_vid_o       : out std_logic_vector(12 - 1 downto 0);
+      rtu_rq_has_vid_o   : out std_logic;
+      rtu_rq_prio_o      : out std_logic_vector(3 - 1 downto 0);
+      rtu_rq_has_prio_o  : out std_logic;
+      wb_i               :     t_wishbone_slave_in;
+      wb_o               :     t_wishbone_slave_out;
+      led_link_o         : out std_logic;
+      led_act_o          : out std_logic);
+  end component;
 end endpoint_pkg;
 
 -------------------------------------------------------------------------------
