@@ -108,7 +108,7 @@ architecture wrapper of xwr_mini_nic is
   
 begin  -- wrapper
 
-  wr_mini_nic_1: wr_mini_nic
+  U_Wrapped_Minic: wr_mini_nic
     generic map (
       g_interface_mode       => g_interface_mode,
       g_address_granularity  => g_address_granularity,
@@ -118,8 +118,8 @@ begin  -- wrapper
       clk_sys_i        => clk_sys_i,
       rst_n_i          => rst_n_i,
       mem_data_o       => mem_data_o,
-      mem_addr_o       => mem_addr_o,
-      mem_data_i       => mem_data_i,
+      mem_addr_o      => mem_addr_o,
+      mem_data_i        => mem_data_i,
       mem_wr_o         => mem_wr_o,
       src_dat_o        => src_o.dat,
       src_adr_o        => src_o.adr,
