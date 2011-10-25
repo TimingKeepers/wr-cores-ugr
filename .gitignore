@@ -8,3 +8,5 @@ work
 modelsim.ini
 transcript
 *.vstf
+*.bak
+*.vcd
