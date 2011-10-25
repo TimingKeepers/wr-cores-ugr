@@ -152,8 +152,8 @@ package endpoint_pkg is
       rtu_rq_has_vid_o   : out std_logic;
       rtu_rq_prio_o      : out std_logic_vector(3 - 1 downto 0);
       rtu_rq_has_prio_o  : out std_logic;
-      wb_i               :     t_wishbone_slave_in;
-      wb_o               :     t_wishbone_slave_out;
+      wb_i               : in    t_wishbone_slave_in;
+      wb_o               : out    t_wishbone_slave_out;
       led_link_o         : out std_logic;
       led_act_o          : out std_logic);
   end component;
