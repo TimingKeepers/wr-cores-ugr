@@ -72,6 +72,20 @@ peripheral {
 				};
 		 };
 
+	 reg {
+				name = "DMPLL Tag aux";
+				prefix = "TAG_AUX";
+				
+				field {
+					 name = "Tag value";
+					 type = SLV;
+					 size = 32;
+					 access_bus = READ_ONLY;
+					 access_dev = WRITE_ONLY;
+					 ack_read = "tag_aux_rd_ack_o";
+				};
+		 };
+
 		 reg {
 				name = "HPLL DAC Output";
 				prefix = "DAC_HPLL";

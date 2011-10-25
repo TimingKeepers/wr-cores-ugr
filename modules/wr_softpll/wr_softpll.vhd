@@ -16,6 +16,7 @@ entity wr_softpll is
     clk_ref_i  : in std_logic;
     clk_dmtd_i : in std_logic;
     clk_rx_i   : in std_logic;
+    clk_aux_i: in std_logic := '0';
 
     dac_hpll_data_o : out std_logic_vector(15 downto 0);
     dac_hpll_load_o : out std_logic;
@@ -74,40 +75,37 @@ architecture rtl of wr_softpll is
       tag_o                : out std_logic_vector(g_counter_bits-1 downto 0);
       tag_stb_p1_o         : out std_logic);
   end component;
-  
+
   component softpll_wb
     port (
-      rst_n_i            : in  std_logic;
-      wb_clk_i           : in  std_logic;
-      wb_addr_i          : in  std_logic_vector(3 downto 0);
-      wb_data_i          : in  std_logic_vector(31 downto 0);
-      wb_data_o          : out std_logic_vector(31 downto 0);
-      wb_cyc_i           : in  std_logic;
-      wb_sel_i           : in  std_logic_vector(3 downto 0);
-      wb_stb_i           : in  std_logic;
-      wb_we_i            : in  std_logic;
-      wb_ack_o           : out std_logic;
-      wb_irq_o           : out std_logic;
-      spll_csr_tag_en_o  : out std_logic_vector(3 downto 0);
-      spll_csr_tag_rdy_i : in  std_logic_vector(3 downto 0);
-
+      rst_n_i              : in  std_logic;
+      wb_clk_i             : in  std_logic;
+      wb_addr_i            : in  std_logic_vector(3 downto 0);
+      wb_data_i            : in  std_logic_vector(31 downto 0);
+      wb_data_o            : out std_logic_vector(31 downto 0);
+      wb_cyc_i             : in  std_logic;
+      wb_sel_i             : in  std_logic_vector(3 downto 0);
+      wb_stb_i             : in  std_logic;
+      wb_we_i              : in  std_logic;
+      wb_ack_o             : out std_logic;
+      wb_irq_o             : out std_logic;
+      spll_csr_tag_en_o    : out std_logic_vector(3 downto 0);
+      spll_csr_tag_rdy_i   : in  std_logic_vector(3 downto 0);
       spll_per_hpll_i      : in  std_logic_vector(31 downto 0);
       tag_hpll_rd_period_o : out std_logic;
-
-      spll_tag_ref_i   : in  std_logic_vector(31 downto 0);
-      tag_ref_rd_ack_o : out std_logic;
-
-      spll_tag_fb_i       : in  std_logic_vector(31 downto 0);
-      tag_fb_rd_ack_o     : out std_logic;
-      spll_dac_hpll_o     : out std_logic_vector(15 downto 0);
-      spll_dac_hpll_wr_o  : out std_logic;
-      spll_dac_dmpll_o    : out std_logic_vector(15 downto 0);
-      spll_dac_dmpll_wr_o : out std_logic;
-      spll_deglitch_thr_o : out std_logic_vector(15 downto 0);
-
-      irq_tag_i : in std_logic);
+      spll_tag_ref_i       : in  std_logic_vector(31 downto 0);
+      tag_ref_rd_ack_o     : out std_logic;
+      spll_tag_fb_i        : in  std_logic_vector(31 downto 0);
+      tag_fb_rd_ack_o      : out std_logic;
+      spll_tag_aux_i       : in  std_logic_vector(31 downto 0);
+      tag_aux_rd_ack_o     : out std_logic;
+      spll_dac_hpll_o      : out std_logic_vector(15 downto 0);
+      spll_dac_hpll_wr_o   : out std_logic;
+      spll_dac_dmpll_o     : out std_logic_vector(15 downto 0);
+      spll_dac_dmpll_wr_o  : out std_logic;
+      spll_deglitch_thr_o  : out std_logic_vector(15 downto 0);
+      irq_tag_i            : in  std_logic);
   end component;
-
   component hpll_period_detect
     generic (
       g_freq_err_frac_bits : integer := 1);
@@ -127,10 +125,12 @@ architecture rtl of wr_softpll is
   signal per_hpll : std_logic_vector(g_tag_bits-1 downto 0);
   signal tag_ref  : std_logic_vector(g_tag_bits-1 downto 0);
   signal tag_fb   : std_logic_vector(g_tag_bits-1 downto 0);
+  signal tag_aux  : std_logic_vector(g_tag_bits-1 downto 0);
 
   signal per_hpll_p : std_logic;
   signal tag_ref_p  : std_logic;
   signal tag_fb_p   : std_logic;
+  signal tag_aux_p   : std_logic;
 
   signal rst_n_refclk  : std_logic;
   signal rst_n_dmtdclk : std_logic;
@@ -141,10 +141,12 @@ architecture rtl of wr_softpll is
   signal spll_per_hpll : std_logic_vector(31 downto 0);
   signal spll_tag_ref  : std_logic_vector(31 downto 0);
   signal spll_tag_fb   : std_logic_vector(31 downto 0);
+  signal spll_tag_aux   : std_logic_vector(31 downto 0);
 
   signal tag_hpll_rd_period_ack : std_logic;
   signal tag_ref_rd_ack         : std_logic;
   signal tag_fb_rd_ack          : std_logic;
+  signal tag_aux_rd_ack          : std_logic;
 
   signal spll_csr_tag_en   : std_logic_vector(3 downto 0);
   signal spll_csr_tag_rdy  : std_logic_vector(3 downto 0);
@@ -245,6 +247,23 @@ begin  -- rtl
         deglitch_threshold_i => deglitch_thr_slv,
         dbg_dmtdout_o        => open);
 
+    MDMTD_AUX : multi_dmtd_with_deglitcher
+      generic map (
+        g_counter_bits     => g_tag_bits,
+        g_log2_replication => c_log2_replication)
+      port map (
+        rst_n_dmtdclk_i      => rst_n_dmtdclk,
+        rst_n_sysclk_i       => rst_n_i,
+        clk_dmtd_i           => clk_dmtd_i,
+        clk_sys_i            => clk_sys_i,
+        clk_in_i             => clk_aux_i,
+        tag_o                => tag_aux,
+        tag_stb_p_o          => tag_aux_p,
+        shift_en_i           => '0',
+        shift_dir_i          => '0',
+        deglitch_threshold_i => deglitch_thr_slv,
+        dbg_dmtdout_o        => open);
+
 
   end generate gen_with_multi_dmtd;
 
@@ -264,6 +283,24 @@ begin  -- rtl
 
         tag_o                 => tag_ref,
         tag_stb_p1_o           => tag_ref_p,
+        shift_en_i            => '0',
+        shift_dir_i           => '0',
+        deglitch_threshold_i => deglitch_thr_slv,
+        dbg_dmtdout_o         => open);
+
+     DMTD_AUX : dmtd_with_deglitcher
+      generic map (
+        g_counter_bits => g_tag_bits)
+      port map (
+        rst_n_dmtdclk_i => rst_n_dmtdclk,
+        rst_n_sysclk_i  => rst_n_i,
+
+        clk_dmtd_i => clk_dmtd_i,
+        clk_sys_i  => clk_sys_i,
+        clk_in_i   => clk_aux_i,
+
+        tag_o                 => tag_aux,
+        tag_stb_p1_o           => tag_aux_p,
         shift_en_i            => '0',
         shift_dir_i           => '0',
         deglitch_threshold_i => deglitch_thr_slv,
@@ -337,6 +374,8 @@ begin  -- rtl
       tag_ref_rd_ack_o     => tag_ref_rd_ack,
       spll_tag_fb_i        => spll_tag_fb,
       tag_fb_rd_ack_o      => tag_fb_rd_ack,
+      spll_tag_aux_i        => spll_tag_aux,
+      tag_aux_rd_ack_o      => tag_aux_rd_ack,
       spll_per_hpll_i      => spll_per_hpll,
       tag_hpll_rd_period_o => tag_hpll_rd_period_ack,
 
@@ -383,6 +422,13 @@ begin  -- rtl
           spll_csr_tag_rdy(3) <= spll_csr_tag_en(3);
         elsif(tag_fb_rd_ack = '1') then
           spll_csr_tag_rdy(3) <= '0';
+        end if;
+
+         if(tag_aux_p = '1') then
+          spll_tag_aux         <= std_logic_vector(to_unsigned(0, 32-g_tag_bits)) & tag_aux;
+          spll_csr_tag_rdy(0) <= spll_csr_tag_en(0);
+        elsif(tag_aux_rd_ack = '1') then
+          spll_csr_tag_rdy(0) <= '0';
         end if;
       end if;
     end if;
