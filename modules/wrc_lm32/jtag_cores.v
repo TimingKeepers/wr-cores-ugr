@@ -1,5 +1,7 @@
 // Modified by GSI to use simple positive edge clocking and the JTAG capture state
 
+`include "lm32_include.v"
+
 module jtag_cores (
     input [7:0] reg_d,
     input [2:0] reg_addr_d,

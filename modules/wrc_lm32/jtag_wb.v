@@ -2,6 +2,8 @@
 
 `define ACK_DELAY 8 /* Give the JTAG core time to latch after a write */
 
+`include "lm32_include.v"
+
 module jtag_wb (
     clk_i,
     DAT_I,
