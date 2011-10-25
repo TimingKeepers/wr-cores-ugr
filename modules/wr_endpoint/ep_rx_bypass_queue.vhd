@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-10
--- Last update: 2011-10-18
+-- Last update: 2011-10-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -153,9 +153,17 @@ begin  -- behavioral
   
 end behavioral;
 
+
+-------------------------------------------------------------------------------
+--FIXME: Generic-ize THIS!
+-------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+
+library unisim;
+use unisim.vcomponents.all;
 
 entity ep_shift_reg is
   generic(g_size : integer := 16);
