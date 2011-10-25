@@ -245,16 +245,17 @@ class EthPacketGenerator;
    protected int min_size, max_size;
    protected int seed;
    
-   static const int SMAC            = (1<<0);
-   static const int      DMAC       = (1<<1);
-   static const int      ETHERTYPE  = (1<<2);
-   static const int      VID        = (1<<3);
-   static const int      PCP        = (1<<4); 
-   static const int      PAYLOAD    = (1<<5);
-   static const int      SEQ_PAYLOAD    = (1<<7);
-  static const int TX_OOB             = (1<<6);
-  static const int EVEN_LENGTH             = (1<<8);
-   static const int      ALL        = SMAC | DMAC | VID | ETHERTYPE | PCP | PAYLOAD ;
+   static const int SMAC              = (1<<0);
+   static const int      DMAC         = (1<<1);
+   static const int      ETHERTYPE    = (1<<2);
+   static const int      VID          = (1<<3);
+   static const int      PCP          = (1<<4); 
+   static const int      PAYLOAD      = (1<<5);
+   static const int      SEQ_PAYLOAD  = (1<<7);
+   static const int TX_OOB             = (1<<6);
+   static const int EVEN_LENGTH        = (1<<8);
+   static const int RX_OOB             = (1<<9);
+   static const int      ALL          = SMAC | DMAC | VID | ETHERTYPE | PCP | PAYLOAD ;
    
 
    protected int r_flags;
