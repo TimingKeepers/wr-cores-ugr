@@ -67,9 +67,32 @@ class CSimUtils;
            tmp[i]    = d;
         end
       return tmp;
-   endfunction // pack
+      endfunction // pack
    
-    
+
+   static function automatic byte_array_t unpack(u64_array_t x, int entry_size, int size, int big_endian = 1);
+      byte_array_t tmp;
+      int i, n;
+
+      tmp  = new[size];
+      n    = 0;
+      i    = 0;
+      
+      
+      while(n < size)
+        begin
+           tmp[n]  = x[i] >> (8*(entry_size-1 - (n % entry_size)));
+           
+           n++;
+           if(n % entry_size == 0)
+             i++;
+        end
+
+      return tmp;
+   endfunction // unpack
+   
+  
+   
 
 endclass // CSimUtils
 
