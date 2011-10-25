@@ -36,12 +36,15 @@
 //`define CFG_DCACHE_LIMIT           32'h7fffffff
 
 // Enable Debugging
-//`define CFG_JTAG_ENABLED
-//`define CFG_JTAG_UART_ENABLED
-//`define CFG_DEBUG_ENABLED
-//`define CFG_HW_DEBUG_ENABLED
-//`define CFG_BREAKPOINTS 32'h0
-//`define CFG_WATCHPOINTS 32'h0
+`define CFG_TRACE_ENABLED
+
+`define CFG_JTAG_ENABLED
+`define CFG_JTAG_UART_ENABLED
+`define CFG_DEBUG_ENABLED
+`define CFG_HW_DEBUG_ENABLED
+`define CFG_BREAKPOINTS 32'h4
+`define CFG_WATCHPOINTS 32'h4
+`define CFG_JWB_ENABLED
 
 `define CFG_INTERRUPTS_ENABLED
 //`define CFG_BUS_ERRORS_ENABLED

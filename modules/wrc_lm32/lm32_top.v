@@ -52,6 +52,14 @@ module lm32_top (
     I_ERR_I,
     I_RTY_I,
 `endif
+`ifdef CFG_JWB_ENABLED
+    J_DAT_I,
+	 J_ADR_I,
+	 J_CYC_I,
+	 J_SEL_I,
+	 J_STB_I,
+	 J_WE_I,
+`endif
     // Data Wishbone master
     D_DAT_I,
     D_ACK_I,
@@ -76,6 +84,10 @@ module lm32_top (
     I_LOCK_O,
     I_BTE_O,
 `endif
+`ifdef CFG_JWB_ENABLED
+	 J_ACK_O,
+	 J_DAT_O,
+`endif
     // Data Wishbone master
     D_DAT_O,
     D_ADR_O,
@@ -85,7 +97,10 @@ module lm32_top (
     D_WE_O,
     D_CTI_O,
     D_LOCK_O,
-    D_BTE_O
+    D_BTE_O,
+    trace_pc_o,
+    trace_eret_o,
+    trace_pc_valid_o
     );
 
 /////////////////////////////////////////////////////
@@ -109,6 +124,15 @@ input [`LM32_WORD_RNG] I_DAT_I;                 // Instruction Wishbone interfac
 input I_ACK_I;                                  // Instruction Wishbone interface acknowledgement
 input I_ERR_I;                                  // Instruction Wishbone interface error
 input I_RTY_I;                                  // Instruction Wishbone interface retry
+`endif
+
+`ifdef CFG_JWB_ENABLED
+input [`LM32_WORD_RNG] J_DAT_I;
+input [`LM32_WORD_RNG] J_ADR_I;
+input J_CYC_I;
+input [`LM32_BYTE_SELECT_RNG] J_SEL_I;
+input J_STB_I;
+input J_WE_I;
 `endif
 
 input [`LM32_WORD_RNG] D_DAT_I;                 // Data Wishbone interface read data
@@ -150,6 +174,13 @@ output I_LOCK_O;                                // Instruction Wishbone interfac
 wire   I_LOCK_O;
 output [`LM32_BTYPE_RNG] I_BTE_O;               // Instruction Wishbone interface burst type 
 wire   [`LM32_BTYPE_RNG] I_BTE_O;
+`endif
+
+`ifdef CFG_JWB_ENABLED
+output J_ACK_O;
+wire   J_ACK_O;
+output [`LM32_WORD_RNG] J_DAT_O;
+wire   [`LM32_WORD_RNG] J_DAT_O;
 `endif
 
 output [`LM32_WORD_RNG] D_DAT_O;                // Data Wishbone interface write data
@@ -199,6 +230,21 @@ wire trace_bret;                                // Indicates a bret instruction 
 `endif
 `endif
 
+output [31:0] trace_pc_o;      
+   output trace_pc_valid_o;
+   output trace_eret_o;
+
+`ifdef CFG_TRACE_ENABLED
+   assign trace_eret_o      = trace_eret;
+   assign trace_pc_o        =trace_pc;
+   assign trace_pc_valid_o  = trace_pc_valid;
+`else
+   assign trace_eret_o      = 0;
+   assign trace_pc_o        = 0;
+   assign trace_pc_valid_o  = 0;   
+`endif   
+   
+   
 /////////////////////////////////////////////////////
 // Functions
 /////////////////////////////////////////////////////
@@ -276,7 +322,7 @@ lm32_cpu cpu (
     .I_CTI_O               (I_CTI_O),
     .I_LOCK_O              (I_LOCK_O),
     .I_BTE_O               (I_BTE_O),
-    `endif
+    `endif	
     // Data Wishbone master
     .D_DAT_O               (D_DAT_O),
     .D_ADR_O               (D_ADR_O),
@@ -290,6 +336,29 @@ lm32_cpu cpu (
     );
    
 `ifdef CFG_JTAG_ENABLED		   
+`ifdef CFG_JWB_ENABLED
+jtag_wb jtag_wb (
+    // ----- Inputs -----
+    .clk_i                 (clk_i),
+    .DAT_I                 (J_DAT_I),
+	 .ADR_I                 (J_ADR_I),
+	 .CYC_I                 (J_CYC_I),
+	 .SEL_I                 (J_SEL_I),
+	 .STB_I                 (J_STB_I),
+	 .WE_I                  (J_WE_I),
+    .reg_d                 (jtag_reg_d),
+    .reg_addr_d            (jtag_reg_addr_d),
+    // ----- Outputs -----
+	 .ACK_O                 (J_ACK_O),
+	 .STALL_O               (open),
+	 .DAT_O                 (J_DAT_O),
+    .reg_update            (jtag_update),
+    .reg_q                 (jtag_reg_q),
+    .reg_addr_q            (jtag_reg_addr_q),
+    .jtck                  (jtck),
+    .jrstn                 (jrstn)
+	 );
+`else
 // JTAG cores 
 jtag_cores jtag_cores (
     // ----- Inputs -----
@@ -302,6 +371,7 @@ jtag_cores jtag_cores (
     .jtck                  (jtck),
     .jrstn                 (jrstn)
     );
-`endif        
+`endif
+`endif
    
 endmodule

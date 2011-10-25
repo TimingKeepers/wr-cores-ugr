@@ -10,5 +10,8 @@ files = [ "wrc_lm32.vhd",
 					"lm32_shifter.v",
 					"lm32_multiplier.v",
 					"lm32_interrupt.v",
-					"lm32_dp_ram.v"
+					"lm32_dp_ram.v",
+					"lm32_debug.v",
+					"lm32_jtag.v",
+					"jtag_wb.v"
 					 ];
