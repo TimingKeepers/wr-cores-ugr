@@ -1,0 +1,182 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+   name = "WR Core System Controller";
+   description = "";
+   prefix = "sysc";
+   hdl_entity = "wrc_syscon_wb";
+
+   reg {
+      name = "Syscon reset register";
+      prefix = "RSTR";
+      
+      field {
+         name = "Reset trigger";
+         prefix = "HRST";
+         description = "Write 0xdeadbeef to reset the WR Core";
+         type = PASS_THROUGH;
+         size = 32;
+      };
+   };
+
+   reg {
+      name = "GPIO Set/Readback Register";
+      prefix = "GPSR";
+
+
+      field {
+         name = "Status LED";
+         description = "Write 1: turn on the Status LED";
+         prefix = "led_stat";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "Link LED";
+         description = "Write 1: turn on the Link LED";
+         prefix = "led_link";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "FMC I2C bitbanged SCL";
+         prefix = "fmc_scl";
+         description = "write 1: Set FMC SCL line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+      };
+
+      field {
+         name = "FMC I2C bitbanged SDA";
+         prefix = "fmc_sda";
+         description = "write 1: Set FMC SDA line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+      };
+
+
+      field {
+         name = "Network AP reset";
+         description = "write 1: resets the networking subsystem";
+         prefix = "Net_RST";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "SPEC Pushbutton 1 state";
+         prefix = "Btn1";
+         description = "read : returns the state of the Button 1 on the SPEC board";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "SPEC Pushbutton 2 state";
+         prefix = "Btn2";
+         description = "read : returns the state of the Button 2 on the SPEC board";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+   };
+
+   reg {
+      name = "GPIO Clear Register";
+      prefix = "GPCR";
+
+    field {
+         name = "Status LED";
+         description = "Write 1: turn on the Status LED";
+         prefix = "led_stat";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "Link LED";
+         description = "Write 1: turn on the Link LED";
+         prefix = "led_link";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "FMC I2C bitbanged SCL";
+         prefix = "fmc_scl";
+         description = "write 1: Set FMC SCL line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "FMC I2C bitbanged SDA";
+         prefix = "fmc_sda";
+         description = "write 1: Set FMC SDA line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = MONOSTABLE;
+      };
+   };
+
+   reg {
+      name = "Hardware Feature Register";
+      prefix = "HWFR";
+
+      field {
+         name = "Memory size";
+         prefix = "MEMSIZE";
+         size = 4;
+         description = "Size of installed memory: 0 = 64 kB ... 0xf = 1024 kB";
+         type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+   };
+
+   reg {
+      name = "Timer Control Register";
+      prefix = "TCR";
+
+      field {
+         name = "Timer Divider";
+         description = "Division for obtain 1 millisecond ticks from the system clock: \
+                        <b>f_tick = f_clk_sys / (TDIV * 256)</b>";
+         prefix = "TDIV";
+         size = 12;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "Timer Enable";
+         description = "write 1: enable timer\
+                        write 0: disable timer";
+
+         prefix = "ENABLE";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+         align = 31;
+      };
+   };
+
+   reg {
+      name = "Timer Counter Value Register";
+      prefix = "TVR";
+
+      field {
+         name = "Timer Counter Value";
+         size = 32;
+         type =SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+   };
+
+
+};
