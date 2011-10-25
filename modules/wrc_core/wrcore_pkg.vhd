@@ -4,6 +4,9 @@ use ieee.std_logic_1164.all;
 library work;
 use work.genram_pkg.all;
 use work.wbconmax_pkg.all;
+use work.wishbone_pkg.all;
+use work.wr_fabric_pkg.all;
+
 
 package wrcore_pkg is
 
@@ -298,6 +301,7 @@ package wrcore_pkg is
       clk_ref_i        : in  std_logic;
       clk_dmtd_i       : in  std_logic;
       clk_rx_i         : in  std_logic;
+      clk_aux_i: in std_logic;
       dac_hpll_data_o  : out std_logic_vector(15 downto 0);
       dac_hpll_load_o  : out std_logic;
       dac_dmpll_data_o : out std_logic_vector(15 downto 0);
@@ -312,6 +316,32 @@ package wrcore_pkg is
       wb_ack_o         : out std_logic;
       wb_irq_o         : out std_logic;
       debug_o: out std_logic_vector(3 downto 0));
+  end component;
+
+  component xwr_mini_nic
+    generic (
+      g_interface_mode       : t_wishbone_interface_mode;
+      g_address_granularity  : t_wishbone_address_granularity;
+      g_memsize_log2         : integer;
+      g_buffer_little_endian : boolean);
+    port (
+      clk_sys_i        : in  std_logic;
+      rst_n_i          : in  std_logic;
+      mem_data_o       : out std_logic_vector(31 downto 0);
+      mem_addr_o       : out std_logic_vector(g_memsize_log2-1 downto 0);
+      mem_data_i       : in  std_logic_vector(31 downto 0);
+      mem_wr_o         : out std_logic;
+      src_o            : out t_wrf_source_out;
+      src_i            : in  t_wrf_source_in;
+      snk_o            : out t_wrf_sink_out;
+      snk_i            : in  t_wrf_sink_in;
+      txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
+      txtsu_frame_id_i : in  std_logic_vector(16 - 1 downto 0);
+      txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
+      txtsu_valid_i    : in  std_logic;
+      txtsu_ack_o      : out std_logic;
+      wb_i             : in  t_wishbone_slave_in;
+      wb_o             : out t_wishbone_slave_out);
   end component;
   
 end wrcore_pkg;

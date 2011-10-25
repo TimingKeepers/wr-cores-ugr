@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2011-07-18
+-- Last update: 2011-10-25
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -36,6 +36,7 @@ use ieee.std_logic_1164.all;
 
 library work;
 use work.wrcore_pkg.all;
+use work.wishbone_pkg.all;
 
 entity wrc_periph is
   generic(
@@ -70,22 +71,7 @@ end wrc_periph;
 architecture struct of wrc_periph is
 
   
-  component wb_tics
-    generic (
-      g_period : integer);
-    port (
-      rst_n_i   : in  std_logic;
-      clk_sys_i : in  std_logic;
-      wb_addr_i : in  std_logic_vector(1 downto 0);
-      wb_data_i : in  std_logic_vector(31 downto 0);
-      wb_data_o : out std_logic_vector(31 downto 0);
-      wb_cyc_i  : in  std_logic;
-      wb_sel_i  : in  std_logic_vector(3 downto 0);
-      wb_stb_i  : in  std_logic;
-      wb_we_i   : in  std_logic;
-      wb_ack_o  : out std_logic);
-  end component;
-  
+ 
   component wb_reset
     port (
       clk_i      : in  std_logic;
@@ -101,58 +87,7 @@ architecture struct of wrc_periph is
       wb_ack_o   : out std_logic);
   end component;
 
-  
-  component wb_simple_uart
-    port (
-      clk_sys_i  : in  std_logic;
-      rst_n_i    : in  std_logic;
-      wb_addr_i  : in  std_logic_vector(1 downto 0);
-      wb_data_i  : in  std_logic_vector(31 downto 0);
-      wb_data_o  : out std_logic_vector(31 downto 0);
-      wb_cyc_i   : in  std_logic;
-      wb_sel_i   : in  std_logic_vector(3 downto 0);
-      wb_stb_i   : in  std_logic;
-      wb_we_i    : in  std_logic;
-      wb_ack_o   : out std_logic;
-      uart_rxd_i : in  std_logic;
-      uart_txd_o : out std_logic);
-  end component;
-
-  component wb_virtual_uart
-    port(
-      rst_n_i     : in  std_logic;
-      clk_sys_i    : in  std_logic;
-      wb_addr_i   : in  std_logic_vector(2 downto 0);
-      wb_data_i   : in  std_logic_vector(31 downto 0);
-      wb_data_o   : out std_logic_vector(31 downto 0);
-      wb_cyc_i    : in  std_logic;
-      wb_sel_i    : in  std_logic_vector(3 downto 0);
-      wb_stb_i    : in  std_logic;
-      wb_we_i     : in  std_logic;
-      wb_ack_o    : out std_logic
-    );
-  end component;
-
-  component wb_gpio_port
-    generic (
-      g_num_pins               : natural;
-      g_with_builtin_tristates : boolean);
-    port (
-      clk_sys_i  : in    std_logic;
-      rst_n_i    : in    std_logic;
-      wb_sel_i   : in    std_logic;
-      wb_cyc_i   : in    std_logic;
-      wb_stb_i   : in    std_logic;
-      wb_we_i    : in    std_logic;
-      wb_adr_i   : in    std_logic_vector(5 downto 0);
-      wb_dat_i   : in    std_logic_vector(31 downto 0);
-      wb_dat_o   : out   std_logic_vector(31 downto 0);
-      wb_ack_o   : out   std_logic;
-      gpio_out_o : out   std_logic_vector(g_num_pins-1 downto 0);
-      gpio_in_i  : in    std_logic_vector(g_num_pins-1 downto 0);
-      gpio_oen_o : out   std_logic_vector(g_num_pins-1 downto 0));
-  end component;
-
+ 
   type t_wbdata is array(3 downto 0) of std_logic_vector(31 downto 0);
 
   signal wb_cycs_i  : std_logic_vector(3 downto 0);
@@ -207,11 +142,11 @@ begin
       rst_n_i => rst_n_i,
       clk_sys_i    => clk_sys_i,
       
-      wb_sel_i    => wb_sel_i(0),
+      wb_sel_i    => wb_sel_i,
       wb_cyc_i    => wb_cycs_i(0),
       wb_stb_i    => wb_stb_i,
       wb_we_i     => wb_we_i,
-      wb_adr_i   => wb_addr_i(5 downto 0), 
+      wb_adr_i   => wb_addr_i(7 downto 0), 
       wb_dat_i   => wb_data_i,
       wb_dat_o   => wb_dats_o(0), 
       wb_ack_o    => wb_acks_o(0),
@@ -221,42 +156,27 @@ begin
       gpio_oen_o => gpio_dir_o
     );
 
-  GEN_UART: if(g_virtual_uart = 0) generate
-    UART: wb_simple_uart
-      port map(
-        clk_sys_i  => clk_sys_i,
-        rst_n_i    => rst_n_i,
+  UART: wb_simple_uart
+    generic map (
+      g_with_virtual_uart  => true,
+      g_with_physical_uart => true)
+    port map(
+      clk_sys_i  => clk_sys_i,
+      rst_n_i    => rst_n_i,
+      
+      wb_adr_i  => wb_addr_i(4 downto 0),
+      wb_dat_i  => wb_data_i,
+      wb_dat_o  => wb_dats_o(1),
+      wb_cyc_i   => wb_cycs_i(1),
+      wb_sel_i   => wb_sel_i,
+      wb_stb_i   => wb_stb_i,
+      wb_we_i    => wb_we_i,
+      wb_ack_o   => wb_acks_o(1),
 
-        wb_addr_i  => wb_addr_i(1 downto 0),
-        wb_data_i  => wb_data_i,
-        wb_data_o  => wb_dats_o(1),
-        wb_cyc_i   => wb_cycs_i(1),
-        wb_sel_i   => wb_sel_i,
-        wb_stb_i   => wb_stb_i,
-        wb_we_i    => wb_we_i,
-        wb_ack_o   => wb_acks_o(1),
-
-        uart_rxd_i => uart_rxd_i,
-        uart_txd_o => uart_txd_o
+      uart_rxd_i => uart_rxd_i,
+      uart_txd_o => uart_txd_o
       );
-  end generate;
-
-  GEN_VIRTUART: if(g_virtual_uart = 1) generate
-    VIRTUAL_UART: wb_virtual_uart
-      port map(
-        rst_n_i    => rst_n_i,
-        clk_sys_i  => clk_sys_i,
-        wb_addr_i  => wb_addr_i(2 downto 0),
-        wb_data_i  => wb_data_i,
-        wb_data_o  => wb_dats_o(1),
-        wb_cyc_i   => wb_cycs_i(1),
-        wb_sel_i   => wb_sel_i,
-        wb_stb_i   => wb_stb_i,  
-        wb_we_i    => wb_we_i,       
-        wb_ack_o   => wb_acks_o(1)  
-      );
-  end generate;
-
+ 
 
   TICS: wb_tics
     generic map (
@@ -265,9 +185,9 @@ begin
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_i,
 
-      wb_addr_i  => wb_addr_i(1 downto 0),
-      wb_data_i  => wb_data_i,
-      wb_data_o  => wb_dats_o(2),
+      wb_adr_i  => wb_addr_i(3 downto 0),
+      wb_dat_i  => wb_data_i,
+      wb_dat_o  => wb_dats_o(2),
       wb_cyc_i   => wb_cycs_i(2),
       wb_sel_i   => wb_sel_i,
       wb_stb_i   => wb_stb_i,

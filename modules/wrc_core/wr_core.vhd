@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-08-23
+-- Last update: 2011-10-25
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -35,17 +35,20 @@ use work.wrcore_pkg.all;
 use work.wbconmax_pkg.all;
 use work.genram_pkg.all;
 
+use work.wr_fabric_pkg.all;
+use work.endpoint_pkg.all;
+use work.wishbone_pkg.all;
 
 entity wr_core is
   generic(
     --if set to 1, then blocks in PCS use smaller calibration counter to speed 
     --up simulation
-    g_simulation             : integer := 0;
-    g_virtual_uart           : natural := 0;
-    g_ep_rxbuf_size_log2     : integer := 12;
-    g_dpram_initf            : string  := "";
-    g_dpram_size             : integer := 16384;  --in 32-bit words
-    g_num_gpio               : integer := 8
+    g_simulation         : integer := 0;
+    g_virtual_uart       : natural := 0;
+    g_ep_rxbuf_size_log2 : integer := 12;
+    g_dpram_initf        : string  := "";
+    g_dpram_size         : integer := 16384;  --in 32-bit words
+    g_num_gpio           : integer := 8
     );
   port(
     clk_sys_i : in std_logic;
@@ -56,8 +59,12 @@ entity wr_core is
     -- Timing reference (125 MHz)
     clk_ref_i : in std_logic;
 
-    rst_n_i : in std_logic;
+    -- Aux clock (i.e. the FMC clock)
+    clk_aux_i: in std_logic;
     
+    
+    rst_n_i : in std_logic;
+
 
     -----------------------------------------
     --PPS gen
@@ -77,10 +84,10 @@ entity wr_core is
     -- PHY I/f
     phy_ref_clk_i : in std_logic;
 
-    phy_tx_data_o      : out  std_logic_vector(7 downto 0);
-    phy_tx_k_o         : out  std_logic;
-    phy_tx_disparity_i : in std_logic;
-    phy_tx_enc_err_i   : in std_logic;
+    phy_tx_data_o      : out std_logic_vector(7 downto 0);
+    phy_tx_k_o         : out std_logic;
+    phy_tx_disparity_i : in  std_logic;
+    phy_tx_enc_err_i   : in  std_logic;
 
     phy_rx_data_i     : in std_logic_vector(7 downto 0);
     phy_rx_rbclk_i    : in std_logic;
@@ -90,12 +97,12 @@ entity wr_core is
 
     phy_rst_o    : out std_logic;
     phy_loopen_o : out std_logic;
-    
+
     -----------------------------------------
     --GPIO
     -----------------------------------------
-    gpio_o : out std_logic_vector(g_num_gpio-1 downto 0);
-    gpio_i : in std_logic_vector(g_num_gpio-1 downto 0);
+    gpio_o     : out std_logic_vector(g_num_gpio-1 downto 0);
+    gpio_i     : in  std_logic_vector(g_num_gpio-1 downto 0);
     gpio_dir_o : out std_logic_vector(g_num_gpio-1 downto 0);
 
     -----------------------------------------
@@ -168,9 +175,9 @@ architecture struct of wr_core is
 
   signal txtsu_port_id_o  : std_logic_vector(4 downto 0);
   signal txtsu_frame_id_o : std_logic_vector(16 -1 downto 0);
-  signal txtsu_tsval_o : std_logic_vector(28 + 4 - 1 downto 0); 
-  signal txtsu_valid_o : std_logic;
-  signal txtsu_ack_i   : std_logic;
+  signal txtsu_tsval_o    : std_logic_vector(28 + 4 - 1 downto 0);
+  signal txtsu_valid_o    : std_logic;
+  signal txtsu_ack_i      : std_logic;
 
   signal ep_wb_i : t_wb_i;
   signal ep_wb_o : t_wb_o;
@@ -191,7 +198,7 @@ architecture struct of wr_core is
   signal s_gtp_loopen_i       : std_logic;
 
   constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
-  
+
   -----------------------------------------------------------------------------
   --Mini-NIC
   -----------------------------------------------------------------------------
@@ -287,13 +294,26 @@ architecture struct of wr_core is
   signal s_dummy_addr : std_logic_vector(31 downto 0);
   signal rst_n_inv    : std_logic;
 
-  signal softpll_irq    : std_logic;
+  signal softpll_irq : std_logic;
 
   signal lm32_irq_slv : std_logic_vector(0 downto 0);
-  signal trace_pc : std_logic_vector(31 downto 0);
-  signal trace_eret : std_logic;
-  signal trace_valid : std_logic;
-   
+  signal trace_pc     : std_logic_vector(31 downto 0);
+  signal trace_eret   : std_logic;
+  signal trace_valid  : std_logic;
+
+  signal ep_wb_in     : t_wishbone_slave_in;
+  signal ep_wb_out    : t_wishbone_slave_out;
+  
+  signal minic_wb_in  : t_wishbone_slave_in;
+  signal minic_wb_out : t_wishbone_slave_out;
+
+  signal ep_src_out   : t_wrf_source_out;
+  signal ep_src_in    : t_wrf_source_in;
+  signal ep_snk_out   : t_wrf_sink_out;
+  signal ep_snk_in    : t_wrf_sink_in;
+  
+  signal dummy : std_logic_vector(31 downto 0);
+  
 begin
 
   s_rst_n <= genrst_n and rst_n_i;
@@ -319,7 +339,7 @@ begin
       wb_ack_o  => ppsg_wb_o.ack,
 
       -- Single-pulse PPS output for synchronizing endpoint to
-      pps_in_i => '0',
+      pps_in_i    => '0',
       pps_csync_o => s_pps_csync,
       pps_out_o   => pps_p_o
       );
@@ -335,6 +355,7 @@ begin
       clk_ref_i  => clk_ref_i,
       clk_dmtd_i => clk_dmtd_i,
       clk_rx_i   => phy_rx_rbclk_i,
+      clk_aux_i => clk_aux_i,
 
       dac_hpll_data_o  => dac_hpll_data_o,
       dac_hpll_load_o  => dac_hpll_load_p1_o,
@@ -352,196 +373,122 @@ begin
       wb_irq_o  => softpll_irq,
       debug_o   => dio_o);
 
-  -----------------------------------------------------------------------------
-  -- Endpoint
-  -----------------------------------------------------------------------------
-  WR_ENDPOINT : wrsw_endpoint
-    generic map(
-      g_simulation          => g_simulation,
-      g_phy_mode            => "GTP",
-      g_rx_buffer_size_log2 => g_ep_rxbuf_size_log2
-      )
-    port map(
-      -- Endpoint transmit reference clock. Must be 125 MHz +- 100 ppm
-      clk_ref_i  => clk_ref_i,
-      -- reference clock / 2 (62.5 MHz, in-phase with refclk)
-      clk_sys_i  => clk_sys_i,
-      -- DMTD sampling clock (125.x MHz) (from Timing system)
-      clk_dmtd_i => clk_dmtd_i,
 
-      -- sync reset (clk_sys_i domain), active LO
-      rst_n_i => rst_n_i,
-
-      -- PPS input (1 clk_ref_i cycle HI) for synchronizing timestamp counter
+  U_Endpoint : xwr_endpoint
+    generic map (
+      g_interface_mode      => CLASSIC,
+      g_address_granularity => WORD,
+      g_simulation          => false,
+      g_pcs_16bit           => false,
+      g_rx_buffer_size      => 1024,
+      g_with_rx_buffer      => true,
+      g_with_flow_control   => false,
+      g_with_timestamper    => true,
+      g_with_dpi_classifier => true,
+      g_with_vlans          => false,
+      g_with_rtu            => false,
+      g_with_leds           => false)
+    port map (
+      clk_ref_i      => clk_ref_i,
+      clk_sys_i      => clk_sys_i,
+      rst_n_i        => s_rst_n,
       pps_csync_p1_i => s_pps_csync,
 
-      -------------------------------------------------------------------------
-      -- Ten-Bit PHY interface (TLK1221)
-      -------------------------------------------------------------------------
-      tbi_td_o        => open,
-      tbi_enable_o    => open,
-      tbi_syncen_o    => open,
-      tbi_loopen_o    => open,
-      tbi_prbsen_o    => open,
-      tbi_rbclk_i     => '0',
-      tbi_rd_i        => "0000000000",
-      tbi_sync_pass_i => '0',
+      phy_rst_o          => phy_rst_o,
+      phy_loopen_o       => phy_loopen_o,
+--      phy_enable_o       => phy_enable_o,
+--      phy_syncen_o       => phy_syncen_o,
+      phy_ref_clk_i      => phy_ref_clk_i,
+      phy_tx_data_o(7 downto 0)      => phy_tx_data_o,
+      phy_tx_data_o(15 downto 8) => dummy(7 downto 0),
+      phy_tx_k_o(0)         => phy_tx_k_o,
+      phy_tx_k_o(1) =>dummy(8),
+      phy_tx_disparity_i => phy_tx_disparity_i,
+      phy_tx_enc_err_i   => phy_tx_enc_err_i,
+      phy_rx_data_i(7 downto 0)      => phy_rx_data_i,
+      phy_rx_data_i(15 downto 8) => x"00",
+      phy_rx_clk_i       => phy_rx_rbclk_i,
+      phy_rx_k_i(0)         => phy_rx_k_i,
+      phy_rx_k_i(1) => '0',
+      phy_rx_enc_err_i   => phy_rx_enc_err_i,
+      phy_rx_bitslide_i(3 downto 0)  => phy_rx_bitslide_i,
+      phy_rx_bitslide_i(4) => '0',
 
-      -------------------------------------------------------------------------
-      -- Xilinx GTP PHY Interace
-      -------------------------------------------------------------------------    
-      gtp_tx_clk_i       => phy_ref_clk_i,
-      gtp_tx_data_o      => phy_tx_data_o,
-      gtp_tx_k_o         => phy_tx_k_o,
-      gtp_tx_disparity_i => phy_tx_disparity_i,
-      gtp_tx_enc_err_i   => phy_tx_enc_err_i,
-      gtp_rx_data_i      => phy_rx_data_i,
-      gtp_rx_clk_i       => phy_rx_rbclk_i,
-      gtp_rx_k_i         => phy_rx_k_i,
-      gtp_rx_enc_err_i   => phy_rx_enc_err_i,
-      gtp_rx_bitslide_i  => phy_rx_bitslide_i,
-      gtp_rst_o          => phy_rst_o,
-      gtp_loopen_o       => phy_loopen_o,
+      src_o => ep_src_out,
+      src_i => ep_src_in,
+      snk_o => ep_snk_out,
+      snk_i => ep_snk_in,
 
-      -------------------------------------------------------------------------
-      -- WRF source (output of RXed packets)
-      -------------------------------------------------------------------------
-      rx_data_o      => s_ep_rx_data_o,
-      rx_ctrl_o      => s_ep_rx_ctrl_o,
-      rx_bytesel_o   => s_ep_rx_bytesel_o,
-      rx_sof_p1_o    => s_ep_rx_sof_p1_o,
-      rx_eof_p1_o    => s_ep_rx_eof_p1_o,
-      rx_dreq_i      => s_ep_rx_dreq_i,
-      rx_valid_o     => s_ep_rx_valid_o,
-      rx_rabort_p1_i => '0',
-      rx_idle_o      => open,
-      rx_rerror_p1_o => s_ep_rx_rerror_p1_o,
-
-      -------------------------------------------------------------------------
-      -- WRF Sink (input for the packets to be TXed)
-      -------------------------------------------------------------------------
-      tx_data_i      => s_ep_tx_data_i,
-      tx_ctrl_i      => s_ep_tx_ctrl_i,
-      tx_bytesel_i   => s_ep_tx_bytesel_i,
-      tx_sof_p1_i    => s_ep_tx_sof_p1_i,
-      tx_eof_p1_i    => s_ep_tx_eof_p1_i,
-      tx_dreq_o      => s_ep_tx_dreq_o,
-      tx_valid_i     => s_ep_tx_valid_i,
-      tx_rerror_p1_i => '0',
-      tx_tabort_p1_i => '0',
-      tx_terror_p1_o => s_ep_tx_terror_p1_o,
-
-      -------------------------------------------------------------------------
-      -- TX timestamping unit interface
-      -------------------------------------------------------------------------  
       txtsu_port_id_o  => txtsu_port_id_o,
       txtsu_frame_id_o => txtsu_frame_id_o,
       txtsu_tsval_o    => txtsu_tsval_o,
       txtsu_valid_o    => txtsu_valid_o,
       txtsu_ack_i      => txtsu_ack_i,
+      wb_i             => ep_wb_in,
+      wb_o             => ep_wb_out);
 
-      -------------------------------------------------------------------------
-      -- RTU interface
-      -------------------------------------------------------------------------
-      rtu_full_i         => '0',
-      rtu_almost_full_i  => '0',
-      rtu_rq_strobe_p1_o => open,
-      rtu_rq_smac_o      => open,
-      rtu_rq_dmac_o      => open,
-      rtu_rq_vid_o       => open,
-      rtu_rq_has_vid_o   => open,
-      rtu_rq_prio_o      => open,
-      rtu_rq_has_prio_o  => open,
+  ep_wb_in.cyc <= ep_wb_i.cyc;
+  ep_wb_in.stb <= ep_wb_i.stb;
+  ep_wb_in.we <= ep_wb_i.we;
+  ep_wb_in.sel <= ep_wb_i.sel;
+  ep_wb_in.adr(10 downto 0) <= ep_wb_i.addr(10 downto 0);
+  ep_wb_in.dat <= ep_wb_i.data;
+  ep_wb_o.ack <= ep_wb_out.ack;
+  ep_wb_o.data <= ep_wb_out.dat;
 
-      -------------------------------------------------------------------------   
-      -- Wishbone bus
-      -------------------------------------------------------------------------
-      wb_cyc_i  => ep_wb_i.cyc,
-      wb_stb_i  => ep_wb_i.stb,
-      wb_we_i   => ep_wb_i.we,
-      wb_sel_i  => ep_wb_i.sel,
-      wb_addr_i => ep_wb_i.addr(5 downto 0),
-      wb_data_i => ep_wb_i.data,
-      wb_data_o => ep_wb_o.data,
-      wb_ack_o  => ep_wb_o.ack
-      );
+  xwr_mini_nic_1 : xwr_mini_nic
+    generic map (
+      g_interface_mode       => CLASSIC,
+      g_address_granularity  => WORD,
+      g_memsize_log2         => 14,
+      g_buffer_little_endian => false)
+    port map (
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => s_rst_n,
 
+      mem_data_o => s_mnic_mem_data_o,
+      mem_addr_o => s_mnic_mem_addr_o,
+      mem_data_i => s_mnic_mem_data_i,
+      mem_wr_o   => s_mnic_mem_wr_o,
 
-  -----------------------------------------------------------------------------
-  -- Mini-NIC
-  -----------------------------------------------------------------------------
-  MINIC : wr_mini_nic
-    generic map(
-      g_memsize_log2         => c_mnic_memsize_log2,
-      g_buffer_little_endian => false
-      )
-    port map(
-      clk_sys_i        => clk_sys_i,
-      rst_n_i          => s_rst_n,
-      -------------------------------------------------------------------------
-      -- System memory i/f
-      -------------------------------------------------------------------------
-      mem_data_o       => s_mnic_mem_data_o,
-      mem_addr_o       => s_mnic_mem_addr_o,
-      mem_data_i       => s_mnic_mem_data_i,
-      mem_wr_o         => s_mnic_mem_wr_o,
-      -------------------------------------------------------------------------
-      -- WRF source/sink
-      -------------------------------------------------------------------------
-      --mNIC Source -> EP Sink
-      src_data_o       => s_ep_tx_data_i,
-      src_ctrl_o       => s_ep_tx_ctrl_i,
-      src_bytesel_o    => s_ep_tx_bytesel_i,
-      src_sof_p1_o     => s_ep_tx_sof_p1_i,
-      src_eof_p1_o     => s_ep_tx_eof_p1_i,
-      src_dreq_i       => s_ep_tx_dreq_o,
-      src_valid_o      => s_ep_tx_valid_i,
-      src_error_p1_o   => open,
-      src_error_p1_i   => s_ep_tx_terror_p1_o,
-      --mNIC Sink <- EP Source
-      snk_data_i       => s_ep_rx_data_o,
-      snk_ctrl_i       => s_ep_rx_ctrl_o,
-      snk_bytesel_i    => s_ep_rx_bytesel_o,
-      snk_sof_p1_i     => s_ep_rx_sof_p1_o,
-      snk_eof_p1_i     => s_ep_rx_eof_p1_o,
-      snk_dreq_o       => s_ep_rx_dreq_i,
-      snk_valid_i      => s_ep_rx_valid_o,
-      snk_error_p1_o   => open,
-      snk_error_p1_i   => s_ep_rx_rerror_p1_o,
-      -------------------------------------------------------------------------
-      -- TXTSU i/f
-      -------------------------------------------------------------------------
+      src_o => ep_snk_in,
+      src_i => ep_snk_out,
+      snk_o => ep_src_in,
+      snk_i => ep_src_out,
+
       txtsu_port_id_i  => txtsu_port_id_o,
       txtsu_frame_id_i => txtsu_frame_id_o,
       txtsu_tsval_i    => txtsu_tsval_o,
       txtsu_valid_i    => txtsu_valid_o,
       txtsu_ack_o      => txtsu_ack_i,
-      -------------------------------------------------------------------------
-      -- Wishbone slave
-      -------------------------------------------------------------------------    
-      wb_cyc_i         => mnic_wb_i.cyc,
-      wb_stb_i         => mnic_wb_i.stb,
-      wb_we_i          => mnic_wb_i.we,
-      wb_sel_i         => mnic_wb_i.sel,
-      wb_addr_i        => mnic_wb_i.addr(3 downto 0),
-      wb_data_i        => mnic_wb_i.data,
-      wb_data_o        => mnic_wb_o.data,
-      wb_ack_o         => mnic_wb_o.ack,
-      wb_irq_o         => open
-      );
 
-  mnic_wb_irq_o <= '0';
-  lm32_irq_slv(0) <= softpll_irq;   -- according to the doc, it's active low.
+      wb_i => minic_wb_in,
+      wb_o => minic_wb_out);
+
+  minic_wb_in.cyc <= mnic_wb_i.cyc;
+  minic_wb_in.stb <= mnic_wb_i.stb;
+  minic_wb_in.we <= mnic_wb_i.we;
+  minic_wb_in.sel <= mnic_wb_i.sel;
+  minic_wb_in.adr(10 downto 0) <= mnic_wb_i.addr(10 downto 0);
+  minic_wb_in.dat <= mnic_wb_i.data;
+  mnic_wb_o.ack <= minic_wb_out.ack;
+  mnic_wb_o.data <= minic_wb_out.dat;
+
+
+  mnic_wb_irq_o   <= '0';
+  lm32_irq_slv(0) <= softpll_irq;  -- according to the doc, it's active low.
+
+
 
   LM32_CORE : wrc_lm32
     generic map (
       g_addr_width => c_aw,
       g_num_irqs   => 1)
     port map (
-      clk_i     => clk_sys_i,
-      rst_n_i   => s_rst_n,
-      irq_i     => lm32_irq_slv,
-      
+      clk_i   => clk_sys_i,
+      rst_n_i => s_rst_n,
+      irq_i   => lm32_irq_slv,
+
       iwb_adr_o => lm32_iwb_o.addr,
       iwb_dat_o => lm32_iwb_o.data,
       iwb_dat_i => lm32_iwb_i.data,
@@ -559,7 +506,7 @@ begin
       dwb_sel_o => lm32_dwb_o.sel,
       dwb_we_o  => lm32_dwb_o.we,
       dwb_ack_i => lm32_dwb_i.ack,
-      
+
       jwb_adr_i => lm32_jwb_i.addr,
       jwb_dat_i => lm32_jwb_i.data,
       jwb_dat_o => lm32_jwb_o.data,
@@ -568,18 +515,18 @@ begin
       jwb_sel_i => lm32_jwb_i.sel,
       jwb_we_i  => lm32_jwb_i.we,
       jwb_ack_o => lm32_jwb_o.ack,
-      
-      trace_pc_o => trace_pc,
+
+      trace_pc_o       => trace_pc,
       trace_pc_valid_o => trace_valid,
-      trace_eret_o => trace_eret);
-  
+      trace_eret_o     => trace_eret);
+
   -----------------------------------------------------------------------------
   -- Dual-port RAM
   -----------------------------------------------------------------------------  
   DPRAM : wrc_dpram
     generic map(
-      g_size             => g_dpram_size,
-      g_init_file        => g_dpram_initf
+      g_size      => g_dpram_size,
+      g_init_file => g_dpram_initf
       )
     port map(
       clk_i   => clk_sys_i,
@@ -618,7 +565,7 @@ begin
 
       gpio_o     => gpio_o,
       gpio_i     => gpio_i,
-      gpio_dir_o     => gpio_dir_o,
+      gpio_dir_o => gpio_dir_o,
 
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
@@ -679,10 +626,10 @@ begin
       wb_slaves_o  => cnx_slave_o
       );
 
-    cnx_master_i(0) <= lm32_iwb_o;
-    cnx_master_i(2) <= lm32_dwb_o;
-    lm32_iwb_i      <= cnx_master_o(0);
-    lm32_dwb_i      <= cnx_master_o(2);
+  cnx_master_i(0) <= lm32_iwb_o;
+  cnx_master_i(2) <= lm32_dwb_o;
+  lm32_iwb_i      <= cnx_master_o(0);
+  lm32_dwb_i      <= cnx_master_o(2);
 
   cnx_master_i(1) <= ext_wb_o;
   cnx_master_i(3) <= wbm_unused_i;

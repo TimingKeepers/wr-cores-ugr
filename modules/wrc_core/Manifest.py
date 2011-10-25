@@ -4,5 +4,6 @@ files = [ "wr_core.vhd",
 					"wrc_periph.vhd",
 					"wb_reset.vhd" ];
 
-fetchto = "../../ip_cores"
+modules = {"local" : "wb_conmax"};
+#fetchto = "../../ip_cores"
 
