@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2011-05-11
+-- Last update: 2011-10-26
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -18,6 +18,7 @@
 -- Date        Version  Author          Description
 -- 2010-09-02  1.0      twlostow        Created
 -- 2011-05-09  1.1      twlostow        Added external PPS input
+-- 2011-10-26  1.2      greg.d          Added wb slave adapter
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -26,8 +27,13 @@ use ieee.numeric_std.all;
 
 library work;
 use work.gencores_pkg.all;
+use work.wishbone_pkg.all;
 
 entity wrsw_pps_gen is
+  generic(
+    g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
+    g_address_granularity : t_wishbone_address_granularity := WORD
+  );
   port (
     clk_ref_i : in std_logic;
     clk_sys_i : in std_logic;
@@ -42,13 +48,18 @@ entity wrsw_pps_gen is
     wb_stb_i  : in  std_logic;
     wb_we_i   : in  std_logic;
     wb_ack_o  : out std_logic;
+    wb_stall_o : out std_logic;
 
     pps_in_i : in std_logic;
 
     -- Single-pulse PPS output for synchronizing endpoints to
     pps_csync_o : out std_logic;
-    pps_out_o   : out std_logic
+    pps_out_o   : out std_logic;
 
+    pps_val_o   : out std_logic;
+    tc_utc_o    : out std_logic_vector(39 downto 0);
+    tc_nsec_o   : out std_logic_vector(27 downto 0);
+    tc_val_o    : out std_logic
     );
 end wrsw_pps_gen;
 
@@ -87,7 +98,9 @@ architecture behavioral of wrsw_pps_gen is
       ppsg_adj_utchi_wr_o    : out std_logic;
       ppsg_escr_sync_o       : out std_logic;
       ppsg_escr_sync_i       : in  std_logic;
-      ppsg_escr_sync_load_o  : out std_logic);
+      ppsg_escr_sync_load_o  : out std_logic;
+      ppsg_escr_pps_val_o    : out std_logic;
+      ppsg_escr_tc_val_o     : out std_logic);
   end component;
 
 
@@ -111,11 +124,12 @@ architecture behavioral of wrsw_pps_gen is
   signal ppsg_adj_utclo    : std_logic_vector(31 downto 0);
   signal ppsg_adj_utclo_wr : std_logic;
   signal ppsg_adj_utchi    : std_logic_vector(7 downto 0);
-  signal ppsg_adj_utchi_wr : std_logic;
-
-  signal ppsg_escr_sync_load  : std_logic;
+  signal ppsg_adj_utchi_wr : std_logic; signal ppsg_escr_sync_load  : std_logic;
   signal ppsg_escr_sync_in   : std_logic;
   signal ppsg_escr_sync_out : std_logic;
+
+  signal ppsg_escr_pps_val : std_logic;
+  signal ppsg_escr_tc_val  : std_logic;
 
   signal cntr_nsec : unsigned (27 downto 0);
   signal cntr_utc  : unsigned (39 downto 0);
@@ -139,8 +153,38 @@ architecture behavioral of wrsw_pps_gen is
   signal pps_in_p         : std_logic;
   signal sync_in_progress : std_logic;
   signal ext_sync_p       : std_logic;
+
+  signal resized_addr : std_logic_vector(c_wishbone_address_width-1 downto 0);
+  signal wb_out : t_wishbone_slave_out;
+  signal wb_in  : t_wishbone_slave_in;
   
 begin  -- behavioral
+
+  resized_addr(3 downto 0) <= wb_addr_i;
+  resized_addr(c_wishbone_address_width-1 downto 4) <= (others=>'0');
+
+  U_Adapter : wb_slave_adapter
+    generic map (
+      g_master_use_struct  => true,
+      g_master_mode        => CLASSIC,
+      g_master_granularity => WORD,
+      g_slave_use_struct   => false,
+      g_slave_mode         => g_interface_mode,
+      g_slave_granularity  => g_address_granularity)
+    port map (
+      clk_sys_i  => clk_sys_i,
+      rst_n_i    => rst_n_i,
+      master_i   => wb_out,
+      master_o   => wb_in,
+      sl_adr_i   => resized_addr,
+      sl_dat_i   => wb_data_i,
+      sl_sel_i   => wb_sel_i,
+      sl_cyc_i   => wb_cyc_i,
+      sl_stb_i   => wb_stb_i,
+      sl_we_i    => wb_we_i,
+      sl_dat_o   => wb_data_o,
+      sl_ack_o   => wb_ack_o,
+      sl_stall_o => wb_stall_o);
 
   
   sync_reset_refclk : gc_sync_ffs
@@ -308,14 +352,14 @@ begin  -- behavioral
     port map (
       rst_n_i                 => rst_n_i,
       wb_clk_i                => clk_sys_i,
-      wb_addr_i               => wb_addr_i(2 downto 0),
-      wb_data_i               => wb_data_i,
-      wb_data_o               => wb_data_o,
-      wb_cyc_i                => wb_cyc_i,
-      wb_sel_i                => wb_sel_i,
-      wb_stb_i                => wb_stb_i,
-      wb_we_i                 => wb_we_i,
-      wb_ack_o                => wb_ack_o,
+      wb_addr_i               => wb_in.adr(2 downto 0),
+      wb_data_i               => wb_in.dat,
+      wb_data_o               => wb_out.dat,
+      wb_cyc_i                => wb_in.cyc,
+      wb_sel_i                => wb_in.sel,
+      wb_stb_i                => wb_in.stb,
+      wb_we_i                 => wb_in.we,
+      wb_ack_o                => wb_out.ack,
       refclk_i                => clk_ref_i,
       ppsg_cr_cnt_rst_o       => ppsg_cr_cnt_rst,
       ppsg_cr_cnt_en_o        => ppsg_cr_cnt_en,
@@ -335,7 +379,9 @@ begin  -- behavioral
       ppsg_adj_utclo_o        => ppsg_adj_utclo,
       ppsg_adj_utclo_wr_o     => ppsg_adj_utclo_wr,
       ppsg_adj_utchi_o        => ppsg_adj_utchi,
-      ppsg_adj_utchi_wr_o     => ppsg_adj_utchi_wr);
+      ppsg_adj_utchi_wr_o     => ppsg_adj_utchi_wr,
+      ppsg_escr_pps_val_o     => ppsg_escr_pps_val,
+      ppsg_escr_tc_val_o      => ppsg_escr_tc_val);
 
   -- start the adjustment upon write of 1 to CNT_ADJ bit
   cntr_adjust_p <= ppsg_cr_cnt_adj_load and ppsg_cr_cnt_adj_o;
@@ -377,5 +423,10 @@ begin  -- behavioral
       end if;
     end if;
   end process;
+
+  tc_utc_o  <= std_logic_vector(cntr_utc);
+  tc_nsec_o <= std_logic_vector(cntr_nsec);
+  tc_val_o  <= ppsg_escr_tc_val;
+  pps_val_o <= ppsg_escr_pps_val;
   
 end behavioral;
