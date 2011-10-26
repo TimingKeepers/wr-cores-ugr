@@ -235,6 +235,7 @@ architecture rtl of spec_top is
       clk_sys_i          : in  std_logic;
       clk_dmtd_i         : in  std_logic;
       clk_ref_i          : in  std_logic;
+      clk_aux_i : in std_logic := '0';
       rst_n_i            : in  std_logic;
       pps_p_o            : out std_logic;
       dac_hpll_load_p1_o : out std_logic;
