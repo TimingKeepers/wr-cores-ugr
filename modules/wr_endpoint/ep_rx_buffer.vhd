@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-18
+-- Last update: 2011-10-26
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ architecture behavioral of ep_rx_buffer is
       dout(15)          <= fab.sof;
       dout(14)          <= fab.eof;
       dout(13)          <= fab.error;
-      dout(11 downto 0) <= (others => 'X');
+      dout(12 downto 0) <= (others => 'X');
       dout_valid        <= '1';
     elsif(fab.dvalid = '1') then
 
@@ -114,6 +114,7 @@ architecture behavioral of ep_rx_buffer is
 
     fab.data <= din(15 downto 0);
     if(din_valid = '1') then
+
       if(din(17 downto 16) = "10") then  -- some fancy encoding is necessary here
         case cur_addr(1 downto 0) is
           when c_WRF_DATA =>
@@ -132,11 +133,15 @@ architecture behavioral of ep_rx_buffer is
       fab.eof     <= din(14) and din(17) and din(16);
       fab.error   <= din(13) and din(17) and din(16);
       fab.bytesel <= not din(17) and din(16);
+
     else
+      fab.bytesel <= 'X';
+      fab.addr <= (others => 'X');
       fab.dvalid <= '0';
       fab.sof    <= '0';
       fab.eof    <= '0';
       fab.error  <= '0';
+      fab.addr <= (others => 'X');
       fab.data   <= (others => 'X');
     end if;
   end f_unpack_rbuf_contents;

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-21
+-- Last update: 2011-10-26
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -361,6 +361,7 @@ package body endpoint_private_pkg is
     else
       if(fab.sof = '1' or fab.error = '1' or fab.eof = '1' or fab.has_rx_timestamp = '1') then
         -- tag = 01
+        dout(17) <= 'X';
         dout(16)          <= '1';
         dout(15)          <= fab.sof;
         dout(14)          <= fab.eof;
@@ -408,6 +409,7 @@ package body endpoint_private_pkg is
         fab.bytesel          <= (not din(16)) and din(17);
       end if;
     else
+      fab.bytesel <= 'X';
       fab.dvalid           <= '0';
       fab.sof              <= '0';
       fab.eof              <= '0';
