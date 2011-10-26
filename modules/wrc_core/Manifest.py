@@ -5,5 +5,4 @@ files = [ "wr_core.vhd",
 					"wb_reset.vhd" ];
 
 modules = {"local" : "wb_conmax"};
-#fetchto = "../../ip_cores"
 
