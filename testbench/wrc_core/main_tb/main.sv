@@ -1,7 +1,6 @@
 `timescale 1ns/1ps
 
-
-
+   
 `include "tbi_utils.sv"
 
 `include "simdrv_defs.svh"
@@ -71,14 +70,14 @@ module main;
 	.uart_rxd_i       (1'b0),
 	.uart_txd_o       (),
 
-	.wb_addr_i      (WB.adr[17:0]),
-	.wb_data_i      (WB.dat_o),
-	.wb_data_o      (WB.dat_i),
+	.wb_addr_i      (WB.master.adr[17:0]),
+	.wb_data_i      (WB.master.dat_o),
+	.wb_data_o      (WB.master.dat_i),
 	.wb_sel_i       (4'b1111),
-	.wb_we_i        (WB.we),
-	.wb_cyc_i       (WB.cyc),
-	.wb_stb_i       (WB.stb),
-	.wb_ack_o       (WB.ack),
+	.wb_we_i        (WB.master.we),
+	.wb_cyc_i       (WB.master.cyc),
+	.wb_stb_i       (WB.master.stb),
+	.wb_ack_o       (WB.master.ack),
 
         .phy_ref_clk_i(clk_ref),
         .phy_tx_data_o(phy_tx_data),
@@ -104,9 +103,15 @@ module main;
    
 
    initial begin
-        
+      CWishboneAccessor acc;
+      
       @(posedge rst_n);
       repeat(3) @(posedge clk_sys);
+
+      acc = WB.get_accessor();
+
+      acc.write('h62000, 'hffffffff);
+      acc.write('h62000, 0);
 
       
       
