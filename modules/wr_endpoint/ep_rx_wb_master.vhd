@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-24
+-- Last update: 2011-10-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -107,17 +107,18 @@ begin  -- behavioral
               src_out_int.sel(0) <= not snk_fab_i.bytesel;
             end if;
 
-            if(src_wb_i.stall = '1' and snk_fab_i.dvalid = '1') then
-              state   <= FLUSH_STALL;
+
+            if(snk_fab_i.error = '1') then
+              state <= THROW_ERROR;
+            elsif(src_wb_i.stall = '1' and snk_fab_i.dvalid = '1') then
+              state <= FLUSH_STALL;
             end if;
 
             if(snk_fab_i.eof = '1')then
               state <= FINISH_CYCLE;
             end if;
 
-            if(snk_fab_i.error = '1') then
-              state <= THROW_ERROR;
-            end if;
+            
             
             tmp_adr <= snk_fab_i.addr;
             tmp_dat <= snk_fab_i.data;
