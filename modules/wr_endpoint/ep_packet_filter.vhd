@@ -184,37 +184,37 @@ architecture behavioral of ep_packet_filter is
   
 begin  -- behavioral
 
-   chipscope_icon_1 : chipscope_icon
-    port map (
-      CONTROL0 => CONTROL);
+  -- chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
 
-  chipscope_ila_1 : chipscope_ila
-    port map (
-      CONTROL => CONTROL,
-      CLK     => clk_rx_i,
-      TRIG0   => TRIG0,
-      TRIG1   => TRIG1,
-      TRIG2   => TRIG2,
-      TRIG3   => TRIG3);
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_rx_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
 
-  TRIG0 <= regs;
-  trig1 <= ir(31 downto 0);
-  trig2(3 downto 0) <= ir(35 downto 32);
-  trig2(4) <= stage1;
-  trig2(5) <= stage2;
-  trig2(6) <= result_cmp;
-  trig2(12 downto 7) <= std_logic_vector(pc);
-  trig2(31 downto 16) <= pmem_rdata;
-  trig2(13) <=mm_write;
-  trig2(14) <= result1;
-  trig2(15) <= result2;
-   trig3(0)<= done_int;
-   trig3(1)<=snk_fab_i.dvalid;
-   trig3(2)<=snk_fab_i.sof;
-   trig3(3)<=snk_fab_i.eof;
-   trig3(4)<=snk_fab_i.error;
-   trig3(31 downto 16) <= snk_fab_i.data;
+  --TRIG0 <= regs;
+  --trig1 <= ir(31 downto 0);
+  --trig2(3 downto 0) <= ir(35 downto 32);
+  --trig2(4) <= stage1;
+  --trig2(5) <= stage2;
+  --trig2(6) <= result_cmp;
+  --trig2(12 downto 7) <= std_logic_vector(pc);
+  --trig2(31 downto 16) <= pmem_rdata;
+  --trig2(13) <=mm_write;
+  --trig2(14) <= result1;
+  --trig2(15) <= result2;
+  -- trig3(0)<= done_int;
+  -- trig3(1)<=snk_fab_i.dvalid;
+  -- trig3(2)<=snk_fab_i.sof;
+  -- trig3(3)<=snk_fab_i.eof;
+  -- trig3(4)<=snk_fab_i.error;
+  -- trig3(31 downto 16) <= snk_fab_i.data;
    
   
   
