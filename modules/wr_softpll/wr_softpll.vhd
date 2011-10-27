@@ -27,9 +27,15 @@ entity wr_softpll is
     dac_dmpll_data_o : out std_logic_vector(15 downto 0);
     dac_dmpll_load_o : out std_logic;
 
-    wb_addr_i  : in  std_logic_vector(5 downto 0);
-    wb_data_i  : in  std_logic_vector(31 downto 0);
-    wb_data_o  : out std_logic_vector(31 downto 0);
+    dac_aux_data_o : out std_logic_vector(23 downto 0);
+    dac_aux_load_o : out std_logic;
+
+    clk_aux_lock_en_i : in  std_logic;
+    clk_aux_locked_o  : out std_logic;
+
+    wb_adr_i   : in  std_logic_vector(6 downto 0);
+    wb_dat_i   : in  std_logic_vector(31 downto 0);
+    wb_dat_o   : out std_logic_vector(31 downto 0);
     wb_cyc_i   : in  std_logic;
     wb_sel_i   : in  std_logic_vector(3 downto 0);
     wb_stb_i   : in  std_logic;
@@ -79,12 +85,12 @@ architecture rtl of wr_softpll is
       tag_o                : out std_logic_vector(g_counter_bits-1 downto 0);
       tag_stb_p1_o         : out std_logic);
   end component;
-
+  
   component softpll_wb
     port (
       rst_n_i              : in  std_logic;
       wb_clk_i             : in  std_logic;
-      wb_addr_i            : in  std_logic_vector(3 downto 0);
+      wb_addr_i            : in  std_logic_vector(4 downto 0);
       wb_data_i            : in  std_logic_vector(31 downto 0);
       wb_data_o            : out std_logic_vector(31 downto 0);
       wb_cyc_i             : in  std_logic;
@@ -95,6 +101,8 @@ architecture rtl of wr_softpll is
       wb_irq_o             : out std_logic;
       spll_csr_tag_en_o    : out std_logic_vector(3 downto 0);
       spll_csr_tag_rdy_i   : in  std_logic_vector(3 downto 0);
+      spll_csr_aux_en_i    : in  std_logic;
+      spll_csr_aux_lock_o  : out std_logic;
       spll_per_hpll_i      : in  std_logic_vector(31 downto 0);
       tag_hpll_rd_period_o : out std_logic;
       spll_tag_ref_i       : in  std_logic_vector(31 downto 0);
@@ -107,9 +115,12 @@ architecture rtl of wr_softpll is
       spll_dac_hpll_wr_o   : out std_logic;
       spll_dac_dmpll_o     : out std_logic_vector(15 downto 0);
       spll_dac_dmpll_wr_o  : out std_logic;
+      spll_dac_aux_o       : out std_logic_vector(23 downto 0);
+      spll_dac_aux_wr_o    : out std_logic;
       spll_deglitch_thr_o  : out std_logic_vector(15 downto 0);
       irq_tag_i            : in  std_logic);
   end component;
+
   component hpll_period_detect
     generic (
       g_freq_err_frac_bits : integer := 1);
@@ -156,6 +167,8 @@ architecture rtl of wr_softpll is
   signal spll_csr_tag_rdy  : std_logic_vector(3 downto 0);
   signal spll_dac_hpll     : std_logic_vector(15 downto 0);
   signal spll_dac_hpll_wr  : std_logic;
+  signal spll_dac_aux      : std_logic_vector(23 downto 0);
+  signal spll_dac_aux_wr   : std_logic;
   signal spll_dac_dmpll    : std_logic_vector(15 downto 0);
   signal spll_dac_dmpll_wr : std_logic;
   signal irq_tag           : std_logic;
@@ -181,8 +194,8 @@ architecture rtl of wr_softpll is
   
 begin  -- rtl
 
-  resized_addr(5 downto 0)                          <= wb_addr_i;
-  resized_addr(c_wishbone_address_width-1 downto 4) <= (others => '0');
+  resized_addr(6 downto 0)                          <= wb_adr_i;
+  resized_addr(c_wishbone_address_width-1 downto 7) <= (others => '0');
 
   U_Adapter : wb_slave_adapter
     generic map(
@@ -198,12 +211,12 @@ begin  -- rtl
       master_i   => wb_out,
       master_o   => wb_in,
       sl_adr_i   => resized_addr,
-      sl_dat_i   => wb_data_i,
+      sl_dat_i   => wb_dat_i,
       sl_sel_i   => wb_sel_i,
       sl_cyc_i   => wb_cyc_i,
       sl_stb_i   => wb_stb_i,
       sl_we_i    => wb_we_i,
-      sl_dat_o   => wb_data_o,
+      sl_dat_o   => wb_dat_o,
       sl_ack_o   => wb_ack_o,
       sl_stall_o => wb_stall_o);
 
@@ -323,7 +336,7 @@ begin  -- rtl
         deglitch_threshold_i => deglitch_thr_slv,
         dbg_dmtdout_o        => open);
 
-     DMTD_AUX : dmtd_with_deglitcher
+    DMTD_AUX : dmtd_with_deglitcher
       generic map (
         g_counter_bits => g_tag_bits)
       port map (
@@ -393,7 +406,7 @@ begin  -- rtl
     port map (
       rst_n_i   => rst_n_i,
       wb_clk_i  => clk_sys_i,
-      wb_addr_i => wb_in.adr(3 downto 0),
+      wb_addr_i => wb_in.adr(4 downto 0),
       wb_data_i => wb_in.dat,
       wb_data_o => wb_out.dat,
       wb_cyc_i  => wb_in.cyc,
@@ -416,8 +429,16 @@ begin  -- rtl
 
       spll_dac_hpll_o     => spll_dac_hpll,
       spll_dac_hpll_wr_o  => spll_dac_hpll_wr,
+
       spll_dac_dmpll_o    => spll_dac_dmpll,
       spll_dac_dmpll_wr_o => spll_dac_dmpll_wr,
+
+      spll_dac_aux_o      => spll_dac_aux,
+      spll_dac_aux_wr_o   => spll_dac_aux_wr,
+
+      spll_csr_aux_en_i   => clk_aux_lock_en_i,
+      spll_csr_aux_lock_o => clk_aux_locked_o,
+
       spll_deglitch_thr_o => deglitch_thr_slv,
       irq_tag_i           => irq_tag);
 
@@ -428,6 +449,9 @@ begin  -- rtl
   dac_dmpll_load_o <= spll_dac_dmpll_wr;
   dac_dmpll_data_o <= spll_dac_dmpll;
 
+  dac_aux_load_o <= spll_dac_aux_wr;
+  dac_aux_data_o <= spll_dac_aux;
+
   collect_tags : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -435,6 +459,7 @@ begin  -- rtl
         spll_per_hpll    <= (others => '0');
         spll_tag_ref     <= (others => '0');
         spll_tag_fb      <= (others => '0');
+        spll_tag_aux <= (others => '0');
         spll_csr_tag_rdy <= (others => '0');
       else
 
@@ -459,7 +484,7 @@ begin  -- rtl
           spll_csr_tag_rdy(3) <= '0';
         end if;
 
-         if(tag_aux_p = '1') then
+        if(tag_aux_p = '1') then
           spll_tag_aux        <= std_logic_vector(to_unsigned(0, 32-g_tag_bits)) & tag_aux;
           spll_csr_tag_rdy(0) <= spll_csr_tag_en(0);
         elsif(tag_aux_rd_ack = '1') then

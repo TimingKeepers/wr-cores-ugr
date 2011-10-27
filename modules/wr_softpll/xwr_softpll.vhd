@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 use work.gencores_pkg.all;
 use work.wishbone_pkg.all;
 
-entity xwb_wr_softpll is
+entity xwr_softpll is
   generic(
     g_deglitcher_threshold : integer;
     g_tag_bits             : integer;
@@ -26,6 +26,12 @@ entity xwb_wr_softpll is
 
     dac_dmpll_data_o : out std_logic_vector(15 downto 0);
     dac_dmpll_load_o : out std_logic;
+    
+    dac_aux_data_o : out std_logic_vector(23 downto 0);
+    dac_aux_load_o : out std_logic;
+
+    clk_aux_lock_en_i : in  std_logic := '0';
+    clk_aux_locked_o  : out std_logic;
 
     slave_i  : in  t_wishbone_slave_in;
     slave_o  : out t_wishbone_slave_out;
@@ -33,9 +39,9 @@ entity xwb_wr_softpll is
     debug_o  : out std_logic_vector(3 downto 0)
     );
 
-end wr_softpll;
+end xwr_softpll;
 
-architecture behavioral of xwb_wr_softpll is
+architecture wrapper of xwr_softpll is
 
   component wr_softpll is
     generic(
@@ -55,9 +61,13 @@ architecture behavioral of xwb_wr_softpll is
       dac_hpll_load_o  : out std_logic;
       dac_dmpll_data_o : out std_logic_vector(15 downto 0);
       dac_dmpll_load_o : out std_logic;
-      wb_addr_i        : in  std_logic_vector(5 downto 0);
-      wb_data_i        : in  std_logic_vector(31 downto 0);
-      wb_data_o        : out std_logic_vector(31 downto 0);
+      dac_aux_data_o : out std_logic_vector(23 downto 0);
+      dac_aux_load_o : out std_logic;
+      clk_aux_lock_en_i : in  std_logic;
+      clk_aux_locked_o  : out std_logic;
+      wb_adr_i        : in  std_logic_vector(6 downto 0);
+      wb_dat_i        : in  std_logic_vector(31 downto 0);
+      wb_dat_o        : out std_logic_vector(31 downto 0);
       wb_cyc_i         : in  std_logic;
       wb_sel_i         : in  std_logic_vector(3 downto 0);
       wb_stb_i         : in  std_logic;
@@ -75,10 +85,9 @@ begin  -- behavioral
     generic map(
       g_deglitcher_threshold => g_deglitcher_threshold,
       g_tag_bits             => g_tag_bits,
-      g_interface_mode       => CLASSIC;
-      g_address_granularity  => WORD
-      );
-    port(
+      g_interface_mode       => g_interface_mode,
+      g_address_granularity  => g_address_granularity)
+    port map (
       clk_sys_i        => clk_sys_i,
       rst_n_i          => rst_n_i,
       clk_ref_i        => clk_ref_i,
@@ -89,9 +98,13 @@ begin  -- behavioral
       dac_hpll_load_o  => dac_hpll_load_o,
       dac_dmpll_data_o => dac_dmpll_data_o,
       dac_dmpll_load_o => dac_dmpll_load_o,
-      wb_addr_i        => slave_i.adr(5 downto 0);
-      wb_data_i        => slave_i.dat,
-      wb_data_o        => slave_o.dat,
+      dac_aux_load_o => dac_aux_load_o,
+      dac_aux_data_o => dac_aux_data_o,
+      clk_aux_locked_o => clk_aux_locked_o,
+      clk_aux_lock_en_i => clk_aux_lock_en_i,
+      wb_adr_i        => slave_i.adr(6 downto 0),
+      wb_dat_i        => slave_i.dat,
+      wb_dat_o        => slave_o.dat,
       wb_cyc_i         => slave_i.cyc,
       wb_sel_i         => slave_i.sel,
       wb_stb_i         => slave_i.stb,
@@ -102,4 +115,4 @@ begin  -- behavioral
       debug_o          => debug_o
     );
 
-end behavioral;
+end wrapper;
