@@ -29,7 +29,7 @@ library work;
 use work.gencores_pkg.all;
 use work.wishbone_pkg.all;
 
-entity wrsw_pps_gen is
+entity wr_pps_gen is
   generic(
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD
@@ -40,9 +40,9 @@ entity wrsw_pps_gen is
 
     rst_n_i : in std_logic;
 
-    wb_addr_i  : in  std_logic_vector(4 downto 0);
-    wb_data_i  : in  std_logic_vector(31 downto 0);
-    wb_data_o  : out std_logic_vector(31 downto 0);
+    wb_adr_i  : in  std_logic_vector(4 downto 0);
+    wb_dat_i  : in  std_logic_vector(31 downto 0);
+    wb_dat_o  : out std_logic_vector(31 downto 0);
     wb_cyc_i   : in  std_logic;
     wb_sel_i   : in  std_logic_vector(3 downto 0);
     wb_stb_i   : in  std_logic;
@@ -56,14 +56,13 @@ entity wrsw_pps_gen is
     pps_csync_o : out std_logic;
     pps_out_o   : out std_logic;
 
-    pps_valid_o     : out std_logic;
     tm_utc_o        : out std_logic_vector(39 downto 0);
     tm_cycles_o     : out std_logic_vector(27 downto 0);
     tm_time_valid_o : out std_logic
     );
-end wrsw_pps_gen;
+end wr_pps_gen;
 
-architecture behavioral of wrsw_pps_gen is
+architecture behavioral of wr_pps_gen is
 
   constant c_PERIOD : integer := 125000000;
 
@@ -160,7 +159,7 @@ architecture behavioral of wrsw_pps_gen is
   
 begin  -- behavioral
 
-  resized_addr(4 downto 0)                          <= wb_addr_i;
+  resized_addr(4 downto 0)                          <= wb_adr_i;
   resized_addr(c_wishbone_address_width-1 downto 5) <= (others => '0');
 
   U_Adapter : wb_slave_adapter
@@ -177,12 +176,12 @@ begin  -- behavioral
       master_i   => wb_out,
       master_o   => wb_in,
       sl_adr_i   => resized_addr,
-      sl_dat_i   => wb_data_i,
+      sl_dat_i   => wb_dat_i,
       sl_sel_i   => wb_sel_i,
       sl_cyc_i   => wb_cyc_i,
       sl_stb_i   => wb_stb_i,
       sl_we_i    => wb_we_i,
-      sl_dat_o   => wb_data_o,
+      sl_dat_o   => wb_dat_o,
       sl_ack_o   => wb_ack_o,
       sl_stall_o => wb_stall_o);
 
@@ -333,7 +332,7 @@ begin  -- behavioral
       else
 
         if(ns_overflow = '1') then
-          pps_out_o  <= '1';
+          pps_out_o  <= ppsg_escr_pps_valid;
           width_cntr <= unsigned(ppsg_cr_pwidth);
         else
           if(width_cntr = to_unsigned(0, width_cntr'length)) then
@@ -427,6 +426,5 @@ begin  -- behavioral
   tm_utc_o        <= std_logic_vector(cntr_utc);
   tm_cycles_o     <= std_logic_vector(cntr_nsec);
   tm_time_valid_o <= ppsg_escr_tm_valid;
-  pps_valid_o     <= ppsg_escr_pps_valid;
   
 end behavioral;

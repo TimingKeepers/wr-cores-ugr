@@ -29,7 +29,7 @@ library work;
 use work.gencores_pkg.all;
 use work.wishbone_pkg.all;
 
-entity xwb_pps_gen is
+entity xwr_pps_gen is
   generic(
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD
@@ -49,17 +49,16 @@ entity xwb_pps_gen is
     pps_csync_o : out std_logic;
     pps_out_o   : out std_logic;
 
-    pps_valid_o     : out std_logic;
     tm_utc_o        : out std_logic_vector(39 downto 0);
     tm_cycles_o     : out std_logic_vector(27 downto 0);
     tm_time_valid_o : out std_logic
 
   );
-end xwb_pps_gen;
+end xwr_pps_gen;
 
-architecture behavioral of xwb_pps_gen is
+architecture behavioral of xwr_pps_gen is
 
-  component wrsw_pps_gen is
+  component wr_pps_gen is
     generic(
       g_interface_mode      : t_wishbone_interface_mode;
       g_address_granularity : t_wishbone_address_granularity
@@ -68,9 +67,9 @@ architecture behavioral of xwb_pps_gen is
       clk_ref_i       : in  std_logic;
       clk_sys_i       : in  std_logic;
       rst_n_i         : in  std_logic;
-      wb_addr_i       : in  std_logic_vector(4 downto 0);
-      wb_data_i       : in  std_logic_vector(31 downto 0);
-      wb_data_o       : out std_logic_vector(31 downto 0);
+      wb_adr_i       : in  std_logic_vector(4 downto 0);
+      wb_dat_i       : in  std_logic_vector(31 downto 0);
+      wb_dat_o       : out std_logic_vector(31 downto 0);
       wb_cyc_i        : in  std_logic;
       wb_sel_i        : in  std_logic_vector(3 downto 0);
       wb_stb_i        : in  std_logic;
@@ -80,7 +79,6 @@ architecture behavioral of xwb_pps_gen is
       pps_in_i        : in  std_logic;
       pps_csync_o     : out std_logic;
       pps_out_o       : out std_logic;
-      pps_valid_o     : out std_logic;
       tm_utc_o        : out std_logic_vector(39 downto 0);
       tm_cycles_o     : out std_logic_vector(27 downto 0);
       tm_time_valid_o : out std_logic
@@ -89,7 +87,7 @@ architecture behavioral of xwb_pps_gen is
   
 begin  -- behavioral
 
-  WRAPPED_PPSGEN : wrsw_pps_gen
+  WRAPPED_PPSGEN : wr_pps_gen
     generic map(
       g_interface_mode      => g_interface_mode,
       g_address_granularity => g_address_granularity
@@ -98,9 +96,9 @@ begin  -- behavioral
       clk_ref_i       => clk_ref_i,
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_i,
-      wb_addr_i       => slave_i.adr(4 downto 0),
-      wb_data_i       => slave_i.dat,
-      wb_data_o       => slave_o.dat,
+      wb_adr_i       => slave_i.adr(4 downto 0),
+      wb_dat_i       => slave_i.dat,
+      wb_dat_o       => slave_o.dat,
       wb_cyc_i        => slave_i.cyc,
       wb_sel_i        => slave_i.sel,
       wb_stb_i        => slave_i.stb,
@@ -110,7 +108,6 @@ begin  -- behavioral
       pps_in_i        => pps_in_i,
       pps_csync_o     => pps_csync_o,
       pps_out_o       => pps_out_o,
-      pps_valid_o     => pps_valid_o,
       tm_utc_o        => tm_utc_o,
       tm_cycles_o     => tm_cycles_o,
       tm_time_valid_o => tm_time_valid_o
