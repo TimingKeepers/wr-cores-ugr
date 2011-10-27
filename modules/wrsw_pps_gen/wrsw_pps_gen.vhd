@@ -40,7 +40,7 @@ entity wrsw_pps_gen is
 
     rst_n_i : in std_logic;
 
-    wb_addr_i  : in  std_logic_vector(3 downto 0);
+    wb_addr_i  : in  std_logic_vector(4 downto 0);
     wb_data_i  : in  std_logic_vector(31 downto 0);
     wb_data_o  : out std_logic_vector(31 downto 0);
     wb_cyc_i   : in  std_logic;
@@ -160,8 +160,8 @@ architecture behavioral of wrsw_pps_gen is
   
 begin  -- behavioral
 
-  resized_addr(3 downto 0)                          <= wb_addr_i;
-  resized_addr(c_wishbone_address_width-1 downto 4) <= (others => '0');
+  resized_addr(4 downto 0)                          <= wb_addr_i;
+  resized_addr(c_wishbone_address_width-1 downto 5) <= (others => '0');
 
   U_Adapter : wb_slave_adapter
     generic map (

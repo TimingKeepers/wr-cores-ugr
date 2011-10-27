@@ -68,7 +68,7 @@ architecture behavioral of xwb_pps_gen is
       clk_ref_i       : in  std_logic;
       clk_sys_i       : in  std_logic;
       rst_n_i         : in  std_logic;
-      wb_addr_i       : in  std_logic_vector(3 downto 0);
+      wb_addr_i       : in  std_logic_vector(4 downto 0);
       wb_data_i       : in  std_logic_vector(31 downto 0);
       wb_data_o       : out std_logic_vector(31 downto 0);
       wb_cyc_i        : in  std_logic;
@@ -98,7 +98,7 @@ begin  -- behavioral
       clk_ref_i       => clk_ref_i,
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_i,
-      wb_addr_i       => slave_i.adr(3 downto 0),
+      wb_addr_i       => slave_i.adr(4 downto 0),
       wb_data_i       => slave_i.dat,
       wb_data_o       => slave_o.dat,
       wb_cyc_i        => slave_i.cyc,
