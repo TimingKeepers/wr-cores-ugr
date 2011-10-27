@@ -1,3 +1,5 @@
+fetchto = "ip_cores"
+
 modules =  {"local" : 
 											[ "platform/xilinx/wr_gtp_phy",
 												"modules/wr_tbi_phy",
@@ -6,7 +8,7 @@ modules =  {"local" :
 												"modules/wr_softpll",
 												"modules/wrc_lm32",
 												"modules/wr_endpoint",
-												"modules/wrsw_pps_gen",
+												"modules/wr_pps_gen",
 												"modules/wrc_core" ],
 						"git" : "git://ohwr.org/hdl-core-lib/general-cores.git::wishbone_with_adapter"
 						}
