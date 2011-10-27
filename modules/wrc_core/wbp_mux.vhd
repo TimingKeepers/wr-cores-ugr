@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-08-11
--- Last update: 2011-08-11
+-- Last update: 2011-10-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -27,6 +27,8 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+
+use work.wr_fabric_pkg.all;
 
 entity wbp_mux is
   generic(
@@ -93,7 +95,9 @@ entity wbp_mux is
     ext_wbm_stb_o  : out std_logic;
     ext_wbm_ack_i  : in  std_logic;
     ext_wbm_err_i  : in  std_logic;
-    ext_wbm_stall_i: in  std_logic
+    ext_wbm_stall_i: in  std_logic;
+
+    class_core_i: in std_logic_vector(7 downto 0)
   );
 end wbp_mux;
 
@@ -103,20 +107,16 @@ architecture behaviour of wbp_mux is
   -- WBP fabtic interface definitions --
   --==================================--
   -- WBP available addresses
-  constant c_WBP_STATUS : std_logic_vector(1 downto 0) := "11";
-  constant c_WBP_DATA   : std_logic_vector(1 downto 0) := "00";
-  constant c_WBP_OOB    : std_logic_vector(1 downto 0) := "01";
-  constant c_WBP_USER   : std_logic_vector(1 downto 0) := "10";
+
   -- WBP available packet classes (PTP and Etherbone)
-  constant c_CLASS_PTP  : std_logic_vector(7 downto 0) := "00000001";
-  constant c_CLASS_EB   : std_logic_vector(7 downto 0) := "00000010";
+  
 
   --==================================--
   --   Masters to Slave mux signals   --
   --==================================--
   constant c_LAST_EXT : std_logic := '0';
   constant c_LAST_PTP : std_logic := '1';
-  type t_mux is (MUX_SEL, MUX_EXT, MUX_PTP);
+  type t_mux is (MUX_SEL, MUX_EXT, MUX_PTP,MUX_END);
 
   signal mux                 : t_mux;
   signal mux_last            : std_logic;
@@ -133,6 +133,8 @@ architecture behaviour of wbp_mux is
   signal mux_pend_ext        : std_logic;
   signal mux_pend_ptp        : std_logic;
   signal force_stall         : std_logic;
+  signal ep_wbs_stall_out : std_logic;
+  
 
   --==================================--
   --  Master to Slaves demux signals  --
@@ -141,13 +143,16 @@ architecture behaviour of wbp_mux is
   signal demux                 : t_demux;
   signal dmux_stall_mask       : std_logic;
   signal dmux_status_reg       : std_logic_vector(g_dw-1 downto 0);
-  alias  dmux_status_class is dmux_status_reg(7 downto 0);
+  signal dmux_status_class : std_logic_vector(7 downto 0);
   signal ep_stall_mask         : std_logic;
   signal ptp_select,ext_select : std_logic;
   signal ptp_send_status, ext_send_status : std_logic;
+  signal ep_wbm_stall_d0 : std_logic;
 
 begin
 
+dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
+  
   --===============================================--
   --                                               --
   -- Two WBP Masters talking to a single WBP Slave --
@@ -161,8 +166,10 @@ begin
         mux_pend_ptp <= '0';
         mux_last     <= '1';
 
-        mux    <= MUX_SEL; 
+        mux    <= MUX_SEL;
+        ep_wbm_stall_d0 <= '0';
       else
+        ep_wbm_stall_d0<=ep_wbm_stall_i;
         case(mux) is
           when MUX_SEL =>
             if( ext_wbs_cyc_i='1' and ptp_wbs_cyc_i='0' ) then 
@@ -197,7 +204,7 @@ begin
               mux_pend_ptp <= '0';
             end if;
 
-            if( ext_wbs_cyc_i='0' ) then 
+            if( ext_wbs_cyc_i = '0' and ep_wbm_stall_i = '0' and ep_wbm_stall_d0 ='0') then 
               mux <= MUX_SEL;
             end if;
 
@@ -210,10 +217,13 @@ begin
             elsif( ext_wbs_cyc_i='0' ) then
               mux_pend_ext <= '0';
             end if;
-            if( ptp_wbs_cyc_i='0' ) then 
+
+        if( ptp_wbs_cyc_i='0' and ep_wbm_stall_i = '0' and ep_wbm_stall_d0= '0') then 
               mux <= MUX_SEL;
             end if;
 
+          when MUX_END =>
+        mux <= MUX_SEL;
           --Just in case
           when others=>
             mux <= MUX_SEL;
@@ -287,6 +297,7 @@ begin
                      '1'            when(mux=MUX_PTP) else
                      '1'            when(force_stall='1') else
                      '0';
+
   ptp_wbs_stall_o <= ep_wbm_stall_i when(mux=MUX_PTP) else
                      '1'            when(mux=MUX_EXT) else
                      '1'            when(force_stall='1') else
@@ -302,8 +313,6 @@ begin
   begin
     if rising_edge(clk_sys_i) then
       if( rst_n_i='0' ) then
-        ep_wbs_ack_o    <= '0';
-        ep_wbs_err_o    <= '0';
         dmux_stall_mask <= '0';
         ptp_select      <= '0';
         ptp_send_status <= '0';
@@ -323,11 +332,12 @@ begin
             ptp_send_status <= '0';
             ext_select      <= '0';
             ext_send_status <= '0';
-            if( ep_wbs_cyc_i='1' and ep_wbs_stb_i='1' and ep_wbs_adr_i=c_WBP_STATUS ) then
+            if( ep_wbs_cyc_i='1' and ep_wbs_stb_i='1' and ep_wbs_adr_i=c_WRF_STATUS ) then
               ep_stall_mask   <= '1';
               dmux_status_reg <= ep_wbs_dat_i;
               demux <= DMUX_STATUS;
             else
+              dmux_status_reg<=(others => '0');
               ep_stall_mask  <= '0';
             end if;
 
@@ -338,7 +348,7 @@ begin
 
             ep_stall_mask   <= '1';
 
-            if( dmux_status_class=c_CLASS_PTP  ) then
+            if(( dmux_status_class = x"00") or ((dmux_status_class and class_core_i) /= "00000000")) then
               ptp_select      <= '1';
               ptp_send_status <= '1';
               if( ptp_wbm_stall_i='0' ) then
@@ -378,7 +388,7 @@ begin
   ptp_wbm_stb_o  <= '1'          when(ptp_send_status = '1') else
                     ep_wbs_stb_i when(ptp_select = '1') else 
                     '0';
-  ptp_wbm_adr_o  <= c_WBP_STATUS when(ptp_send_status = '1') else
+  ptp_wbm_adr_o  <= c_WRF_STATUS when(ptp_send_status = '1') else
                     ep_wbs_adr_i when(ptp_select = '1') else 
                     (others=>'0');
   ptp_wbm_dat_o  <= dmux_status_reg when(ptp_send_status = '1') else
@@ -391,15 +401,18 @@ begin
 
   ep_wbs_ack_o   <= ptp_wbm_ack_i when(ptp_select = '1') else
                     ext_wbm_ack_i when(ext_select = '1') else
-                    '0';
+                    (ep_wbs_cyc_i and ep_wbs_stb_i and not ep_wbs_stall_out);
+
   ep_wbs_err_o   <= ptp_wbm_err_i when(ptp_select = '1') else
                     ext_wbm_err_i when(ext_select = '1') else
                     '0';
 
-  ep_wbs_stall_o <= '1'             when(ep_stall_mask = '1') else
+  ep_wbs_stall_out <= '1'             when(ep_stall_mask = '1') else
                     ptp_wbm_stall_i when(ptp_select = '1') else
                     ext_wbm_stall_i when(ext_select = '1') else
                     '0';
+
+ep_wbs_stall_o <= ep_wbs_stall_out;
 
 
   ext_wbm_cyc_o  <= ep_wbs_cyc_i when(ext_select = '1') else 
@@ -407,7 +420,7 @@ begin
   ext_wbm_stb_o  <= '1'          when(ext_send_status = '1') else
                     ep_wbs_stb_i when(ext_select = '1') else 
                     '0';
-  ext_wbm_adr_o  <= c_WBP_STATUS when(ext_send_status = '1') else
+  ext_wbm_adr_o  <= c_WRF_STATUS when(ext_send_status = '1') else
                     ep_wbs_adr_i when(ext_select = '1') else 
                     (others=>'0');
   ext_wbm_dat_o  <= dmux_status_reg when(ext_send_status = '1') else
@@ -430,30 +443,31 @@ use ieee.std_logic_1164.all;
 use work.wr_fabric_pkg.all;
 
 
-entity wbp_mux_rec is
+entity xwbp_mux is
   port(
     clk_sys_i      : in  std_logic;
     rst_n_i        : in  std_logic; 
 
     --ENDPOINT
-    ep_wbm_o       : out t_wrf_source_out;
-    ep_wbm_i       : in  t_wrf_source_in;
-    ep_wbs_o       : out t_wrf_sink_out;
-    ep_wbs_i       : in  t_wrf_sink_in;
+    ep_src_o       : out t_wrf_source_out;
+    ep_src_i       : in  t_wrf_source_in;
+    ep_snk_o       : out t_wrf_sink_out;
+    ep_snk_i       : in  t_wrf_sink_in;
     --PTP packets eg. from Mini-NIC
-    ptp_wbm_o      : out t_wrf_source_out;
-    ptp_wbm_i      : in  t_wrf_source_in;
-    ptp_wbs_o      : out t_wrf_sink_out;
-    ptp_wbs_i      : in  t_wrf_sink_in;
+    ptp_src_o      : out t_wrf_source_out;
+    ptp_src_i      : in  t_wrf_source_in;
+    ptp_snk_o      : out t_wrf_sink_out;
+    ptp_snk_i      : in  t_wrf_sink_in;
     --External WBP port
-    ext_wbm_o      : out t_wrf_source_out;
-    ext_wbm_i      : in  t_wrf_source_in;
-    ext_wbs_o      : out t_wrf_sink_out;
-    ext_wbs_i      : in  t_wrf_sink_in
+    ext_src_o      : out t_wrf_source_out;
+    ext_src_i      : in  t_wrf_source_in;
+    ext_snk_o      : out t_wrf_sink_out;
+    ext_snk_i      : in  t_wrf_sink_in;
+    class_core_i : in std_logic_vector(7 downto 0)
   );
-end wbp_mux_rec;
+end xwbp_mux;
 
-architecture behaviour of wbp_mux_rec is
+architecture behaviour of xwbp_mux is
 
   component wbp_mux
     generic(
@@ -520,7 +534,8 @@ architecture behaviour of wbp_mux_rec is
       ext_wbm_stb_o  : out std_logic;
       ext_wbm_ack_i  : in  std_logic;
       ext_wbm_err_i  : in  std_logic;
-      ext_wbm_stall_i: in  std_logic
+      ext_wbm_stall_i: in  std_logic;
+      class_core_i : in std_logic_vector(7 downto 0)
     );
   end component;
 
@@ -536,59 +551,64 @@ begin
         clk_sys_i       => clk_sys_i,
         rst_n_i         => rst_n_i,
                        
-        ep_wbs_adr_i    => ep_wbs_i.adr,
-        ep_wbs_dat_i    => ep_wbs_i.dat,
-        ep_wbs_sel_i    => ep_wbs_i.sel,
-        ep_wbs_cyc_i    => ep_wbs_i.cyc,
-        ep_wbs_stb_i    => ep_wbs_i.stb,
-        ep_wbs_ack_o    => ep_wbs_o.ack,
-        ep_wbs_err_o    => ep_wbs_o.err,
-        ep_wbs_stall_o  => ep_wbs_o.stall,
+        ep_wbs_adr_i    => ep_snk_i.adr,
+        ep_wbs_dat_i    => ep_snk_i.dat,
+        ep_wbs_sel_i    => ep_snk_i.sel,
+        ep_wbs_cyc_i    => ep_snk_i.cyc,
+        ep_wbs_stb_i    => ep_snk_i.stb,
+        ep_wbs_ack_o    => ep_snk_o.ack,
+        ep_wbs_err_o    => ep_snk_o.err,
+        ep_wbs_stall_o  => ep_snk_o.stall,
         
-        ep_wbm_adr_o    => ep_wbm_o.adr,
-        ep_wbm_dat_o    => ep_wbm_o.dat,
-        ep_wbm_sel_o    => ep_wbm_o.sel,
-        ep_wbm_cyc_o    => ep_wbm_o.cyc,
-        ep_wbm_stb_o    => ep_wbm_o.stb,
-        ep_wbm_ack_i    => ep_wbm_i.ack,
-        ep_wbm_err_i    => ep_wbm_i.err,
-        ep_wbm_stall_i  => ep_wbm_i.stall,
+        ep_wbm_adr_o    => ep_src_o.adr,
+        ep_wbm_dat_o    => ep_src_o.dat,
+        ep_wbm_sel_o    => ep_src_o.sel,
+        ep_wbm_cyc_o    => ep_src_o.cyc,
+        ep_wbm_stb_o    => ep_src_o.stb,
+        ep_wbm_ack_i    => ep_src_i.ack,
+        ep_wbm_err_i    => ep_src_i.err,
+        ep_wbm_stall_i  => ep_src_i.stall,
                        
-        ptp_wbs_adr_i   => ptp_wbs_i.adr,
-        ptp_wbs_dat_i   => ptp_wbs_i.dat,
-        ptp_wbs_sel_i   => ptp_wbs_i.sel,
-        ptp_wbs_cyc_i   => ptp_wbs_i.cyc,
-        ptp_wbs_stb_i   => ptp_wbs_i.stb,
-        ptp_wbs_ack_o   => ptp_wbs_o.ack,
-        ptp_wbs_err_o   => ptp_wbs_o.err,
-        ptp_wbs_stall_o => ptp_wbs_o.stall,
+        ptp_wbs_adr_i   => ptp_snk_i.adr,
+        ptp_wbs_dat_i   => ptp_snk_i.dat,
+        ptp_wbs_sel_i   => ptp_snk_i.sel,
+        ptp_wbs_cyc_i   => ptp_snk_i.cyc,
+        ptp_wbs_stb_i   => ptp_snk_i.stb,
+        ptp_wbs_ack_o   => ptp_snk_o.ack,
+        ptp_wbs_err_o   => ptp_snk_o.err,
+        ptp_wbs_stall_o => ptp_snk_o.stall,
                        
-        ptp_wbm_adr_o   => ptp_wbm_o.adr, 
-        ptp_wbm_dat_o   => ptp_wbm_o.dat,
-        ptp_wbm_sel_o   => ptp_wbm_o.sel,
-        ptp_wbm_cyc_o   => ptp_wbm_o.cyc,
-        ptp_wbm_stb_o   => ptp_wbm_o.stb,
-        ptp_wbm_ack_i   => ptp_wbm_i.ack,
-        ptp_wbm_err_i   => ptp_wbm_i.err,
-        ptp_wbm_stall_i => ptp_wbm_i.stall,
+        ptp_wbm_adr_o   => ptp_src_o.adr, 
+        ptp_wbm_dat_o   => ptp_src_o.dat,
+        ptp_wbm_sel_o   => ptp_src_o.sel,
+        ptp_wbm_cyc_o   => ptp_src_o.cyc,
+        ptp_wbm_stb_o   => ptp_src_o.stb,
+        ptp_wbm_ack_i   => ptp_src_i.ack,
+        ptp_wbm_err_i   => ptp_src_i.err,
+        ptp_wbm_stall_i => ptp_src_i.stall,
                        
-        ext_wbs_adr_i   => ext_wbs_i.adr, 
-        ext_wbs_dat_i   => ext_wbs_i.dat,
-        ext_wbs_sel_i   => ext_wbs_i.sel,
-        ext_wbs_cyc_i   => ext_wbs_i.cyc,
-        ext_wbs_stb_i   => ext_wbs_i.stb,
-        ext_wbs_ack_o   => ext_wbs_o.ack,
-        ext_wbs_err_o   => ext_wbs_o.err,
-        ext_wbs_stall_o => ext_wbs_o.stall,
+        ext_wbs_adr_i   => ext_snk_i.adr, 
+        ext_wbs_dat_i   => ext_snk_i.dat,
+        ext_wbs_sel_i   => ext_snk_i.sel,
+        ext_wbs_cyc_i   => ext_snk_i.cyc,
+        ext_wbs_stb_i   => ext_snk_i.stb,
+        ext_wbs_ack_o   => ext_snk_o.ack,
+        ext_wbs_err_o   => ext_snk_o.err,
+        ext_wbs_stall_o => ext_snk_o.stall,
         
-        ext_wbm_adr_o   => ext_wbm_o.adr, 
-        ext_wbm_dat_o   => ext_wbm_o.dat,
-        ext_wbm_sel_o   => ext_wbm_o.sel,
-        ext_wbm_cyc_o   => ext_wbm_o.cyc,
-        ext_wbm_stb_o   => ext_wbm_o.stb,
-        ext_wbm_ack_i   => ext_wbm_i.ack,
-        ext_wbm_err_i   => ext_wbm_i.err,
-        ext_wbm_stall_i => ext_wbm_i.stall
+        ext_wbm_adr_o   => ext_src_o.adr, 
+        ext_wbm_dat_o   => ext_src_o.dat,
+        ext_wbm_sel_o   => ext_src_o.sel,
+        ext_wbm_cyc_o   => ext_src_o.cyc,
+        ext_wbm_stb_o   => ext_src_o.stb,
+        ext_wbm_ack_i   => ext_src_i.ack,
+        ext_wbm_err_i   => ext_src_i.err,
+        ext_wbm_stall_i => ext_src_i.stall,
+        class_core_i=> class_core_i
       );
 
+  ext_src_o.we <= '1';
+  ptp_src_o.we <= '1';
+  ep_src_o.we <= '1';
+  
 end behaviour;
