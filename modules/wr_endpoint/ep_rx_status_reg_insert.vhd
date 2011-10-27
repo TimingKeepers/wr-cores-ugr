@@ -39,20 +39,73 @@ architecture rtl of ep_rx_status_reg_insert is
   signal embed_status : std_logic;
   signal sreg         : t_wrf_status_reg;
   signal state : t_state;
+  signal src_fab_out : t_ep_internal_fabric;
+  
 
+ component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
+
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector (35 downto 0));
+  end component;
+
+  signal CONTROL : std_logic_vector(35 downto 0);
+  signal CLK     : std_logic;
+  signal TRIG0   : std_logic_vector(31 downto 0);
+  signal TRIG1   : std_logic_vector(31 downto 0);
+  signal TRIG2   : std_logic_vector(31 downto 0);
+  signal TRIG3   : std_logic_vector(31 downto 0);
+  
 begin  -- rtl
 
+  -- chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
+
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
+
+  -- trig3(1)<=src_fab_out.dvalid;
+  -- trig3(2)<=src_fab_out.sof;
+  -- trig3(3)<=src_fab_out.eof;
+  -- trig3(4)<=src_fab_out.error;
+  -- trig3(31 downto 16) <= src_fab_out.data;
+  -- trig3(5) <= embed_status;
+  -- trig3(7 downto 6) <= src_fab_out.addr;
+  -- trig3(8) <= pfilter_done_i;
+  -- trig3(9) <= ematch_done_i;
+  -- trig3(10) <=pfilter_drop_i;
+  -- trig3(11)<=ematch_is_pause_i;
+  -- trig3(12) <= force_error;
+  
+   
   embed_status <= '1' when (state = GEN_STATUS ) else '0';
   snk_dreq_o     <= src_dreq_i and dreq_mask;
-  src_fab_o.data <= f_marshall_wrf_status(sreg) when (embed_status = '1') else snk_fab_i.data;
-  src_fab_o.addr <= c_WRF_STATUS                when (embed_status = '1') else snk_fab_i.addr;
+  src_fab_out.data <= f_marshall_wrf_status(sreg) when (embed_status = '1') else snk_fab_i.data;
+  src_fab_out.addr <= c_WRF_STATUS                when (embed_status = '1') else snk_fab_i.addr;
 
-  src_fab_o.sof    <= snk_fab_i.sof;
-  src_fab_o.eof    <= snk_fab_i.eof;
-  src_fab_o.error  <= snk_fab_i.error or force_error;
-  src_fab_o.bytesel <= snk_fab_i.bytesel;
-  src_fab_o.dvalid <= snk_fab_i.dvalid or (embed_status and src_dreq_i);
+  src_fab_out.sof    <= snk_fab_i.sof;
+  src_fab_out.eof    <= snk_fab_i.eof;
+  src_fab_out.error  <= snk_fab_i.error or force_error;
+  src_fab_out.bytesel <= snk_fab_i.bytesel;
+  src_fab_out.dvalid <= snk_fab_i.dvalid or (embed_status and src_dreq_i);
 
+   src_fab_o <=src_fab_out;
+   
   p_gen_status : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
