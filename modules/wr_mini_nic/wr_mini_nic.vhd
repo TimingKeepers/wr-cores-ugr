@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2011-10-25
+-- Last update: 2011-10-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -228,14 +228,8 @@ architecture behavioral of wr_mini_nic is
   signal nrx_oob_reg : std_logic_vector(15 downto 0);
 
   --STATUS Reg for RX path
-  signal nrx_status_reg : std_logic_vector(15 downto 0);
-  alias nrx_status_class is nrx_status_reg(7 downto 0);
-  alias nrx_status_tagme is nrx_status_reg(8);
-  alias nrx_status_err is nrx_status_reg(9);
-  alias nrx_status_crc is nrx_status_reg(10);
-  alias nrx_status_smac is nrx_status_reg(11);
-  alias nrx_status_hp is nrx_status_reg(12);
-
+  signal nrx_status_reg : t_wrf_status_reg;
+    
 
   signal nrx_error       : std_logic;
   signal nrx_mem_a_saved : unsigned(g_memsize_log2-1 downto 0);
@@ -248,6 +242,7 @@ architecture behavioral of wr_mini_nic is
   signal nrx_valid : std_logic;
   signal nrx_done : std_logic;
   signal nrx_drop, nrx_stat_error : std_logic;
+  signal nrx_class : std_logic_vector(7 downto 0);
   
 -------------------------------------------------------------------------------
 -- Classic Wishbone slave signals
@@ -291,8 +286,7 @@ begin  -- behavioral
 
   mem_arb_tx <= not mem_arb_rx;
   mem_addr_o <= std_logic_vector(ntx_mem_a) when mem_arb_rx = '0' else std_logic_vector(nrx_mem_a);
-  mem_data_o <= (others => '0')             when nrx_mux_d = '0'
-                else nrx_mem_d;
+  mem_data_o <= nrx_mem_d;
   ntx_mem_d <= mem_data_i;
   mem_wr_o  <= nrx_mem_wr when mem_arb_rx = '1' else '0';
 
@@ -588,12 +582,13 @@ begin  -- behavioral
 -- RX Path (Fabric ->  Host)
 -------------------------------------------------------------------------------  
 
+  nrx_status_reg <= f_unmarshall_wrf_status(snk_dat_i);
 
   nrx_valid <= '1' when snk_cyc_i = '1' and snk_stall_int = '0' and snk_stb_i = '1' and
                (snk_adr_i = c_WRF_DATA or snk_adr_i = c_WRF_OOB) else '0';
 
   nrx_stat_error <= '1' when snk_cyc_i = '1' and snk_stall_int = '0' and snk_stb_i = '1' and
-               (snk_adr_i = c_WRF_STATUS) and nrx_status_err = '1' else '0'; 
+               (snk_adr_i = c_WRF_STATUS) and nrx_status_reg.error = '1' else '0'; 
   
  p_rx_fsm : process(clk_sys_i, rst_n_i)
   begin
@@ -705,6 +700,10 @@ begin  -- behavioral
               nrx_mem_wr <= '0';
               snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
 
+              if(snk_stb_i = '1' and snk_cyc_i = '1' and snk_stall_int = '0' and snk_we_i = '1' and snk_adr_i = c_WRF_STATUS) then
+                nrx_class <= nrx_status_reg.match_class;
+              end if;
+              
               -- check if we have enough space in the buffer
               if(nrx_avail = to_unsigned(0, nrx_avail'length)) then
                 nrx_buf_full <= '1';
@@ -765,6 +764,7 @@ begin  -- behavioral
                     nrx_has_oob <= '1';
                   end if;
 
+                  
                   nrx_toggle <= not nrx_toggle;
                 end if;
               end if;
@@ -791,6 +791,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_RESYNC =>
+              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
 
               -- check for error/abort conditions, they may appear even when
               -- the fabric is not accepting the data (tx_dreq_o = 0)
@@ -811,6 +812,8 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_FLUSH =>
+              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
+
               nrx_mem_wr <= '1';
               if(mem_arb_rx = '0') then
                 nrx_avail <= nrx_avail - 1;
@@ -825,6 +828,8 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_UPDATE_DESC =>
+              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
+                            
               if(mem_arb_rx = '0') then
 
 
@@ -840,7 +845,8 @@ begin  -- behavioral
                 nrx_mem_d(31)                         <= '1';
                 nrx_mem_d(30)                         <= nrx_error;
                 nrx_mem_d(29)                         <= nrx_has_oob;
-                nrx_mem_d(28 downto g_memsize_log2+1) <= (others => '0');
+--                nrx_mem_d(28 downto g_memsize_log2+1) <= (others => '0');
+                nrx_mem_d(28 downto 21) <= nrx_class;
                 nrx_mem_d(g_memsize_log2 downto 1)    <= std_logic_vector(nrx_size);
                 nrx_mem_d(0)                          <= nrx_bytesel;
 
