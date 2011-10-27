@@ -174,7 +174,7 @@ begin  -- behavioral
 
   p_gen_done : process(clk_rx_i)
   begin
-    if rising_edge(clk_sys_i) then
+    if rising_edge(clk_rx_i) then
       if rst_n_rx_i = '0' or snk_fab_i.sof = '1' then
         done_int <= '0';
       else
