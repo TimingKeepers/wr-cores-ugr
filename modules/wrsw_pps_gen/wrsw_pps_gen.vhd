@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2011-10-26
+-- Last update: 2011-10-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -38,16 +38,16 @@ entity wrsw_pps_gen is
     clk_ref_i : in std_logic;
     clk_sys_i : in std_logic;
 
-    rst_n_i   : in std_logic;
+    rst_n_i : in std_logic;
 
-    wb_addr_i : in  std_logic_vector(3 downto 0);
-    wb_data_i : in  std_logic_vector(31 downto 0);
-    wb_data_o : out std_logic_vector(31 downto 0);
-    wb_cyc_i  : in  std_logic;
-    wb_sel_i  : in  std_logic_vector(3 downto 0);
-    wb_stb_i  : in  std_logic;
-    wb_we_i   : in  std_logic;
-    wb_ack_o  : out std_logic;
+    wb_addr_i  : in  std_logic_vector(3 downto 0);
+    wb_data_i  : in  std_logic_vector(31 downto 0);
+    wb_data_o  : out std_logic_vector(31 downto 0);
+    wb_cyc_i   : in  std_logic;
+    wb_sel_i   : in  std_logic_vector(3 downto 0);
+    wb_stb_i   : in  std_logic;
+    wb_we_i    : in  std_logic;
+    wb_ack_o   : out std_logic;
     wb_stall_o : out std_logic;
 
     pps_in_i : in std_logic;
@@ -56,10 +56,10 @@ entity wrsw_pps_gen is
     pps_csync_o : out std_logic;
     pps_out_o   : out std_logic;
 
-    pps_val_o   : out std_logic;
-    tc_utc_o    : out std_logic_vector(39 downto 0);
-    tc_nsec_o   : out std_logic_vector(27 downto 0);
-    tc_val_o    : out std_logic
+    pps_valid_o     : out std_logic;
+    tm_utc_o        : out std_logic_vector(39 downto 0);
+    tm_cycles_o     : out std_logic_vector(27 downto 0);
+    tm_time_valid_o : out std_logic
     );
 end wrsw_pps_gen;
 
@@ -99,8 +99,8 @@ architecture behavioral of wrsw_pps_gen is
       ppsg_escr_sync_o       : out std_logic;
       ppsg_escr_sync_i       : in  std_logic;
       ppsg_escr_sync_load_o  : out std_logic;
-      ppsg_escr_pps_val_o    : out std_logic;
-      ppsg_escr_tc_val_o     : out std_logic);
+      ppsg_escr_pps_valid_o  : out std_logic;
+      ppsg_escr_tm_valid_o   : out std_logic);
   end component;
 
 
@@ -119,17 +119,17 @@ architecture behavioral of wrsw_pps_gen is
   signal ppsg_cntr_utclo : std_logic_vector(31 downto 0);
   signal ppsg_cntr_utchi : std_logic_vector(7 downto 0);
 
-  signal ppsg_adj_nsec     : std_logic_vector(27 downto 0);
-  signal ppsg_adj_nsec_wr  : std_logic;
-  signal ppsg_adj_utclo    : std_logic_vector(31 downto 0);
-  signal ppsg_adj_utclo_wr : std_logic;
-  signal ppsg_adj_utchi    : std_logic_vector(7 downto 0);
-  signal ppsg_adj_utchi_wr : std_logic; signal ppsg_escr_sync_load  : std_logic;
-  signal ppsg_escr_sync_in   : std_logic;
+  signal ppsg_adj_nsec      : std_logic_vector(27 downto 0);
+  signal ppsg_adj_nsec_wr   : std_logic;
+  signal ppsg_adj_utclo     : std_logic_vector(31 downto 0);
+  signal ppsg_adj_utclo_wr  : std_logic;
+  signal ppsg_adj_utchi     : std_logic_vector(7 downto 0);
+  signal ppsg_adj_utchi_wr  : std_logic; signal ppsg_escr_sync_load : std_logic;
+  signal ppsg_escr_sync_in  : std_logic;
   signal ppsg_escr_sync_out : std_logic;
 
-  signal ppsg_escr_pps_val : std_logic;
-  signal ppsg_escr_tc_val  : std_logic;
+  signal ppsg_escr_pps_valid : std_logic;
+  signal ppsg_escr_tm_valid  : std_logic;
 
   signal cntr_nsec : unsigned (27 downto 0);
   signal cntr_utc  : unsigned (39 downto 0);
@@ -155,13 +155,13 @@ architecture behavioral of wrsw_pps_gen is
   signal ext_sync_p       : std_logic;
 
   signal resized_addr : std_logic_vector(c_wishbone_address_width-1 downto 0);
-  signal wb_out : t_wishbone_slave_out;
-  signal wb_in  : t_wishbone_slave_in;
+  signal wb_out       : t_wishbone_slave_out;
+  signal wb_in        : t_wishbone_slave_in;
   
 begin  -- behavioral
 
-  resized_addr(3 downto 0) <= wb_addr_i;
-  resized_addr(c_wishbone_address_width-1 downto 4) <= (others=>'0');
+  resized_addr(3 downto 0)                          <= wb_addr_i;
+  resized_addr(c_wishbone_address_width-1 downto 4) <= (others => '0');
 
   U_Adapter : wb_slave_adapter
     generic map (
@@ -350,38 +350,38 @@ begin  -- behavioral
 
   Uwb_slave : pps_gen_wb
     port map (
-      rst_n_i                 => rst_n_i,
-      wb_clk_i                => clk_sys_i,
-      wb_addr_i               => wb_in.adr(2 downto 0),
-      wb_data_i               => wb_in.dat,
-      wb_data_o               => wb_out.dat,
-      wb_cyc_i                => wb_in.cyc,
-      wb_sel_i                => wb_in.sel,
-      wb_stb_i                => wb_in.stb,
-      wb_we_i                 => wb_in.we,
-      wb_ack_o                => wb_out.ack,
-      refclk_i                => clk_ref_i,
-      ppsg_cr_cnt_rst_o       => ppsg_cr_cnt_rst,
-      ppsg_cr_cnt_en_o        => ppsg_cr_cnt_en,
-      ppsg_cr_cnt_adj_o       => ppsg_cr_cnt_adj_o,
-      ppsg_cr_cnt_adj_i       => ppsg_cr_cnt_adj_i,
-      ppsg_cr_cnt_adj_load_o  => ppsg_cr_cnt_adj_load,
-      ppsg_escr_sync_o      => ppsg_escr_sync_out,
-      ppsg_escr_sync_i      => ppsg_escr_sync_in,
-      ppsg_escr_sync_load_o => ppsg_escr_sync_load,
-      ppsg_cr_cnt_set_o       => ppsg_cr_cnt_set_p,
-      ppsg_cr_pwidth_o        => ppsg_cr_pwidth,
-      ppsg_cntr_nsec_i        => ppsg_cntr_nsec,
-      ppsg_cntr_utclo_i       => ppsg_cntr_utclo,
-      ppsg_cntr_utchi_i       => ppsg_cntr_utchi,
-      ppsg_adj_nsec_o         => ppsg_adj_nsec,
-      ppsg_adj_nsec_wr_o      => ppsg_adj_nsec_wr,
-      ppsg_adj_utclo_o        => ppsg_adj_utclo,
-      ppsg_adj_utclo_wr_o     => ppsg_adj_utclo_wr,
-      ppsg_adj_utchi_o        => ppsg_adj_utchi,
-      ppsg_adj_utchi_wr_o     => ppsg_adj_utchi_wr,
-      ppsg_escr_pps_val_o     => ppsg_escr_pps_val,
-      ppsg_escr_tc_val_o      => ppsg_escr_tc_val);
+      rst_n_i                => rst_n_i,
+      wb_clk_i               => clk_sys_i,
+      wb_addr_i              => wb_in.adr(2 downto 0),
+      wb_data_i              => wb_in.dat,
+      wb_data_o              => wb_out.dat,
+      wb_cyc_i               => wb_in.cyc,
+      wb_sel_i               => wb_in.sel,
+      wb_stb_i               => wb_in.stb,
+      wb_we_i                => wb_in.we,
+      wb_ack_o               => wb_out.ack,
+      refclk_i               => clk_ref_i,
+      ppsg_cr_cnt_rst_o      => ppsg_cr_cnt_rst,
+      ppsg_cr_cnt_en_o       => ppsg_cr_cnt_en,
+      ppsg_cr_cnt_adj_o      => ppsg_cr_cnt_adj_o,
+      ppsg_cr_cnt_adj_i      => ppsg_cr_cnt_adj_i,
+      ppsg_cr_cnt_adj_load_o => ppsg_cr_cnt_adj_load,
+      ppsg_escr_sync_o       => ppsg_escr_sync_out,
+      ppsg_escr_sync_i       => ppsg_escr_sync_in,
+      ppsg_escr_sync_load_o  => ppsg_escr_sync_load,
+      ppsg_cr_cnt_set_o      => ppsg_cr_cnt_set_p,
+      ppsg_cr_pwidth_o       => ppsg_cr_pwidth,
+      ppsg_cntr_nsec_i       => ppsg_cntr_nsec,
+      ppsg_cntr_utclo_i      => ppsg_cntr_utclo,
+      ppsg_cntr_utchi_i      => ppsg_cntr_utchi,
+      ppsg_adj_nsec_o        => ppsg_adj_nsec,
+      ppsg_adj_nsec_wr_o     => ppsg_adj_nsec_wr,
+      ppsg_adj_utclo_o       => ppsg_adj_utclo,
+      ppsg_adj_utclo_wr_o    => ppsg_adj_utclo_wr,
+      ppsg_adj_utchi_o       => ppsg_adj_utchi,
+      ppsg_adj_utchi_wr_o    => ppsg_adj_utchi_wr,
+      ppsg_escr_pps_valid_o  => ppsg_escr_pps_valid,
+      ppsg_escr_tm_valid_o   => ppsg_escr_tm_valid);
 
   -- start the adjustment upon write of 1 to CNT_ADJ bit
   cntr_adjust_p <= ppsg_cr_cnt_adj_load and ppsg_cr_cnt_adj_o;
@@ -404,18 +404,18 @@ begin  -- behavioral
   begin
     if rising_edge(clk_ref_i) then
       if(rst_synced_refclk = '0') then
-        ext_sync_p       <= '0';
-        sync_in_progress <= '0';
+        ext_sync_p        <= '0';
+        sync_in_progress  <= '0';
         ppsg_escr_sync_in <= '0';
       else
         if(ppsg_escr_sync_load = '1' and ppsg_escr_sync_out = '1') then
-          sync_in_progress     <= '1';
+          sync_in_progress  <= '1';
           ppsg_escr_sync_in <= '0';
         end if;
 
         if(sync_in_progress = '1' and pps_in_p = '1') then
-          ext_sync_p           <= '1';
-          sync_in_progress     <= '0';
+          ext_sync_p        <= '1';
+          sync_in_progress  <= '0';
           ppsg_escr_sync_in <= '1';
         else
           ext_sync_p <= '0';
@@ -424,9 +424,9 @@ begin  -- behavioral
     end if;
   end process;
 
-  tc_utc_o  <= std_logic_vector(cntr_utc);
-  tc_nsec_o <= std_logic_vector(cntr_nsec);
-  tc_val_o  <= ppsg_escr_tc_val;
-  pps_val_o <= ppsg_escr_pps_val;
+  tm_utc_o        <= std_logic_vector(cntr_utc);
+  tm_cycles_o     <= std_logic_vector(cntr_nsec);
+  tm_time_valid_o <= ppsg_escr_tm_valid;
+  pps_valid_o     <= ppsg_escr_pps_valid;
   
 end behavioral;

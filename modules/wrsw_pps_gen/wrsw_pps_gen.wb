@@ -174,7 +174,7 @@ peripheral {
          name = "PPS output valid";
          description = "write 1: PPS output provides reliable 1-PPS signal\
                         write 0: PPS output is invalid";
-         prefix = "PPS_VAL";
+         prefix = "PPS_VALID";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -182,10 +182,10 @@ peripheral {
       };
 
       field {
-         name = "Timecode output(UTC+nanosec) valid";
+         name = "Timecode output(UTC+cycles) valid";
          description = "write 1: Timecode output provides valid time\
                         write 0: Timecode output does not provide valid time";
-         prefix = "TC_VAL";
+         prefix = "TM_VALID";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
