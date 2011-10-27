@@ -127,6 +127,7 @@ begin  -- behavioral
       else
         if(snk_fab_i.sof = '1') then
           byte_cntr <= (others => '0');
+          is_runt <= '1';
         end if;
 
         if(snk_fab_i.dvalid = '1') then
@@ -137,9 +138,7 @@ begin  -- behavioral
           end if;
         end if;
 
-        if(byte_cntr < to_unsigned(c_MIN_FRAME_SIZE, byte_cntr'length)) then
-          is_runt <= '1';
-        else
+        if(byte_cntr = to_unsigned(c_MIN_FRAME_SIZE - 2, byte_cntr'length) and snk_fab_i.dvalid= '1' and snk_fab_i.bytesel = '0') then
           is_runt <= '0';
         end if;
 
