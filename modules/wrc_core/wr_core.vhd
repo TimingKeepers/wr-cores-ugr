@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-25
+-- Last update: 2011-10-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -60,9 +60,9 @@ entity wr_core is
     clk_ref_i : in std_logic;
 
     -- Aux clock (i.e. the FMC clock)
-    clk_aux_i: in std_logic;
-    
-    
+    clk_aux_i : in std_logic;
+
+
     rst_n_i : in std_logic;
 
 
@@ -123,6 +123,51 @@ entity wr_core is
     wb_stb_i  : in  std_logic;
     wb_ack_o  : out std_logic;
 
+-------------------------------------------------------------------------------
+-- External Fabric I/F
+-------------------------------------------------------------------------------    
+    ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
+    ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
+    ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
+    ext_snk_cyc_i   : in  std_logic                     := '0';
+    ext_snk_we_i    : in  std_logic                     := '0';
+    ext_snk_stb_i   : in  std_logic                     := '0';
+    ext_snk_ack_o   : out std_logic;
+    ext_snk_err_o   : out std_logic;
+    ext_snk_stall_o : out std_logic;
+
+
+    ext_src_adr_o   : out std_logic_vector(1 downto 0);
+    ext_src_dat_o   : out std_logic_vector(15 downto 0);
+    ext_src_sel_o   : out std_logic_vector(1 downto 0);
+    ext_src_cyc_o   : out std_logic;
+    ext_src_stb_o   : out std_logic;
+    ext_src_we_o    : out std_logic;
+    ext_src_ack_i   : in  std_logic := '1';
+    ext_src_err_i   : in  std_logic := '0';
+    ext_src_stall_i : in  std_logic := '0';
+
+-------------------------------------------------------------------------------
+-- Timecode/Servo Control
+-------------------------------------------------------------------------------
+
+    
+    -- DAC Control
+    tm_dac_value_o: out std_logic_vector(23 downto 0);
+    tm_dac_wr_o: out std_logic;
+
+    -- Aux clock lock enable
+    tm_clk_aux_lock_en_i: in std_logic;
+
+    -- Aux clock locked flag
+    tm_clk_aux_locked_o: out std_logic;
+
+    -- Timecode output
+    tm_time_valid_o: out std_logic;
+    tm_utc_o: out std_logic_vector(31 downto 0);
+    tm_cycles_o: out std_logic_vector(27 downto 0);
+    
+    
     --DEBUG
     genrest_n : out std_logic;
 
@@ -155,23 +200,6 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --Endpoint
   -----------------------------------------------------------------------------
-  signal s_ep_rx_data_o      : std_logic_vector(15 downto 0);
-  signal s_ep_rx_ctrl_o      : std_logic_vector(4 - 1 downto 0);
-  signal s_ep_rx_bytesel_o   : std_logic;
-  signal s_ep_rx_sof_p1_o    : std_logic;
-  signal s_ep_rx_eof_p1_o    : std_logic;
-  signal s_ep_rx_dreq_i      : std_logic;
-  signal s_ep_rx_valid_o     : std_logic;
-  signal s_ep_rx_rerror_p1_o : std_logic;
-
-  signal s_ep_tx_data_i      : std_logic_vector(15 downto 0);
-  signal s_ep_tx_ctrl_i      : std_logic_vector(4 - 1 downto 0);
-  signal s_ep_tx_bytesel_i   : std_logic;
-  signal s_ep_tx_sof_p1_i    : std_logic;
-  signal s_ep_tx_eof_p1_i    : std_logic;
-  signal s_ep_tx_dreq_o      : std_logic;
-  signal s_ep_tx_valid_i     : std_logic;
-  signal s_ep_tx_terror_p1_o : std_logic;
 
   signal txtsu_port_id_o  : std_logic_vector(4 downto 0);
   signal txtsu_frame_id_o : std_logic_vector(16 -1 downto 0);
@@ -182,20 +210,6 @@ architecture struct of wr_core is
   signal ep_wb_i : t_wb_i;
   signal ep_wb_o : t_wb_o;
 
-  -----------------------------------------------------------------------------
-  --GTP
-  -----------------------------------------------------------------------------
-  signal s_gtp_tx_data_i      : std_logic_vector(7 downto 0);
-  signal s_gtp_tx_k_i         : std_logic;
-  signal s_gtp_tx_disparity_o : std_logic;
-  signal s_gtp_tx_enc_err_o   : std_logic;
-  signal s_gtp_rx_data_o      : std_logic_vector(7 downto 0);
-  signal s_gtp_rx_rbclk_o     : std_logic;
-  signal s_gtp_rx_k_o         : std_logic;
-  signal s_gtp_rx_enc_err_o   : std_logic;
-  signal s_gtp_rx_bitslide_o  : std_logic_vector(3 downto 0);
-  signal s_gtp_rst_i          : std_logic;
-  signal s_gtp_loopen_i       : std_logic;
 
   constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
 
@@ -273,17 +287,9 @@ architecture struct of wr_core is
   --         For SPEC          --
   --===========================--
 
-  signal rst_wb_addr_o : std_logic_vector(17 downto 0);
-  signal rst_wb_data_i : std_logic_vector(31 downto 0);
-  signal rst_wb_data_o : std_logic_vector(31 downto 0);
-  signal rst_wb_sel_o  : std_logic_vector(3 downto 0);
-  signal rst_wb_we_o   : std_logic;
-  signal rst_wb_cyc_o  : std_logic;
-  signal rst_wb_stb_o  : std_logic;
-  signal rst_wb_ack_i  : std_logic;
-  signal genrst_n      : std_logic;
-  signal rst_wb_i      : t_wb_i;
-  signal rst_wb_o      : t_wb_o;
+  signal genrst_n : std_logic;
+  signal rst_wb_i : t_wb_i;
+  signal rst_wb_o : t_wb_o;
 
   signal hpll_auxout  : std_logic_vector(2 downto 0);
   signal dmpll_auxout : std_logic_vector(2 downto 0);
@@ -301,19 +307,70 @@ architecture struct of wr_core is
   signal trace_eret   : std_logic;
   signal trace_valid  : std_logic;
 
-  signal ep_wb_in     : t_wishbone_slave_in;
-  signal ep_wb_out    : t_wishbone_slave_out;
-  
+  signal ep_wb_in  : t_wishbone_slave_in;
+  signal ep_wb_out : t_wishbone_slave_out;
+
   signal minic_wb_in  : t_wishbone_slave_in;
   signal minic_wb_out : t_wishbone_slave_out;
 
-  signal ep_src_out   : t_wrf_source_out;
-  signal ep_src_in    : t_wrf_source_in;
-  signal ep_snk_out   : t_wrf_sink_out;
-  signal ep_snk_in    : t_wrf_sink_in;
-  
+  signal ep_src_out : t_wrf_source_out;
+  signal ep_src_in  : t_wrf_source_in;
+  signal ep_snk_out : t_wrf_sink_out;
+  signal ep_snk_in  : t_wrf_sink_in;
+
+  signal minic_src_out : t_wrf_source_out;
+  signal minic_src_in  : t_wrf_source_in;
+  signal minic_snk_out : t_wrf_sink_out;
+  signal minic_snk_in  : t_wrf_sink_in;
+
+
+  signal ext_src_out : t_wrf_source_out;
+  signal ext_src_in  : t_wrf_source_in;
+  signal ext_snk_out : t_wrf_sink_out;
+  signal ext_snk_in  : t_wrf_sink_in;
+
   signal dummy : std_logic_vector(31 downto 0);
-  
+
+  component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
+
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector (35 downto 0));
+  end component;
+
+  component xwbp_mux
+    port (
+      clk_sys_i    : in  std_logic;
+      rst_n_i      : in  std_logic;
+      ep_src_o     : out t_wrf_source_out;
+      ep_src_i     : in  t_wrf_source_in;
+      ep_snk_o     : out t_wrf_sink_out;
+      ep_snk_i     : in  t_wrf_sink_in;
+      ptp_src_o    : out t_wrf_source_out;
+      ptp_src_i    : in  t_wrf_source_in;
+      ptp_snk_o    : out t_wrf_sink_out;
+      ptp_snk_i    : in  t_wrf_sink_in;
+      ext_src_o    : out t_wrf_source_out;
+      ext_src_i    : in  t_wrf_source_in;
+      ext_snk_o    : out t_wrf_sink_out;
+      ext_snk_i    : in  t_wrf_sink_in;
+      class_core_i : in  std_logic_vector(7 downto 0));
+  end component;
+
+  signal CONTROL : std_logic_vector(35 downto 0);
+  signal CLK     : std_logic;
+  signal TRIG0   : std_logic_vector(31 downto 0);
+  signal TRIG1   : std_logic_vector(31 downto 0);
+  signal TRIG2   : std_logic_vector(31 downto 0);
+  signal TRIG3   : std_logic_vector(31 downto 0);
 begin
 
   s_rst_n <= genrst_n and rst_n_i;
@@ -322,16 +379,16 @@ begin
   --PPS generator
   -----------------------------------------------------------------------------
 
-  PPS_GEN : wrsw_pps_gen
+  PPS_GEN : wr_pps_gen
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
 
       rst_n_i => s_rst_n,
 
-      wb_addr_i => ppsg_wb_i.addr(3 downto 0),
-      wb_data_i => ppsg_wb_i.data,
-      wb_data_o => ppsg_wb_o.data,
+      wb_adr_i => ppsg_wb_i.addr(4 downto 0),
+      wb_dat_i => ppsg_wb_i.data,
+      wb_dat_o => ppsg_wb_o.data,
       wb_cyc_i  => ppsg_wb_i.cyc,
       wb_sel_i  => ppsg_wb_i.sel,
       wb_stb_i  => ppsg_wb_i.stb,
@@ -355,16 +412,23 @@ begin
       clk_ref_i  => clk_ref_i,
       clk_dmtd_i => clk_dmtd_i,
       clk_rx_i   => phy_rx_rbclk_i,
-      clk_aux_i => clk_aux_i,
+      clk_aux_i  => clk_aux_i,
 
       dac_hpll_data_o  => dac_hpll_data_o,
       dac_hpll_load_o  => dac_hpll_load_p1_o,
+
       dac_dmpll_data_o => dac_dpll_data_o,
       dac_dmpll_load_o => dac_dpll_load_p1_o,
 
-      wb_addr_i => dpll_wb_i.addr(3 downto 0),
-      wb_data_i => dpll_wb_i.data,
-      wb_data_o => dpll_wb_o.data,
+      dac_aux_data_o => tm_dac_value_o,
+      dac_aux_load_o => tm_dac_wr_o,
+
+      clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
+      clk_aux_locked_o => tm_clk_aux_locked_o,
+      
+      wb_adr_i => dpll_wb_i.addr(6 downto 0),
+      wb_dat_i => dpll_wb_i.data,
+      wb_dat_o => dpll_wb_o.data,
       wb_cyc_i  => dpll_wb_i.cyc,
       wb_sel_i  => dpll_wb_i.sel,
       wb_stb_i  => dpll_wb_i.stb,
@@ -394,25 +458,25 @@ begin
       rst_n_i        => s_rst_n,
       pps_csync_p1_i => s_pps_csync,
 
-      phy_rst_o          => phy_rst_o,
-      phy_loopen_o       => phy_loopen_o,
+      phy_rst_o                     => phy_rst_o,
+      phy_loopen_o                  => phy_loopen_o,
 --      phy_enable_o       => phy_enable_o,
 --      phy_syncen_o       => phy_syncen_o,
-      phy_ref_clk_i      => phy_ref_clk_i,
-      phy_tx_data_o(7 downto 0)      => phy_tx_data_o,
-      phy_tx_data_o(15 downto 8) => dummy(7 downto 0),
-      phy_tx_k_o(0)         => phy_tx_k_o,
-      phy_tx_k_o(1) =>dummy(8),
-      phy_tx_disparity_i => phy_tx_disparity_i,
-      phy_tx_enc_err_i   => phy_tx_enc_err_i,
-      phy_rx_data_i(7 downto 0)      => phy_rx_data_i,
-      phy_rx_data_i(15 downto 8) => x"00",
-      phy_rx_clk_i       => phy_rx_rbclk_i,
-      phy_rx_k_i(0)         => phy_rx_k_i,
-      phy_rx_k_i(1) => '0',
-      phy_rx_enc_err_i   => phy_rx_enc_err_i,
-      phy_rx_bitslide_i(3 downto 0)  => phy_rx_bitslide_i,
-      phy_rx_bitslide_i(4) => '0',
+      phy_ref_clk_i                 => phy_ref_clk_i,
+      phy_tx_data_o(7 downto 0)     => phy_tx_data_o,
+      phy_tx_data_o(15 downto 8)    => dummy(7 downto 0),
+      phy_tx_k_o(0)                 => phy_tx_k_o,
+      phy_tx_k_o(1)                 => dummy(8),
+      phy_tx_disparity_i            => phy_tx_disparity_i,
+      phy_tx_enc_err_i              => phy_tx_enc_err_i,
+      phy_rx_data_i(7 downto 0)     => phy_rx_data_i,
+      phy_rx_data_i(15 downto 8)    => x"00",
+      phy_rx_clk_i                  => phy_rx_rbclk_i,
+      phy_rx_k_i(0)                 => phy_rx_k_i,
+      phy_rx_k_i(1)                 => '0',
+      phy_rx_enc_err_i              => phy_rx_enc_err_i,
+      phy_rx_bitslide_i(3 downto 0) => phy_rx_bitslide_i,
+      phy_rx_bitslide_i(4)          => '0',
 
       src_o => ep_src_out,
       src_i => ep_src_in,
@@ -427,14 +491,14 @@ begin
       wb_i             => ep_wb_in,
       wb_o             => ep_wb_out);
 
-  ep_wb_in.cyc <= ep_wb_i.cyc;
-  ep_wb_in.stb <= ep_wb_i.stb;
-  ep_wb_in.we <= ep_wb_i.we;
-  ep_wb_in.sel <= ep_wb_i.sel;
+  ep_wb_in.cyc              <= ep_wb_i.cyc;
+  ep_wb_in.stb              <= ep_wb_i.stb;
+  ep_wb_in.we               <= ep_wb_i.we;
+  ep_wb_in.sel              <= ep_wb_i.sel;
   ep_wb_in.adr(10 downto 0) <= ep_wb_i.addr(10 downto 0);
-  ep_wb_in.dat <= ep_wb_i.data;
-  ep_wb_o.ack <= ep_wb_out.ack;
-  ep_wb_o.data <= ep_wb_out.dat;
+  ep_wb_in.dat              <= ep_wb_i.data;
+  ep_wb_o.ack               <= ep_wb_out.ack;
+  ep_wb_o.data              <= ep_wb_out.dat;
 
   xwr_mini_nic_1 : xwr_mini_nic
     generic map (
@@ -451,10 +515,10 @@ begin
       mem_data_i => s_mnic_mem_data_i,
       mem_wr_o   => s_mnic_mem_wr_o,
 
-      src_o => ep_snk_in,
-      src_i => ep_snk_out,
-      snk_o => ep_src_in,
-      snk_i => ep_src_out,
+      src_o => minic_src_out,
+      src_i => minic_src_in,
+      snk_o => minic_snk_out,
+      snk_i => minic_snk_in,
 
       txtsu_port_id_i  => txtsu_port_id_o,
       txtsu_frame_id_i => txtsu_frame_id_o,
@@ -465,14 +529,14 @@ begin
       wb_i => minic_wb_in,
       wb_o => minic_wb_out);
 
-  minic_wb_in.cyc <= mnic_wb_i.cyc;
-  minic_wb_in.stb <= mnic_wb_i.stb;
-  minic_wb_in.we <= mnic_wb_i.we;
-  minic_wb_in.sel <= mnic_wb_i.sel;
+  minic_wb_in.cyc              <= mnic_wb_i.cyc;
+  minic_wb_in.stb              <= mnic_wb_i.stb;
+  minic_wb_in.we               <= mnic_wb_i.we;
+  minic_wb_in.sel              <= mnic_wb_i.sel;
   minic_wb_in.adr(10 downto 0) <= mnic_wb_i.addr(10 downto 0);
-  minic_wb_in.dat <= mnic_wb_i.data;
-  mnic_wb_o.ack <= minic_wb_out.ack;
-  mnic_wb_o.data <= minic_wb_out.dat;
+  minic_wb_in.dat              <= mnic_wb_i.data;
+  mnic_wb_o.ack                <= minic_wb_out.ack;
+  mnic_wb_o.data               <= minic_wb_out.dat;
 
 
   mnic_wb_irq_o   <= '0';
@@ -666,5 +730,90 @@ begin
   periph_wb_i <= cnx_slave_o(6);
   lm32_jwb_i  <= cnx_slave_o(7);
 
+
+  chipscope_ila_1 : chipscope_ila
+    port map (
+      CONTROL => CONTROL,
+      CLK     => clk_sys_i,
+      TRIG0   => TRIG0,
+      TRIG1   => TRIG1,
+      TRIG2   => TRIG2,
+      TRIG3   => TRIG3);
+
+  chipscope_icon_1 : chipscope_icon
+    port map (
+      CONTROL0 => CONTROL);
+
+  TRIG0(15 downto 0)                            <= ep_src_out.dat;
+  trig0(17 downto 16) <= ep_src_out.adr;
+  trig0(19 downto 18) <= ep_src_out.sel;
+  trig0(20) <= ep_src_out.cyc;
+  trig0(21) <= ep_src_out.stb;
+  trig0(22) <= ep_src_out.we;
+  trig0(23) <= ep_src_in.ack;
+  trig0(24) <= ep_src_in.stall;
+  trig0(26) <= ep_src_in.err;
+
+  TRIG1(15 downto 0)                            <= minic_snk_in.dat;
+  trig1(17 downto 16) <= minic_snk_in.adr;
+  trig1(19 downto 18) <= minic_snk_in.sel;
+  trig1(20) <= minic_snk_in.cyc;
+  trig1(21) <= minic_snk_in.stb;
+  trig1(22) <= minic_snk_in.we;
+  trig1(23) <= minic_snk_out.ack;
+  trig1(24) <= minic_snk_out.stall;
+  trig1(26) <= minic_snk_out.err;
+
+  TRIG2(15 downto 0)                            <= ext_snk_in.dat;
+  trig2(17 downto 16) <= ext_snk_in.adr;
+  trig2(19 downto 18) <= ext_snk_in.sel;
+  trig2(20) <= ext_snk_in.cyc;
+  trig2(21) <= ext_snk_in.stb;
+  trig2(22) <= ext_snk_in.we;
+  trig2(23) <= ext_snk_out.ack;
+  trig2(24) <= ext_snk_out.stall;
+  trig2(26) <= ext_snk_out.err;
+
+    
+
+  U_WBP_Mux : xwbp_mux
+    port map (
+      clk_sys_i    => clk_sys_i,
+      rst_n_i      => rst_n_i,
+      ep_src_o     => ep_snk_in,
+      ep_src_i     => ep_snk_out,
+      ep_snk_o     => ep_src_in,
+      ep_snk_i     => ep_src_out,
+      ptp_src_o    => minic_snk_in,
+      ptp_src_i    => minic_snk_out,
+      ptp_snk_o    => minic_src_in,
+      ptp_snk_i    => minic_src_out,
+      ext_src_o    => ext_src_out,
+      ext_src_i    => ext_src_in,
+      ext_snk_o    => ext_snk_out,
+      ext_snk_i    => ext_snk_in,
+      class_core_i => "00001111");
+
+  ext_src_adr_o <= ext_src_out.adr;
+  ext_src_dat_o <= ext_src_out.dat;
+  ext_src_stb_o <= ext_src_out.stb;
+  ext_src_cyc_o <= ext_src_out.cyc;
+  ext_src_sel_o <= ext_src_out.sel;
+  ext_src_we_o  <= '1';
+
+  ext_src_in.ack   <= ext_src_ack_i;
+  ext_src_in.stall <= ext_src_stall_i;
+  ext_src_in.err   <= ext_src_err_i;
+
+  ext_snk_in.adr <= ext_snk_adr_i;
+  ext_snk_in.dat <= ext_snk_dat_i;
+  ext_snk_in.stb <= ext_snk_stb_i;
+  ext_snk_in.cyc <= ext_snk_cyc_i;
+  ext_snk_in.sel <= ext_snk_sel_i;
+  ext_snk_in.we  <= ext_snk_we_i;
+
+  ext_snk_ack_o   <= ext_snk_out.ack;
+  ext_snk_err_o   <= ext_snk_out.err;
+  ext_snk_stall_o <= ext_snk_out.stall;
 
 end struct;
