@@ -13,7 +13,7 @@ class CSimDrv_Minic;
    `define RX_DESC_VALID(d) ((d) & (1<<31) ? 1 : 0)
    `define RX_DESC_ERROR(d) ((d) & (1<<30) ? 1 : 0)
    `define RX_DESC_HAS_OOB(d)  ((d) & (1<<29) ? 1 : 0)
-   `define RX_DESC_SIZE(d)  (((d) & (1<<0) ? -1 : 0) + (d & 'hfffe))
+   `define RX_DESC_SIZE(d)  (((d) & (1<<0) ? -1 : 0) + (d & 'hffe))
    
    protected CBusAccessor acc_regs, acc_pmem;
    protected uint32_t base_regs, base_pmem;
@@ -126,13 +126,15 @@ class CSimDrv_Minic;
       
       minic_readl(`ADDR_MINIC_EIC_ISR, isr);
 
+    //  $display("RXFrame");
+      
       
       if(! (isr & `MINIC_EIC_ISR_RX))
         return;
 
       acc_pmem.read(rx_head, desc_hdr);
 
-
+      
       
       if(!`RX_DESC_VALID(desc_hdr))
         begin
@@ -140,11 +142,18 @@ class CSimDrv_Minic;
            $stop;
            end
 
-      payload_size  = `RX_DESC_SIZE(desc_hdr);
-      num_words     = (payload_size + 3) >> 2;
-      pbuff         = new [num_words];
+      payload_size    = `RX_DESC_SIZE(desc_hdr);
+      num_words       = (payload_size + 3) >> 2;
+      pbuff           = new [num_words];
+
+   //   $display("NWords %d hdr %x", num_words, desc_hdr);
       
-        
+      
+
+      if(`RX_DESC_HAS_OOB(desc_hdr))
+        payload_size  = payload_size - 6;
+      
+      
       if(!`RX_DESC_ERROR(desc_hdr))
         begin
            for(i=0; i<num_words;i++)

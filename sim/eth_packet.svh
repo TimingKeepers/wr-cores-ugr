@@ -43,6 +43,7 @@ class EthPacket;
    bit error;
 
    bit [15:0] ethertype;
+   bit [7:0] pclass;
    
    vid_t vid;
    pcp_t pcp;

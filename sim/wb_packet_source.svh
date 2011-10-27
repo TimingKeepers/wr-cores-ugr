@@ -27,7 +27,9 @@ class WBPacketSource extends EthPacketSource;
       st[1]  = 1'b0;
       st[2]  = (pkt.has_smac ? 1'b1: 1'b0);
       st[3]  = error;
-      st[15:3] = 0; // FIXME: add packet classes
+      st[15:8] = pkt.pclass; // FIXME: add packet classes
+      st[7:4]= 0;
+      
       return st;
    endfunction // pack_status
 

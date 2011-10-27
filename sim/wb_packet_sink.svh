@@ -35,6 +35,8 @@ class WBPacketSink extends EthPacketSink;
      else begin
         pkt.has_smac  = (stat & 'h4 ? 1'b1 : 1'b0);
         pkt.has_crc   = (stat & 'h8 ? 1'b1 : 1'b0);
+        pkt.pclass    = (stat>>8) & 'hff;
+        
      end
    endtask // decode_status
    

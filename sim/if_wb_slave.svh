@@ -152,15 +152,21 @@ interface IWishboneSlave
    
    task pipelined_fsm();
 
+      if(settings.gen_random_stalls)
+	gen_random_stalls();
+      else
+        stall               <= 0;
+      
+/* -----\/----- EXCLUDED -----\/-----
       if(cyc) begin
-	 if(settings.gen_random_stalls)
-	   gen_random_stalls();
+
 	 end else
-	   stall 	    <= 0;
+	   stall            <= 0;
+ -----/\----- EXCLUDED -----/\----- */
       
       if(cyc_start) begin
 	 current_cycle.data  = {};
-	 trans_index 	    <= 0;
+	 trans_index        <= 0;
 	 first_transaction   = 1;
       end
 

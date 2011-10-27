@@ -18,8 +18,8 @@ interface IWishboneMaster
    input rst_n_i
    );
 
-   parameter g_data_width 	   = 32;
    parameter g_addr_width 	   = 32;
+   parameter g_data_width 	   = 32;
 
    logic [g_addr_width - 1 : 0] adr;
    logic [g_data_width - 1 : 0] dat_o;
@@ -256,6 +256,7 @@ interface IWishboneMaster
                 begin
                    stb <= 1'b1;
                    we  <= 1'b1;
+                   
                    while(stall)
                      begin
                         count_ack(ack_count);
