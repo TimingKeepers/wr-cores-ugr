@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-18
+-- Last update: 2011-10-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -337,7 +337,7 @@ begin  -- behavioral
       full_o           => open,
       empty_o          => open,
       almostfull_o     => pcs_fifo_almostfull_o,
-      pass_threshold_i => std_logic_vector(to_unsigned(12, 6)));  -- fixme: add
+      pass_threshold_i => std_logic_vector(to_unsigned(24, 6)));  -- fixme: add
                                                                   -- register
 
   U_Insert_OOB : ep_rx_oob_insert
