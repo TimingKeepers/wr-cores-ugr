@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-27
+-- Last update: 2011-10-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -16,15 +16,18 @@
 -- compatible with White Rabbit protocol. It performs subnanosecond clock 
 -- synchronization via WR protocol and also acts as an Ethernet "gateway", 
 -- providing access to TX/RX interfaces of the built-in WR MAC.
+--
+-- Starting from version 2.0 all modules are interconnected with pipelined
+-- wishbone interface (using wb crossbar and bus fanout). Separate pipelined
+-- wishbone bus is used for passing packets between Endpoint, Mini-NIC
+-- and External MAC interface.
 -------------------------------------------------------------------------------
 -- Copyright (c) 2011 Grzegorz Daniluk
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author          Description
 -- 2011-02-02  1.0      greg.d          Created
--------------------------------------------------------------------------------
--- TODO:
--- Testing
+-- 2011-10-25  2.0      greg.d          Redesigned and wishbonized
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -32,23 +35,26 @@ use ieee.std_logic_1164.all;
 
 library work;
 use work.wrcore_pkg.all;
-use work.wbconmax_pkg.all;
 use work.genram_pkg.all;
-
-use work.wr_fabric_pkg.all;
-use work.endpoint_pkg.all;
 use work.wishbone_pkg.all;
+use work.endpoint_pkg.all;
+use work.wr_fabric_pkg.all;
+use work.sysc_wbgen2_pkg.all;
+
 
 entity wr_core is
   generic(
     --if set to 1, then blocks in PCS use smaller calibration counter to speed 
     --up simulation
-    g_simulation         : integer := 0;
-    g_virtual_uart       : natural := 0;
-    g_ep_rxbuf_size_log2 : integer := 12;
-    g_dpram_initf        : string  := "";
-    g_dpram_size         : integer := 16384;  --in 32-bit words
-    g_num_gpio           : integer := 8
+    g_simulation          : integer                        := 0;
+    g_phys_uart           : boolean                        := true;
+    g_virtual_uart        : boolean                        := false;
+    g_owr_num_ports       : natural                        := 1;  --how many 1-wire ports
+    g_ep_rxbuf_size_log2  : integer                        := 12;
+    g_dpram_initf         : string                         := "";
+    g_dpram_size          : integer                        := 16384;  --in 32-bit words
+    g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
+    g_address_granularity : t_wishbone_address_granularity := WORD
     );
   port(
     clk_sys_i : in std_logic;
@@ -62,19 +68,11 @@ entity wr_core is
     -- Aux clock (i.e. the FMC clock)
     clk_aux_i : in std_logic;
 
-
     rst_n_i : in std_logic;
-
-
-    -----------------------------------------
-    --PPS gen
-    -----------------------------------------
-    pps_p_o : out std_logic;
 
     -----------------------------------------
     --Timing system
     -----------------------------------------
-
     dac_hpll_load_p1_o : out std_logic;
     dac_hpll_data_o    : out std_logic_vector(15 downto 0);
 
@@ -101,9 +99,14 @@ entity wr_core is
     -----------------------------------------
     --GPIO
     -----------------------------------------
-    gpio_o     : out std_logic_vector(g_num_gpio-1 downto 0);
-    gpio_i     : in  std_logic_vector(g_num_gpio-1 downto 0);
-    gpio_dir_o : out std_logic_vector(g_num_gpio-1 downto 0);
+    led_red_o   : out std_logic;
+    led_green_o : out std_logic;
+    scl_o       : out std_logic;
+    scl_i       : in  std_logic;
+    sda_o       : out std_logic;
+    sda_i       : in  std_logic;
+    btn1_i      : in  std_logic;
+    btn2_i      : in  std_logic;
 
     -----------------------------------------
     --UART
@@ -112,16 +115,24 @@ entity wr_core is
     uart_txd_o : out std_logic;
 
     -----------------------------------------
+    -- 1-wire
+    -----------------------------------------
+    owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0);
+
+    -----------------------------------------
     --External WB interface
     -----------------------------------------
-    wb_addr_i : in  std_logic_vector(c_aw-1 downto 0);
-    wb_data_i : in  std_logic_vector(c_dw-1 downto 0);
-    wb_data_o : out std_logic_vector(c_dw-1 downto 0);
-    wb_sel_i  : in  std_logic_vector(c_sw-1 downto 0);
-    wb_we_i   : in  std_logic;
-    wb_cyc_i  : in  std_logic;
-    wb_stb_i  : in  std_logic;
-    wb_ack_o  : out std_logic;
+    wb_addr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
+    wb_data_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_data_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
+    wb_we_i    : in  std_logic;
+    wb_cyc_i   : in  std_logic;
+    wb_stb_i   : in  std_logic;
+    wb_ack_o   : out std_logic;
+    wb_stall_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- External Fabric I/F
@@ -136,7 +147,6 @@ entity wr_core is
     ext_snk_err_o   : out std_logic;
     ext_snk_stall_o : out std_logic;
 
-
     ext_src_adr_o   : out std_logic_vector(1 downto 0);
     ext_src_dat_o   : out std_logic_vector(15 downto 0);
     ext_src_sel_o   : out std_logic_vector(1 downto 0);
@@ -147,27 +157,24 @@ entity wr_core is
     ext_src_err_i   : in  std_logic := '0';
     ext_src_stall_i : in  std_logic := '0';
 
--------------------------------------------------------------------------------
--- Timecode/Servo Control
--------------------------------------------------------------------------------
+    -----------------------------------------
+    -- Timecode/Servo Control
+    -----------------------------------------
 
-    
     -- DAC Control
-    tm_dac_value_o: out std_logic_vector(23 downto 0);
-    tm_dac_wr_o: out std_logic;
-
+    tm_dac_value_o       : out std_logic_vector(23 downto 0);
+    tm_dac_wr_o          : out std_logic;
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i: in std_logic;
-
+    tm_clk_aux_lock_en_i : in  std_logic;
     -- Aux clock locked flag
-    tm_clk_aux_locked_o: out std_logic;
-
+    tm_clk_aux_locked_o  : out std_logic;
     -- Timecode output
-    tm_time_valid_o: out std_logic;
-    tm_utc_o: out std_logic_vector(31 downto 0);
-    tm_cycles_o: out std_logic_vector(27 downto 0);
-    
-    
+    tm_time_valid_o      : out std_logic;
+    tm_utc_o             : out std_logic_vector(39 downto 0);
+    tm_cycles_o          : out std_logic_vector(27 downto 0);
+    -- 1PPS output
+    pps_p_o              : out std_logic;
+
     --DEBUG
     genrest_n : out std_logic;
 
@@ -177,25 +184,21 @@ end wr_core;
 
 architecture struct of wr_core is
 
-
-  
-  signal s_rst   : std_logic;
-  signal s_rst_n : std_logic;
+  signal rst_wrc_n : std_logic;
+  signal rst_net_n : std_logic;
 
   -----------------------------------------------------------------------------
   --PPS generator
   -----------------------------------------------------------------------------
   signal s_pps_csync : std_logic;
-  signal ppsg_wb_i   : t_wb_i;
-  signal ppsg_wb_o   : t_wb_o;
+  signal ppsg_wb_in  : t_wishbone_slave_in;
+  signal ppsg_wb_out : t_wishbone_slave_out;
 
   -----------------------------------------------------------------------------
   --Timing system
   -----------------------------------------------------------------------------
-  signal hpll_wb_i : t_wb_i;
-  signal hpll_wb_o : t_wb_o;
-  signal dpll_wb_i : t_wb_i;
-  signal dpll_wb_o : t_wb_o;
+  signal spll_wb_in  : t_wishbone_slave_in;
+  signal spll_wb_out : t_wishbone_slave_out;
 
   -----------------------------------------------------------------------------
   --Endpoint
@@ -207,89 +210,65 @@ architecture struct of wr_core is
   signal txtsu_valid_o    : std_logic;
   signal txtsu_ack_i      : std_logic;
 
-  signal ep_wb_i : t_wb_i;
-  signal ep_wb_o : t_wb_o;
-
-
   constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
 
   -----------------------------------------------------------------------------
   --Mini-NIC
   -----------------------------------------------------------------------------
-  signal s_mnic_mem_data_o : std_logic_vector(31 downto 0);
-  signal s_mnic_mem_addr_o : std_logic_vector(c_mnic_memsize_log2-1 downto 0);
-  signal s_mnic_mem_data_i : std_logic_vector(31 downto 0);
-  signal s_mnic_mem_wr_o   : std_logic;
-
-  signal mnic_wb_i : t_wb_i;
-  signal mnic_wb_o : t_wb_o;
+  signal mnic_mem_data_o : std_logic_vector(31 downto 0);
+  signal mnic_mem_addr_o : std_logic_vector(c_mnic_memsize_log2-1 downto 0);
+  signal mnic_mem_data_i : std_logic_vector(31 downto 0);
+  signal mnic_mem_wr_o   : std_logic;
 
   signal mnic_wb_irq_o : std_logic;
 
   -----------------------------------------------------------------------------
-  --CPU
-  -----------------------------------------------------------------------------
-  signal zpu_wb_i : t_wb_o;
-  signal zpu_wb_o : t_wb_i;
-
-  signal lm32_iwb_i : t_wb_o;
-  signal lm32_iwb_o : t_wb_i;
-  signal lm32_jwb_i : t_wb_i;
-  signal lm32_jwb_o : t_wb_o;
-  signal lm32_dwb_i : t_wb_o;
-  signal lm32_dwb_o : t_wb_i;
-
-  -----------------------------------------------------------------------------
   --Dual-port RAM
   -----------------------------------------------------------------------------
-  signal dpram_wb_i : t_wb_i;
-  signal dpram_wb_o : t_wb_o;
-
-  -----------------------------------------------------------------------------
-  --WB GPIO
-  -----------------------------------------------------------------------------
-  --signal gpio_wb_i : t_wb_i;
-  --signal gpio_wb_o : t_wb_o;
-
-  -----------------------------------------------------------------------------
-  --WB UART
-  -----------------------------------------------------------------------------
-
-  --signal uart_wb_i : t_wb_i;
-  --signal uart_wb_o : t_wb_o;
-  --signal uart_rxd  : std_logic;
-  --signal uart_txd  : std_logic;
+  signal dpram_wbb_i : t_wishbone_slave_in;
+  signal dpram_wbb_o : t_wishbone_slave_out;
 
   -----------------------------------------------------------------------------
   --WB Peripherials
   -----------------------------------------------------------------------------
-  signal periph_wb_i : t_wb_i;
-  signal periph_wb_o : t_wb_o;
-
+  signal periph_slave_i : t_wishbone_slave_in_array(0 to 2);
+  signal periph_slave_o : t_wishbone_slave_out_array(0 to 2);
+  signal sysc_in_regs   : t_sysc_in_registers;
+  signal sysc_out_regs  : t_sysc_out_registers;
 
   -----------------------------------------------------------------------------
   --WB intercon
   -----------------------------------------------------------------------------
-  signal wbm_unused_i : t_wb_i;
-  signal wbs_unused_i : t_wb_o;
-  signal cnx_master_i : t_conmax_masters_i;
-  signal cnx_master_o : t_conmax_masters_o;
-  signal cnx_slave_i  : t_conmax_slaves_i;
-  signal cnx_slave_o  : t_conmax_slaves_o;
+  constant c_cfg_base_addr : t_wishbone_address_array(1 downto 0) :=
+    (0 => x"00000000",                  -- CPU I/D-mem
+     1 => x"00010000");                 -- Peripherals
+
+  constant c_cfg_base_mask : t_wishbone_address_array(1 downto 0) :=
+    (0 => x"ffff0000",
+     1 => x"ffff0000");
+
+  signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
+  signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
+  signal cbar_master_i : t_wishbone_master_in_array(1 downto 0);
+  signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
+
+  -----------------------------------------------------------------------------
+  --WB FANOUT
+  -----------------------------------------------------------------------------
+  signal fout_wb_i     : t_wishbone_slave_in;
+  signal fout_wb_o     : t_wishbone_slave_out;
+  signal fout_master_i : t_wishbone_master_in_array(0 to 6);
+  signal fout_master_o : t_wishbone_master_out_array(0 to 6);
 
   -----------------------------------------------------------------------------
   --External WB interface
   -----------------------------------------------------------------------------
-  signal ext_wb_i : t_wb_o;
-  signal ext_wb_o : t_wb_i;
+  signal ext_wb_in  : t_wishbone_slave_in;
+  signal ext_wb_out : t_wishbone_slave_out;
 
   --===========================--
   --         For SPEC          --
   --===========================--
-
-  signal genrst_n : std_logic;
-  signal rst_wb_i : t_wb_i;
-  signal rst_wb_o : t_wb_o;
 
   signal hpll_auxout  : std_logic_vector(2 downto 0);
   signal dmpll_auxout : std_logic_vector(2 downto 0);
@@ -298,14 +277,13 @@ architecture struct of wr_core is
   signal clk_rx_slv  : std_logic_vector(0 downto 0);
 
   signal s_dummy_addr : std_logic_vector(31 downto 0);
-  signal rst_n_inv    : std_logic;
 
   signal softpll_irq : std_logic;
 
-  signal lm32_irq_slv : std_logic_vector(0 downto 0);
-  signal trace_pc     : std_logic_vector(31 downto 0);
-  signal trace_eret   : std_logic;
-  signal trace_valid  : std_logic;
+  signal lm32_irq_slv : std_logic_vector(31 downto 0);
+  --signal trace_pc : std_logic_vector(31 downto 0);
+  --signal trace_eret : std_logic;
+  --signal trace_valid : std_logic;
 
   signal ep_wb_in  : t_wishbone_slave_in;
   signal ep_wb_out : t_wishbone_slave_out;
@@ -318,6 +296,7 @@ architecture struct of wr_core is
   signal ep_snk_out : t_wrf_sink_out;
   signal ep_snk_in  : t_wrf_sink_in;
 
+
   signal minic_src_out : t_wrf_source_out;
   signal minic_src_in  : t_wrf_source_in;
   signal minic_snk_out : t_wrf_sink_out;
@@ -328,23 +307,26 @@ architecture struct of wr_core is
   signal ext_src_in  : t_wrf_source_in;
   signal ext_snk_out : t_wrf_sink_out;
   signal ext_snk_in  : t_wrf_sink_in;
+  signal dummy       : std_logic_vector(31 downto 0);
 
-  signal dummy : std_logic_vector(31 downto 0);
+  --signal ext_adpwb_out       : t_wishbone_slave_out;
+  --signal ext_adpwb_in        : t_wishbone_slave_in;
 
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
 
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
+  --component chipscope_ila
+  --  port (
+  --    CONTROL : inout std_logic_vector(35 downto 0);
+  --    CLK     : in    std_logic;
+  --    TRIG0   : in    std_logic_vector(31 downto 0);
+  --    TRIG1   : in    std_logic_vector(31 downto 0);
+  --    TRIG2   : in    std_logic_vector(31 downto 0);
+  --    TRIG3   : in    std_logic_vector(31 downto 0));
+  --end component;
+
+  --component chipscope_icon
+  --  port (
+  --    CONTROL0 : inout std_logic_vector (35 downto 0));
+  --end component;
 
   component xwbp_mux
     port (
@@ -373,49 +355,51 @@ architecture struct of wr_core is
   signal TRIG3   : std_logic_vector(31 downto 0);
 begin
 
-  s_rst_n <= genrst_n and rst_n_i;
-  s_rst   <= not s_rst_n;
   -----------------------------------------------------------------------------
-  --PPS generator
+  -- PPS generator
   -----------------------------------------------------------------------------
-
-  PPS_GEN : wr_pps_gen
+  PPS_GEN : xwr_pps_gen
+    generic map(
+      g_interface_mode      => CLASSIC,
+      g_address_granularity => BYTE)
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
 
-      rst_n_i => s_rst_n,
+      rst_n_i => rst_wrc_n,
 
-      wb_adr_i => ppsg_wb_i.addr(4 downto 0),
-      wb_dat_i => ppsg_wb_i.data,
-      wb_dat_o => ppsg_wb_o.data,
-      wb_cyc_i  => ppsg_wb_i.cyc,
-      wb_sel_i  => ppsg_wb_i.sel,
-      wb_stb_i  => ppsg_wb_i.stb,
-      wb_we_i   => ppsg_wb_i.we,
-      wb_ack_o  => ppsg_wb_o.ack,
+      slave_i => ppsg_wb_in,
+      slave_o => ppsg_wb_out,
 
       -- Single-pulse PPS output for synchronizing endpoint to
       pps_in_i    => '0',
       pps_csync_o => s_pps_csync,
-      pps_out_o   => pps_p_o
-      );
+      pps_out_o   => pps_p_o,
 
+      tm_utc_o        => tm_utc_o,
+      tm_cycles_o     => tm_cycles_o,
+      tm_time_valid_o => tm_time_valid_o
+    );
 
-  U_SOFTPLL : wr_softpll
+  -----------------------------------------------------------------------------
+  -- Software PLL
+  -----------------------------------------------------------------------------
+  U_SOFTPLL : xwr_softpll
     generic map (
       g_deglitcher_threshold => 3000,
-      g_tag_bits             => 20)
+      g_tag_bits             => 20,
+      g_interface_mode       => CLASSIC,
+      g_address_granularity  => BYTE)
     port map (
       clk_sys_i  => clk_sys_i,
-      rst_n_i    => s_rst_n,
+      rst_n_i    => rst_wrc_n,
       clk_ref_i  => clk_ref_i,
       clk_dmtd_i => clk_dmtd_i,
       clk_rx_i   => phy_rx_rbclk_i,
       clk_aux_i  => clk_aux_i,
 
-      dac_hpll_data_o  => dac_hpll_data_o,
-      dac_hpll_load_o  => dac_hpll_load_p1_o,
+      dac_hpll_data_o => dac_hpll_data_o,
+      dac_hpll_load_o => dac_hpll_load_p1_o,
 
       dac_dmpll_data_o => dac_dpll_data_o,
       dac_dmpll_load_o => dac_dpll_load_p1_o,
@@ -424,24 +408,20 @@ begin
       dac_aux_load_o => tm_dac_wr_o,
 
       clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
-      clk_aux_locked_o => tm_clk_aux_locked_o,
-      
-      wb_adr_i => dpll_wb_i.addr(6 downto 0),
-      wb_dat_i => dpll_wb_i.data,
-      wb_dat_o => dpll_wb_o.data,
-      wb_cyc_i  => dpll_wb_i.cyc,
-      wb_sel_i  => dpll_wb_i.sel,
-      wb_stb_i  => dpll_wb_i.stb,
-      wb_we_i   => dpll_wb_i.we,
-      wb_ack_o  => dpll_wb_o.ack,
-      wb_irq_o  => softpll_irq,
-      debug_o   => dio_o);
+      clk_aux_locked_o  => tm_clk_aux_locked_o,
 
+      slave_i  => spll_wb_in,
+      slave_o  => spll_wb_out,
+      wb_irq_o => softpll_irq,
+      debug_o  => dio_o);
 
+  -----------------------------------------------------------------------------
+  -- Endpoint
+  -----------------------------------------------------------------------------
   U_Endpoint : xwr_endpoint
     generic map (
       g_interface_mode      => CLASSIC,
-      g_address_granularity => WORD,
+      g_address_granularity => BYTE,
       g_simulation          => false,
       g_pcs_16bit           => false,
       g_rx_buffer_size      => 1024,
@@ -455,7 +435,7 @@ begin
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,
-      rst_n_i        => s_rst_n,
+      rst_n_i        => rst_net_n,
       pps_csync_p1_i => s_pps_csync,
 
       phy_rst_o                     => phy_rst_o,
@@ -491,29 +471,23 @@ begin
       wb_i             => ep_wb_in,
       wb_o             => ep_wb_out);
 
-  ep_wb_in.cyc              <= ep_wb_i.cyc;
-  ep_wb_in.stb              <= ep_wb_i.stb;
-  ep_wb_in.we               <= ep_wb_i.we;
-  ep_wb_in.sel              <= ep_wb_i.sel;
-  ep_wb_in.adr(10 downto 0) <= ep_wb_i.addr(10 downto 0);
-  ep_wb_in.dat              <= ep_wb_i.data;
-  ep_wb_o.ack               <= ep_wb_out.ack;
-  ep_wb_o.data              <= ep_wb_out.dat;
-
-  xwr_mini_nic_1 : xwr_mini_nic
+  -----------------------------------------------------------------------------
+  -- Mini-NIC
+  -----------------------------------------------------------------------------
+  MINI_NIC : xwr_mini_nic
     generic map (
       g_interface_mode       => CLASSIC,
-      g_address_granularity  => WORD,
+      g_address_granularity  => BYTE,
       g_memsize_log2         => 14,
       g_buffer_little_endian => false)
     port map (
       clk_sys_i => clk_sys_i,
-      rst_n_i   => s_rst_n,
+      rst_n_i   => rst_net_n,
 
-      mem_data_o => s_mnic_mem_data_o,
-      mem_addr_o => s_mnic_mem_addr_o,
-      mem_data_i => s_mnic_mem_data_i,
-      mem_wr_o   => s_mnic_mem_wr_o,
+      mem_data_o => mnic_mem_data_o,
+      mem_addr_o => mnic_mem_addr_o,
+      mem_data_i => mnic_mem_data_i,
+      mem_wr_o   => mnic_mem_wr_o,
 
       src_o => minic_src_out,
       src_i => minic_src_in,
@@ -527,255 +501,242 @@ begin
       txtsu_ack_o      => txtsu_ack_i,
 
       wb_i => minic_wb_in,
-      wb_o => minic_wb_out);
+      wb_o => minic_wb_out
+    );
 
-  minic_wb_in.cyc              <= mnic_wb_i.cyc;
-  minic_wb_in.stb              <= mnic_wb_i.stb;
-  minic_wb_in.we               <= mnic_wb_i.we;
-  minic_wb_in.sel              <= mnic_wb_i.sel;
-  minic_wb_in.adr(10 downto 0) <= mnic_wb_i.addr(10 downto 0);
-  minic_wb_in.dat              <= mnic_wb_i.data;
-  mnic_wb_o.ack                <= minic_wb_out.ack;
-  mnic_wb_o.data               <= minic_wb_out.dat;
+  mnic_wb_irq_o <= '0';
 
+  lm32_irq_slv(31 downto 1) <= (others => '0');
+  lm32_irq_slv(0)           <= softpll_irq;  -- according to the doc, it's active low.
 
-  mnic_wb_irq_o   <= '0';
-  lm32_irq_slv(0) <= softpll_irq;  -- according to the doc, it's active low.
+  -----------------------------------------------------------------------------
+  -- LM32
+  -----------------------------------------------------------------------------  
+  LM32_CORE : xwb_lm32
+    generic map(g_profile => "medium")
+    port map(
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_wrc_n,
+      irq_i     => lm32_irq_slv,
 
-
-
-  LM32_CORE : wrc_lm32
-    generic map (
-      g_addr_width => c_aw,
-      g_num_irqs   => 1)
-    port map (
-      clk_i   => clk_sys_i,
-      rst_n_i => s_rst_n,
-      irq_i   => lm32_irq_slv,
-
-      iwb_adr_o => lm32_iwb_o.addr,
-      iwb_dat_o => lm32_iwb_o.data,
-      iwb_dat_i => lm32_iwb_i.data,
-      iwb_cyc_o => lm32_iwb_o.cyc,
-      iwb_stb_o => lm32_iwb_o.stb,
-      iwb_sel_o => lm32_iwb_o.sel,
-      iwb_we_o  => lm32_iwb_o.we,
-      iwb_ack_i => lm32_iwb_i.ack,
-
-      dwb_adr_o => lm32_dwb_o.addr,
-      dwb_dat_o => lm32_dwb_o.data,
-      dwb_dat_i => lm32_dwb_i.data,
-      dwb_cyc_o => lm32_dwb_o.cyc,
-      dwb_stb_o => lm32_dwb_o.stb,
-      dwb_sel_o => lm32_dwb_o.sel,
-      dwb_we_o  => lm32_dwb_o.we,
-      dwb_ack_i => lm32_dwb_i.ack,
-
-      jwb_adr_i => lm32_jwb_i.addr,
-      jwb_dat_i => lm32_jwb_i.data,
-      jwb_dat_o => lm32_jwb_o.data,
-      jwb_cyc_i => lm32_jwb_i.cyc,
-      jwb_stb_i => lm32_jwb_i.stb,
-      jwb_sel_i => lm32_jwb_i.sel,
-      jwb_we_i  => lm32_jwb_i.we,
-      jwb_ack_o => lm32_jwb_o.ack,
-
-      trace_pc_o       => trace_pc,
-      trace_pc_valid_o => trace_valid,
-      trace_eret_o     => trace_eret);
+      dwb_o => cbar_slave_i(0),
+      dwb_i => cbar_slave_o(0),
+      iwb_o => cbar_slave_i(1),
+      iwb_i => cbar_slave_o(1)
+    );
 
   -----------------------------------------------------------------------------
   -- Dual-port RAM
   -----------------------------------------------------------------------------  
-  DPRAM : wrc_dpram
+  DPRAM : xwb_dpram
     generic map(
-      g_size      => g_dpram_size,
-      g_init_file => g_dpram_initf
-      )
+      g_size                  => g_dpram_size,
+      g_init_file             => g_dpram_initf,
+      g_must_have_init_file   => true,
+      g_slave1_interface_mode => PIPELINED,
+      g_slave2_interface_mode => PIPELINED,
+      g_slave1_granularity    => BYTE,
+      g_slave2_granularity    => WORD)  
     port map(
-      clk_i   => clk_sys_i,
-      rst_n_i => rst_n_i,
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_wrc_n,
 
-      --PORT A (Wishbone)
-      wb_addr_i  => dpram_wb_i.addr(13 downto 0),
-      wb_data_i  => dpram_wb_i.data,
-      wb_data_o  => dpram_wb_o.data,
-      wb_sel_i   => dpram_wb_i.sel,
-      wb_cyc_i   => dpram_wb_i.cyc,
-      wb_stb_i   => dpram_wb_i.stb,
-      wb_we_i    => dpram_wb_i.we,
-      wb_ack_o   => dpram_wb_o.ack,
-      --PORT B (miniNIC)
-      mem_addr_i => s_mnic_mem_addr_o,
-      mem_data_i => s_mnic_mem_data_o,
-      mem_data_o => s_mnic_mem_data_i,
-      mem_wr_i   => s_mnic_mem_wr_o
-      );
+      slave1_i => cbar_master_o(0),
+      slave1_o => cbar_master_i(0),
+      slave2_i => dpram_wbb_i,
+      slave2_o => dpram_wbb_o
+    );
 
+  dpram_wbb_i.cyc                                 <= '1';
+  dpram_wbb_i.stb                                 <= '1';
+  dpram_wbb_i.adr(c_mnic_memsize_log2-1 downto 0) <= mnic_mem_addr_o;
+  dpram_wbb_i.sel                                 <= "1111";
+  dpram_wbb_i.we                                  <= mnic_mem_wr_o;
+  dpram_wbb_i.dat                                 <= mnic_mem_data_o;
+  mnic_mem_data_i                                 <= dpram_wbb_o.dat;
 
   -----------------------------------------------------------------------------
   -- WB Peripherials
   -----------------------------------------------------------------------------
   PERIPH : wrc_periph
     generic map(
-      g_gpio_pins    => g_num_gpio,
-      g_virtual_uart => g_virtual_uart,
-      g_tics_period  => 62500
-      )
+      g_phys_uart     => g_phys_uart,
+      g_virtual_uart  => g_virtual_uart,
+      g_owr_num_ports => g_owr_num_ports)
     port map(
       clk_sys_i => clk_sys_i,
-      clk_ref_i => clk_ref_i,
-      rst_n_i   => rst_n_i,
+      rst_n_i   => rst_wrc_n,
 
-      gpio_o     => gpio_o,
-      gpio_i     => gpio_i,
-      gpio_dir_o => gpio_dir_o,
+      rst_ext_n_i => rst_n_i,
+      rst_net_n_o => rst_net_n,
+      rst_wrc_n_o => rst_wrc_n,
+
+      led_red_o   => led_red_o,
+      led_green_o => led_green_o,
+      scl_o       => scl_o,
+      scl_i       => scl_i,
+      sda_o       => sda_o,
+      sda_i       => sda_i,
+      memsize_i   => "0000",
+      btn1_i      => btn1_i,
+      btn2_i      => btn2_i,
+
+      slave_i => periph_slave_i,
+      slave_o => periph_slave_o,
 
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
-      genrst_n_o => genrst_n,
 
-      wb_addr_i => periph_wb_i.addr(11 downto 0),
-      wb_data_i => periph_wb_i.data,
-      wb_data_o => periph_wb_o.data,
-      wb_sel_i  => periph_wb_i.sel,
-      wb_stb_i  => periph_wb_i.stb,
-      wb_cyc_i  => periph_wb_i.cyc,
-      wb_we_i   => periph_wb_i.we,
-      wb_ack_o  => periph_wb_o.ack
-      );
-
---  gpio_o <= gpio_b;
+      owr_pwren_o => owr_pwren_o,
+      owr_en_o    => owr_en_o,
+      owr_i       => owr_i
+    );
 
   -----------------------------------------------------------------------------
   -- External WB interface
   -----------------------------------------------------------------------------
-  ext_wb_o.addr <= wb_addr_i;
-  ext_wb_o.data <= wb_data_i;
-  ext_wb_o.sel  <= wb_sel_i;
-  ext_wb_o.we   <= wb_we_i;
-  ext_wb_o.cyc  <= wb_cyc_i;
-  ext_wb_o.stb  <= wb_stb_i;
-  wb_data_o     <= ext_wb_i.data;
-  wb_ack_o      <= ext_wb_i.ack;
+  --ext_wb_i.adr <= wb_addr_i;
+  --ext_wb_i.dat <= wb_data_i;
+  --ext_wb_i.sel <= wb_sel_i;
+  --ext_wb_i.we  <= wb_we_i;
+  --ext_wb_i.cyc <= wb_cyc_i;
+  --ext_wb_i.stb <= wb_stb_i;
+  --wb_data_o    <= ext_wb_o.dat;
+  --wb_ack_o     <= ext_wb_o.ack;
+  --wb_stall_o   <= ext_wb_o.stall;
+
+  U_Adapter : wb_slave_adapter
+    generic map(
+      g_master_use_struct  => true,
+      g_master_mode        => CLASSIC,
+      g_master_granularity => WORD,
+      g_slave_use_struct   => false,
+      g_slave_mode         => g_interface_mode,
+      g_slave_granularity  => g_address_granularity)
+    port map (
+      clk_sys_i  => clk_sys_i,
+      rst_n_i    => rst_n_i,
+      master_i   => ext_wb_out,
+      master_o   => ext_wb_in,
+      sl_adr_i   => wb_addr_i,
+      sl_dat_i   => wb_data_i,
+      sl_sel_i   => wb_sel_i,
+      sl_cyc_i   => wb_cyc_i,
+      sl_stb_i   => wb_stb_i,
+      sl_we_i    => wb_we_i,
+      sl_dat_o   => wb_data_o,
+      sl_ack_o   => wb_ack_o,
+      sl_stall_o => wb_stall_o);
 
   -----------------------------------------------------------------------------
   -- WB intercon
   -----------------------------------------------------------------------------
-  wbm_unused_i.data <= (others => '0');
-  wbm_unused_i.addr <= (others => '0');
-  wbm_unused_i.sel  <= (others => '0');
-  wbm_unused_i.we   <= '0';
-  wbm_unused_i.cyc  <= '0';
-  wbm_unused_i.stb  <= '0';
-
-  wbs_unused_i.data <= (others => '0');
-  wbs_unused_i.ack  <= '0';
-  wbs_unused_i.err  <= '0';
-  wbs_unused_i.rty  <= '0';
-
-  rst_n_inv <= not rst_n_i;
-
-  WB_CON : wb_conmax_top
+  WB_CON : xwb_crossbar
     generic map(
-      g_rf_addr => 15
-      )
+      g_num_masters => 3,
+      g_num_slaves  => 2,
+      g_registered  => false
+      )  
     port map(
-      clk_i => clk_sys_i,
-      rst_i => rst_n_inv,
-
-      wb_masters_i => cnx_master_i,
-      wb_masters_o => cnx_master_o,
-      wb_slaves_i  => cnx_slave_i,
-      wb_slaves_o  => cnx_slave_o
+      clk_sys_i     => clk_sys_i,
+      rst_n_i       => rst_wrc_n,
+      -- Master connections (INTERCON is a slave)
+      slave_i       => cbar_slave_i,
+      slave_o       => cbar_slave_o,
+      -- Slave connections (INTERCON is a master)
+      master_i      => cbar_master_i,
+      master_o      => cbar_master_o,
+      -- Address of the slaves connected
+      cfg_address_i => c_cfg_base_addr,  --cbar_address,
+      cfg_mask_i    => c_cfg_base_mask   --cbar_mask
       );
 
-  cnx_master_i(0) <= lm32_iwb_o;
-  cnx_master_i(2) <= lm32_dwb_o;
-  lm32_iwb_i      <= cnx_master_o(0);
-  lm32_dwb_i      <= cnx_master_o(2);
+  cbar_slave_i(2) <= ext_wb_in;
+  ext_wb_out      <= cbar_slave_o(2);
 
-  cnx_master_i(1) <= ext_wb_o;
-  cnx_master_i(3) <= wbm_unused_i;
-  cnx_master_i(4) <= wbm_unused_i;
-  cnx_master_i(5) <= wbm_unused_i;
-  cnx_master_i(6) <= wbm_unused_i;
-  cnx_master_i(7) <= wbm_unused_i;
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
-  ext_wb_i <= cnx_master_o(1);
+  --chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
 
-  cnx_slave_i(0)  <= dpram_wb_o;
-  cnx_slave_i(1)  <= mnic_wb_o;
-  cnx_slave_i(2)  <= ep_wb_o;
-  cnx_slave_i(3)  <= hpll_wb_o;
-  cnx_slave_i(4)  <= dpll_wb_o;
-  cnx_slave_i(5)  <= ppsg_wb_o;
-  cnx_slave_i(6)  <= periph_wb_o;       --gpio_wb_o;
-  cnx_slave_i(7)  <= lm32_jwb_o;
-  cnx_slave_i(8)  <= wbs_unused_i;
-  cnx_slave_i(9)  <= wbs_unused_i;
-  cnx_slave_i(10) <= wbs_unused_i;
-  cnx_slave_i(11) <= wbs_unused_i;
-  cnx_slave_i(12) <= wbs_unused_i;
-  cnx_slave_i(13) <= wbs_unused_i;
-  cnx_slave_i(14) <= wbs_unused_i;
-  cnx_slave_i(15) <= wbs_unused_i;
+  --TRIG0(15 downto 0)                            <= ep_src_out.dat;
+  --trig0(17 downto 16) <= ep_src_out.adr;
+  --trig0(19 downto 18) <= ep_src_out.sel;
+  --trig0(20) <= ep_src_out.cyc;
+  --trig0(21) <= ep_src_out.stb;
+  --trig0(22) <= ep_src_out.we;
+  --trig0(23) <= ep_src_in.ack;
+  --trig0(24) <= ep_src_in.stall;
+  --trig0(26) <= ep_src_in.err;
 
-  dpram_wb_i  <= cnx_slave_o(0);
-  mnic_wb_i   <= cnx_slave_o(1);
-  ep_wb_i     <= cnx_slave_o(2);
-  hpll_wb_i   <= cnx_slave_o(3);
-  dpll_wb_i   <= cnx_slave_o(4);
-  ppsg_wb_i   <= cnx_slave_o(5);
-  periph_wb_i <= cnx_slave_o(6);
-  lm32_jwb_i  <= cnx_slave_o(7);
+  --TRIG1(15 downto 0)                            <= minic_snk_in.dat;
+  --trig1(17 downto 16) <= minic_snk_in.adr;
+  --trig1(19 downto 18) <= minic_snk_in.sel;
+  --trig1(20) <= minic_snk_in.cyc;
+  --trig1(21) <= minic_snk_in.stb;
+  --trig1(22) <= minic_snk_in.we;
+  --trig1(23) <= minic_snk_out.ack;
+  --trig1(24) <= minic_snk_out.stall;
+  --trig1(26) <= minic_snk_out.err;
 
+  --TRIG2(15 downto 0)                            <= ext_snk_in.dat;
+  --trig2(17 downto 16) <= ext_snk_in.adr;
+  --trig2(19 downto 18) <= ext_snk_in.sel;
+  --trig2(20) <= ext_snk_in.cyc;
+  --trig2(21) <= ext_snk_in.stb;
+  --trig2(22) <= ext_snk_in.we;
+  --trig2(23) <= ext_snk_out.ack;
+  --trig2(24) <= ext_snk_out.stall;
+  --trig2(26) <= ext_snk_out.err;
 
-  chipscope_ila_1 : chipscope_ila
-    port map (
-      CONTROL => CONTROL,
-      CLK     => clk_sys_i,
-      TRIG0   => TRIG0,
-      TRIG1   => TRIG1,
-      TRIG2   => TRIG2,
-      TRIG3   => TRIG3);
+  -----------------------------------------------------------------------------
+  -- WB FANOUT
+  -----------------------------------------------------------------------------
+  FANOUT : xwb_bus_fanout
+    generic map(
+      g_num_outputs          => 7,
+      g_bits_per_slave       => 8,  -- max addr bus width is 8bits (Endpoint has 6b - word)
+      g_address_granularity  => BYTE,
+      g_slave_interface_mode => PIPELINED
+    )
+    port map(
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_wrc_n,
 
-  chipscope_icon_1 : chipscope_icon
-    port map (
-      CONTROL0 => CONTROL);
+      slave_i => cbar_master_o(1),
+      slave_o => cbar_master_i(1),
 
-  TRIG0(15 downto 0)                            <= ep_src_out.dat;
-  trig0(17 downto 16) <= ep_src_out.adr;
-  trig0(19 downto 18) <= ep_src_out.sel;
-  trig0(20) <= ep_src_out.cyc;
-  trig0(21) <= ep_src_out.stb;
-  trig0(22) <= ep_src_out.we;
-  trig0(23) <= ep_src_in.ack;
-  trig0(24) <= ep_src_in.stall;
-  trig0(26) <= ep_src_in.err;
+      master_i => fout_master_i,
+      master_o => fout_master_o
+    );
 
-  TRIG1(15 downto 0)                            <= minic_snk_in.dat;
-  trig1(17 downto 16) <= minic_snk_in.adr;
-  trig1(19 downto 18) <= minic_snk_in.sel;
-  trig1(20) <= minic_snk_in.cyc;
-  trig1(21) <= minic_snk_in.stb;
-  trig1(22) <= minic_snk_in.we;
-  trig1(23) <= minic_snk_out.ack;
-  trig1(24) <= minic_snk_out.stall;
-  trig1(26) <= minic_snk_out.err;
+  fout_master_i(0)  <= minic_wb_out;
+  minic_wb_in       <= fout_master_o(0);
+  fout_master_i(1)  <= ep_wb_out;
+  ep_wb_in          <= fout_master_o(1);
+  fout_master_i(2)  <= spll_wb_out;
+  spll_wb_in        <= fout_master_o(2);
+  fout_master_i(3)  <= ppsg_wb_out;
+  ppsg_wb_in        <= fout_master_o(3);
+  --peripherials
+  fout_master_i(4)  <= periph_slave_o(0);
+  fout_master_i(5)  <= periph_slave_o(1);
+  fout_master_i(6)  <= periph_slave_o(2);
+  periph_slave_i(0) <= fout_master_o(4);
+  periph_slave_i(1) <= fout_master_o(5);
+  periph_slave_i(2) <= fout_master_o(6);
 
-  TRIG2(15 downto 0)                            <= ext_snk_in.dat;
-  trig2(17 downto 16) <= ext_snk_in.adr;
-  trig2(19 downto 18) <= ext_snk_in.sel;
-  trig2(20) <= ext_snk_in.cyc;
-  trig2(21) <= ext_snk_in.stb;
-  trig2(22) <= ext_snk_in.we;
-  trig2(23) <= ext_snk_out.ack;
-  trig2(24) <= ext_snk_out.stall;
-  trig2(26) <= ext_snk_out.err;
-
-    
-
+  -----------------------------------------------------------------------------
+  -- WBP MUX
+  -----------------------------------------------------------------------------
   U_WBP_Mux : xwbp_mux
     port map (
       clk_sys_i    => clk_sys_i,

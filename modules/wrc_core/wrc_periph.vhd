@@ -6,29 +6,20 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2011-10-25
+-- Last update: 2011-10-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
 -- Description:
--- WRC_PERIPH is a single WB slave which includes all 'small' WB peripherials
--- needed for WR PTP Core. It has: wb_gpio_port, wb_simple_uart, wb_tics and
--- wb_reset.
--- All those modules share Wishbone Slave interface, and the address bus is
--- used to choose one of them at a time.
+-- WRC_PERIPH integrates WRC_SYSCON, UART/VUART, 1-Wire Master
 -- 
--- wb_addr_i(11:0):
--- (11) -> select wb_reset
--- (10) -> select wb_tics
--- (9)  -> select wb_uart
--- (8)  -> select wb_gpio
--- (7:0)-> address shared between wb modules inside wrc_periph
 -------------------------------------------------------------------------------
 -- Copyright (c) 2011 Grzegorz Daniluk
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author          Description
 -- 2011-04-04  1.0      greg.d          Created
+-- 2011-10-26  2.0      greg.d          Redesigned
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -37,71 +28,104 @@ use ieee.std_logic_1164.all;
 library work;
 use work.wrcore_pkg.all;
 use work.wishbone_pkg.all;
+use work.sysc_wbgen2_pkg.all;
 
 entity wrc_periph is
   generic(
-    g_gpio_pins     : natural := 8;
-    g_virtual_uart  : natural := 0;
-    g_tics_period: integer
+    g_phys_uart     : boolean := true;
+    g_virtual_uart  : boolean := false;
+    g_owr_num_ports : natural := 1
   );
   port(
-    clk_sys_i : in  std_logic;
-    clk_ref_i : in  std_logic;
-    rst_n_i   : in  std_logic;
+    clk_sys_i : in std_logic;
+    rst_n_i   : in std_logic;
 
-    gpio_o    : out std_logic_vector(g_gpio_pins-1 downto 0);
-    gpio_i    : in std_logic_vector(g_gpio_pins-1 downto 0);
-    gpio_dir_o    : out std_logic_vector(g_gpio_pins-1 downto 0);
+    rst_ext_n_i : in  std_logic;
+    rst_net_n_o : out std_logic;
+    rst_wrc_n_o : out std_logic;
 
-    uart_rxd_i: in  std_logic;
-    uart_txd_o: out std_logic;
-    genrst_n_o: out std_logic;
+    led_red_o   : out std_logic;
+    led_green_o : out std_logic;
+    scl_o       : out std_logic;
+    scl_i       : in  std_logic;
+    sda_o       : out std_logic;
+    sda_i       : in  std_logic;
+    memsize_i   : in  std_logic_vector(3 downto 0);
+    btn1_i      : in  std_logic;
+    btn2_i      : in  std_logic;
 
-    wb_addr_i : in  std_logic_vector(11 downto 0); 
-    wb_data_i : in  std_logic_vector(31 downto 0); 
-    wb_data_o : out std_logic_vector(31 downto 0); 
-    wb_sel_i  : in  std_logic_vector(3 downto 0); 
-    wb_stb_i  : in  std_logic;
-    wb_cyc_i  : in  std_logic;
-    wb_we_i   : in  std_logic;
-    wb_ack_o  : out std_logic
+    slave_i : in  t_wishbone_slave_in_array(0 to 2);
+    slave_o : out t_wishbone_slave_out_array(0 to 2);
+
+    uart_rxd_i : in  std_logic;
+    uart_txd_o : out std_logic;
+
+    -- 1-Wire
+    owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0)
   );
 end wrc_periph;
 
 architecture struct of wrc_periph is
 
-  
- 
-  component wb_reset
-    port (
-      clk_i      : in  std_logic;
-      rst_n_i    : in  std_logic;
-      genrst_n_o : out std_logic;
-      wb_addr_i  : in  std_logic_vector(1 downto 0);
-      wb_data_i  : in  std_logic_vector(31 downto 0);
-      wb_data_o  : out std_logic_vector(31 downto 0);
-      wb_sel_i   : in  std_logic_vector(3 downto 0);
-      wb_stb_i   : in  std_logic;
-      wb_cyc_i   : in  std_logic;
-      wb_we_i    : in  std_logic;
-      wb_ack_o   : out std_logic);
-  end component;
+  signal sysc_regs_i : t_sysc_in_registers;
+  signal sysc_regs_o : t_sysc_out_registers;
 
- 
-  type t_wbdata is array(3 downto 0) of std_logic_vector(31 downto 0);
-
-  signal wb_cycs_i  : std_logic_vector(3 downto 0);
-  signal wb_stbs_i  : std_logic_vector(3 downto 0);
-  signal wb_acks_o  : std_logic_vector(3 downto 0);
-  signal wb_dats_o  : t_wbdata;
- 
-
-  signal wb_ack_int : std_logic;
-  
 begin
 
- 
+  -- reset wrc
+  process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if(rst_ext_n_i = '0') then
+        rst_wrc_n_o <= '0';
+        rst_net_n_o <= '0';
+      elsif(sysc_regs_o.rstr_hrst_wr_o = '1' and sysc_regs_o.rstr_hrst_o = x"deadbeef") then
+        rst_wrc_n_o <= '0';
+        rst_net_n_o <= '0';
+      elsif(sysc_regs_o.gpsr_net_rst_o = '1') then
+        rst_wrc_n_o <= '1';
+        rst_net_n_o <= '0';
+      else
+        rst_wrc_n_o <= '1';
+        rst_net_n_o <= '1';
+      end if;
+    end if;
+  end process;
 
+  -- LEDs
+  process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if(sysc_regs_o.gpsr_led_link_o = '1') then
+        led_red_o <= '1';
+      elsif(sysc_regs_o.gpcr_led_link_o = '1') then
+        led_red_o <= '0';
+      end if;
+
+      if(sysc_regs_o.gpsr_led_stat_o = '1') then
+        led_green_o <= '1';
+      elsif(sysc_regs_o.gpcr_led_stat_o = '1') then
+        led_green_o <= '0';
+      end if;
+    end if;
+  end process;
+
+  -- buttons
+  sysc_regs_i.gpsr_btn1_i <= btn1_i;
+  sysc_regs_i.gpsr_btn2_i <= btn2_i;
+
+  -- SCL/SDA
+  scl_o <= '1' when (sysc_regs_o.gpsr_fmc_scl_o = '1' and sysc_regs_o.gpsr_fmc_scl_load_o = '1') else
+           '0' when (sysc_regs_o.gpcr_fmc_scl_o = '0');
+  sda_o <= '1' when (sysc_regs_o.gpsr_fmc_sda_o = '1' and sysc_regs_o.gpsr_fmc_sda_load_o = '1') else
+           '0' when (sysc_regs_o.gpcr_fmc_sda_o = '0');
+  sysc_regs_i.gpsr_fmc_scl_i <= scl_i;
+  sysc_regs_i.gpsr_fmc_sda_i <= sda_i;
+
+  -- Memsize
+  sysc_regs_i.hwfr_memsize_i <= memsize_i;
 
  --TRIG3(11 downto 0)  <= wb_addr_i(11 downto 0);
  -- TRIG3(21 downto 12) <= (others => '0');
@@ -113,102 +137,72 @@ begin
  -- TRIG0               <= wb_data_i;
  -- TRIG2(3 downto 0) <= wb_cycs_i;
  -- TRIG2(7 downto 4) <= wb_acks_o;
-  
-  wb_ack_o <= wb_ack_int;
-  
-  GENWB: 
-  for I in 0 to 3 generate
-    wb_cycs_i(I) <= wb_cyc_i and wb_addr_i(8+I);
-    wb_stbs_i(I) <= wb_stb_i and wb_addr_i(8+I);
-  end generate;
 
-  wb_ack_int  <= wb_acks_o(0) when (wb_addr_i(11 downto 8)="0001") else
-               wb_acks_o(1) when (wb_addr_i(11 downto 8)="0010") else
-               wb_acks_o(2) when (wb_addr_i(11 downto 8)="0100") else
-               wb_acks_o(3) when (wb_addr_i(11 downto 8)="1000") else
-               '0';
-
-  wb_data_o <= wb_dats_o(0) when (wb_addr_i(11 downto 8)="0001") else
-               wb_dats_o(1) when (wb_addr_i(11 downto 8)="0010") else
-               wb_dats_o(2) when (wb_addr_i(11 downto 8)="0100") else
-               wb_dats_o(3) when (wb_addr_i(11 downto 8)="1000") else
-               (others=>'0');
-
-  GPIO: wb_gpio_port
-    generic map(
-      g_num_pins => g_gpio_pins,
-      g_with_builtin_tristates => false)
+  ----------------------------------------
+  -- SYSCON
+  ----------------------------------------
+  SYSCON : wrc_syscon_wb
     port map(
-      rst_n_i => rst_n_i,
-      clk_sys_i    => clk_sys_i,
-      
-      wb_sel_i    => wb_sel_i,
-      wb_cyc_i    => wb_cycs_i(0),
-      wb_stb_i    => wb_stb_i,
-      wb_we_i     => wb_we_i,
-      wb_adr_i   => wb_addr_i(7 downto 0), 
-      wb_dat_i   => wb_data_i,
-      wb_dat_o   => wb_dats_o(0), 
-      wb_ack_o    => wb_acks_o(0),
-      
-      gpio_out_o    => gpio_o,
-      gpio_in_i => gpio_i,
-      gpio_oen_o => gpio_dir_o
+      rst_n_i   => rst_n_i,
+      wb_clk_i  => clk_sys_i,
+      wb_addr_i => slave_i(0).adr(4 downto 2),  -- because address has byte granularity
+      wb_data_i => slave_i(0).dat,
+      wb_data_o => slave_o(0).dat,
+      wb_cyc_i  => '0',                 --slave_i(0).cyc,
+      wb_sel_i  => (others => '0'),     --slave_i(0).sel,
+      wb_stb_i  => '0',                 --slave_i(0).stb,
+      wb_we_i   => '0',                 --slave_i(0).we,
+      wb_ack_o  => slave_o(0).ack,
+      regs_i    => sysc_regs_i,
+      regs_o    => sysc_regs_o
     );
 
-  UART: wb_simple_uart
-    generic map (
-      g_with_virtual_uart  => true,
-      g_with_physical_uart => true)
+  --------------------------------------
+  -- UART
+  --------------------------------------
+  UART : xwb_simple_uart
+    generic map(
+      g_with_virtual_uart   => g_virtual_uart,
+      g_with_physical_uart  => g_phys_uart,
+      g_interface_mode      => CLASSIC,
+      g_address_granularity => BYTE
+    )
     port map(
-      clk_sys_i  => clk_sys_i,
-      rst_n_i    => rst_n_i,
-      
-      wb_adr_i  => wb_addr_i(4 downto 0),
-      wb_dat_i  => wb_data_i,
-      wb_dat_o  => wb_dats_o(1),
-      wb_cyc_i   => wb_cycs_i(1),
-      wb_sel_i   => wb_sel_i,
-      wb_stb_i   => wb_stb_i,
-      wb_we_i    => wb_we_i,
-      wb_ack_o   => wb_acks_o(1),
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_n_i,
+
+      -- Wishbone
+      slave_i => slave_i(1),
+      slave_o => slave_o(1),
+      desc_o  => open,
 
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o
-      );
- 
+  );
 
-  TICS: wb_tics
-    generic map (
-      g_period => g_tics_period)
+  --------------------------------------
+  -- 1-WIRE
+  --------------------------------------
+  ONEWIRE : xwb_onewire_master
+    generic map(
+      g_interface_mode      => CLASSIC,
+      g_address_granularity => BYTE,
+      g_num_ports           => g_owr_num_ports,
+      g_ow_btp_normal       => "5.0",
+      g_ow_btp_overdrive    => "1.0"
+    )
     port map(
-      clk_sys_i  => clk_sys_i,
-      rst_n_i    => rst_n_i,
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_n_i,
 
-      wb_adr_i  => wb_addr_i(3 downto 0),
-      wb_dat_i  => wb_data_i,
-      wb_dat_o  => wb_dats_o(2),
-      wb_cyc_i   => wb_cycs_i(2),
-      wb_sel_i   => wb_sel_i,
-      wb_stb_i   => wb_stb_i,
-      wb_we_i    => wb_we_i,
-      wb_ack_o   => wb_acks_o(2)
+      -- Wishbone
+      slave_i => slave_i(2),
+      slave_o => slave_o(2),
+      desc_o  => open,
+
+      owr_pwren_o => owr_pwren_o,
+      owr_en_o    => owr_en_o,
+      owr_i       => owr_i
     );
-
-  RST_GEN: wb_reset
-    port map(
-      clk_i      => clk_sys_i,
-      rst_n_i    => rst_n_i,
-      genrst_n_o => genrst_n_o,
-    
-      wb_addr_i  => wb_addr_i(1 downto 0),
-      wb_data_i  => wb_data_i,
-      wb_data_o  => wb_dats_o(3),
-      wb_sel_i   => wb_sel_i,
-      wb_stb_i   => wb_stbs_i(3),
-      wb_cyc_i   => wb_cycs_i(3),
-      wb_we_i    => wb_we_i,
-      wb_ack_o   => wb_acks_o(3)
-    );  
 
 end struct;
