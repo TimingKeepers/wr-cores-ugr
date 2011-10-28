@@ -7,6 +7,10 @@ use work.gn4124_core_pkg.all;
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wbconmax_pkg.all;
+use work.wr_fabric_pkg.all;
+use work.wishbone_pkg.all;
+
+
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -235,7 +239,7 @@ architecture rtl of spec_top is
       clk_sys_i          : in  std_logic;
       clk_dmtd_i         : in  std_logic;
       clk_ref_i          : in  std_logic;
-      clk_aux_i : in std_logic := '0';
+      clk_aux_i          : in  std_logic := '0';
       rst_n_i            : in  std_logic;
       pps_p_o            : out std_logic;
       dac_hpll_load_p1_o : out std_logic;
@@ -267,8 +271,45 @@ architecture rtl of spec_top is
       wb_cyc_i           : in  std_logic;
       wb_stb_i           : in  std_logic;
       wb_ack_o           : out std_logic;
-      genrest_n          : out std_logic;
-      dio_o              : out std_logic_vector(3 downto 0));
+
+      ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
+      ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
+      ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
+      ext_snk_cyc_i   : in  std_logic                     := '0';
+      ext_snk_we_i    : in  std_logic                     := '0';
+      ext_snk_stb_i   : in  std_logic                     := '0';
+      ext_snk_ack_o   : out std_logic;
+      ext_snk_err_o   : out std_logic;
+      ext_snk_stall_o : out std_logic;
+
+
+      ext_src_adr_o   : out std_logic_vector(1 downto 0);
+      ext_src_dat_o   : out std_logic_vector(15 downto 0);
+      ext_src_sel_o   : out std_logic_vector(1 downto 0);
+      ext_src_cyc_o   : out std_logic;
+      ext_src_stb_o   : out std_logic;
+      ext_src_we_o    : out std_logic;
+      ext_src_ack_i   : in  std_logic := '1';
+      ext_src_err_i   : in  std_logic := '0';
+      ext_src_stall_i : in  std_logic := '0';
+
+      -- DAC Control
+      tm_dac_value_o : out std_logic_vector(23 downto 0);
+      tm_dac_wr_o    : out std_logic;
+
+      -- Aux clock lock enable
+      tm_clk_aux_lock_en_i : in std_logic := '0';
+
+      -- Aux clock locked flag
+      tm_clk_aux_locked_o : out std_logic;
+
+      -- Timecode output
+      tm_time_valid_o : out std_logic;
+      tm_utc_o        : out std_logic_vector(31 downto 0);
+      tm_cycles_o     : out std_logic_vector(27 downto 0);
+
+      genrest_n : out std_logic;
+      dio_o     : out std_logic_vector(3 downto 0));
   end component;
 
   component wr_gtp_phy_spartan6
@@ -446,10 +487,35 @@ architecture rtl of spec_top is
   signal dio_clk : std_logic;
 
   signal local_reset_n  : std_logic;
+  signal mbone_rst_n : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
-  
-  
 
+  signal mbone_src_out : t_wrf_source_out;
+  signal mbone_src_in  : t_wrf_source_in;
+  signal mbone_snk_out : t_wrf_sink_out;
+  signal mbone_snk_in  : t_wrf_sink_in;
+
+
+  component xmini_bone
+    generic (
+      g_class_mask    : std_logic_vector(7 downto 0);
+      g_our_ethertype : std_logic_vector(15 downto 0));
+    port (
+      clk_sys_i : in  std_logic;
+      rst_n_i   : in  std_logic;
+      src_o     : out t_wrf_source_out;
+      src_i     : in  t_wrf_source_in;
+      snk_o     : out t_wrf_sink_out;
+      snk_i     : in  t_wrf_sink_in;
+      master_o  : out t_wishbone_master_out;
+      master_i  : in  t_wishbone_master_in);
+  end component;
+
+  signal mbone_wb_out : t_wishbone_master_out;
+  signal mbone_wb_in : t_wishbone_master_in;
+  signal dpram_slave2_in : t_wishbone_master_out;
+  
+  
 begin
 
   
@@ -538,8 +604,8 @@ begin
   --end process;
 
 
- local_reset_n <= L_RST_N;
-  
+  local_reset_n <= L_RST_N;
+
   cmp_clk_sys_buf : BUFG
     port map (
       O => clk_sys,
@@ -724,7 +790,7 @@ begin
       wb_cyc_i   => wb_cyc(0),
       wb_stb_i   => wb_stb,
       wb_ack_o   => wb_ack(0),
-      genrest_n  => open,
+      genrest_n  => mbone_rst_n,
       dio_o      => dio_out(4 downto 1),
 
       phy_ref_clk_i      => clk_125m_pllref,
@@ -738,13 +804,68 @@ begin
       phy_rx_enc_err_i   => phy_rx_enc_err,
       phy_rx_bitslide_i  => phy_rx_bitslide,
       phy_rst_o          => phy_rst,
-      phy_loopen_o       => phy_loopen
+      phy_loopen_o       => phy_loopen,
+
+      ext_snk_adr_i   => mbone_src_out.adr,
+      ext_snk_dat_i   => mbone_src_out.dat,
+      ext_snk_sel_i   => mbone_src_out.sel,
+      ext_snk_cyc_i   => mbone_src_out.cyc,
+      ext_snk_we_i    => mbone_src_out.we,
+      ext_snk_stb_i   => mbone_src_out.stb,
+      ext_snk_ack_o   => mbone_src_in.ack,
+      ext_snk_err_o   => mbone_src_in.err,
+      ext_snk_stall_o => mbone_src_in.stall,
+
+      ext_src_adr_o   => mbone_snk_in.adr,
+      ext_src_dat_o   => mbone_snk_in.dat,
+      ext_src_sel_o   => mbone_snk_in.sel,
+      ext_src_cyc_o   => mbone_snk_in.cyc,
+      ext_src_stb_o   => mbone_snk_in.stb,
+      ext_src_we_o    => mbone_snk_in.we,
+      ext_src_ack_i   => mbone_snk_out.ack,
+      ext_src_err_i   => mbone_snk_out.err,
+      ext_src_stall_i => mbone_snk_out.stall
       );
 
+  U_MiniBone: xmini_bone
+    generic map (
+      g_class_mask    => x"f0",
+      g_our_ethertype => x"a0a0")
+    port map (
+      clk_sys_i => clk_sys,
+      rst_n_i   => mbone_rst_n,
+      src_o     => mbone_src_out,
+      src_i     => mbone_src_in,
+      snk_o     => mbone_snk_out,
+      snk_i     => mbone_snk_in,
+      master_o  => mbone_wb_out,
+      master_i  => mbone_wb_in);
 
+
+  U_DPRAM: xwb_dpram
+    generic map (
+      g_size                  => 2048,
+      g_init_file             => "",
+      g_must_have_init_file   => false,
+      g_slave1_interface_mode => CLASSIC,
+      g_slave2_interface_mode => CLASSIC,
+      g_slave1_granularity    => BYTE,
+      g_slave2_granularity    => BYTE)
+    port map (
+      clk_sys_i => clk_sys,
+      rst_n_i   => mbone_rst_n,
+      slave1_i  => mbone_wb_out,
+      slave1_o  => mbone_wb_in,
+      slave2_i  => dpram_slave2_in,
+      slave2_o  => open);
+  
+  dpram_slave2_in.cyc <= '0';
+  dpram_slave2_in.stb <= '0';
+  
   U_GTP : wr_gtp_phy_spartan6
     generic map (
-      g_simulation => 0)
+      g_simulation         => 0,
+      g_ch1_use_refclk_out => false)
     port map (
       ch0_ref_clk_i      => clk_125m_pllref,
       ch0_ref_clk_o      => open,
@@ -870,25 +991,7 @@ begin
 
   sfp_tx_disable_o <= '0';
 
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_125m_pllref,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
 
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL
-  --    );
-
-  --TRIG0(7 downto 0)<=phy_tx_data;
-  --TRIG0(8) <= phy_tx_k;
-  --TRIG0(9) <= phy_tx_disparity;
-  --TRIG0(10) <= phy_tx_enc_err;
-  
 end rtl;
 
 
