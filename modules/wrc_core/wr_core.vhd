@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-27
+-- Last update: 2011-10-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -373,6 +373,8 @@ architecture struct of wr_core is
   signal TRIG3   : std_logic_vector(31 downto 0);
 begin
 
+  genrest_n <= genrst_n;
+
   s_rst_n <= genrst_n and rst_n_i;
   s_rst   <= not s_rst_n;
   -----------------------------------------------------------------------------
@@ -731,48 +733,40 @@ begin
   lm32_jwb_i  <= cnx_slave_o(7);
 
 
-  chipscope_ila_1 : chipscope_ila
-    port map (
-      CONTROL => CONTROL,
-      CLK     => clk_sys_i,
-      TRIG0   => TRIG0,
-      TRIG1   => TRIG1,
-      TRIG2   => TRIG2,
-      TRIG3   => TRIG3);
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
-  chipscope_icon_1 : chipscope_icon
-    port map (
-      CONTROL0 => CONTROL);
+  --chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
 
-  TRIG0(15 downto 0)                            <= ep_src_out.dat;
-  trig0(17 downto 16) <= ep_src_out.adr;
-  trig0(19 downto 18) <= ep_src_out.sel;
-  trig0(20) <= ep_src_out.cyc;
-  trig0(21) <= ep_src_out.stb;
-  trig0(22) <= ep_src_out.we;
-  trig0(23) <= ep_src_in.ack;
-  trig0(24) <= ep_src_in.stall;
-  trig0(26) <= ep_src_in.err;
+  --TRIG0(15 downto 0)                            <= ext_src_out.dat;
+  --trig0(17 downto 16) <= ext_src_out.adr;
+  --trig0(19 downto 18) <= ext_src_out.sel;
+  --trig0(20) <= ext_src_out.cyc;
+  --trig0(21) <= ext_src_out.stb;
+  --trig0(22) <= ext_src_out.we;
+  --trig0(23) <= ext_src_in.ack;
+  --trig0(24) <= ext_src_in.stall;
+  --trig0(26) <= ext_src_in.err;
 
-  TRIG1(15 downto 0)                            <= minic_snk_in.dat;
-  trig1(17 downto 16) <= minic_snk_in.adr;
-  trig1(19 downto 18) <= minic_snk_in.sel;
-  trig1(20) <= minic_snk_in.cyc;
-  trig1(21) <= minic_snk_in.stb;
-  trig1(22) <= minic_snk_in.we;
-  trig1(23) <= minic_snk_out.ack;
-  trig1(24) <= minic_snk_out.stall;
-  trig1(26) <= minic_snk_out.err;
+ 
 
-  TRIG2(15 downto 0)                            <= ext_snk_in.dat;
-  trig2(17 downto 16) <= ext_snk_in.adr;
-  trig2(19 downto 18) <= ext_snk_in.sel;
-  trig2(20) <= ext_snk_in.cyc;
-  trig2(21) <= ext_snk_in.stb;
-  trig2(22) <= ext_snk_in.we;
-  trig2(23) <= ext_snk_out.ack;
-  trig2(24) <= ext_snk_out.stall;
-  trig2(26) <= ext_snk_out.err;
+  --TRIG2(15 downto 0)                            <= ext_snk_in.dat;
+  --trig2(17 downto 16) <= ext_snk_in.adr;
+  --trig2(19 downto 18) <= ext_snk_in.sel;
+  --trig2(20) <= ext_snk_in.cyc;
+  --trig2(21) <= ext_snk_in.stb;
+  --trig2(22) <= ext_snk_in.we;
+  --trig2(23) <= ext_snk_out.ack;
+  --trig2(24) <= ext_snk_out.stall;
+  --trig2(26) <= ext_snk_out.err;
 
     
 
