@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2011-07-18
+-- Last update: 2011-10-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -55,7 +55,8 @@ entity dmtd_with_deglitcher is
     -- and clk_dmtd_i are respectively f_in an f_dmtd, it can be calculated with
     -- the following formula:
     -- g_counter_bits = log2(f_in / abs(f_in - f_dmtd)) + 1
-    g_counter_bits : natural := 17
+    g_counter_bits : natural := 17;
+    g_chipscope: boolean := false
     );
   port (
     -- resets for different clock domains
@@ -120,27 +121,27 @@ architecture rtl of dmtd_with_deglitcher is
 
   signal tag_int : unsigned(g_counter_bits-1 downto 0);
 
-  --component chipscope_ila
-  --  port (
-  --    CONTROL : inout std_logic_vector(35 downto 0);
-  --    CLK     : in    std_logic;
-  --    TRIG0   : in    std_logic_vector(31 downto 0);
-  --    TRIG1   : in    std_logic_vector(31 downto 0);
-  --    TRIG2   : in    std_logic_vector(31 downto 0);
-  --    TRIG3   : in    std_logic_vector(31 downto 0));
-  --end component;
+  component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
 
-  --component chipscope_icon
-  --  port (
-  --    CONTROL0 : inout std_logic_vector (35 downto 0));
-  --end component;
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector (35 downto 0));
+  end component;
 
-  --signal CONTROL : std_logic_vector(35 downto 0);
-  --signal CLK     : std_logic;
-  --signal TRIG0   : std_logic_vector(31 downto 0);
-  --signal TRIG1   : std_logic_vector(31 downto 0);
-  --signal TRIG2   : std_logic_vector(31 downto 0);
-  --signal TRIG3   : std_logic_vector(31 downto 0);
+  signal CONTROL : std_logic_vector(35 downto 0);
+  signal CLK     : std_logic;
+  signal TRIG0   : std_logic_vector(31 downto 0);
+  signal TRIG1   : std_logic_vector(31 downto 0);
+  signal TRIG2   : std_logic_vector(31 downto 0);
+  signal TRIG3   : std_logic_vector(31 downto 0);
   
 begin  -- rtl
   
@@ -240,27 +241,30 @@ begin  -- rtl
       pulse_i    => new_edge_p,
       extended_o => dbg_dmtdout_o);
 
+gen_with_csc:  if(g_chipscope) generate
 
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_dmtd_i,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
+  chipscope_ila_1 : chipscope_ila
+    port map (
+      CONTROL => CONTROL,
+      CLK     => clk_dmtd_i,
+      TRIG0   => TRIG0,
+      TRIG1   => TRIG1,
+      TRIG2   => TRIG2,
+      TRIG3   => TRIG3);
 
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL);
+  chipscope_icon_1 : chipscope_icon
+    port map (
+      CONTROL0 => CONTROL);
 
   
-  --TRIG0(tag_int'left downto 0) <= std_logic_vector(tag_int);
-  --TRIG0(31) <=clk_i_d3;
-  --TRIG0(30) <= '1' when (state = WAIT_STABLE_0) else '0';
-  --TRIG0(29) <= '1' when (state = WAIT_EDGE) else '0';
-  --TRIG0(28) <= '1' when (state = GOT_EDGE) else '0';
-  --TRIG1(stab_cntr'left downto 0) <= std_logic_vector(stab_cntr);
-  --TRIG2(free_cntr'left downto 0) <= std_logic_vector(free_cntr);
-    
+  TRIG0(tag_int'left downto 0) <= std_logic_vector(tag_int);
+  TRIG0(31) <=clk_i_d3;
+  TRIG0(30) <= '1' when (state = WAIT_STABLE_0) else '0';
+  TRIG0(29) <= '1' when (state = WAIT_EDGE) else '0';
+  TRIG0(28) <= '1' when (state = GOT_EDGE) else '0';
+  TRIG1(stab_cntr'left downto 0) <= std_logic_vector(stab_cntr);
+  TRIG2(free_cntr'left downto 0) <= std_logic_vector(free_cntr);
+
+end generate gen_with_csc;
+  
 end rtl;
