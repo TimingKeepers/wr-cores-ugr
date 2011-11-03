@@ -585,6 +585,55 @@ peripheral {
 			};
 	 };
 	
+		reg {
+			name = "DMTD Control Register";
+			prefix = "DMCR";
+
+			field {
+				 name = "DMTD Phase measurement enable";
+				 description = "1: enables DMTD phase measurement";
+				 type = BIT;
+				 prefix = "EN";
+				 access_dev = READ_ONLY;
+				 access_bus = READ_WRITE;
+			};
+
+			field {
+				 name = "DMTD averaging samples";
+				 description = "Number of raw DMTD phase samples averaged in every measurement cycle";
+				 prefix = "N_AVG";
+				 type = SLV;
+				 size = 12;
+				 align = 16;
+				 access_dev = READ_ONLY;
+				 access_bus = READ_WRITE;
+			};
+	 };
+
+	 reg {
+			name = "DMTD Status register";
+			prefix = "DMSR";
+
+			field {
+				 name = "DMTD Phase shift value";
+				 prefix = "PS_VAL";
+				 size = 24;
+				 type = SLV;
+				 access_dev = WRITE_ONLY;
+				 access_bus = READ_ONLY;
+			};
+
+			field {
+				 name = "DMTD Phase shift value ready";
+				 prefix = "PS_RDY";
+				 type = BIT;
+				 load = LOAD_EXT;
+				 access_dev = READ_WRITE;
+				 access_bus = READ_WRITE;
+			};
+	 };
+
+
 		ram {
 			 name = "Event counters memory";
 			 description = "RMON event counters:\
