@@ -68,7 +68,7 @@ architecture behavioral of ep_rx_crc_size_check is
   signal q_bytesel        : std_logic;
   signal q_dvalid_in      : std_logic;
   signal q_dvalid_out     : std_logic;
-
+signal q_dreq_out: std_logic;
   signal dvalid_mask : std_logic_vector(1 downto 0);
   
 begin  -- behavioral
@@ -107,7 +107,7 @@ begin  -- behavioral
       clk_i   => clk_sys_i,
       d_i     => q_in,
       valid_i => q_dvalid_in,
-      dreq_o  => snk_dreq_o,
+      dreq_o  => q_dreq_out,
       q_o     => q_out,
       valid_o => q_dvalid_out,
       dreq_i  => src_dreq_i,
@@ -115,6 +115,7 @@ begin  -- behavioral
       purge_i => q_purge,
       empty_o => q_empty);
 
+  snk_dreq_o <= q_dreq_out and not (snk_fab_i.eof or snk_fab_i.error);
   
   
   p_count_bytes : process (clk_sys_i, rst_n_i)
