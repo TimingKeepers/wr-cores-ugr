@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-10-25
+-- Last update: 2011-10-30
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -67,7 +67,9 @@ entity wr_endpoint is
 
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
     clk_sys_i : in std_logic;
-
+--
+    clk_dmtd_i:in std_logic;
+    
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
 
@@ -121,6 +123,7 @@ entity wr_endpoint is
     src_we_o    : out std_logic;
     src_stall_i : in  std_logic;
     src_ack_i   : in  std_logic;
+    src_err_i : in std_logic;
 
     snk_dat_i   : in  std_logic_vector(15 downto 0);
     snk_adr_i   : in  std_logic_vector(1 downto 0);
@@ -212,6 +215,23 @@ architecture syn of wr_endpoint is
   constant c_zeros : std_logic_vector(63 downto 0) := (others => '0');
   constant c_ones  : std_logic_vector(63 downto 0) := (others => '0');
 
+-------------------------------------------------------------------------------
+  component dmtd_phase_meas
+    generic (
+      g_deglitcher_threshold : integer;
+      g_counter_bits         : integer);
+    port (
+      rst_n_i        : in  std_logic;
+      clk_sys_i      : in  std_logic;
+      clk_a_i        : in  std_logic;
+      clk_b_i        : in  std_logic;
+      clk_dmtd_i     : in  std_logic;
+      en_i           : in  std_logic;
+      navg_i         : in  std_logic_vector(11 downto 0);
+      phase_meas_o   : out std_logic_vector(31 downto 0);
+      phase_meas_p_o : out std_logic);
+  end component;
+  
   component ep_tx_framer
     generic (
       g_with_vlans       : boolean;
@@ -441,6 +461,11 @@ architecture syn of wr_endpoint is
   signal wb_out : t_wishbone_slave_out;
 
   signal extended_ADDR : std_logic_vector(c_wishbone_address_width-1 downto 0);
+
+  signal phase_meas    : std_logic_vector(31 downto 0);
+  signal phase_meas_p  : std_logic;
+  signal validity_cntr : unsigned(1 downto 0);
+
   
 begin
 
@@ -605,7 +630,7 @@ begin
   src_we_o     <= src_out.we;
   src_in.stall <= src_stall_i;
   src_in.ack   <= src_ack_i;
-
+  src_in.err <= src_err_i;
 ---------------------------------------------------------------------------------
 ---- RX buffer
 ---------------------------------------------------------------------------------
@@ -794,6 +819,55 @@ begin
           regs_towb_ep.dsr_lact_i <= '0';  -- clear-on-write
         elsif(txpcs_fab.dvalid = '1' or rxpcs_fab.dvalid = '1') then
           regs_towb_ep.dsr_lact_i <= '1';
+        end if;
+      end if;
+    end if;
+  end process;
+
+  
+-------------------------------------------------------------------------------
+-- DMTD phase meter
+------------------------------------------------------------------------------  
+
+  U_DMTD : dmtd_phase_meas
+    generic map (
+      g_counter_bits        => 14,
+      g_deglitcher_threshold => 1000 )
+    port map (
+      clk_sys_i  => clk_sys_i,
+
+      clk_a_i    => phy_ref_clk_i,
+      clk_b_i    => phy_rx_clk_i,
+      clk_dmtd_i => clk_dmtd_i,
+      rst_n_i    => rst_n_i,
+
+      en_i           => regs_fromwb.dmcr_en_o,
+      navg_i         => regs_fromwb.dmcr_n_avg_o,
+      phase_meas_o   => phase_meas,
+      phase_meas_p_o => phase_meas_p);
+
+  p_dmtd_update : process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if rst_n_i = '0' then
+        validity_cntr      <= (others => '0');
+        regs_towb_ep.dmsr_ps_rdy_i <= '0';
+      else
+
+        if(regs_fromwb.dmcr_en_o = '0') then
+          validity_cntr      <= (others => '0');
+          regs_towb_ep.dmsr_ps_rdy_i <= '0';
+        elsif(regs_fromwb.dmsr_ps_rdy_o= '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
+          regs_towb_ep.dmsr_ps_rdy_i <= '0';
+        elsif(phase_meas_p = '1') then
+
+          if(validity_cntr = "11") then
+            regs_towb_ep.dmsr_ps_rdy_i <= '1';
+            regs_towb_ep.dmsr_ps_val_i     <= phase_meas(23 downto 0);  -- discard few
+          else
+            regs_towb_ep.dmsr_ps_rdy_i <= '0';
+            validity_cntr      <= validity_cntr + 1;
+          end if;
         end if;
       end if;
     end if;
