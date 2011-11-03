@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-10
--- Last update: 2011-10-25
+-- Last update: 2011-10-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ begin  -- behavioral
     end if;
   end process;
 
-  dreq_o    <= dreq_i and not flushing;
+  dreq_o    <= dreq_i and not (flush_i or flushing);
   valid_int <= (qfull and valid_i) or (not qempty and flushing and valid_mask);
   valid_o   <= valid_int;
   
