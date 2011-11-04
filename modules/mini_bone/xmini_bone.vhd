@@ -1,3 +1,7 @@
+-- A crude eternet controlled WB master supporting single R/W accesses, no error handling or any 
+-- more sophisticated stuff. FOR TESTING WR CORE ONLY.
+
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -326,7 +330,6 @@ begin  -- behavioral
               state       <= TX_STATUS;
               src_out.stb <= '1';
               src_out.cyc <= '1';
-              src_out.stb <= '1';
               src_out.adr <= c_WRF_STATUS;
               src_out.dat <= (others => '0');
             else
@@ -407,18 +410,18 @@ begin  -- behavioral
   src_o <= src_out;
 
 
-  chipscope_ila_1 : chipscope_ila
-    port map (
-      CONTROL => CONTROL,
-      CLK     => clk_sys_i,
-      TRIG0   => TRIG0,
-      TRIG1   => TRIG1,
-      TRIG2   => TRIG2,
-      TRIG3   => TRIG3);
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
-  chipscope_icon_1 : chipscope_icon
-    port map (
-      CONTROL0 => CONTROL);
+  --chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
 
   TRIG0(15 downto 0)  <= src_out.dat;
   trig0(17 downto 16) <= src_out.adr;
