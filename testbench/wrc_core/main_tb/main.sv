@@ -90,9 +90,8 @@ module main;
         .phy_rx_enc_err_i(phy_rx_enc_err),
         .phy_rx_bitslide_i(phy_rx_bitslide),
         .phy_rst_o(phy_rst),
-        .phy_loopen_o(phy_lo),
+        .phy_loopen_o(phy_lo)
 
-	.genrest_n        ()
         );
 
    assign phy_rx_data       = phy_tx_data;
@@ -110,7 +109,8 @@ module main;
 
       acc = WB.get_accessor();
 
-      acc.write('h62000, 'hffffffff);
+      acc.write('h62000, 'h1);
+      #3us;
       acc.write('h62000, 0);
 
       

@@ -191,7 +191,7 @@ module ep2ep_wrapper
               .phy_rx_enc_err_i  (1'b0),
               .phy_rx_bitslide_i (5'b0),
 
-              .src_dat_o   (src_b.dat_i),
+              .src_dat_o   (src_b.dat_o),
               .src_adr_o   (src_b.adr),
               .src_sel_o   (src_b.sel),
               .src_cyc_o   (src_b.cyc),
@@ -199,7 +199,8 @@ module ep2ep_wrapper
               .src_we_o    (src_b.we),
               .src_stall_i (src_b.stall),
               .src_ack_i   (src_b.ack),
-
+              .src_err_i   (src_b.err),
+              
               .snk_dat_i   (snk_b.dat_i[15:0]),
               .snk_adr_i   (snk_b.adr[1:0]),
               .snk_sel_i   (snk_b.sel[1:0]),
@@ -230,6 +231,9 @@ module ep2ep_wrapper
               .wb_ack_o (sys_b.ack)
     );
 
+
+
+   
    task ep_init(CWishboneAccessor acc);
       acc.set_mode(CLASSIC);
       acc.write(`ADDR_EP_ECR, `EP_ECR_TX_EN | `EP_ECR_RX_EN);
