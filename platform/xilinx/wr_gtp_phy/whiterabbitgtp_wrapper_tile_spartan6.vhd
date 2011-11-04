@@ -27,6 +27,8 @@ generic
       --------------------------------- PLL Ports --------------------------------
       CLK00_IN             : in  std_logic;
       CLK01_IN             : in  std_logic;
+      CLK10_IN             : in  std_logic;
+      CLK11_IN             : in  std_logic;
       GTPRESET0_IN         : in  std_logic;
       GTPRESET1_IN         : in  std_logic;
       PLLLKDET0_OUT        : out std_logic;
@@ -438,8 +440,8 @@ begin
       --------------------------------- PLL Ports --------------------------------
       CLK00                     => CLK00_IN,
       CLK01                     => CLK01_IN,
-      CLK10                     => tied_to_ground_i,
-      CLK11                     => tied_to_ground_i,
+      CLK10                     => CLK10_IN,
+      CLK11                     => CLK11_IN,
       CLKINEAST0                => tied_to_ground_i,
       CLKINEAST1                => tied_to_ground_i,
       CLKINWEST0                => tied_to_ground_i,

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-17
+-- Last update: 2011-11-02
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -59,7 +59,9 @@ entity wr_gtp_phy_spartan6 is
     -- set to non-zero value to speed up the simulation by reducing some delays
     g_simulation         : integer := 1;
     g_ch0_use_refclk_out : boolean := false;
-    g_ch1_use_refclk_out : boolean := false
+    g_ch1_use_refclk_out : boolean := false;
+    g_ch0_refclk_input: integer := 0;
+    g_ch1_refclk_input :integer := 0
     );
 
   port (
@@ -165,6 +167,8 @@ architecture rtl of wr_gtp_phy_spartan6 is
       REFCLKOUT1_OUT        : out std_logic;
       CLK00_IN              : in  std_logic;
       CLK01_IN              : in  std_logic;
+      CLK10_IN              : in  std_logic;
+      CLK11_IN              : in  std_logic;
       GTPRESET0_IN          : in  std_logic;
       GTPRESET1_IN          : in  std_logic;
       PLLLKDET0_OUT         : out std_logic;
@@ -341,6 +345,9 @@ architecture rtl of wr_gtp_phy_spartan6 is
   signal ch0_rx_bitslide_int : std_logic_vector(4 downto 0);
   signal ch1_rx_bitslide_int : std_logic_vector(4 downto 0);
 
+  signal ch0_ref_clk_in : std_logic_vector(1 downto 0);
+  signal ch1_ref_clk_in : std_logic_vector(1 downto 0);
+  
 
   component enc_8b10b
     port (
@@ -479,6 +486,15 @@ begin  -- rtl
     ch1_ref_clk <= ch1_ref_clk_i;
   end generate gen4;
 
+
+
+  ch0_ref_clk_in(g_ch0_refclk_input) <= ch0_ref_clk_i;
+  ch0_ref_clk_in(1-g_ch0_refclk_input) <= '0';
+
+  ch1_ref_clk_in(g_ch1_refclk_input) <= ch1_ref_clk_i;
+  ch1_ref_clk_in(1-g_ch1_refclk_input) <= '0';
+  
+  
   U_GTP_TILE_INST : WHITERABBITGTP_WRAPPER_TILE_SPARTAN6
     generic map
     (
@@ -503,8 +519,10 @@ begin  -- rtl
 
       REFCLKOUT0_OUT => open,
       REFCLKOUT1_OUT => open,
-      CLK00_IN       => ch0_ref_clk_i,
-      CLK01_IN       => ch1_ref_clk_i,
+      CLK00_IN       => ch0_ref_clk_in(0),
+      CLK01_IN       => ch1_ref_clk_in(0),
+      CLK10_IN       => ch0_ref_clk_in(1),
+      CLK11_IN       => ch1_ref_clk_in(1),
       GTPRESET0_IN   => ch0_gtp_reset,
       GTPRESET1_IN   => ch1_gtp_reset,
       PLLLKDET0_OUT  => ch0_gtp_pll_lockdet,
