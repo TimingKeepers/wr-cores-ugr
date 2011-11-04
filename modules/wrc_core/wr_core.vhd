@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-28
+-- Last update: 2011-10-30
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -164,12 +164,11 @@ entity wr_core is
 
     -- Timecode output
     tm_time_valid_o: out std_logic;
-    tm_utc_o: out std_logic_vector(31 downto 0);
+    tm_utc_o: out std_logic_vector(39 downto 0);
     tm_cycles_o: out std_logic_vector(27 downto 0);
     
     
-    --DEBUG
-    genrest_n : out std_logic;
+    rst_aux_n_o: out std_logic;
 
     dio_o : out std_logic_vector(3 downto 0)
     );
@@ -177,10 +176,11 @@ end wr_core;
 
 architecture struct of wr_core is
 
+  signal rst_cpu_n : std_logic;
+  signal rst_net_n : std_logic;
 
-  
-  signal s_rst   : std_logic;
-  signal s_rst_n : std_logic;
+  signal rst_cpu_n_wb : std_logic;
+  signal rst_net_n_wb : std_logic;
 
   -----------------------------------------------------------------------------
   --PPS generator
@@ -371,23 +371,22 @@ architecture struct of wr_core is
   signal TRIG1   : std_logic_vector(31 downto 0);
   signal TRIG2   : std_logic_vector(31 downto 0);
   signal TRIG3   : std_logic_vector(31 downto 0);
+
+
 begin
 
-  genrest_n <= genrst_n;
-
-  s_rst_n <= genrst_n and rst_n_i;
-  s_rst   <= not s_rst_n;
-  -----------------------------------------------------------------------------
-  --PPS generator
-  -----------------------------------------------------------------------------
-
+  rst_cpu_n <= rst_n_i and rst_cpu_n_wb;
+  rst_net_n <= rst_n_i and rst_net_n_wb;
+  
+  rst_aux_n_o <= rst_net_n;
+  
   PPS_GEN : wr_pps_gen
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
 
-      rst_n_i => s_rst_n,
-
+      rst_n_i => rst_cpu_n,
+      
       wb_adr_i => ppsg_wb_i.addr(4 downto 0),
       wb_dat_i => ppsg_wb_i.data,
       wb_dat_o => ppsg_wb_o.data,
@@ -397,10 +396,14 @@ begin
       wb_we_i   => ppsg_wb_i.we,
       wb_ack_o  => ppsg_wb_o.ack,
 
-      -- Single-pulse PPS output for synchronizing endpoint to
+      -- Single-pulse PPS output for synchronizing the endpoint to
       pps_in_i    => '0',
       pps_csync_o => s_pps_csync,
-      pps_out_o   => pps_p_o
+      pps_out_o   => pps_p_o,
+
+      tm_utc_o => tm_utc_o,
+      tm_cycles_o => tm_cycles_o,
+      tm_time_valid_o => tm_time_valid_o
       );
 
 
@@ -410,7 +413,7 @@ begin
       g_tag_bits             => 20)
     port map (
       clk_sys_i  => clk_sys_i,
-      rst_n_i    => s_rst_n,
+      rst_n_i    => rst_cpu_n,
       clk_ref_i  => clk_ref_i,
       clk_dmtd_i => clk_dmtd_i,
       clk_rx_i   => phy_rx_rbclk_i,
@@ -457,7 +460,8 @@ begin
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,
-      rst_n_i        => s_rst_n,
+      clk_dmtd_i => clk_dmtd_i,
+      rst_n_i        => rst_net_n,
       pps_csync_p1_i => s_pps_csync,
 
       phy_rst_o                     => phy_rst_o,
@@ -499,6 +503,7 @@ begin
   ep_wb_in.sel              <= ep_wb_i.sel;
   ep_wb_in.adr(10 downto 0) <= ep_wb_i.addr(10 downto 0);
   ep_wb_in.dat              <= ep_wb_i.data;
+
   ep_wb_o.ack               <= ep_wb_out.ack;
   ep_wb_o.data              <= ep_wb_out.dat;
 
@@ -510,7 +515,7 @@ begin
       g_buffer_little_endian => false)
     port map (
       clk_sys_i => clk_sys_i,
-      rst_n_i   => s_rst_n,
+      rst_n_i   => rst_net_n,
 
       mem_data_o => s_mnic_mem_data_o,
       mem_addr_o => s_mnic_mem_addr_o,
@@ -552,7 +557,7 @@ begin
       g_num_irqs   => 1)
     port map (
       clk_i   => clk_sys_i,
-      rst_n_i => s_rst_n,
+      rst_n_i => rst_cpu_n,
       irq_i   => lm32_irq_slv,
 
       iwb_adr_o => lm32_iwb_o.addr,
@@ -635,8 +640,9 @@ begin
 
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
-      genrst_n_o => genrst_n,
-
+      rst_net_n_o => rst_net_n_wb,
+      rst_cpu_n_o => rst_cpu_n_wb,
+      
       wb_addr_i => periph_wb_i.addr(11 downto 0),
       wb_data_i => periph_wb_i.data,
       wb_data_o => periph_wb_o.data,
@@ -746,34 +752,42 @@ begin
   --  port map (
   --    CONTROL0 => CONTROL);
 
-  --TRIG0(15 downto 0)                            <= ext_src_out.dat;
-  --trig0(17 downto 16) <= ext_src_out.adr;
-  --trig0(19 downto 18) <= ext_src_out.sel;
-  --trig0(20) <= ext_src_out.cyc;
-  --trig0(21) <= ext_src_out.stb;
-  --trig0(22) <= ext_src_out.we;
-  --trig0(23) <= ext_src_in.ack;
-  --trig0(24) <= ext_src_in.stall;
-  --trig0(26) <= ext_src_in.err;
+  --TRIG0(15 downto 0)                            <= minic_src_out.dat;
+  --trig0(17 downto 16) <= minic_src_out.adr;
+  --trig0(19 downto 18) <= minic_src_out.sel;
+  --trig0(20) <= minic_src_out.cyc;
+  --trig0(21) <= minic_src_out.stb;
+  --trig0(22) <= minic_src_out.we;
+  --trig0(23) <= minic_src_in.ack;
+  --trig0(24) <= minic_src_in.stall;
+  --trig0(26) <= minic_src_in.err;
 
- 
+  --TRIG1(15 downto 0)                            <= ep_src_out.dat;
+  --trig1(17 downto 16) <= ep_src_out.adr;
+  --trig1(19 downto 18) <= ep_src_out.sel;
+  --trig1(20) <= ep_src_out.cyc;
+  --trig1(21) <= ep_src_out.stb;
+  --trig1(22) <= ep_src_out.we;
+  --trig1(23) <= ep_src_in.ack;
+  --trig1(24) <= ep_src_in.stall;
+  --trig1(26) <= ep_src_in.err;
 
-  --TRIG2(15 downto 0)                            <= ext_snk_in.dat;
-  --trig2(17 downto 16) <= ext_snk_in.adr;
-  --trig2(19 downto 18) <= ext_snk_in.sel;
-  --trig2(20) <= ext_snk_in.cyc;
-  --trig2(21) <= ext_snk_in.stb;
-  --trig2(22) <= ext_snk_in.we;
-  --trig2(23) <= ext_snk_out.ack;
-  --trig2(24) <= ext_snk_out.stall;
-  --trig2(26) <= ext_snk_out.err;
+  --TRIG2(15 downto 0)                            <= minic_snk_in.dat;
+  --trig2(17 downto 16) <= minic_snk_in.adr;
+  --trig2(19 downto 18) <= minic_snk_in.sel;
+  --trig2(20) <= minic_snk_in.cyc;
+  --trig2(21) <= minic_snk_in.stb;
+  --trig2(22) <= minic_snk_in.we;
+  --trig2(23) <= minic_snk_out.ack;
+  --trig2(24) <= minic_snk_out.stall;
+  --trig2(26) <= minic_snk_out.err;
 
     
 
   U_WBP_Mux : xwbp_mux
     port map (
       clk_sys_i    => clk_sys_i,
-      rst_n_i      => rst_n_i,
+      rst_n_i      => rst_net_n,
       ep_src_o     => ep_snk_in,
       ep_src_i     => ep_snk_out,
       ep_snk_o     => ep_src_in,

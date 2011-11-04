@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2011-10-25
+-- Last update: 2011-10-29
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -55,8 +55,10 @@ entity wrc_periph is
 
     uart_rxd_i: in  std_logic;
     uart_txd_o: out std_logic;
-    genrst_n_o: out std_logic;
 
+    rst_cpu_n_o: out std_logic;
+    rst_net_n_o: out std_logic;
+    
     wb_addr_i : in  std_logic_vector(11 downto 0); 
     wb_data_i : in  std_logic_vector(31 downto 0); 
     wb_data_o : out std_logic_vector(31 downto 0); 
@@ -71,12 +73,10 @@ end wrc_periph;
 architecture struct of wrc_periph is
 
   
- 
   component wb_reset
     port (
       clk_i      : in  std_logic;
       rst_n_i    : in  std_logic;
-      genrst_n_o : out std_logic;
       wb_addr_i  : in  std_logic_vector(1 downto 0);
       wb_data_i  : in  std_logic_vector(31 downto 0);
       wb_data_o  : out std_logic_vector(31 downto 0);
@@ -84,9 +84,11 @@ architecture struct of wrc_periph is
       wb_stb_i   : in  std_logic;
       wb_cyc_i   : in  std_logic;
       wb_we_i    : in  std_logic;
-      wb_ack_o   : out std_logic);
+      wb_ack_o   : out std_logic;
+      rst_cpu_n_o : out std_logic;
+      rst_net_n_o: out std_logic
+      );
   end component;
-
  
   type t_wbdata is array(3 downto 0) of std_logic_vector(31 downto 0);
 
@@ -95,26 +97,13 @@ architecture struct of wrc_periph is
   signal wb_acks_o  : std_logic_vector(3 downto 0);
   signal wb_dats_o  : t_wbdata;
  
-
   signal wb_ack_int : std_logic;
-  
 begin
 
  
 
 
- --TRIG3(11 downto 0)  <= wb_addr_i(11 downto 0);
- -- TRIG3(21 downto 12) <= (others => '0');
- -- TRIG3(31 downto 28) <= wb_sel_i;
- -- TRIG3(22)           <= wb_cyc_i;
- -- TRIG3(23)           <= wb_stb_i;
- -- TRIG3(24)           <= wb_we_i;
- -- TRIG3(25)           <= wb_ack_int;
- -- TRIG0               <= wb_data_i;
- -- TRIG2(3 downto 0) <= wb_cycs_i;
- -- TRIG2(7 downto 4) <= wb_acks_o;
-  
-  wb_ack_o <= wb_ack_int;
+
   
   GENWB: 
   for I in 0 to 3 generate
@@ -177,7 +166,6 @@ begin
       uart_txd_o => uart_txd_o
       );
  
-
   TICS: wb_tics
     generic map (
       g_period => g_tics_period)
@@ -199,8 +187,9 @@ begin
     port map(
       clk_i      => clk_sys_i,
       rst_n_i    => rst_n_i,
-      genrst_n_o => genrst_n_o,
-    
+      rst_net_n_o => rst_net_n_o,
+      rst_cpu_n_o => rst_cpu_n_o,
+      
       wb_addr_i  => wb_addr_i(1 downto 0),
       wb_data_i  => wb_data_i,
       wb_data_o  => wb_dats_o(3),
@@ -211,4 +200,6 @@ begin
       wb_ack_o   => wb_acks_o(3)
     );  
 
+wb_ack_o <= wb_ack_int;
+  
 end struct;

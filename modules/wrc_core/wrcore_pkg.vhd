@@ -66,7 +66,8 @@ package wrcore_pkg is
       gpio_dir_o : out std_logic_vector(g_gpio_pins-1 downto 0);
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
-      genrst_n_o : out std_logic;
+      rst_cpu_n_o : out std_logic;
+      rst_net_n_o : out std_logic;
       wb_addr_i  : in  std_logic_vector(11 downto 0);
       wb_data_i  : in  std_logic_vector(31 downto 0);
       wb_data_o  : out std_logic_vector(31 downto 0);
