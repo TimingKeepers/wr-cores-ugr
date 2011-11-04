@@ -308,7 +308,7 @@ architecture rtl of spec_top is
       tm_utc_o        : out std_logic_vector(31 downto 0);
       tm_cycles_o     : out std_logic_vector(27 downto 0);
 
-      genrest_n : out std_logic;
+      rst_aux_n_o : out std_logic;
       dio_o     : out std_logic_vector(3 downto 0));
   end component;
 
@@ -790,7 +790,7 @@ begin
       wb_cyc_i   => wb_cyc(0),
       wb_stb_i   => wb_stb,
       wb_ack_o   => wb_ack(0),
-      genrest_n  => mbone_rst_n,
+      rst_aux_n_o  => mbone_rst_n,
       dio_o      => dio_out(4 downto 1),
 
       phy_ref_clk_i      => clk_125m_pllref,
@@ -842,6 +842,8 @@ begin
       master_i  => mbone_wb_in);
 
 
+
+  
   U_DPRAM: xwb_dpram
     generic map (
       g_size                  => 2048,
