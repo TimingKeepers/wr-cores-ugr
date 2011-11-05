@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2011-10-27
+-- Last update: 2011-11-02
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -158,8 +158,8 @@ architecture behavioral of wr_mini_nic is
   end function f_buf_swap_endian_32;
 
 
-  signal src_cyc_int : std_logic;
-  signal src_stb_int : std_logic;
+  signal src_cyc_int   : std_logic;
+  signal src_stb_int   : std_logic;
   signal snk_stall_int : std_logic;
 
 
@@ -200,7 +200,7 @@ architecture behavioral of wr_mini_nic is
   --alias ntx_status_hp is ntx_status_reg(12);
 
   signal ntx_status_reg : t_wrf_status_reg;
-  
+
   signal ntx_data_reg : std_logic_vector(31 downto 0);
 
   signal ntx_cntr_is_zero    : std_logic;
@@ -215,6 +215,7 @@ architecture behavioral of wr_mini_nic is
   signal ntx_start_delayed : std_logic;
   signal ntx_size_odd      : std_logic;
   signal ntx_oob_reg       : std_logic_vector(15 downto 0);
+  signal snk_cyc_d0        : std_logic;
 
 -------------------------------------------------------------------------------
 -- RX FSM stuff
@@ -229,21 +230,21 @@ architecture behavioral of wr_mini_nic is
 
   --STATUS Reg for RX path
   signal nrx_status_reg : t_wrf_status_reg;
-    
 
-  signal nrx_error       : std_logic;
-  signal nrx_mem_a_saved : unsigned(g_memsize_log2-1 downto 0);
-  signal nrx_has_oob     : std_logic;
-  signal nrx_bytesel     : std_logic;
-  signal nrx_size        : unsigned(g_memsize_log2-1 downto 0);
-  signal nrx_rdreg : std_logic_vector(31 downto 0);
-  signal nrx_buf_full    : std_logic;
-  signal nrx_stall_mask  : std_logic;
-  signal nrx_valid : std_logic;
-  signal nrx_done : std_logic;
+
+  signal nrx_error                : std_logic;
+  signal nrx_mem_a_saved          : unsigned(g_memsize_log2-1 downto 0);
+  signal nrx_has_oob              : std_logic;
+  signal nrx_bytesel              : std_logic;
+  signal nrx_size                 : unsigned(g_memsize_log2-1 downto 0);
+  signal nrx_rdreg                : std_logic_vector(31 downto 0);
+  signal nrx_buf_full             : std_logic;
+  signal nrx_stall_mask           : std_logic;
+  signal nrx_valid                : std_logic;
+  signal nrx_done                 : std_logic;
   signal nrx_drop, nrx_stat_error : std_logic;
-  signal nrx_class : std_logic_vector(7 downto 0);
-  
+  signal nrx_class                : std_logic_vector(7 downto 0);
+
 -------------------------------------------------------------------------------
 -- Classic Wishbone slave signals
 -------------------------------------------------------------------------------  
@@ -265,11 +266,54 @@ architecture behavioral of wr_mini_nic is
   signal irq_tx_mask : std_logic;
 
   signal txtsu_ack_int : std_logic;
+  signal mem_addr_int  : std_logic_vector(g_memsize_log2-1 downto 0);
+  signal mem_wr_int    : std_logic;
+  signal bad_addr      : std_logic;
 
+
+  component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
+
+
+
+
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector (35 downto 0));
+  end component;
+
+  signal CONTROL : std_logic_vector(35 downto 0);
+  signal CLK     : std_logic;
+  signal TRIG0   : std_logic_vector(31 downto 0);
+  signal TRIG1   : std_logic_vector(31 downto 0);
+  signal TRIG2   : std_logic_vector(31 downto 0);
+  signal TRIG3   : std_logic_vector(31 downto 0);
+
+  
 begin  -- behavioral
 
+--  chipscope_ila_1 : chipscope_ila
+--    port map (
+--      CONTROL => CONTROL,
+--      CLK     => clk_sys_i,
+--      TRIG0   => TRIG0,
+--      TRIG1   => TRIG1,
+--      TRIG2   => TRIG2,
+--      TRIG3   => TRIG3);
 
------------------------------------------------------------------------------
+--  chipscope_icon_1 : chipscope_icon
+--    port map (
+--      CONTROL0 => CONTROL);
+
+
+-------------------------------------------------------------------------------
 -- memory access arbitration
 -----------------------------------------------------------------------------
 
@@ -284,11 +328,33 @@ begin  -- behavioral
     end if;
   end process;
 
-  mem_arb_tx <= not mem_arb_rx;
-  mem_addr_o <= std_logic_vector(ntx_mem_a) when mem_arb_rx = '0' else std_logic_vector(nrx_mem_a);
-  mem_data_o <= nrx_mem_d;
-  ntx_mem_d <= mem_data_i;
-  mem_wr_o  <= nrx_mem_wr when mem_arb_rx = '1' else '0';
+  mem_arb_tx   <= not mem_arb_rx;
+  mem_addr_int <= std_logic_vector(ntx_mem_a)   when mem_arb_rx = '0' else std_logic_vector(nrx_mem_a);
+  mem_data_o   <= nrx_mem_d;
+  ntx_mem_d    <= mem_data_i;
+  mem_wr_int   <= (nrx_mem_wr and not bad_addr) when mem_arb_rx = '1' else '0';
+  mem_wr_o <= mem_wr_int;
+
+  mem_addr_o <= mem_addr_int;
+
+  TRIG0(g_memsize_log2-1 downto 0) <= mem_addr_int;
+  trig0(16)                        <= bad_addr;
+  trig0(17)                        <= nrx_mem_wr;
+  trig0(18)                        <= mem_arb_rx;
+  trig1 <= nrx_mem_d;
+  trig0(19) <= mem_wr_int;
+
+
+  p_gen_bad_addr : process(mem_addr_int, regs_out)
+  begin
+    if(unsigned(mem_addr_int) < unsigned(regs_out.mprot_lo_o(g_memsize_log2-1 downto 0))) then
+      bad_addr <= '1';
+    elsif(unsigned(mem_addr_int) > unsigned(regs_out.mprot_hi_o(g_memsize_log2-1 downto 0))) then
+      bad_addr <= '1';
+    else
+      bad_addr <= '0';
+    end if;
+  end process;
 
 -------------------------------------------------------------------------------
 -- TX Path  (Host -> Fabric)
@@ -302,7 +368,7 @@ begin  -- behavioral
   p_count_acks : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' or src_cyc_int = '0' then
+      if rst_n_i = '0' or src_cyc_int = '0' or src_err_i = '1' then
         ntx_ack_count <= (others => '0');
       else
         if(src_stb_int = '1' and src_stall_i = '0' and src_ack_i = '0') then
@@ -371,7 +437,7 @@ begin  -- behavioral
               -- clear the TX flags
               regs_in.mcr_tx_error_i <= '0';
               regs_in.mcr_tx_idle_i  <= '0';
-              ntx_start_delayed <= '0';
+              ntx_start_delayed      <= '0';
             end if;
 
 
@@ -394,17 +460,17 @@ begin  -- behavioral
                 irq_tx    <= '1';
               else
                 -- read the descriptor contents (size, 802.1q/OOB enables)
-                ntx_cntr         <= unsigned(ntx_desc_size);
-                ntx_oob_reg      <= ntx_desc_oob;
-                ntx_has_oob      <= ntx_desc_with_oob;
-                ntx_status_reg.is_hp    <= '0';
-                ntx_status_reg.has_smac  <= ntx_desc_has_src_mac;
-                ntx_status_reg.has_crc   <= '0';
-                ntx_status_reg.error   <= '0';
-                ntx_status_reg.tag_me <= '0';
+                ntx_cntr                   <= unsigned(ntx_desc_size);
+                ntx_oob_reg                <= ntx_desc_oob;
+                ntx_has_oob                <= ntx_desc_with_oob;
+                ntx_status_reg.is_hp       <= '0';
+                ntx_status_reg.has_smac    <= ntx_desc_has_src_mac;
+                ntx_status_reg.has_crc     <= '0';
+                ntx_status_reg.error       <= '0';
+                ntx_status_reg.tag_me      <= '0';
                 ntx_status_reg.match_class <= (others => '0');
-                ntx_state        <= TX_STATUS;
-                ntx_mem_a        <= ntx_mem_a + 1;
+                ntx_state                  <= TX_STATUS;
+                ntx_mem_a                  <= ntx_mem_a + 1;
               end if;
             end if;
 
@@ -529,7 +595,7 @@ begin  -- behavioral
             
             
           when TX_OOB2 =>
-    
+            
             if(src_stall_i = '0') then
               src_stb_int <= '1';
               src_adr_o   <= c_WRF_OOB;
@@ -541,7 +607,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
 -- State end-of-packet: wait for ACKs and generate an inter-packet gap
 -------------------------------------------------------------------------------
-   when TX_END_PACKET =>
+          when TX_END_PACKET =>
 
 
             if(src_stall_i = '0') then
@@ -588,46 +654,66 @@ begin  -- behavioral
                (snk_adr_i = c_WRF_DATA or snk_adr_i = c_WRF_OOB) else '0';
 
   nrx_stat_error <= '1' when snk_cyc_i = '1' and snk_stall_int = '0' and snk_stb_i = '1' and
-               (snk_adr_i = c_WRF_STATUS) and nrx_status_reg.error = '1' else '0'; 
-  
- p_rx_fsm : process(clk_sys_i, rst_n_i)
+                    (snk_adr_i = c_WRF_STATUS) and nrx_status_reg.error = '1' else '0';
+
+  p_rx_gen_ack : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
       if rst_n_i = '0' then
-        nrx_state        <= RX_WAIT_SOF;
-        nrx_mem_a        <= (others => '0');
-        nrx_mem_wr       <= '0';
-        nrx_avail        <= (others => '0');
-        nrx_rdreg        <= (others => '0');
-        nrx_toggle <= '0';
-        nrx_stall_mask    <= '0';
-        nrx_bytesel      <= '0';
-        nrx_size         <= (others => '0');
-        nrx_buf_full     <= '0';
-        nrx_error        <= '0';
-        nrx_done         <= '0';
-        nrx_has_oob      <= '0';
-
-        nrx_mem_a_saved <= (others => '0');
         snk_ack_o <= '0';
-        regs_in.rx_addr_i  <= (others => '0');
+      else
+        if(snk_cyc_i = '1' and snk_stb_i = '1' and snk_stall_int = '0') then
+          snk_ack_o <= '1';
+        else
+          snk_ack_o <= '0';
+        end if;
+      end if;
+    end if;
+
+  end process;
+
+  p_rx_fsm : process(clk_sys_i, rst_n_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if rst_n_i = '0' then
+        nrx_state      <= RX_WAIT_SOF;
+        nrx_mem_a      <= (others => '0');
+        nrx_mem_wr     <= '0';
+        nrx_avail      <= (others => '0');
+        nrx_rdreg      <= (others => '0');
+        nrx_toggle     <= '0';
+        nrx_stall_mask <= '0';
+        nrx_bytesel    <= '0';
+        nrx_size       <= (others => '0');
+        nrx_buf_full   <= '0';
+        nrx_error      <= '0';
+        nrx_done       <= '0';
+        nrx_has_oob    <= '0';
+
+        nrx_mem_a_saved        <= (others => '0');
+        regs_in.rx_addr_i      <= (others => '0');
         regs_in.mcr_rx_ready_i <= '0';
         regs_in.mcr_rx_full_i  <= '0';
-        nrx_newpacket      <= '0';
+        nrx_newpacket          <= '0';
+        snk_err_o              <= '0';
+        snk_cyc_d0             <= '0';
       else
+        snk_cyc_d0 <= snk_cyc_i;
+
 -- Host can modify the RX DMA registers only when the DMA engine is disabled
 -- (MCR_RX_EN = 0)
-        if(regs_out.mcr_rx_en_o = '0') then
-          snk_ack_o <= '0';
 
+
+        if(regs_out.mcr_rx_en_o = '0') then
+          
           nrx_newpacket <= '0';
 
           -- mask out the data request line on the fabric I/F, so the endpoint
           -- can cut the traffic using 802.1 flow control
-          nrx_stall_mask      <= '0';
-          nrx_state          <= RX_WAIT_SOF;
+          nrx_stall_mask         <= '0';
+          nrx_state              <= RX_WAIT_SOF;
           regs_in.mcr_rx_ready_i <= '0';
-          
+
           -- handle writes to RX_ADDR and RX_AVAIL
           if(regs_out.rx_addr_load_o = '1') then
             nrx_mem_a_saved   <= unsigned(regs_out.rx_addr_o(g_memsize_log2+1 downto 2));
@@ -636,9 +722,9 @@ begin  -- behavioral
           end if;
 
           if(regs_out.rx_avail_load_o = '1') then
-            nrx_buf_full      <= '0';
+            nrx_buf_full          <= '0';
             regs_in.mcr_rx_full_i <= '0';
-            nrx_avail         <= unsigned(regs_out.rx_avail_o(nrx_avail'high downto 0));
+            nrx_avail             <= unsigned(regs_out.rx_avail_o(nrx_avail'high downto 0));
           end if;
         else
 
@@ -651,23 +737,24 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
             when RX_WAIT_SOF =>
 
-              nrx_newpacket    <= '0';
-              nrx_done         <= '0';
-              nrx_mem_wr       <= '0';
-              nrx_has_oob      <= '0';
-              nrx_bytesel      <= '0';
-              nrx_error        <= '0';
-              nrx_size         <= (others => '0');
-              nrx_mem_a        <= nrx_mem_a_saved;
-              nrx_toggle <= '0';
+              nrx_newpacket <= '0';
+              nrx_done      <= '0';
+              nrx_mem_wr    <= '0';
+              nrx_has_oob   <= '0';
+              nrx_bytesel   <= '0';
+              nrx_error     <= '0';
+              nrx_size      <= (others => '0');
+              nrx_mem_a     <= nrx_mem_a_saved;
+              nrx_toggle    <= '0';
 
               regs_in.mcr_rx_full_i <= nrx_buf_full;
+              snk_err_o             <= nrx_buf_full;
 
-              if(snk_cyc_i = '1') then  -- got start-of-frame?
+              if(snk_cyc_i = '1' and snk_cyc_d0 = '0' and nrx_buf_full = '0') then  -- got start-of-frame?
                 nrx_stall_mask <= '1';
-                nrx_state     <= RX_ALLOCATE_DESCRIPTOR;
+                nrx_state      <= RX_ALLOCATE_DESCRIPTOR;
               else
-                nrx_stall_mask <= not nrx_buf_full;
+                nrx_stall_mask <= '0';  --nrx_buf_full;
               end if;
 -------------------------------------------------------------------------------
 -- State "Allocate RX descriptor": puts an empty (invalid) RX descriptor at the
@@ -675,7 +762,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------              
               
             when RX_ALLOCATE_DESCRIPTOR =>
-              
+
 -- wait until we have memory access
               if(mem_arb_rx = '0') then
 
@@ -688,7 +775,8 @@ begin  -- behavioral
 
 -- allow the fabric to receive the data
                 nrx_stall_mask <= '0';
-                nrx_state     <= RX_DATA;
+
+                nrx_state <= RX_DATA;
               end if;
 
 -------------------------------------------------------------------------------
@@ -698,12 +786,11 @@ begin  -- behavioral
             when RX_DATA =>
 
               nrx_mem_wr <= '0';
-              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
 
               if(snk_stb_i = '1' and snk_cyc_i = '1' and snk_stall_int = '0' and snk_we_i = '1' and snk_adr_i = c_WRF_STATUS) then
                 nrx_class <= nrx_status_reg.match_class;
               end if;
-              
+
               -- check if we have enough space in the buffer
               if(nrx_avail = to_unsigned(0, nrx_avail'length)) then
                 nrx_buf_full <= '1';
@@ -719,7 +806,7 @@ begin  -- behavioral
 
                 -- abort/error/end-of-frame?
                 if(nrx_stat_error = '1' or snk_cyc_i = '0') then
-                  nrx_error <=  nrx_stat_error;
+                  nrx_error <= nrx_stat_error;
                   nrx_done  <= '1';
 
                   -- flush the remaining packet data into the DMA buffer
@@ -764,7 +851,7 @@ begin  -- behavioral
                     nrx_has_oob <= '1';
                   end if;
 
-                  
+
                   nrx_toggle <= not nrx_toggle;
                 end if;
               end if;
@@ -791,17 +878,16 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_RESYNC =>
-              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
 
               -- check for error/abort conditions, they may appear even when
               -- the fabric is not accepting the data (tx_dreq_o = 0)
               if(nrx_stat_error = '1') then
-                nrx_error     <= '1';
-                nrx_done      <= '1';
-                nrx_state     <= RX_MEM_FLUSH;
-                nrx_mem_a     <= nrx_mem_a + 1;
+                nrx_error      <= '1';
+                nrx_done       <= '1';
+                nrx_state      <= RX_MEM_FLUSH;
+                nrx_mem_a      <= nrx_mem_a + 1;
                 nrx_stall_mask <= '1';
-                nrx_size      <= nrx_size + 2;
+                nrx_size       <= nrx_size + 2;
               else
                 nrx_state <= RX_DATA;
               end if;
@@ -812,7 +898,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_FLUSH =>
-              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
+              nrx_stall_mask <= '1';
 
               nrx_mem_wr <= '1';
               if(mem_arb_rx = '0') then
@@ -828,8 +914,8 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_UPDATE_DESC =>
-              snk_ack_o <= snk_stb_i and snk_cyc_i and snk_we_i and not snk_stall_int;
-                            
+              nrx_stall_mask <= '1';
+
               if(mem_arb_rx = '0') then
 
 
@@ -842,19 +928,19 @@ begin  -- behavioral
                 nrx_mem_a_saved <= nrx_mem_a + 1;
 
 -- compose the RX descriptor
-                nrx_mem_d(31)                         <= '1';
-                nrx_mem_d(30)                         <= nrx_error;
-                nrx_mem_d(29)                         <= nrx_has_oob;
+                nrx_mem_d(31)                      <= '1';
+                nrx_mem_d(30)                      <= nrx_error;
+                nrx_mem_d(29)                      <= nrx_has_oob;
 --                nrx_mem_d(28 downto g_memsize_log2+1) <= (others => '0');
-                nrx_mem_d(28 downto 21) <= nrx_class;
-                nrx_mem_d(g_memsize_log2 downto 1)    <= std_logic_vector(nrx_size);
-                nrx_mem_d(0)                          <= nrx_bytesel;
+                nrx_mem_d(28 downto 21)            <= nrx_class;
+                nrx_mem_d(g_memsize_log2 downto 1) <= std_logic_vector(nrx_size);
+                nrx_mem_d(0)                       <= nrx_bytesel;
 
                 nrx_mem_wr <= '1';
 
                 -- trigger the RX interrupt and assert RX_READY flag to inform
                 -- the host that we've received something
-                nrx_newpacket      <= '1';
+                nrx_newpacket          <= '1';
                 regs_in.mcr_rx_ready_i <= '1';
 
                 -- wait for another packet
@@ -870,8 +956,7 @@ begin  -- behavioral
     end if;
   end process;
 
-  
-  snk_err_o <= nrx_buf_full;
+
 
 -------------------------------------------------------------------------------
 -- helper process for producing the RX fabric data request signal (combinatorial)
@@ -880,7 +965,7 @@ begin  -- behavioral
   begin
     -- make sure we don't have any incoming data when the reception is masked (e.g.
     -- the miNIC is updating the descriptors of finishing the memory write. 
-    if(snk_cyc_i ='1' and  nrx_state = RX_WAIT_SOF) then
+    if(snk_cyc_i = '1' and nrx_state = RX_WAIT_SOF) then
       snk_stall_int <= '1';
     elsif(regs_out.mcr_rx_en_o = '0' or nrx_state = RX_ALLOCATE_DESCRIPTOR or nrx_state = RX_UPDATE_DESC or nrx_state = RX_MEM_FLUSH) then
       snk_stall_int <= '1';
@@ -888,8 +973,8 @@ begin  -- behavioral
     -- receive anything during this time
     elsif(nrx_toggle = '1' and mem_arb_rx = '1') then
       snk_stall_int <= '1';
-    elsif(nrx_stall_mask = '0') then
-      snk_stall_int <= '0';
+    elsif(nrx_stall_mask = '1' or (snk_cyc_d0 = '1' and snk_cyc_i = '0')) then
+      snk_stall_int <= '1';
     else
       snk_stall_int <= '0';
     end if;
@@ -907,21 +992,21 @@ begin  -- behavioral
       if(rst_n_i = '0') then
 
         regs_in.tsr0_valid_i <= '0';
-        regs_in.tsr0_pid_i <= (others => '0');
-        regs_in.tsr0_fid_i <= (others => '0');
+        regs_in.tsr0_pid_i   <= (others => '0');
+        regs_in.tsr0_fid_i   <= (others => '0');
         regs_in.tsr1_tsval_i <= (others => '0');
-        txtsu_ack_int       <= '0';
+        txtsu_ack_int        <= '0';
       else
         -- Make sure the timestamp is written to the FIFO only once.
 
         if(txtsu_valid_i = '1' and txtsu_ack_int = '0') then
           regs_in.tsr0_valid_i <= '1';
-          regs_in.tsr0_fid_i <= txtsu_frame_id_i;
-          regs_in.tsr0_pid_i <= txtsu_port_id_i;
+          regs_in.tsr0_fid_i   <= txtsu_frame_id_i;
+          regs_in.tsr0_pid_i   <= txtsu_port_id_i;
           regs_in.tsr1_tsval_i <= txtsu_tsval_i;
-          txtsu_ack_int       <= '1';
+          txtsu_ack_int        <= '1';
         else
-          txtsu_ack_int       <= '0';
+          txtsu_ack_int <= '0';
         end if;
       end if;
     end if;

@@ -199,8 +199,30 @@ peripheral {
 				 access_dev = WRITE_ONLY;
 
 			};
-
 	 };
+
+   reg {
+      name = "Memory protection reg";
+      prefix = "MPROT";
+
+      field {
+         name = "address range lo";
+         size = 16;
+         prefix = "LO";
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+      field {
+         name = "address range hi";
+         size = 16;
+         prefix = "HI";
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
 	 
 	 irq {
 			name = "TX DMA interrupt";
