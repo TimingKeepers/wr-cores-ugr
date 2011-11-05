@@ -73,6 +73,13 @@ entity WHITERABBITGTP_WRAPPER_TILE_SPARTAN6 is
       ------------------- Transmit Ports - 8b10b Encoder Control -----------------
       TXCHARISK0_IN        : in  std_logic;
       TXCHARISK1_IN        : in  std_logic;
+
+      TXCHARDISPMODE0_IN: in std_logic;
+      TXCHARDISPMODE1_IN: in std_logic;
+
+      TXCHARDISPVAL0_IN: in std_logic;
+      TXCHARDISPVAL1_IN: in std_logic;
+
       TXRUNDISP0_OUT       : out std_logic_vector(3 downto 0);
       TXRUNDISP1_OUT       : out std_logic_vector(3 downto 0);
 
@@ -619,10 +626,19 @@ begin
       ------------------- Transmit Ports - 8b10b Encoder Control -----------------
       TXBYPASS8B10B0            => tied_to_ground_vec_i(3 downto 0),
       TXBYPASS8B10B1            => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPMODE0           => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPMODE1           => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPVAL0            => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPVAL1            => tied_to_ground_vec_i(3 downto 0),
+
+      TXCHARDISPMODE0(0)           => TXCHARDISPMODE0_IN,
+      TXCHARDISPMODE0(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+
+      TXCHARDISPMODE1(0)           => TXCHARDISPMODE1_IN,
+      TXCHARDISPMODE1(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+
+      TXCHARDISPVAL0(0)           => TXCHARDISPVAL0_IN,
+      TXCHARDISPVAL0(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+
+      TXCHARDISPVAL1(0)           => TXCHARDISPVAL1_IN,
+      TXCHARDISPVAL1(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+      
       TXCHARISK0(3 downto 1)    => tied_to_ground_vec_i(2 downto 0),
       TXCHARISK0(0)             => TXCHARISK0_IN,
       TXCHARISK1(3 downto 1)    => tied_to_ground_vec_i(2 downto 0),
