@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-27
+-- Last update: 2011-10-30
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -30,6 +30,8 @@ use work.endpoint_private_pkg.all;
 use work.wr_fabric_pkg.all;
 
 entity ep_rx_wb_master is
+  generic(
+    g_ignore_ack: boolean := true);
   port (
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
@@ -59,7 +61,7 @@ architecture behavioral of ep_rx_wb_master is
 
 begin  -- behavioral
   
-  snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0') else '0';
+  snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0' and snk_fab_i.sof = '0') else '0';
 
   p_count_acks : process(clk_sys_i)
   begin
@@ -92,8 +94,9 @@ begin  -- behavioral
         case state is
           when IDLE =>
             src_out_int.adr <= snk_fab_i.addr;
+            src_out_int.dat <= snk_fab_i.data;
 
-            if(src_wb_i.stall = '0' and snk_fab_i.sof = '1') then
+            if(snk_fab_i.sof = '1' and src_wb_i.err = '0') then
               src_out_int.cyc <= '1';
               state           <= DATA;
             end if;
@@ -108,7 +111,11 @@ begin  -- behavioral
             end if;
 
 
-            if(snk_fab_i.error = '1') then
+            if(src_wb_i.err = '1') then
+              state <= IDLE;
+              src_out_int.cyc <= '0';
+              src_out_int.stb <= '0';
+            elsif(snk_fab_i.error = '1') then
               state <= THROW_ERROR;
             elsif(src_wb_i.stall = '1' and snk_fab_i.dvalid = '1') then
               state <= FLUSH_STALL;
@@ -125,7 +132,11 @@ begin  -- behavioral
             tmp_sel <= snk_fab_i.bytesel;
 
           when FLUSH_STALL =>
-            if(src_wb_i.stall = '0') then
+            if(src_wb_i.err = '1') then
+              state <= IDLE;
+              src_out_int.cyc <= '0';
+              src_out_int.stb <= '0';
+            elsif(src_wb_i.stall = '0') then
               src_out_int.dat    <= tmp_dat;
               src_out_int.adr    <= tmp_adr;
               src_out_int.stb    <= '1';
@@ -135,7 +146,11 @@ begin  -- behavioral
             end if;
 
           when THROW_ERROR =>
-            if(src_wb_i.stall = '0') then
+            if(src_wb_i.err = '1') then
+              state <= IDLE;
+              src_out_int.cyc <= '0';
+              src_out_int.stb <= '0';
+            elsif(src_wb_i.stall = '0') then
               stat.error      := '1';
               src_out_int.adr <= c_WRF_STATUS;
               src_out_int.dat <= f_marshall_wrf_status(stat);
@@ -149,7 +164,7 @@ begin  -- behavioral
               src_out_int.stb <= '0';
             end if;
 
-            if(ack_count = 0 and src_out_int.stb = '0') then
+            if(((ack_count = 0) or g_ignore_ack) and src_out_int.stb = '0') then
               src_out_int.cyc <= '0';
               state           <= IDLE;
             end if;

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-27
+-- Last update: 2011-10-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -320,6 +320,9 @@ begin  -- behavioral
 
   gen_without_packet_filter : if(not g_with_dpi_classifier) generate
     fab_pipe(2) <= fab_pipe(1);
+    pfilter_drop <= '0';
+    pfilter_done <= '1';
+    pfilter_pclass <=(others => '0');
   end generate gen_without_packet_filter;
 
 

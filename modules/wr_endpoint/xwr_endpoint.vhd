@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-10-18
+-- Last update: 2011-10-30
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -54,6 +54,8 @@ entity xwr_endpoint is
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
     clk_sys_i : in std_logic;
 
+clk_dmtd_i: in std_logic;
+    
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
 
@@ -194,6 +196,7 @@ begin
     port map (
       clk_ref_i          => clk_ref_i,
       clk_sys_i          => clk_sys_i,
+      clk_dmtd_i => clk_dmtd_i,
       rst_n_i            => rst_n_i,
       pps_csync_p1_i     => pps_csync_p1_i,
       phy_rst_o          => phy_rst_o,
@@ -226,6 +229,7 @@ begin
       src_we_o           => src_o.we,
       src_stall_i        => src_i.stall,
       src_ack_i          => src_i.ack,
+      src_err_i          => src_i.err,
       snk_dat_i          => snk_i.dat,
       snk_adr_i          => snk_i.adr,
       snk_sel_i          => snk_i.sel,
