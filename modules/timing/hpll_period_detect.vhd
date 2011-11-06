@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-06-14
--- Last update: 2011-05-11
+-- Last update: 2011-10-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -214,7 +214,7 @@ begin  -- rtl
 -- in FBCR register.
 -------------------------------------------------------------------------------
 
-  freq_err_output : process(clk_sys_i, rst_n_sysclk_i)
+  freq_err_output : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
       if rst_n_sysclk_i = '0' then
