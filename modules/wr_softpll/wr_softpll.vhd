@@ -71,7 +71,8 @@ architecture rtl of wr_softpll is
 
   component dmtd_with_deglitcher
     generic (
-      g_counter_bits : natural);
+      g_counter_bits : natural;
+      g_chipscope:boolean :=false);
     port (
       rst_n_dmtdclk_i      : in  std_logic;
       rst_n_sysclk_i       : in  std_logic;
@@ -182,6 +183,8 @@ architecture rtl of wr_softpll is
   signal clk_ref_buf : std_logic;
   signal clk_rx_buf  : std_logic;
 
+  signal wb_irq_out : std_logic;
+  
   component BUFG
     port (
       O : out std_logic;
@@ -191,6 +194,28 @@ architecture rtl of wr_softpll is
   signal resized_addr : std_logic_vector(c_wishbone_address_width-1 downto 0);
   signal wb_out       : t_wishbone_slave_out;
   signal wb_in        : t_wishbone_slave_in;
+
+  component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
+
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector (35 downto 0));
+  end component;
+
+  signal CONTROL : std_logic_vector(35 downto 0);
+  signal CLK     : std_logic;
+  signal TRIG0   : std_logic_vector(31 downto 0);
+  signal TRIG1   : std_logic_vector(31 downto 0);
+  signal TRIG2   : std_logic_vector(31 downto 0);
+  signal TRIG3   : std_logic_vector(31 downto 0);
   
 begin  -- rtl
 
@@ -256,8 +281,25 @@ begin  -- rtl
 
   debug_o(3) <= clk_ref_i;
   debug_o(2) <= clk_rx_i;
-  debug_o(1) <= tag_ref_p;
-  debug_o(0) <= '0';
+
+  
+  ext1 : gc_extend_pulse
+    generic map (
+      g_width => 1000)
+    port map (
+      clk_i      => clk_sys_i,
+      rst_n_i    => rst_n_i,
+      pulse_i    => tag_ref_p,
+      extended_o => debug_o(1));
+
+  ext2 : gc_extend_pulse
+    generic map (
+      g_width => 1000)
+    port map (
+      clk_i      => clk_sys_i,
+      rst_n_i    => rst_n_i,
+      pulse_i    => tag_fb_p,
+      extended_o => debug_o(0));
 
   gen_with_multi_dmtd : if(c_use_multi_dmtd = true) generate
 
@@ -320,7 +362,8 @@ begin  -- rtl
     
     DMTD_REF : dmtd_with_deglitcher
       generic map (
-        g_counter_bits => g_tag_bits)
+        g_counter_bits => g_tag_bits,
+        g_chipscope=>false)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
         rst_n_sysclk_i  => rst_n_i,
@@ -414,7 +457,7 @@ begin  -- rtl
       wb_stb_i  => wb_in.stb,
       wb_we_i   => wb_in.we,
       wb_ack_o  => wb_out.ack,
-      wb_irq_o  => wb_irq_o,
+      wb_irq_o  => wb_irq_out,
 
       spll_csr_tag_en_o    => spll_csr_tag_en,
       spll_csr_tag_rdy_i   => spll_csr_tag_rdy,
@@ -442,6 +485,44 @@ begin  -- rtl
       spll_deglitch_thr_o => deglitch_thr_slv,
       irq_tag_i           => irq_tag);
 
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
+
+  --chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
+
+  TRIG0(3 downto 0) <= spll_csr_tag_en;
+  trig0(7 downto 4) <= spll_csr_tag_rdy;
+  trig0(8) <= tag_ref_rd_ack;
+  trig0(9) <= tag_fb_rd_ack;
+  trig0(10) <= tag_aux_rd_ack;
+  trig0(11) <= tag_hpll_rd_period_ack;
+  trig0(12) <= spll_dac_hpll_wr;
+  trig0(14) <= spll_dac_dmpll_wr;
+  trig0(15) <= spll_dac_aux_wr;
+  trig0(16) <= irq_tag;
+  trig0(17) <= wb_irq_out;
+
+  trig0(18) <= tag_ref_p;
+  trig0(19) <= tag_fb_p;
+  trig0(20) <= freq_err_stb_p;
+  trig0(21) <= tag_aux_p;
+
+  trig1 <= wb_dat_i;
+  trig2(6 downto 0) <=wb_adr_i(6 downto 0);
+  trig2(7)<= wb_cyc_i;
+  trig2(8)<= wb_stb_i;
+  trig2(9)<= wb_we_i;
+  trig2(10) <=wb_out.ack;
+  
+  wb_irq_o <= wb_irq_out;
 
   dac_hpll_load_o <= spll_dac_hpll_wr;
   dac_hpll_data_o <= spll_dac_hpll;
