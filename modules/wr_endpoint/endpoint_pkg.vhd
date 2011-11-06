@@ -24,7 +24,7 @@ package endpoint_pkg is
     port (
       clk_ref_i          : in  std_logic;
       clk_sys_i          : in  std_logic;
-      clk_dmtd_i : in std_logic := '0';
+      clk_dmtd_i         : in  std_logic := '0';
       rst_n_i            : in  std_logic;
       pps_csync_p1_i     : in  std_logic                     := '0';
       phy_rst_o          : out std_logic;
@@ -112,7 +112,7 @@ package endpoint_pkg is
     port (
       clk_ref_i          : in  std_logic;
       clk_sys_i          : in  std_logic;
-      clk_dmtd_i: in std_logic := '0';
+      clk_dmtd_i         : in  std_logic := '0';
       rst_n_i            : in  std_logic;
       pps_csync_p1_i     : in  std_logic                    := '0';
       phy_rst_o          : out std_logic;

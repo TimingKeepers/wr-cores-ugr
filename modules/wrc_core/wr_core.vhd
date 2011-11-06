@@ -435,6 +435,7 @@ begin
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,
+      clk_dmtd_i     => clk_dmtd_i,
       rst_n_i        => rst_net_n,
       pps_csync_p1_i => s_pps_csync,
 
