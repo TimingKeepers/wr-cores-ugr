@@ -1,6 +1,5 @@
--- A crude eternet controlled WB master supporting single R/W accesses, no error handling or any 
--- more sophisticated stuff. FOR TESTING WR CORE ONLY.
-
+-- A crude Ethernet controlled WB master, for demonstrating 
+-- testbenching in SystemVerilog 
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -12,16 +11,19 @@ use work.wr_fabric_pkg.all;
 entity xmini_bone is
   generic(
     g_class_mask    : std_logic_vector(7 downto 0);
+
+-- packets matching g_our_ethertype will only be accepted 
     g_our_ethertype : std_logic_vector(15 downto 0));
+  
   port (
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
 
-    -- WBP Master (TX)
+    -- Packets come here
     src_o : out t_wrf_source_out;
     src_i : in  t_wrf_source_in;
 
-    -- WBP Slave (RX)
+    -- Packets are sent out from here
     snk_o : out t_wrf_sink_out;
     snk_i : in  t_wrf_sink_in;
 
@@ -34,29 +36,7 @@ end xmini_bone;
 
 architecture behavioral of xmini_bone is
 
-  type t_state is (IDLE, RX_STATUS, RX_DATA, RX_CHECK, RX_DROP, RX_WAIT_EOP, WB_ISSUE, TX_START_PACKET, TX_STATUS, TX_DATA, TX_FINISH_PACKET, TX_STALL);
-
-
-  function f_sl(state : t_state) return std_logic_vector is
-  begin
-    case state is
-      when IDLE             => return "0000";
-      when RX_STATUS        => return "0001";
-      when RX_DATA          => return "0010";
-      when RX_CHECK         => return "0011";
-      when RX_DROP          => return "0100";
-      when RX_WAIT_EOP      => return "0101";
-      when WB_ISSUE         => return "0110";
-      when TX_START_PACKET  => return "1011";
-      when TX_DATA          => return "0111";
-      when TX_FINISH_PACKET => return "1000";
-      when TX_STATUS        => return "1001";
-      when TX_STALL         => return "1010";
-    end case;
-
-    return "0000";
-  end f_sl;
-
+  type t_state is (IDLE, RX_DATA, RX_CHECK, RX_DROP, RX_WAIT_EOP, WB_ISSUE, TX_START_PACKET, TX_STATUS, TX_DATA, TX_FINISH_PACKET, TX_STALL);
 
 
   signal snk_out : t_wrf_sink_out;
@@ -132,30 +112,6 @@ architecture behavioral of xmini_bone is
     end if;
   end f_serialize_tx;
 
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
-
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
-
-
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
-
-
 begin  -- behavioral
 
   trans_tx_hdr(15 downto 2) <= (others => '0');
@@ -165,7 +121,6 @@ begin  -- behavioral
   d_valid    <= '1' when (snk_i.cyc and snk_i.we and snk_i.stb) = '1' and (snk_i.adr = c_WRF_DATA)   else '0';
   d_status   <= '1' when (snk_i.cyc and snk_i.we and snk_i.stb) = '1' and (snk_i.adr = c_WRF_STATUS) else '0';
   d_rx_error <= d_status and decoded_status.error;
-
 
   p_snk_gen_ack : process(clk_sys_i)
   begin
@@ -260,21 +215,8 @@ begin  -- behavioral
             tx_ser_counter <= (others => '0');
 
             if(snk_i.cyc = '1') then
-              state <= RX_DATA;--STATUS;
+              state <= RX_DATA;
             end if;
-
-            --fixme: RX status decoding in WBP mux is broken
-
-          --when RX_STATUS =>
-          --  if(d_rx_error = '1' or snk_i.cyc = '0') then
-          --    state <= RX_DROP;
-          --  elsif(d_status = '1') then
-          --    if((decoded_status.match_class and g_class_mask) /= x"00") then
-          --      state <= RX_DATA;       -- rep
-          --    else
-          --      state <= RX_DATA;
-          --    end if;
-          --  end if;
 
           when RX_DATA =>
 
@@ -409,49 +351,5 @@ begin  -- behavioral
 
   src_o <= src_out;
 
-
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_sys_i,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL);
-
-  TRIG0(15 downto 0)  <= src_out.dat;
-  trig0(17 downto 16) <= src_out.adr;
-  trig0(19 downto 18) <= src_out.sel;
-  trig0(20)           <= src_out.cyc;
-  trig0(21)           <= src_out.stb;
-  trig0(22)           <= src_out.we;
-  trig0(23)           <= src_i.ack;
-  trig0(24)           <= src_i.stall;
-  trig0(26)           <= src_i.err;
-
-  trig1(4) <= d_valid;
-  trig1(5) <= d_status;
-  trig1(6) <= d_rx_error;
-
-  trig1(3 downto 0)   <= f_sl(state);
-  trig1(31 downto 16) <= rx_ethertype;
-
-  trig3 <= snk_offset;
-
-  TRIG2(15 downto 0)  <= snk_i.dat;
-  trig2(17 downto 16) <= snk_i.adr;
-  trig2(19 downto 18) <= snk_i.sel;
-  trig2(20)           <= snk_i.cyc;
-  trig2(21)           <= snk_i.stb;
-  trig2(22)           <= snk_i.we;
-  trig2(23)           <= snk_out.ack;
-  trig2(24)           <= snk_out.stall;
-  trig2(26)           <= snk_out.err;
-
-  
 
 end behavioral;

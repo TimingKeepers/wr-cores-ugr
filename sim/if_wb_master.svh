@@ -8,6 +8,11 @@
 //
 
 
+/* Todo:
+   pipelined reads
+   settings wrapped in the accessor object 
+*/
+
 `include "simdrv_defs.svh"
 `include "if_wishbone_types.svh"
 `include "if_wishbone_accessor.svh"
@@ -360,7 +365,7 @@ endclass // CIWBMasterAccessor
        end
 
    initial begin
-      settings.gen_random_throttling  = 1;
+      settings.gen_random_throttling  = 0;
       settings.throttle_prob 	      = 0.1;
    end
 
