@@ -68,14 +68,16 @@ package wrcore_pkg is
       uart_txd_o : out std_logic;
       rst_cpu_n_o : out std_logic;
       rst_net_n_o : out std_logic;
-      wb_addr_i  : in  std_logic_vector(11 downto 0);
+      wb_addr_i  : in  std_logic_vector(12 downto 0);
       wb_data_i  : in  std_logic_vector(31 downto 0);
       wb_data_o  : out std_logic_vector(31 downto 0);
       wb_sel_i   : in  std_logic_vector(3 downto 0);
       wb_stb_i   : in  std_logic;
       wb_cyc_i   : in  std_logic;
       wb_we_i    : in  std_logic;
-      wb_ack_o   : out std_logic);
+      wb_ack_o   : out std_logic;
+      owr_i: in std_logic;
+      owr_en_o: out std_logic);
   end component;
 
   component wb_reset

@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-30
+-- Last update: 2011-11-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -151,26 +151,29 @@ entity wr_core is
 -- Timecode/Servo Control
 -------------------------------------------------------------------------------
 
-    
+
     -- DAC Control
-    tm_dac_value_o: out std_logic_vector(23 downto 0);
-    tm_dac_wr_o: out std_logic;
+    tm_dac_value_o : out std_logic_vector(23 downto 0);
+    tm_dac_wr_o    : out std_logic;
 
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i: in std_logic;
+    tm_clk_aux_lock_en_i : in std_logic;
 
     -- Aux clock locked flag
-    tm_clk_aux_locked_o: out std_logic;
+    tm_clk_aux_locked_o : out std_logic;
 
     -- Timecode output
-    tm_time_valid_o: out std_logic;
-    tm_utc_o: out std_logic_vector(39 downto 0);
-    tm_cycles_o: out std_logic_vector(27 downto 0);
-    
-    
-    rst_aux_n_o: out std_logic;
+    tm_time_valid_o : out std_logic;
+    tm_utc_o        : out std_logic_vector(39 downto 0);
+    tm_cycles_o     : out std_logic_vector(27 downto 0);
 
-    dio_o : out std_logic_vector(3 downto 0)
+
+    rst_aux_n_o : out std_logic;
+
+    dio_o : out std_logic_vector(3 downto 0);
+
+    owr_en_o : out std_logic;
+    owr_i    : in  std_logic
     );
 end wr_core;
 
@@ -377,32 +380,32 @@ begin
 
   rst_cpu_n <= rst_n_i and rst_cpu_n_wb;
   rst_net_n <= rst_n_i and rst_net_n_wb;
-  
+
   rst_aux_n_o <= rst_net_n;
-  
+
   PPS_GEN : wr_pps_gen
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
 
       rst_n_i => rst_cpu_n,
-      
+
       wb_adr_i => ppsg_wb_i.addr(4 downto 0),
       wb_dat_i => ppsg_wb_i.data,
       wb_dat_o => ppsg_wb_o.data,
-      wb_cyc_i  => ppsg_wb_i.cyc,
-      wb_sel_i  => ppsg_wb_i.sel,
-      wb_stb_i  => ppsg_wb_i.stb,
-      wb_we_i   => ppsg_wb_i.we,
-      wb_ack_o  => ppsg_wb_o.ack,
+      wb_cyc_i => ppsg_wb_i.cyc,
+      wb_sel_i => ppsg_wb_i.sel,
+      wb_stb_i => ppsg_wb_i.stb,
+      wb_we_i  => ppsg_wb_i.we,
+      wb_ack_o => ppsg_wb_o.ack,
 
       -- Single-pulse PPS output for synchronizing the endpoint to
       pps_in_i    => '0',
       pps_csync_o => s_pps_csync,
       pps_out_o   => pps_p_o,
 
-      tm_utc_o => tm_utc_o,
-      tm_cycles_o => tm_cycles_o,
+      tm_utc_o        => tm_utc_o,
+      tm_cycles_o     => tm_cycles_o,
       tm_time_valid_o => tm_time_valid_o
       );
 
@@ -419,8 +422,8 @@ begin
       clk_rx_i   => phy_rx_rbclk_i,
       clk_aux_i  => clk_aux_i,
 
-      dac_hpll_data_o  => dac_hpll_data_o,
-      dac_hpll_load_o  => dac_hpll_load_p1_o,
+      dac_hpll_data_o => dac_hpll_data_o,
+      dac_hpll_load_o => dac_hpll_load_p1_o,
 
       dac_dmpll_data_o => dac_dpll_data_o,
       dac_dmpll_load_o => dac_dpll_load_p1_o,
@@ -429,18 +432,18 @@ begin
       dac_aux_load_o => tm_dac_wr_o,
 
       clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
-      clk_aux_locked_o => tm_clk_aux_locked_o,
-      
+      clk_aux_locked_o  => tm_clk_aux_locked_o,
+
       wb_adr_i => dpll_wb_i.addr(6 downto 0),
       wb_dat_i => dpll_wb_i.data,
       wb_dat_o => dpll_wb_o.data,
-      wb_cyc_i  => dpll_wb_i.cyc,
-      wb_sel_i  => dpll_wb_i.sel,
-      wb_stb_i  => dpll_wb_i.stb,
-      wb_we_i   => dpll_wb_i.we,
-      wb_ack_o  => dpll_wb_o.ack,
-      wb_irq_o  => softpll_irq,
-      debug_o   => dio_o);
+      wb_cyc_i => dpll_wb_i.cyc,
+      wb_sel_i => dpll_wb_i.sel,
+      wb_stb_i => dpll_wb_i.stb,
+      wb_we_i  => dpll_wb_i.we,
+      wb_ack_o => dpll_wb_o.ack,
+      wb_irq_o => softpll_irq,
+      debug_o  => dio_o);
 
 
   U_Endpoint : xwr_endpoint
@@ -460,7 +463,7 @@ begin
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,
-      clk_dmtd_i => clk_dmtd_i,
+      clk_dmtd_i     => clk_dmtd_i,
       rst_n_i        => rst_net_n,
       pps_csync_p1_i => s_pps_csync,
 
@@ -504,8 +507,8 @@ begin
   ep_wb_in.adr(10 downto 0) <= ep_wb_i.addr(10 downto 0);
   ep_wb_in.dat              <= ep_wb_i.data;
 
-  ep_wb_o.ack               <= ep_wb_out.ack;
-  ep_wb_o.data              <= ep_wb_out.dat;
+  ep_wb_o.ack  <= ep_wb_out.ack;
+  ep_wb_o.data <= ep_wb_out.dat;
 
   xwr_mini_nic_1 : xwr_mini_nic
     generic map (
@@ -638,19 +641,21 @@ begin
       gpio_i     => gpio_i,
       gpio_dir_o => gpio_dir_o,
 
-      uart_rxd_i => uart_rxd_i,
-      uart_txd_o => uart_txd_o,
+      uart_rxd_i  => uart_rxd_i,
+      uart_txd_o  => uart_txd_o,
       rst_net_n_o => rst_net_n_wb,
       rst_cpu_n_o => rst_cpu_n_wb,
-      
-      wb_addr_i => periph_wb_i.addr(11 downto 0),
+
+      wb_addr_i => periph_wb_i.addr(12 downto 0),
       wb_data_i => periph_wb_i.data,
       wb_data_o => periph_wb_o.data,
       wb_sel_i  => periph_wb_i.sel,
       wb_stb_i  => periph_wb_i.stb,
       wb_cyc_i  => periph_wb_i.cyc,
       wb_we_i   => periph_wb_i.we,
-      wb_ack_o  => periph_wb_o.ack
+      wb_ack_o  => periph_wb_o.ack,
+      owr_i     => owr_i,
+      owr_en_o  => owr_en_o
       );
 
 --  gpio_o <= gpio_b;
@@ -782,7 +787,7 @@ begin
   --trig2(24) <= minic_snk_out.stall;
   --trig2(26) <= minic_snk_out.err;
 
-    
+
 
   U_WBP_Mux : xwbp_mux
     port map (

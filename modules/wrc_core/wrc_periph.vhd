@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2011-10-29
+-- Last update: 2011-11-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -58,8 +58,11 @@ entity wrc_periph is
 
     rst_cpu_n_o: out std_logic;
     rst_net_n_o: out std_logic;
+
+    owr_en_o: out std_logic;
+    owr_i: in std_logic;
     
-    wb_addr_i : in  std_logic_vector(11 downto 0); 
+    wb_addr_i : in  std_logic_vector(12 downto 0); 
     wb_data_i : in  std_logic_vector(31 downto 0); 
     wb_data_o : out std_logic_vector(31 downto 0); 
     wb_sel_i  : in  std_logic_vector(3 downto 0); 
@@ -89,12 +92,37 @@ architecture struct of wrc_periph is
       rst_net_n_o: out std_logic
       );
   end component;
- 
-  type t_wbdata is array(3 downto 0) of std_logic_vector(31 downto 0);
 
-  signal wb_cycs_i  : std_logic_vector(3 downto 0);
-  signal wb_stbs_i  : std_logic_vector(3 downto 0);
-  signal wb_acks_o  : std_logic_vector(3 downto 0);
+  component wb_onewire_master
+    generic (
+      g_interface_mode      : t_wishbone_interface_mode;
+      g_address_granularity : t_wishbone_address_granularity;
+      g_num_ports           : integer;
+      g_ow_btp_normal       : string;
+      g_ow_btp_overdrive    : string);
+    port (
+      clk_sys_i   : in  std_logic;
+      rst_n_i     : in  std_logic;
+      wb_cyc_i    : in  std_logic;
+      wb_sel_i    : in  std_logic_vector(c_wishbone_data_width/8-1 downto 0);
+      wb_stb_i    : in  std_logic;
+      wb_we_i     : in  std_logic;
+      wb_adr_i    : in  std_logic_vector(2 downto 0);
+      wb_dat_i    : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_dat_o    : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_ack_o    : out std_logic;
+      wb_int_o    : out std_logic;
+      wb_stall_o  : out std_logic;
+      owr_pwren_o : out std_logic_vector(g_num_ports -1 downto 0);
+      owr_en_o    : out std_logic_vector(g_num_ports -1 downto 0);
+      owr_i       : in  std_logic_vector(g_num_ports -1 downto 0));
+  end component;
+  
+  type t_wbdata is array(4 downto 0) of std_logic_vector(31 downto 0);
+
+  signal wb_cycs_i  : std_logic_vector(4 downto 0);
+  signal wb_stbs_i  : std_logic_vector(4 downto 0);
+  signal wb_acks_o  : std_logic_vector(4 downto 0);
   signal wb_dats_o  : t_wbdata;
  
   signal wb_ack_int : std_logic;
@@ -106,21 +134,23 @@ begin
 
   
   GENWB: 
-  for I in 0 to 3 generate
+  for I in 0 to 4 generate
     wb_cycs_i(I) <= wb_cyc_i and wb_addr_i(8+I);
     wb_stbs_i(I) <= wb_stb_i and wb_addr_i(8+I);
   end generate;
 
-  wb_ack_int  <= wb_acks_o(0) when (wb_addr_i(11 downto 8)="0001") else
-               wb_acks_o(1) when (wb_addr_i(11 downto 8)="0010") else
-               wb_acks_o(2) when (wb_addr_i(11 downto 8)="0100") else
-               wb_acks_o(3) when (wb_addr_i(11 downto 8)="1000") else
+  wb_ack_int <= wb_acks_o(0) when (wb_addr_i(12 downto 8)="00001") else
+               wb_acks_o(1) when (wb_addr_i(12 downto 8)="00010") else
+               wb_acks_o(2) when (wb_addr_i(12 downto 8)="00100") else
+               wb_acks_o(3) when (wb_addr_i(12 downto 8)="01000") else
+               wb_acks_o(4) when (wb_addr_i(12 downto 8)="10000") else
                '0';
-
-  wb_data_o <= wb_dats_o(0) when (wb_addr_i(11 downto 8)="0001") else
-               wb_dats_o(1) when (wb_addr_i(11 downto 8)="0010") else
-               wb_dats_o(2) when (wb_addr_i(11 downto 8)="0100") else
-               wb_dats_o(3) when (wb_addr_i(11 downto 8)="1000") else
+  
+  wb_data_o <= wb_dats_o(0) when (wb_addr_i(12 downto 8)="00001") else
+               wb_dats_o(1) when (wb_addr_i(12 downto 8)="00010") else
+               wb_dats_o(2) when (wb_addr_i(12 downto 8)="00100") else
+               wb_dats_o(3) when (wb_addr_i(12 downto 8)="01000") else
+               wb_dats_o(4) when (wb_addr_i(12 downto 8)="10000") else
                (others=>'0');
 
   GPIO: wb_gpio_port
@@ -200,6 +230,27 @@ begin
       wb_ack_o   => wb_acks_o(3)
     );  
 
+  U_OW: wb_onewire_master
+    generic map (
+      g_interface_mode      => CLASSIC,
+      g_address_granularity => WORD,
+      g_num_ports           => 1,
+      g_ow_btp_normal       => "5.0",
+      g_ow_btp_overdrive    => "1.0")
+    port map (
+      clk_sys_i   => clk_sys_i,
+      rst_n_i     => rst_n_i,
+      wb_cyc_i    => wb_cycs_i(4),
+      wb_sel_i    => "1111",
+      wb_stb_i    => wb_stbs_i(4),
+      wb_we_i     => wb_we_i,
+      wb_adr_i    => wb_addr_i(2 downto 0),
+      wb_dat_i    => wb_data_i,
+      wb_dat_o    => wb_dats_o(4),
+      wb_ack_o    => wb_acks_o(4),
+      owr_en_o(0)    => owr_en_o,
+      owr_i(0)       => owr_i);
+  
 wb_ack_o <= wb_ack_int;
   
 end struct;
