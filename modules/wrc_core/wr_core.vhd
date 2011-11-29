@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-28
+-- Last update: 2011-11-29
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -18,9 +18,9 @@
 -- providing access to TX/RX interfaces of the built-in WR MAC.
 --
 -- Starting from version 2.0 all modules are interconnected with pipelined
--- wishbone interface (using wb crossbar and bus fanout). Separate pipelined
--- wishbone bus is used for passing packets between Endpoint, Mini-NIC
--- and External MAC interface.
+-- wishbone interface (using wb crossbars). Separate pipelined wishbone bus is 
+-- used for passing packets between Endpoint, Mini-NIC and External 
+-- MAC interface.
 -------------------------------------------------------------------------------
 -- Copyright (c) 2011 Grzegorz Daniluk
 -------------------------------------------------------------------------------
@@ -30,6 +30,19 @@
 -- 2011-10-25  2.0      greg.d          Redesigned and wishbonized
 -------------------------------------------------------------------------------
 
+
+-- Memory map:
+
+-- Master interconnect:
+--  0x00000000: I/D Memory
+--  0x00040000: Peripheral interconnect
+--      +0x000: Minic
+--      +0x100: Endpoint
+--      +0x200: Softpll
+--      +0x300: PPS gen
+--      +0x400: Syscon
+--      +0x500: UART
+--      +0x600: OneWire
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -49,12 +62,11 @@ entity wr_core is
     g_simulation          : integer                        := 0;
     g_phys_uart           : boolean                        := true;
     g_virtual_uart        : boolean                        := false;
-    g_owr_num_ports       : natural                        := 1;  --how many 1-wire ports
-    g_ep_rxbuf_size_log2  : integer                        := 12;
+    g_rx_buffer_size      : integer                        := 1024;
     g_dpram_initf         : string                         := "";
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
-    g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-    g_address_granularity : t_wishbone_address_granularity := WORD
+    g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
+    g_address_granularity : t_wishbone_address_granularity := BYTE
     );
   port(
     clk_sys_i : in std_logic;
@@ -117,16 +129,15 @@ entity wr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
-    owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
-    owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_en_o    : out std_logic;
+    owr_i       : in  std_logic;
 
     -----------------------------------------
     --External WB interface
     -----------------------------------------
-    wb_addr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
-    wb_data_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
-    wb_data_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_adr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
+    wb_dat_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_dat_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
     wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
     wb_we_i    : in  std_logic;
     wb_cyc_i   : in  std_logic;
@@ -241,11 +252,11 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   constant c_cfg_base_addr : t_wishbone_address_array(1 downto 0) :=
     (0 => x"00000000",                  -- CPU I/D-mem
-     1 => x"00010000");                 -- Peripherals
+     1 => x"00040000");                 -- Peripherals
 
   constant c_cfg_base_mask : t_wishbone_address_array(1 downto 0) :=
-    (0 => x"ffff0000",
-     1 => x"ffff0000");
+    (0 => x"000f0000",
+     1 => x"000f0000");
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
   signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
@@ -253,12 +264,27 @@ architecture struct of wr_core is
   signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
 
   -----------------------------------------------------------------------------
-  --WB FANOUT
+  --WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  signal fout_wb_i     : t_wishbone_slave_in;
-  signal fout_wb_o     : t_wishbone_slave_out;
-  signal fout_master_i : t_wishbone_master_in_array(0 to 6);
-  signal fout_master_o : t_wishbone_master_out_array(0 to 6);
+  constant c_secbar_base_addr : t_wishbone_address_array(6 downto 0) :=
+    (0 => x"00000000",                  -- Mini-NIC
+     1 => x"00000100",                  -- Endpoint
+     2 => x"00000200",                  -- SoftPLL
+     3 => x"00000300",                  -- PPSgen
+     4 => x"00000400",                  -- Syscon
+     5 => x"00000500",                  -- UART
+     6 => x"00000600");                 -- 1-Wire
+  constant c_secbar_base_mask : t_wishbone_address_array(6 downto 0) :=
+    (0 => x"00000f00",                  -- Mini-NIC
+     1 => x"00000f00",                  -- Endpoint
+     2 => x"00000f00",                  -- SoftPLL
+     3 => x"00000f00",                  -- PPSgen
+     4 => x"00000f00",                  -- Syscon
+     5 => x"00000f00",                  -- UART
+     6 => x"00000f00");                 -- 1-Wire
+
+  signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
+  signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
 
   -----------------------------------------------------------------------------
   --External WB interface
@@ -281,9 +307,7 @@ architecture struct of wr_core is
   signal softpll_irq : std_logic;
 
   signal lm32_irq_slv : std_logic_vector(31 downto 0);
-  --signal trace_pc : std_logic_vector(31 downto 0);
-  --signal trace_eret : std_logic;
-  --signal trace_valid : std_logic;
+
 
   signal ep_wb_in  : t_wishbone_slave_in;
   signal ep_wb_out : t_wishbone_slave_out;
@@ -309,25 +333,6 @@ architecture struct of wr_core is
   signal ext_snk_in  : t_wrf_sink_in;
   signal dummy       : std_logic_vector(31 downto 0);
 
-  --signal ext_adpwb_out       : t_wishbone_slave_out;
-  --signal ext_adpwb_in        : t_wishbone_slave_in;
-
-
-  --component chipscope_ila
-  --  port (
-  --    CONTROL : inout std_logic_vector(35 downto 0);
-  --    CLK     : in    std_logic;
-  --    TRIG0   : in    std_logic_vector(31 downto 0);
-  --    TRIG1   : in    std_logic_vector(31 downto 0);
-  --    TRIG2   : in    std_logic_vector(31 downto 0);
-  --    TRIG3   : in    std_logic_vector(31 downto 0));
-  --end component;
-
-  --component chipscope_icon
-  --  port (
-  --    CONTROL0 : inout std_logic_vector (35 downto 0));
-  --end component;
-
   component xwbp_mux
     port (
       clk_sys_i    : in  std_logic;
@@ -347,6 +352,21 @@ architecture struct of wr_core is
       class_core_i : in  std_logic_vector(7 downto 0));
   end component;
 
+    component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
+
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector (35 downto 0));
+  end component;
+
   signal CONTROL : std_logic_vector(35 downto 0);
   signal CLK     : std_logic;
   signal TRIG0   : std_logic_vector(31 downto 0);
@@ -360,13 +380,13 @@ begin
   -----------------------------------------------------------------------------
   PPS_GEN : xwr_pps_gen
     generic map(
-      g_interface_mode      => CLASSIC,
+      g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE)
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
 
-      rst_n_i => rst_wrc_n,
+      rst_n_i => rst_net_n,
 
       slave_i => ppsg_wb_in,
       slave_o => ppsg_wb_out,
@@ -388,11 +408,11 @@ begin
     generic map (
       g_deglitcher_threshold => 3000,
       g_tag_bits             => 20,
-      g_interface_mode       => CLASSIC,
+      g_interface_mode       => PIPELINED,
       g_address_granularity  => BYTE)
     port map (
       clk_sys_i  => clk_sys_i,
-      rst_n_i    => rst_wrc_n,
+      rst_n_i    => rst_net_n,
       clk_ref_i  => clk_ref_i,
       clk_dmtd_i => clk_dmtd_i,
       clk_rx_i   => phy_rx_rbclk_i,
@@ -420,11 +440,11 @@ begin
   -----------------------------------------------------------------------------
   U_Endpoint : xwr_endpoint
     generic map (
-      g_interface_mode      => CLASSIC,
+      g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
       g_simulation          => false,
       g_pcs_16bit           => false,
-      g_rx_buffer_size      => 1024,
+      g_rx_buffer_size      => g_rx_buffer_size,
       g_with_rx_buffer      => true,
       g_with_flow_control   => false,
       g_with_timestamper    => true,
@@ -441,8 +461,6 @@ begin
 
       phy_rst_o                     => phy_rst_o,
       phy_loopen_o                  => phy_loopen_o,
---      phy_enable_o       => phy_enable_o,
---      phy_syncen_o       => phy_syncen_o,
       phy_ref_clk_i                 => phy_ref_clk_i,
       phy_tx_data_o(7 downto 0)     => phy_tx_data_o,
       phy_tx_data_o(15 downto 8)    => dummy(7 downto 0),
@@ -477,9 +495,9 @@ begin
   -----------------------------------------------------------------------------
   MINI_NIC : xwr_mini_nic
     generic map (
-      g_interface_mode       => CLASSIC,
+      g_interface_mode       => PIPELINED,
       g_address_granularity  => BYTE,
-      g_memsize_log2         => 14,
+      g_memsize_log2         => f_log2_size(g_dpram_size),
       g_buffer_little_endian => false)
     port map (
       clk_sys_i => clk_sys_i,
@@ -526,6 +544,11 @@ begin
       iwb_i => cbar_slave_o(1)
     );
 
+  --cbar_slave_i(1).cyc <= '0';
+  --cbar_slave_i(1).stb <= '0';
+  --cbar_slave_i(2).cyc <= '0';
+  --cbar_slave_i(2).stb <= '0';
+
   -----------------------------------------------------------------------------
   -- Dual-port RAM
   -----------------------------------------------------------------------------  
@@ -540,7 +563,7 @@ begin
       g_slave2_granularity    => WORD)  
     port map(
       clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_wrc_n,
+      rst_n_i   => rst_net_n,
 
       slave1_i => cbar_master_o(0),
       slave1_o => cbar_master_i(0),
@@ -562,13 +585,10 @@ begin
   PERIPH : wrc_periph
     generic map(
       g_phys_uart     => g_phys_uart,
-      g_virtual_uart  => g_virtual_uart,
-      g_owr_num_ports => g_owr_num_ports)
+      g_virtual_uart  => g_virtual_uart)
     port map(
       clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_wrc_n,
-
-      rst_ext_n_i => rst_n_i,
+      rst_n_i   => rst_n_i,
       rst_net_n_o => rst_net_n,
       rst_wrc_n_o => rst_wrc_n,
 
@@ -588,29 +608,15 @@ begin
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
 
-      owr_pwren_o => owr_pwren_o,
       owr_en_o    => owr_en_o,
       owr_i       => owr_i
     );
 
-  -----------------------------------------------------------------------------
-  -- External WB interface
-  -----------------------------------------------------------------------------
-  --ext_wb_i.adr <= wb_addr_i;
-  --ext_wb_i.dat <= wb_data_i;
-  --ext_wb_i.sel <= wb_sel_i;
-  --ext_wb_i.we  <= wb_we_i;
-  --ext_wb_i.cyc <= wb_cyc_i;
-  --ext_wb_i.stb <= wb_stb_i;
-  --wb_data_o    <= ext_wb_o.dat;
-  --wb_ack_o     <= ext_wb_o.ack;
-  --wb_stall_o   <= ext_wb_o.stall;
-
   U_Adapter : wb_slave_adapter
     generic map(
       g_master_use_struct  => true,
-      g_master_mode        => CLASSIC,
-      g_master_granularity => WORD,
+      g_master_mode        => PIPELINED,
+      g_master_granularity => BYTE,
       g_slave_use_struct   => false,
       g_slave_mode         => g_interface_mode,
       g_slave_granularity  => g_address_granularity)
@@ -619,13 +625,13 @@ begin
       rst_n_i    => rst_n_i,
       master_i   => ext_wb_out,
       master_o   => ext_wb_in,
-      sl_adr_i   => wb_addr_i,
-      sl_dat_i   => wb_data_i,
+      sl_adr_i   => wb_adr_i,
+      sl_dat_i   => wb_dat_i,
       sl_sel_i   => wb_sel_i,
       sl_cyc_i   => wb_cyc_i,
       sl_stb_i   => wb_stb_i,
       sl_we_i    => wb_we_i,
-      sl_dat_o   => wb_data_o,
+      sl_dat_o   => wb_dat_o,
       sl_ack_o   => wb_ack_o,
       sl_stall_o => wb_stall_o);
 
@@ -636,11 +642,11 @@ begin
     generic map(
       g_num_masters => 3,
       g_num_slaves  => 2,
-      g_registered  => false
+      g_registered  => true
       )  
     port map(
       clk_sys_i     => clk_sys_i,
-      rst_n_i       => rst_wrc_n,
+      rst_n_i       => rst_n_i,
       -- Master connections (INTERCON is a slave)
       slave_i       => cbar_slave_i,
       slave_o       => cbar_slave_o,
@@ -699,41 +705,43 @@ begin
   --trig2(26) <= ext_snk_out.err;
 
   -----------------------------------------------------------------------------
-  -- WB FANOUT
+  -- WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  FANOUT : xwb_bus_fanout
+  WB_SECONDARY_CON : xwb_crossbar
     generic map(
-      g_num_outputs          => 7,
-      g_bits_per_slave       => 8,  -- max addr bus width is 8bits (Endpoint has 6b - word)
-      g_address_granularity  => BYTE,
-      g_slave_interface_mode => PIPELINED
-    )
+      g_num_masters => 1,
+      g_num_slaves  => 7,
+      g_registered  => false
+      )
     port map(
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_wrc_n,
+      clk_sys_i     => clk_sys_i,
+      rst_n_i       => rst_wrc_n,
+      -- Master connections (INTERCON is a slave)
+      slave_i(0)    => cbar_master_o(1),
+      slave_o(0)    => cbar_master_i(1),
+      -- Slave connections (INTERCON is a master)
+      master_i      => secbar_master_i,
+      master_o      => secbar_master_o,
+      -- Address of the slaves connected
+      cfg_address_i => c_secbar_base_addr,  --cbar_address,
+      cfg_mask_i    => c_secbar_base_mask   --cbar_mask
+      );
 
-      slave_i => cbar_master_o(1),
-      slave_o => cbar_master_i(1),
-
-      master_i => fout_master_i,
-      master_o => fout_master_o
-    );
-
-  fout_master_i(0)  <= minic_wb_out;
-  minic_wb_in       <= fout_master_o(0);
-  fout_master_i(1)  <= ep_wb_out;
-  ep_wb_in          <= fout_master_o(1);
-  fout_master_i(2)  <= spll_wb_out;
-  spll_wb_in        <= fout_master_o(2);
-  fout_master_i(3)  <= ppsg_wb_out;
-  ppsg_wb_in        <= fout_master_o(3);
+  secbar_master_i(0) <= minic_wb_out;
+  minic_wb_in        <= secbar_master_o(0);
+  secbar_master_i(1) <= ep_wb_out;
+  ep_wb_in           <= secbar_master_o(1);
+  secbar_master_i(2) <= spll_wb_out;
+  spll_wb_in         <= secbar_master_o(2);
+  secbar_master_i(3) <= ppsg_wb_out;
+  ppsg_wb_in         <= secbar_master_o(3);
   --peripherials
-  fout_master_i(4)  <= periph_slave_o(0);
-  fout_master_i(5)  <= periph_slave_o(1);
-  fout_master_i(6)  <= periph_slave_o(2);
-  periph_slave_i(0) <= fout_master_o(4);
-  periph_slave_i(1) <= fout_master_o(5);
-  periph_slave_i(2) <= fout_master_o(6);
+  secbar_master_i(4) <= periph_slave_o(0);
+  secbar_master_i(5) <= periph_slave_o(1);
+  secbar_master_i(6) <= periph_slave_o(2);
+  periph_slave_i(0)  <= secbar_master_o(4);
+  periph_slave_i(1)  <= secbar_master_o(5);
+  periph_slave_i(2)  <= secbar_master_o(6);
 
   -----------------------------------------------------------------------------
   -- WBP MUX

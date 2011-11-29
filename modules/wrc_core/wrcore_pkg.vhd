@@ -64,18 +64,18 @@ package wrcore_pkg is
   -----------------------------------------------------------------------------
   -- PERIPHERIALS
   -----------------------------------------------------------------------------
-  component wrc_syscon_wb is
+  component xwr_syscon_wb
+    generic(
+      g_interface_mode      : t_wishbone_interface_mode;
+      g_address_granularity : t_wishbone_address_granularity
+    );
     port (
       rst_n_i   : in  std_logic;
-      wb_clk_i  : in  std_logic;
-      wb_addr_i : in  std_logic_vector(2 downto 0);
-      wb_data_i : in  std_logic_vector(31 downto 0);
-      wb_data_o : out std_logic_vector(31 downto 0);
-      wb_cyc_i  : in  std_logic;
-      wb_sel_i  : in  std_logic_vector(3 downto 0);
-      wb_stb_i  : in  std_logic;
-      wb_we_i   : in  std_logic;
-      wb_ack_o  : out std_logic;
+      clk_sys_i : in  std_logic;
+  
+      slave_i   : in  t_wishbone_slave_in;
+      slave_o   : out t_wishbone_slave_out;
+  
       regs_i    : in  t_sysc_in_registers;
       regs_o    : out t_sysc_out_registers
     );
@@ -84,13 +84,11 @@ package wrcore_pkg is
   component wrc_periph is
     generic(
       g_phys_uart     : boolean := true;
-      g_virtual_uart  : boolean := false;
-      g_owr_num_ports : natural := 1
+      g_virtual_uart  : boolean := false
     );
     port(
       clk_sys_i   : in  std_logic;
       rst_n_i     : in  std_logic;
-      rst_ext_n_i : in  std_logic;
       rst_net_n_o : out std_logic;
       rst_wrc_n_o : out std_logic;
       led_red_o   : out std_logic;
@@ -106,9 +104,8 @@ package wrcore_pkg is
       slave_o     : out t_wishbone_slave_out_array(0 to 2);
       uart_rxd_i  : in  std_logic;
       uart_txd_o  : out std_logic;
-      owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
-      owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
-      owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0)
+      owr_en_o    : out std_logic;
+      owr_i       : in  std_logic
     );
   end component;
 
