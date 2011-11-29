@@ -49,7 +49,6 @@ entity xwr_core is
     g_simulation          : integer                        := 0;
     g_phys_uart           : boolean                        := true;
     g_virtual_uart        : boolean                        := false;
-    g_owr_num_ports       : natural                        := 1;  --how many 1-wire ports
     g_ep_rxbuf_size_log2  : integer                        := 12;
     g_dpram_initf         : string                         := "";
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
@@ -117,9 +116,8 @@ entity xwr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
-    owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
-    owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_en_o    : out std_logic;
+    owr_i       : in  std_logic;
 
     -----------------------------------------
     --External WB interface
@@ -182,7 +180,6 @@ architecture struct of xwr_core is
       g_simulation          : integer                        := 0;
       g_phys_uart           : boolean                        := true;
       g_virtual_uart        : boolean                        := false;
-      g_owr_num_ports       : natural                        := 1;  --how many 1-wire ports
       g_ep_rxbuf_size_log2  : integer                        := 12;
       g_dpram_initf         : string                         := "";
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
@@ -225,13 +222,12 @@ architecture struct of xwr_core is
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
-      owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
-      owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
-      owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0);
+      owr_en_o    : out std_logic;
+      owr_i       : in  std_logic;
 
-      wb_addr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
-      wb_data_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
-      wb_data_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_adr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
+      wb_dat_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_dat_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
       wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
       wb_we_i    : in  std_logic;
       wb_cyc_i   : in  std_logic;
@@ -280,7 +276,6 @@ begin
       g_simulation          => g_simulation,
       g_phys_uart           => g_phys_uart,
       g_virtual_uart        => g_virtual_uart,
-      g_owr_num_ports       => g_owr_num_ports,
       g_ep_rxbuf_size_log2  => g_ep_rxbuf_size_log2,
       g_dpram_initf         => g_dpram_initf,
       g_dpram_size          => g_dpram_size,
@@ -322,13 +317,12 @@ begin
       uart_rxd_i  => uart_rxd_i,
       uart_txd_o  => uart_txd_o,
 
-      owr_pwren_o => owr_pwren_o,
       owr_en_o    => owr_en_o,
       owr_i       => owr_i,
 
-      wb_addr_i  => slave_i.adr,
-      wb_data_i  => slave_i.dat,
-      wb_data_o  => slave_o.dat,
+      wb_adr_i  => slave_i.adr,
+      wb_dat_i  => slave_i.dat,
+      wb_dat_o  => slave_o.dat,
       wb_sel_i   => slave_i.sel,
       wb_we_i    => slave_i.we,
       wb_cyc_i   => slave_i.cyc,
