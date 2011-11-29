@@ -5,6 +5,9 @@
 
 `include "simdrv_defs.svh"
 `include "if_wb_master.svh"
+`include "wrc_syscon_regs.vh"
+
+`define BASE_SYSCON 'h40400
 
 module main;
 
@@ -12,12 +15,9 @@ module main;
    wire clk_sys;
    wire rst_n;
 
-   IWishboneMaster WB 
-     (
+   IWishboneMaster WB (
       .clk_i(clk_sys),
-      .rst_n_i(rst_n)
-      );
-   
+      .rst_n_i(rst_n)); 
    tbi_clock_rst_gen
      #(
        .g_rbclk_period(8000))
@@ -45,17 +45,15 @@ module main;
 
    wr_core #(
              .g_simulation             (1),
-             .g_virtual_uart(1),
-             .g_ep_rxbuf_size_log2     (12),
              .g_dpram_initf            ("sw/main.ram"),
-             .g_dpram_size             (16384),
-             .g_num_gpio               (8)
+             .g_dpram_size             (16384)
     )
    DUT (
 	.clk_sys_i      (clk_sys),
 	.clk_dmtd_i     (clk_ref),
 	.clk_ref_i      (clk_ref),
-	.rst_n_i         (rst_n),
+  .clk_aux_i      (clk_ref),
+	.rst_n_i        (rst_n),
 
 	.pps_p_o        (),
 
@@ -65,19 +63,27 @@ module main;
 	.dac_dpll_load_p1_o (),
 	.dac_dpll_data_o (),
 
-	.gpio_o          (),
-      
 	.uart_rxd_i       (1'b0),
 	.uart_txd_o       (),
 
-	.wb_addr_i      (WB.master.adr[17:0]),
-	.wb_data_i      (WB.master.dat_o),
-	.wb_data_o      (WB.master.dat_i),
+        .scl_i(scl_loop),
+        .scl_o(scl_loop),
+
+        .sda_i(sda_loop),
+        .sda_o(sda_loop),
+
+        .btn1_i(1'b0),
+        .btn2_i(1'b0),
+        
+	.wb_adr_i      (WB.master.adr[31:0]),
+	.wb_dat_i      (WB.master.dat_o),
+	.wb_dat_o      (WB.master.dat_i),
 	.wb_sel_i       (4'b1111),
 	.wb_we_i        (WB.master.we),
 	.wb_cyc_i       (WB.master.cyc),
 	.wb_stb_i       (WB.master.stb),
 	.wb_ack_o       (WB.master.ack),
+  .wb_stall_o     (WB.master.stall),
 
         .phy_ref_clk_i(clk_ref),
         .phy_tx_data_o(phy_tx_data),
@@ -90,9 +96,8 @@ module main;
         .phy_rx_enc_err_i(phy_rx_enc_err),
         .phy_rx_bitslide_i(phy_rx_bitslide),
         .phy_rst_o(phy_rst),
-        .phy_loopen_o(phy_lo),
+        .phy_loopen_o(phy_lo)
 
-	.genrest_n        ()
         );
 
    assign phy_rx_data       = phy_tx_data;
@@ -108,12 +113,18 @@ module main;
       @(posedge rst_n);
       repeat(3) @(posedge clk_sys);
 
-      acc = WB.get_accessor();
-
-      acc.write('h62000, 'hffffffff);
-      acc.write('h62000, 0);
-
+      #1us;
       
+      
+      acc  = WB.get_accessor();
+      
+      acc.set_mode(PIPELINED);
+      #1us;
+      acc.write(`BASE_SYSCON + `ADDR_SYSC_RSTR, 'hdeadbee | `SYSC_RSTR_RST);
+      
+
+      #1us;
+      acc.write(`BASE_SYSCON + `ADDR_SYSC_RSTR, 'hdeadbee );
       
       
    end
