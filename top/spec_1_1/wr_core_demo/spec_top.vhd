@@ -231,7 +231,6 @@ architecture rtl of spec_top is
     g_simulation          : integer                        := 0;
     g_phys_uart           : boolean                        := true;
     g_virtual_uart        : boolean                        := false;
-    g_owr_num_ports       : natural                        := 1;  --how many 1-wire ports
     g_ep_rxbuf_size_log2  : integer                        := 12;
     g_dpram_initf         : string                         := "";
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
@@ -275,9 +274,8 @@ architecture rtl of spec_top is
     uart_rxd_i : in  std_logic;
     uart_txd_o : out std_logic;
 
-    owr_pwren_o : out std_logic_vector(g_owr_num_ports-1 downto 0);
-    owr_en_o    : out std_logic_vector(g_owr_num_ports-1 downto 0);
-    owr_i       : in  std_logic_vector(g_owr_num_ports-1 downto 0);
+    owr_en_o    : out std_logic;
+    owr_i       : in  std_logic;
 
     slave_i : in  t_wishbone_slave_in;
     slave_o : out t_wishbone_slave_out;
@@ -745,7 +743,6 @@ begin
       g_simulation          => 0,
       g_phys_uart           => true,
       g_virtual_uart        => false,
-      g_owr_num_ports       => 1,
       g_ep_rxbuf_size_log2  => 12,
       g_dpram_initf         => "",
       g_dpram_size          => 16384,
@@ -788,9 +785,8 @@ begin
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
 
-      owr_pwren_o => open,
       owr_en_o    => open,
-      owr_i       => (others => '0'),
+      owr_i       => '0',
 
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
