@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2011-10-28
+-- Last update: 2011-11-30
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -24,6 +24,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 library work;
 use work.wrcore_pkg.all;
@@ -33,7 +34,8 @@ use work.sysc_wbgen2_pkg.all;
 entity wrc_periph is
   generic(
     g_phys_uart    : boolean := true;
-    g_virtual_uart : boolean := false
+    g_virtual_uart : boolean := false;
+    g_cntr_period  : integer := 62500
   );
   port(
     clk_sys_i : in std_logic;
@@ -72,10 +74,16 @@ architecture struct of wrc_periph is
   signal owr_en_slv : std_logic_vector(0 downto 0);
   signal owr_in_slv : std_logic_vector(0 downto 0);
 
+  signal cntr_div      : unsigned(23 downto 0);
+  signal cntr_tics     : unsigned(31 downto 0);
+  signal cntr_overflow : std_logic;
+
 
 begin
 
+  -------------------------------------
   -- reset wrc
+  -------------------------------------
   process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -93,7 +101,9 @@ begin
     end if;
   end process;
 
+  -------------------------------------
   -- LEDs
+  -------------------------------------
   process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -111,12 +121,50 @@ begin
     end if;
   end process;
 
+  -------------------------------------
   -- buttons
+  -------------------------------------
   sysc_regs_i.gpsr_btn1_i <= btn1_i;
   sysc_regs_i.gpsr_btn2_i <= btn2_i;
 
+  -------------------------------------
+  -- TIMER
+  -------------------------------------
+  sysc_regs_i.tvr_i <= std_logic_vector(cntr_tics);
 
+  process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if(rst_n_i = '0') then
+        cntr_div      <= (others => '0');
+        cntr_overflow <= '0';
+      elsif(sysc_regs_o.tcr_enable_o = '1') then
+        if(cntr_div = g_cntr_period-1) then
+          cntr_div      <= (others => '0');
+          cntr_overflow <= '1';
+        else
+          cntr_div      <= cntr_div + 1;
+          cntr_overflow <= '0';
+        end if;
+      end if;
+    end if;
+  end process;
 
+  --msec counter
+  process(clk_sys_i)
+  begin
+    if(rising_edge(clk_sys_i)) then
+      if(rst_n_i = '0') then
+        cntr_tics <= (others => '0');
+      elsif(cntr_overflow = '1') then
+        cntr_tics <= cntr_tics + 1;
+      end if;
+    end if;
+  end process;
+
+  -------------------------------------
+  -- I2C
+  -------------------------------------
   p_drive_i2c : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -148,7 +196,7 @@ begin
   ----------------------------------------
   -- SYSCON
   ----------------------------------------
-  SYSCON: xwr_syscon_wb
+  SYSCON : xwr_syscon_wb
     generic map(
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE
@@ -156,12 +204,12 @@ begin
     port map(
       rst_n_i   => rst_n_i,
       clk_sys_i => clk_sys_i,
-  
-      slave_i   => slave_i(0),
-      slave_o   => slave_o(0),
-  
-      regs_i    => sysc_regs_i,
-      regs_o    => sysc_regs_o
+
+      slave_i => slave_i(0),
+      slave_o => slave_o(0),
+
+      regs_i => sysc_regs_i,
+      regs_o => sysc_regs_o
     );
 
   --slave_o(0).ack <= '0';

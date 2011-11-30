@@ -70,21 +70,22 @@ package wrcore_pkg is
       g_address_granularity : t_wishbone_address_granularity
     );
     port (
-      rst_n_i   : in  std_logic;
-      clk_sys_i : in  std_logic;
-  
-      slave_i   : in  t_wishbone_slave_in;
-      slave_o   : out t_wishbone_slave_out;
-  
-      regs_i    : in  t_sysc_in_registers;
-      regs_o    : out t_sysc_out_registers
+      rst_n_i   : in std_logic;
+      clk_sys_i : in std_logic;
+
+      slave_i : in  t_wishbone_slave_in;
+      slave_o : out t_wishbone_slave_out;
+
+      regs_i : in  t_sysc_in_registers;
+      regs_o : out t_sysc_out_registers
     );
   end component;
 
   component wrc_periph is
     generic(
-      g_phys_uart     : boolean := true;
-      g_virtual_uart  : boolean := false
+      g_phys_uart    : boolean := true;
+      g_virtual_uart : boolean := false;
+      g_cntr_period  : integer := 62500
     );
     port(
       clk_sys_i   : in  std_logic;
