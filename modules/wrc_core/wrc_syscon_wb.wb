@@ -157,6 +157,7 @@ peripheral {
                         <b>f_tick = f_clk_sys / (TDIV * 256)</b>";
          prefix = "TDIV";
          size = 12;
+         type = SLV;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
