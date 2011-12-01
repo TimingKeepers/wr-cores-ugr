@@ -585,7 +585,8 @@ begin
   PERIPH : wrc_periph
     generic map(
       g_phys_uart     => g_phys_uart,
-      g_virtual_uart  => g_virtual_uart)
+      g_virtual_uart  => g_virtual_uart,
+      g_mem_words     => g_dpram_size)
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_n_i,

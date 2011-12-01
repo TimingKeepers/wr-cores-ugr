@@ -85,7 +85,8 @@ package wrcore_pkg is
     generic(
       g_phys_uart    : boolean := true;
       g_virtual_uart : boolean := false;
-      g_cntr_period  : integer := 62500
+      g_cntr_period  : integer := 62500;
+      g_mem_words    : integer := 16384
     );
     port(
       clk_sys_i   : in  std_logic;

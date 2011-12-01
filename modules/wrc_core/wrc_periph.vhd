@@ -35,7 +35,8 @@ entity wrc_periph is
   generic(
     g_phys_uart    : boolean := true;
     g_virtual_uart : boolean := false;
-    g_cntr_period  : integer := 62500
+    g_cntr_period  : integer := 62500;
+    g_mem_words    : integer := 16384 --in 32-bit words
   );
   port(
     clk_sys_i : in std_logic;
@@ -67,6 +68,14 @@ entity wrc_periph is
 end wrc_periph;
 
 architecture struct of wrc_periph is
+
+  function f_cnt_memsize(words : integer) return std_logic_vector is
+  begin
+    return std_logic_vector(to_unsigned(words * 4 / 1024 / 64 - 1, 4));
+    -- *4     - to get size in bytes
+    -- /1024  - to get size in kB
+    -- /64 -1 - to get size in format of MEMSIZE@sysc_hwfr register
+  end f_cnt_memsize;
 
   signal sysc_regs_i : t_sysc_in_registers;
   signal sysc_regs_o : t_sysc_out_registers;
@@ -126,6 +135,11 @@ begin
   -------------------------------------
   sysc_regs_i.gpsr_btn1_i <= btn1_i;
   sysc_regs_i.gpsr_btn2_i <= btn2_i;
+
+  -------------------------------------
+  -- MEMSIZE
+  -------------------------------------
+  sysc_regs_i.hwfr_memsize_i(3 downto 0) <= f_cnt_memsize(g_mem_words);
 
   -------------------------------------
   -- TIMER
