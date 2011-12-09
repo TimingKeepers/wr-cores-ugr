@@ -12,6 +12,3 @@ modules =  {"local" :
 												"modules/wrc_core" ],
 						"git" : "git://ohwr.org/hdl-core-lib/general-cores.git::wishbone_with_adapter"
 						}
-												
-										
-												

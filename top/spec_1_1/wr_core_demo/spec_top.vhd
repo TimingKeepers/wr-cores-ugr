@@ -309,7 +309,11 @@ architecture rtl of spec_top is
       tm_cycles_o     : out std_logic_vector(27 downto 0);
 
       rst_aux_n_o : out std_logic;
-      dio_o     : out std_logic_vector(3 downto 0));
+      dio_o       : out std_logic_vector(3 downto 0);
+      owr_en_o    : out std_logic;
+      owr_i       : in  std_logic
+    );
+
   end component;
 
   component wr_gtp_phy_spartan6
@@ -487,7 +491,7 @@ architecture rtl of spec_top is
   signal dio_clk : std_logic;
 
   signal local_reset_n  : std_logic;
-  signal mbone_rst_n : std_logic;
+  signal mbone_rst_n    : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
 
   signal mbone_src_out : t_wrf_source_out;
@@ -511,8 +515,8 @@ architecture rtl of spec_top is
       master_i  : in  t_wishbone_master_in);
   end component;
 
-  signal mbone_wb_out : t_wishbone_master_out;
-  signal mbone_wb_in : t_wishbone_master_in;
+  signal mbone_wb_out    : t_wishbone_master_out;
+  signal mbone_wb_in     : t_wishbone_master_in;
   signal dpram_slave2_in : t_wishbone_master_out;
   
   
@@ -780,18 +784,18 @@ begin
       gpio_i     => wrc_gpio_in,
       gpio_dir_o => wrc_gpio_dir,
 
-      uart_rxd_i => uart_rxd_i,
-      uart_txd_o => uart_txd_o,
-      wb_addr_i  => wb_adr_wrc,
-      wb_data_i  => wb_dat_o,
-      wb_data_o  => wb_dat_i(31 downto 0),
-      wb_sel_i   => wb_sel,
-      wb_we_i    => wb_we,
-      wb_cyc_i   => wb_cyc(0),
-      wb_stb_i   => wb_stb,
-      wb_ack_o   => wb_ack(0),
-      rst_aux_n_o  => mbone_rst_n,
-      dio_o      => dio_out(4 downto 1),
+      uart_rxd_i  => uart_rxd_i,
+      uart_txd_o  => uart_txd_o,
+      wb_addr_i   => wb_adr_wrc,
+      wb_data_i   => wb_dat_o,
+      wb_data_o   => wb_dat_i(31 downto 0),
+      wb_sel_i    => wb_sel,
+      wb_we_i     => wb_we,
+      wb_cyc_i    => wb_cyc(0),
+      wb_stb_i    => wb_stb,
+      wb_ack_o    => wb_ack(0),
+      rst_aux_n_o => mbone_rst_n,
+      dio_o       => dio_out(4 downto 1),
 
       phy_ref_clk_i      => clk_125m_pllref,
       phy_tx_data_o      => phy_tx_data,
@@ -824,10 +828,12 @@ begin
       ext_src_we_o    => mbone_snk_in.we,
       ext_src_ack_i   => mbone_snk_out.ack,
       ext_src_err_i   => mbone_snk_out.err,
-      ext_src_stall_i => mbone_snk_out.stall
+      ext_src_stall_i => mbone_snk_out.stall,
+
+      owr_i => '0'
       );
 
-  U_MiniBone: xmini_bone
+  U_MiniBone : xmini_bone
     generic map (
       g_class_mask    => x"f0",
       g_our_ethertype => x"a0a0")
@@ -844,7 +850,7 @@ begin
 
 
   
-  U_DPRAM: xwb_dpram
+  U_DPRAM : xwb_dpram
     generic map (
       g_size                  => 2048,
       g_init_file             => "",
@@ -860,10 +866,10 @@ begin
       slave1_o  => mbone_wb_in,
       slave2_i  => dpram_slave2_in,
       slave2_o  => open);
-  
+
   dpram_slave2_in.cyc <= '0';
   dpram_slave2_in.stb <= '0';
-  
+
   U_GTP : wr_gtp_phy_spartan6
     generic map (
       g_simulation         => 0,
