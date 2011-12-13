@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-11-29
+-- Last update: 2011-12-13
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ entity wr_core is
     g_dpram_initf         : string                         := "";
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
-    g_address_granularity : t_wishbone_address_granularity := BYTE
+    g_address_granularity : t_wishbone_address_granularity := WORD 
     );
   port(
     clk_sys_i : in std_logic;
@@ -352,7 +352,7 @@ architecture struct of wr_core is
       class_core_i : in  std_logic_vector(7 downto 0));
   end component;
 
-    component chipscope_ila
+  component chipscope_ila
     port (
       CONTROL : inout std_logic_vector(35 downto 0);
       CLK     : in    std_logic;
@@ -712,11 +712,11 @@ begin
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
-      g_registered  => false
+      g_registered  => true 
       )
     port map(
       clk_sys_i     => clk_sys_i,
-      rst_n_i       => rst_wrc_n,
+      rst_n_i       => rst_n_i,
       -- Master connections (INTERCON is a slave)
       slave_i(0)    => cbar_master_o(1),
       slave_o(0)    => cbar_master_i(1),

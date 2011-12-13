@@ -499,6 +499,7 @@ architecture rtl of spec_top is
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
 
+  signal wb_adr     : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 begin
 
   cmp_sys_clk_pll : PLL_BASE
@@ -643,7 +644,7 @@ begin
       g_CSR_WB_SLAVES_NB  => c_CSR_WB_SLAVES_NB,
       g_DMA_WB_SLAVES_NB  => c_DMA_WB_SLAVES_NB,
       g_DMA_WB_ADDR_WIDTH => c_DMA_WB_ADDR_WIDTH,
-      g_CSR_WB_MODE       => "classic"
+      g_CSR_WB_MODE       => "pipelined"
       )
     port map
     (
@@ -700,7 +701,8 @@ begin
       ---------------------------------------------------------
       -- Target Interface (Wishbone master)
       wb_clk_i    => clk_sys,
-      wb_adr_o    => wrc_slave_i.adr(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0),
+      --wb_adr_o    => wrc_slave_i.adr(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0),
+      wb_adr_o    => wb_adr,
       wb_dat_o    => wrc_slave_i.dat,
       wb_sel_o    => wrc_slave_i.sel,
       wb_stb_o    => wrc_slave_i.stb,
@@ -722,6 +724,9 @@ begin
       dma_ack_i   => dma_ack,
       dma_stall_i => dma_stall
       );
+
+  wrc_slave_i.adr(16 downto 0) <= wb_adr(16 downto 0);
+  wrc_slave_i.adr(31 downto 17) <= (others=>'0');
 
   process(clk_sys, rst)
   begin
@@ -746,8 +751,8 @@ begin
       g_ep_rxbuf_size_log2  => 12,
       g_dpram_initf         => "",
       g_dpram_size          => 16384,
-      g_interface_mode      => CLASSIC,
-      g_address_granularity => BYTE)
+      g_interface_mode      => PIPELINED,
+      g_address_granularity => WORD)
     port map (
       clk_sys_i  => clk_sys,
       clk_dmtd_i => clk_dmtd,
