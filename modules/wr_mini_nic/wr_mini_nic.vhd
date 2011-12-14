@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2011-11-02
+-- Last update: 2011-12-14
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -332,8 +332,9 @@ begin  -- behavioral
   mem_addr_int <= std_logic_vector(ntx_mem_a)   when mem_arb_rx = '0' else std_logic_vector(nrx_mem_a);
   mem_data_o   <= nrx_mem_d;
   ntx_mem_d    <= mem_data_i;
-  mem_wr_int   <= (nrx_mem_wr and not bad_addr) when mem_arb_rx = '1' else '0';
-  mem_wr_o <= mem_wr_int;
+  --mem_wr_int   <= (nrx_mem_wr and not bad_addr) when mem_arb_rx = '1' else '0';
+  --mem_wr_o <= mem_wr_int;
+  mem_wr_o   <= nrx_mem_wr when mem_arb_rx = '1' else '0';
 
   mem_addr_o <= mem_addr_int;
 
@@ -805,8 +806,14 @@ begin  -- behavioral
                 end if;
 
                 -- abort/error/end-of-frame?
-                if(nrx_stat_error = '1' or snk_cyc_i = '0') then
-                  nrx_error <= nrx_stat_error;
+                if(nrx_stat_error = '1' or snk_cyc_i = '0' or nrx_avail=to_unsigned(0, nrx_avail'length) ) then
+
+                  if( nrx_stat_error='1' or nrx_avail=to_unsigned(0, nrx_avail'length) ) then
+                    nrx_error <= '1';
+                  else
+                    nrx_error <= '0';
+                  end if;
+                  --nrx_error <= '1' when nrx_stat_error='1' or nrx_avail=to_unsigned(0, nrx_avail'length) else '0';
                   nrx_done  <= '1';
 
                   -- flush the remaining packet data into the DMA buffer
@@ -900,7 +907,11 @@ begin  -- behavioral
             when RX_MEM_FLUSH =>
               nrx_stall_mask <= '1';
 
-              nrx_mem_wr <= '1';
+              if(nrx_buf_full = '0') then
+                nrx_mem_wr <= '1';
+              else
+                nrx_size <= nrx_size - 1; --the buffer is full, last word was not written
+              end if;
               if(mem_arb_rx = '0') then
                 nrx_avail <= nrx_avail - 1;
                 nrx_state <= RX_UPDATE_DESC;
