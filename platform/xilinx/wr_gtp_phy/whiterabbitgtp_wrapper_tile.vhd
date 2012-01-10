@@ -29,6 +29,8 @@ entity WHITERABBITGTP_WRAPPER_TILE_SPARTAN6 is
       --------------------------------- PLL Ports --------------------------------
       CLK00_IN             : in  std_logic;
       CLK01_IN             : in  std_logic;
+      CLK10_IN             : in  std_logic;
+      CLK11_IN             : in  std_logic;
       GTPRESET0_IN         : in  std_logic;
       GTPRESET1_IN         : in  std_logic;
       PLLLKDET0_OUT        : out std_logic;
@@ -71,6 +73,13 @@ entity WHITERABBITGTP_WRAPPER_TILE_SPARTAN6 is
       ------------------- Transmit Ports - 8b10b Encoder Control -----------------
       TXCHARISK0_IN        : in  std_logic;
       TXCHARISK1_IN        : in  std_logic;
+
+      TXCHARDISPMODE0_IN: in std_logic;
+      TXCHARDISPMODE1_IN: in std_logic;
+
+      TXCHARDISPVAL0_IN: in std_logic;
+      TXCHARDISPVAL1_IN: in std_logic;
+
       TXRUNDISP0_OUT       : out std_logic_vector(3 downto 0);
       TXRUNDISP1_OUT       : out std_logic_vector(3 downto 0);
 
@@ -440,8 +449,8 @@ begin
       --------------------------------- PLL Ports --------------------------------
       CLK00                     => CLK00_IN,
       CLK01                     => CLK01_IN,
-      CLK10                     => tied_to_ground_i,
-      CLK11                     => tied_to_ground_i,
+      CLK10                     => CLK10_IN,
+      CLK11                     => CLK11_IN,
       CLKINEAST0                => tied_to_ground_i,
       CLKINEAST1                => tied_to_ground_i,
       CLKINWEST0                => tied_to_ground_i,
@@ -617,10 +626,19 @@ begin
       ------------------- Transmit Ports - 8b10b Encoder Control -----------------
       TXBYPASS8B10B0            => tied_to_ground_vec_i(3 downto 0),
       TXBYPASS8B10B1            => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPMODE0           => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPMODE1           => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPVAL0            => tied_to_ground_vec_i(3 downto 0),
-      TXCHARDISPVAL1            => tied_to_ground_vec_i(3 downto 0),
+
+      TXCHARDISPMODE0(0)           => TXCHARDISPMODE0_IN,
+      TXCHARDISPMODE0(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+
+      TXCHARDISPMODE1(0)           => TXCHARDISPMODE1_IN,
+      TXCHARDISPMODE1(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+
+      TXCHARDISPVAL0(0)           => TXCHARDISPVAL0_IN,
+      TXCHARDISPVAL0(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+
+      TXCHARDISPVAL1(0)           => TXCHARDISPVAL1_IN,
+      TXCHARDISPVAL1(3 downto 1) => tied_to_ground_vec_i(2 downto 0),
+      
       TXCHARISK0(3 downto 1)    => tied_to_ground_vec_i(2 downto 0),
       TXCHARISK0(0)             => TXCHARISK0_IN,
       TXCHARISK1(3 downto 1)    => tied_to_ground_vec_i(2 downto 0),
