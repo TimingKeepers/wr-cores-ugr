@@ -1,0 +1,1 @@
+files = ["wr_fabric_pkg.vhd"]
