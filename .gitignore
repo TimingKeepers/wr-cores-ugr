@@ -10,3 +10,9 @@ transcript
 *.vstf
 *.bak
 *.vcd
+*.h
+doc/
+*.o
+*.bin
+*.elf
+Makefile
