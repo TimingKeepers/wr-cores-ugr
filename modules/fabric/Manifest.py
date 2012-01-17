@@ -1,1 +1,1 @@
-files = ["wr_fabric_pkg.vhd"]
+files = ["wr_fabric_pkg.vhd", "xwb_fabric_sink.vhd", "xwb_fabric_source.vhd"]
