@@ -29,7 +29,6 @@ files = [	"endpoint_private_pkg.vhd",
                 "ep_wishbone_controller.vhd",
                 "ep_registers_pkg.vhd",
                 "endpoint_pkg.vhd",
-                "wr_fabric_pkg.vhd",
                 "wr_endpoint.vhd",
                 "xwr_endpoint.vhd"
                 ];
