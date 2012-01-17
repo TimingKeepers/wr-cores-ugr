@@ -309,7 +309,10 @@ architecture rtl of spec_top is
       tm_cycles_o     : out std_logic_vector(27 downto 0);
 
       rst_aux_n_o : out std_logic;
-      dio_o     : out std_logic_vector(3 downto 0));
+      dio_o     : out std_logic_vector(3 downto 0);
+      owr_en_o: out std_logic;
+      owr_i: in std_logic
+      );
   end component;
 
   component wr_gtp_phy_spartan6
@@ -514,6 +517,9 @@ architecture rtl of spec_top is
   signal mbone_wb_out : t_wishbone_master_out;
   signal mbone_wb_in : t_wishbone_master_in;
   signal dpram_slave2_in : t_wishbone_master_out;
+
+  signal owr_in : std_logic;
+  signal owr_en : std_logic;
   
   
 begin
@@ -586,25 +592,23 @@ begin
       CLKIN    => clk_20m_vcxo_buf);
 
 
-  --p_gen_reset : process(clk_sys)
-  --begin
-  --  if rising_edge(clk_sys) then
-  --    button1_synced(0) <= button1_i;
-  --    button1_synced(1) <= button1_synced(0);
-  --    button1_synced(2) <= button1_synced(1);
+  p_gen_reset : process(clk_sys)
+  begin
+    if rising_edge(clk_sys) then
+      button1_synced(0) <= button1_i;
+      button1_synced(1) <= button1_synced(0);
+      button1_synced(2) <= button1_synced(1);
 
-  --    if(L_RST_N = '0') then
-  --      local_reset_n <= '0';
-  --    elsif (button1_synced(2) = '0') then
-  --      local_reset_n <= '0';
-  --    else
-  --      local_reset_n <= '1';
-  --    end if;
-  --  end if;
-  --end process;
+      if(button1_synced(2) = '0') then
+        local_reset_n <= '0';
+      else
+        local_reset_n <= '1';
+      end if;
+    end if;
+  end process;
 
 
-  local_reset_n <= L_RST_N;
+--  local_reset_n <= L_RST_N;
 
   cmp_clk_sys_buf : BUFG
     port map (
@@ -759,7 +763,7 @@ begin
       g_simulation         => 0,
       g_virtual_uart       => 0,
       g_ep_rxbuf_size_log2 => 12,
-      g_dpram_initf        => "",
+      g_dpram_initf        => "wrc.ram",
       g_dpram_size         => 16384,
       g_num_gpio           => 8)
     port map (
@@ -791,7 +795,7 @@ begin
       wb_stb_i   => wb_stb,
       wb_ack_o   => wb_ack(0),
       rst_aux_n_o  => mbone_rst_n,
-      dio_o      => dio_out(4 downto 1),
+      dio_o      => open,
 
       phy_ref_clk_i      => clk_125m_pllref,
       phy_tx_data_o      => phy_tx_data,
@@ -824,7 +828,9 @@ begin
       ext_src_we_o    => mbone_snk_in.we,
       ext_src_ack_i   => mbone_snk_out.ack,
       ext_src_err_i   => mbone_snk_out.err,
-      ext_src_stall_i => mbone_snk_out.stall
+      ext_src_stall_i => mbone_snk_out.stall,
+      owr_i => owr_in,
+      owr_en_o => owr_en
       );
 
   U_MiniBone: xmini_bone
@@ -968,14 +974,25 @@ begin
 
   dio_led_bot_o <= '0';
 
-  dio_out(0)             <= pps;
---  dio_out(4 downto 1)    <= (others => '0');
-  dio_oe_n_o(0)          <= '0';
-  dio_oe_n_o(4 downto 1) <= (others => '0');
+  dio_out(0)                <= pps;
+  dio_oe_n_o(0) <= '0';
+  
+
+  dio_onewire_b<='0' when owr_en = '1' else 'Z';
+  owr_in <= dio_onewire_b;
+  
+--  dio_out(4) <='0';
+--  dio_oe_n_o(4) <= not owr_en;
+--  owr_in <= dio_in(2);
+
+  dio_out(3) <= '1';
+  dio_oe_n_o(3)<='0';
+  
+  
   dio_term_en_o          <= (others => '0');
 
-  dio_sdn_ck_n_o <= '0';
-  dio_sdn_n_o    <= '0';
+  dio_sdn_ck_n_o <= '1';
+  dio_sdn_n_o    <= '1';
 
   LED_GREEN <= wrc_gpio_out(0);
   LED_RED   <= wrc_gpio_out(1);
