@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-10-30
+-- Last update: 2012-01-13
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -631,38 +631,6 @@ begin
   src_in.stall <= src_stall_i;
   src_in.ack   <= src_ack_i;
   src_in.err <= src_err_i;
----------------------------------------------------------------------------------
----- RX buffer
----------------------------------------------------------------------------------
-
---  U_RX_BUF : ep_rx_buffer
---    generic map (
---      g_size_log2 => g_rx_buffer_size_log2)
---    port map (
---      clk_sys_i => clk_sys_i,
---      rst_n_i   => rst_n_i,
-
---      fra_data_i    => rbuf_data,
---      fra_ctrl_i    => rbuf_ctrl,
---      fra_sof_p_i   => rbuf_sof_p,
---      fra_eof_p_i   => rbuf_eof_p,
---      fra_error_p_i => rbuf_error_p,
---      fra_valid_i   => rbuf_valid,
---      fra_bytesel_i => rbuf_bytesel,
---      fra_drop_o    => rbuf_drop,
-
---      fab_data_o    => rx_data_o,
---      fab_ctrl_o    => rx_ctrl_o,
---      fab_sof_p_o   => rx_sof_p1_o,
---      fab_eof_p_o   => rx_eof_p1_o,
---      fab_error_p_o => rx_rerror_p1_o,
---      fab_bytesel_o => rx_bytesel_o,
---      fab_valid_o   => rx_valid_o,
---      fab_dreq_i    => rx_dreq_i,
-
---      ep_ecr_rx_en_fra_i => regs.ecr_rx_en_fra_o,
-
---      buffer_used_o => rx_buffer_used);
 
 -------------------------------------------------------------------------------
 -- Flow control unit
@@ -804,6 +772,10 @@ begin
       regs_i => regs_towb
       );     
 
+  wb_out.stall <= '0';
+  wb_out.rty <= '0';
+  wb_out.err <= '0';
+  wb_out.int <= '0';
 
   regs_towb <= regs_towb_ep or regs_towb_tsu;
 
