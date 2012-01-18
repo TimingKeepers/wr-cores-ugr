@@ -166,10 +166,8 @@ entity xwr_core is
     -- 1PPS output
     pps_p_o              : out std_logic;
 
-    --DEBUG
-    genrest_n : out std_logic;
-
-    dio_o : out std_logic_vector(3 downto 0)
+    dio_o : out std_logic_vector(3 downto 0);
+    rst_aux_n_o : out std_logic
     );
 end xwr_core;
 
@@ -264,8 +262,8 @@ architecture struct of xwr_core is
       tm_cycles_o          : out std_logic_vector(27 downto 0);
       pps_p_o              : out std_logic;
 
-      genrest_n : out std_logic;
-      dio_o     : out std_logic_vector(3 downto 0)
+      dio_o     : out std_logic_vector(3 downto 0);
+      rst_aux_n_o : out std_logic
     );
   end component;
 
@@ -359,8 +357,8 @@ begin
       tm_cycles_o          => tm_cycles_o,
       pps_p_o              => pps_p_o,
 
-      genrest_n => genrest_n,
-      dio_o     => dio_o
+      dio_o     => dio_o,
+      rst_aux_n_o => rst_aux_n_o
     );
 
 end struct;

@@ -186,10 +186,8 @@ entity wr_core is
     -- 1PPS output
     pps_p_o              : out std_logic;
 
-    --DEBUG
-    genrest_n : out std_logic;
-
-    dio_o : out std_logic_vector(3 downto 0)
+    dio_o : out std_logic_vector(3 downto 0);
+    rst_aux_n_o :  out std_logic
     );
 end wr_core;
 
@@ -352,28 +350,30 @@ architecture struct of wr_core is
       class_core_i : in  std_logic_vector(7 downto 0));
   end component;
 
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
+  --component chipscope_ila
+  --  port (
+  --    CONTROL : inout std_logic_vector(35 downto 0);
+  --    CLK     : in    std_logic;
+  --    TRIG0   : in    std_logic_vector(31 downto 0);
+  --    TRIG1   : in    std_logic_vector(31 downto 0);
+  --    TRIG2   : in    std_logic_vector(31 downto 0);
+  --    TRIG3   : in    std_logic_vector(31 downto 0));
+  --end component;
 
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
+  --component chipscope_icon
+  --  port (
+  --    CONTROL0 : inout std_logic_vector (35 downto 0));
+  --end component;
 
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
+  --signal CONTROL : std_logic_vector(35 downto 0);
+  --signal CLK     : std_logic;
+  --signal TRIG0   : std_logic_vector(31 downto 0);
+  --signal TRIG1   : std_logic_vector(31 downto 0);
+  --signal TRIG2   : std_logic_vector(31 downto 0);
+  --signal TRIG3   : std_logic_vector(31 downto 0);
 begin
+
+  rst_aux_n_o <= rst_net_n;
 
   -----------------------------------------------------------------------------
   -- PPS generator

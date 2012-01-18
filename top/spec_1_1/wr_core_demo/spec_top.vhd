@@ -309,8 +309,8 @@ architecture rtl of spec_top is
     tm_cycles_o          : out std_logic_vector(27 downto 0);
     pps_p_o              : out std_logic;
 
-    genrest_n : out std_logic;
-    dio_o     : out std_logic_vector(3 downto 0)
+    dio_o     : out std_logic_vector(3 downto 0);
+    rst_aux_n_o : out std_logic
     );
   end component;
 
@@ -825,8 +825,8 @@ begin
       tm_cycles_o          => open,
       pps_p_o              => pps,
 
-      genrest_n => open,
-      dio_o     => dio_out(4 downto 1)
+      dio_o     => dio_out(4 downto 1),
+      rst_aux_n_o => mbone_rst_n
     );
 
 
