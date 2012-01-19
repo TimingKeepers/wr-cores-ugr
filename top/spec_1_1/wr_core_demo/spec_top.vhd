@@ -274,8 +274,8 @@ architecture rtl of spec_top is
     uart_rxd_i : in  std_logic;
     uart_txd_o : out std_logic;
 
-    owr_en_o    : out std_logic;
-    owr_i       : in  std_logic;
+    owr_en_o : out std_logic;
+    owr_i    : in  std_logic;
 
     slave_i : in  t_wishbone_slave_in;
     slave_o : out t_wishbone_slave_out;
@@ -309,7 +309,7 @@ architecture rtl of spec_top is
     tm_cycles_o          : out std_logic_vector(27 downto 0);
     pps_p_o              : out std_logic;
 
-    dio_o     : out std_logic_vector(3 downto 0);
+    dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic
     );
   end component;
@@ -499,7 +499,7 @@ architecture rtl of spec_top is
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
 
-  signal wb_adr     : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
+  signal wb_adr : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 begin
 
   cmp_sys_clk_pll : PLL_BASE
@@ -725,8 +725,8 @@ begin
       dma_stall_i => dma_stall
       );
 
-  wrc_slave_i.adr(16 downto 0) <= wb_adr(16 downto 0);
-  wrc_slave_i.adr(31 downto 17) <= (others=>'0');
+  wrc_slave_i.adr(16 downto 0)  <= wb_adr(16 downto 0);
+  wrc_slave_i.adr(31 downto 17) <= (others => '0');
 
   process(clk_sys, rst)
   begin
@@ -790,8 +790,8 @@ begin
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
 
-      owr_en_o    => open,
-      owr_i       => '0',
+      owr_en_o => open,
+      owr_i    => '0',
 
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
@@ -825,8 +825,8 @@ begin
       tm_cycles_o          => open,
       pps_p_o              => pps,
 
-      dio_o     => dio_out(4 downto 1),
-      rst_aux_n_o => mbone_rst_n
+      dio_o       => dio_out(4 downto 1),
+      rst_aux_n_o => open
     );
 
 
