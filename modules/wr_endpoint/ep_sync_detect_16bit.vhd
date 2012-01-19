@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-05-28
--- Last update: 2011-10-14
+-- Last update: 2012-01-18
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -76,11 +76,12 @@ architecture behavioral of ep_sync_detect_16bit is
 
   signal valid_idle   : std_logic;
   signal invalid_code : std_logic;
+  signal valid_data   : std_logic;
   
 begin  -- behavioral
 
-  valid_idle <= '1' when (k_i = "10" and data_i(15 downto 8) = c_k28_5 and err_i = '0') else '0';
-
+  valid_idle   <= '1' when (k_i = "10" and data_i(15 downto 8) = c_k28_5 and err_i = '0')   else '0';
+  valid_data   <= '1' when (k_i = "00" and err_i = '0')                                     else '0';
   invalid_code <= '1' when (err_i = '1' or (k_i(0) = '1' and data_i(7 downto 0) = c_k28_5)) else '0';
 
 
@@ -105,13 +106,12 @@ begin  -- behavioral
               when LOSS_OF_SYNC =>
                 synced_o <= '0';
                 state    <= f_pick(valid_idle, CD_ACQ_1, LOSS_OF_SYNC);
-
               when CD_ACQ_1 =>
-                state <= f_pick(valid_idle, CD_ACQ_2, LOSS_OF_SYNC);
+                state <= f_pick(valid_idle or valid_data, CD_ACQ_2, LOSS_OF_SYNC);
               when CD_ACQ_2 =>
                 state <= f_pick(valid_idle, CD_ACQ_3, LOSS_OF_SYNC);
               when CD_ACQ_3 =>
-                state <= f_pick(valid_idle, SYNC_ACQUIRED_1, LOSS_OF_SYNC);
+                state <= f_pick(valid_idle or valid_data, SYNC_ACQUIRED_1, LOSS_OF_SYNC);
                 
               when SYNC_ACQUIRED_1 =>
                 synced_o <= '1';
