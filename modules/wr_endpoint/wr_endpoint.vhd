@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-01-13
+-- Last update: 2012-01-19
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -66,10 +66,10 @@ entity wr_endpoint is
     clk_ref_i : in std_logic;
 
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
-    clk_sys_i : in std_logic;
+    clk_sys_i  : in std_logic;
 --
-    clk_dmtd_i:in std_logic;
-    
+    clk_dmtd_i : in std_logic;
+
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
 
@@ -123,7 +123,7 @@ entity wr_endpoint is
     src_we_o    : out std_logic;
     src_stall_i : in  std_logic;
     src_ack_i   : in  std_logic;
-    src_err_i : in std_logic;
+    src_err_i   : in  std_logic;
 
     snk_dat_i   : in  std_logic_vector(15 downto 0);
     snk_adr_i   : in  std_logic_vector(1 downto 0);
@@ -189,15 +189,15 @@ entity wr_endpoint is
 -- Wishbone bus
 -------------------------------------------------------------------------------
 
-    wb_cyc_i : in  std_logic;
-    wb_stb_i : in  std_logic;
-    wb_we_i  : in  std_logic;
-    wb_sel_i : in  std_logic_vector(3 downto 0);
-    wb_adr_i : in  std_logic_vector(7 downto 0);
-    wb_dat_i : in  std_logic_vector(31 downto 0);
-    wb_dat_o : out std_logic_vector(31 downto 0);
-    wb_ack_o : out std_logic;
-    wb_stall_o:out std_logic;
+    wb_cyc_i   : in  std_logic;
+    wb_stb_i   : in  std_logic;
+    wb_we_i    : in  std_logic;
+    wb_sel_i   : in  std_logic_vector(3 downto 0);
+    wb_adr_i   : in  std_logic_vector(7 downto 0);
+    wb_dat_i   : in  std_logic_vector(31 downto 0);
+    wb_dat_o   : out std_logic_vector(31 downto 0);
+    wb_ack_o   : out std_logic;
+    wb_stall_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- Misc stuff
@@ -231,7 +231,7 @@ architecture syn of wr_endpoint is
       phase_meas_o   : out std_logic_vector(31 downto 0);
       phase_meas_p_o : out std_logic);
   end component;
-  
+
   component ep_tx_framer
     generic (
       g_with_vlans       : boolean;
@@ -466,6 +466,7 @@ architecture syn of wr_endpoint is
   signal phase_meas_p  : std_logic;
   signal validity_cntr : unsigned(1 downto 0);
 
+  signal rtu_rq : t_ep_internal_rtu_request;
   
 begin
 
@@ -617,11 +618,21 @@ begin
       rmon_o => rmon,
       regs_i => regs_fromwb,
 
-      rtu_full_i => rtu_full_i,
-      src_wb_o   => src_out,
-      src_wb_i   => src_in
+      rtu_full_i     => rtu_full_i,
+      rtu_rq_o       => rtu_rq,
+      rtu_rq_valid_o => rtu_rq_strobe_p1_o,
+      src_wb_o       => src_out,
+      src_wb_i       => src_in
       );
 
+
+  rtu_rq_smac_o <= rtu_rq.smac;
+  rtu_rq_dmac_o <= rtu_rq.dmac;
+  rtu_rq_vid_o <= rtu_rq.vid;
+  rtu_rq_prio_o <= rtu_rq.prio;
+  rtu_rq_has_vid_o <= rtu_rq.has_vid;
+  rtu_rq_has_prio_o <= rtu_rq.has_prio;
+  
   src_dat_o    <= src_out.dat;
   src_adr_o    <= src_out.adr;
   src_sel_o    <= src_out.sel;
@@ -630,7 +641,7 @@ begin
   src_we_o     <= src_out.we;
   src_in.stall <= src_stall_i;
   src_in.ack   <= src_ack_i;
-  src_in.err <= src_err_i;
+  src_in.err   <= src_err_i;
 
 -------------------------------------------------------------------------------
 -- Flow control unit
@@ -723,8 +734,8 @@ begin
 -------------------------------------------------------------------------------
 
   extended_ADDR <= std_logic_vector(resize(unsigned(wb_adr_i), c_wishbone_address_width));
-  
-  U_Slave_adapter: wb_slave_adapter
+
+  U_Slave_adapter : wb_slave_adapter
     generic map (
       g_master_use_struct  => true,
       g_master_mode        => CLASSIC,
@@ -746,7 +757,7 @@ begin
       sl_stall_o => wb_stall_o,
       master_i   => wb_out,
       master_o   => wb_in);
-  
+
   U_WB_SLAVE : ep_wishbone_controller
     port map (
       rst_n_i   => rst_n_sys,
@@ -773,9 +784,9 @@ begin
       );     
 
   wb_out.stall <= '0';
-  wb_out.rty <= '0';
-  wb_out.err <= '0';
-  wb_out.int <= '0';
+  wb_out.rty   <= '0';
+  wb_out.err   <= '0';
+  wb_out.int   <= '0';
 
   regs_towb <= regs_towb_ep or regs_towb_tsu;
 
@@ -796,17 +807,17 @@ begin
     end if;
   end process;
 
-  
+
 -------------------------------------------------------------------------------
 -- DMTD phase meter
 ------------------------------------------------------------------------------  
 
   U_DMTD : dmtd_phase_meas
     generic map (
-      g_counter_bits        => 14,
-      g_deglitcher_threshold => 1000 )
+      g_counter_bits         => 14,
+      g_deglitcher_threshold => 1000)
     port map (
-      clk_sys_i  => clk_sys_i,
+      clk_sys_i => clk_sys_i,
 
       clk_a_i    => phy_ref_clk_i,
       clk_b_i    => phy_rx_clk_i,
@@ -822,29 +833,42 @@ begin
   begin
     if rising_edge(clk_sys_i) then
       if rst_n_i = '0' then
-        validity_cntr      <= (others => '0');
+        validity_cntr              <= (others => '0');
         regs_towb_ep.dmsr_ps_rdy_i <= '0';
       else
 
         if(regs_fromwb.dmcr_en_o = '0') then
-          validity_cntr      <= (others => '0');
+          validity_cntr              <= (others => '0');
           regs_towb_ep.dmsr_ps_rdy_i <= '0';
-        elsif(regs_fromwb.dmsr_ps_rdy_o= '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
+        elsif(regs_fromwb.dmsr_ps_rdy_o = '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
           regs_towb_ep.dmsr_ps_rdy_i <= '0';
         elsif(phase_meas_p = '1') then
 
           if(validity_cntr = "11") then
             regs_towb_ep.dmsr_ps_rdy_i <= '1';
-            regs_towb_ep.dmsr_ps_val_i     <= phase_meas(23 downto 0);  -- discard few
+            regs_towb_ep.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
           else
             regs_towb_ep.dmsr_ps_rdy_i <= '0';
-            validity_cntr      <= validity_cntr + 1;
+            validity_cntr              <= validity_cntr + 1;
           end if;
         end if;
       end if;
     end if;
   end process;
 
+  gen_leds : if g_with_leds generate
+    U_Led_Ctrl : ep_leds_controller
+      generic map (
+        g_blink_period_log2 => 20)
+      port map (
+        clk_sys_i   => clk_sys_i,
+        rst_n_i     => rst_n_i,
+        dvalid_tx_i => txpcs_fab.dvalid,
+        dvalid_rx_i => rxpcs_fab.dvalid,
+        link_ok_i   => link_ok,
+        led_link_o  => led_link_o,
+        led_act_o   => led_act_o);
+  end generate gen_leds;
 
 end syn;
 

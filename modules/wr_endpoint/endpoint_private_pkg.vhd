@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-26
+-- Last update: 2012-01-19
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ use work.ep_wbgen2_pkg.all;
 use work.wr_fabric_pkg.all;
 
 package endpoint_private_pkg is
-  
+
   -- special/control characters
   constant c_k28_5 : std_logic_vector(7 downto 0) := "10111100";  -- bc
   constant c_k23_7 : std_logic_vector(7 downto 0) := "11110111";  -- f7
@@ -85,23 +85,23 @@ package endpoint_private_pkg is
     prio     : std_logic_vector(2 downto 0);
     has_vid  : std_logic;
     has_prio : std_logic;
-    
+    hash     : std_logic_vector(15 downto 0);
   end record;
 
   type t_rmon_triggers is record
-    rx_sync_lost      : std_logic;
-    rx_invalid_code   : std_logic;
-    rx_overrun        : std_logic;
-    rx_crc_err        : std_logic;
-    rx_ok             : std_logic;
-    rx_pfilter_drop   : std_logic;
-    rx_runt           : std_logic;
-    rx_giant          : std_logic;
-    rx_pause          : std_logic;
-    rx_pcs_err        : std_logic;
-    rx_buffer_overrun : std_logic;
-    rx_rtu_overrun    : std_logic;
-    rx_path_timing_failure: std_logic;
+    rx_sync_lost           : std_logic;
+    rx_invalid_code        : std_logic;
+    rx_overrun             : std_logic;
+    rx_crc_err             : std_logic;
+    rx_ok                  : std_logic;
+    rx_pfilter_drop        : std_logic;
+    rx_runt                : std_logic;
+    rx_giant               : std_logic;
+    rx_pause               : std_logic;
+    rx_pcs_err             : std_logic;
+    rx_buffer_overrun      : std_logic;
+    rx_rtu_overrun         : std_logic;
+    rx_path_timing_failure : std_logic;
 
     tx_pause    : std_logic;
     tx_underrun : std_logic;
@@ -285,6 +285,19 @@ package endpoint_private_pkg is
       purge_i : in  std_logic);
   end component;
 
+  component ep_leds_controller
+    generic (
+      g_blink_period_log2 : integer);
+    port (
+      clk_sys_i   : in  std_logic;
+      rst_n_i     : in  std_logic;
+      dvalid_tx_i : in  std_logic;
+      dvalid_rx_i : in  std_logic;
+      link_ok_i   : in  std_logic;
+      led_link_o  : out std_logic;
+      led_act_o   : out std_logic);
+  end component;
+
   --function f_pack_fifo_contents (
   --  data             : std_logic_vector;
   --  sof              : std_logic;
@@ -361,7 +374,7 @@ package body endpoint_private_pkg is
     else
       if(fab.sof = '1' or fab.error = '1' or fab.eof = '1' or fab.has_rx_timestamp = '1') then
         -- tag = 01
-        dout(17) <= 'X';
+        dout(17)          <= 'X';
         dout(16)          <= '1';
         dout(15)          <= fab.sof;
         dout(14)          <= fab.eof;
@@ -409,7 +422,7 @@ package body endpoint_private_pkg is
         fab.bytesel          <= (not din(16)) and din(17);
       end if;
     else
-      fab.bytesel <= 'X';
+      fab.bytesel          <= 'X';
       fab.dvalid           <= '0';
       fab.sof              <= '0';
       fab.eof              <= '0';

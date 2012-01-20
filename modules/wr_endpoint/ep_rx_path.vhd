@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-29
+-- Last update: 2012-01-19
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -101,9 +101,22 @@ end ep_rx_path;
 
 architecture behavioral of ep_rx_path is
 
-  component ep_rx_early_address_match
+  component ep_rtu_header_extract
     generic (
       g_with_rtu : boolean);
+    port (
+      clk_sys_i      : in  std_logic;
+      rst_n_i        : in  std_logic;
+      snk_fab_i      : in  t_ep_internal_fabric;
+      snk_dreq_o     : out std_logic;
+      src_fab_o      : out t_ep_internal_fabric;
+      src_dreq_i     : in  std_logic;
+      rtu_rq_o       : out t_ep_internal_rtu_request;
+      rtu_full_i     : in  std_logic;
+      rtu_rq_valid_o : out std_logic);
+  end component;
+  
+  component ep_rx_early_address_match
     port (
       clk_sys_i            : in  std_logic;
       clk_rx_i             : in  std_logic;
@@ -115,7 +128,6 @@ architecture behavioral of ep_rx_path is
       match_is_hp_o        : out std_logic;
       match_is_pause_o     : out std_logic;
       match_pause_quanta_o : out std_logic_vector(15 downto 0);
-      rtu_rq_o             : out t_ep_internal_rtu_request;
       regs_i               : in  t_ep_out_registers);
   end component;
 
@@ -261,8 +273,8 @@ architecture behavioral of ep_rx_path is
 
   type t_fab_pipe is array(integer range <>) of t_ep_internal_fabric;
 
-  signal fab_pipe  : t_fab_pipe(0 to 8);
-  signal dreq_pipe : std_logic_vector(8 downto 0);
+  signal fab_pipe  : t_fab_pipe(0 to 9);
+  signal dreq_pipe : std_logic_vector(9 downto 0);
 
   signal ematch_done         : std_logic;
   signal ematch_is_hp        : std_logic;
@@ -285,8 +297,6 @@ begin  -- behavioral
   fab_pipe(0) <= pcs_fab_i;
 
   U_early_addr_match : ep_rx_early_address_match
-    generic map (
-      g_with_rtu => g_with_rtu)
 
     port map (
       clk_sys_i            => clk_sys_i,
@@ -380,19 +390,34 @@ begin  -- behavioral
         regs_i     => regs_i);
   end generate gen_with_vlan_unit;
 
+
   gen_without_vlan_unit:  if(not g_with_vlans) generate
     fab_pipe(6) <= fab_pipe(5);
     dreq_pipe(5) <= dreq_pipe(6);
   end generate gen_without_vlan_unit;
 
+  U_RTU_Header_Extract: ep_rtu_header_extract
+    generic map (
+      g_with_rtu => g_with_rtu)
+    port map (
+      clk_sys_i      => clk_sys_i,
+      rst_n_i        => rst_n_sys_i,
+      snk_fab_i      => fab_pipe(6),
+      snk_dreq_o     => dreq_pipe(6),
+      src_fab_o      => fab_pipe(7),
+      src_dreq_i     => dreq_pipe(7),
+      rtu_rq_o       => rtu_rq_o,
+      rtu_full_i     => rtu_full_i,
+      rtu_rq_valid_o => rtu_rq_valid_o);
+  
   U_Gen_Status : ep_rx_status_reg_insert
     port map (
       clk_sys_i         => clk_sys_i,
       rst_n_i           => rst_n_sys_i,
-      snk_fab_i         => fab_pipe(6),
-      snk_dreq_o        => dreq_pipe(6),
-      src_fab_o         => fab_pipe(7),
-      src_dreq_i        => dreq_pipe(7),
+      snk_fab_i         => fab_pipe(7),
+      snk_dreq_o        => dreq_pipe(7),
+      src_fab_o         => fab_pipe(8),
+      src_dreq_i        => dreq_pipe(8),
       pfilter_drop_i    => pfilter_drop,
       pfilter_pclass_i  => pfilter_pclass,
       pfilter_done_i    => pfilter_done,
@@ -408,26 +433,26 @@ begin  -- behavioral
       port map (
         clk_sys_i  => clk_sys_i,
         rst_n_i    => rst_n_sys_i,
-        snk_fab_i  => fab_pipe(7),
-        snk_dreq_o => dreq_pipe(7),
-        src_fab_o  => fab_pipe(8),
-        src_dreq_i => dreq_pipe(8),
+        snk_fab_i  => fab_pipe(8),
+        snk_dreq_o => dreq_pipe(8),
+        src_fab_o  => fab_pipe(9),
+        src_dreq_i => dreq_pipe(9),
         level_o    => fc_buffer_occupation_o,
         regs_i     => regs_i,
         rmon_o     => open);
   end generate gen_with_rx_buffer;
 
   gen_without_rx_buffer: if (not g_with_rx_buffer) generate
-    fab_pipe(8) <= fab_pipe(7);
-    dreq_pipe(7) <= dreq_pipe(8);
+    fab_pipe(9) <= fab_pipe(8);
+    dreq_pipe(8) <= dreq_pipe(9);
   end generate gen_without_rx_buffer;
   
   U_RX_Wishbone_Master : ep_rx_wb_master
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
-      snk_fab_i  => fab_pipe(8),
-      snk_dreq_o => dreq_pipe(8),
+      snk_fab_i  => fab_pipe(9),
+      snk_dreq_o => dreq_pipe(9),
       src_wb_i   => src_wb_i,
       src_wb_o   => src_wb_o
       );

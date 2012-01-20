@@ -11,8 +11,6 @@ use work.ep_wbgen2_pkg.all;
 -- to filter out pause and HP frames in advance.
 
 entity ep_rx_early_address_match is
-  generic (
-    g_with_rtu : boolean);
   port(
     clk_sys_i : in std_logic;
     clk_rx_i  : in std_logic;
@@ -27,8 +25,6 @@ entity ep_rx_early_address_match is
     match_is_hp_o        : out std_logic;
     match_is_pause_o     : out std_logic;
     match_pause_quanta_o : out std_logic_vector(15 downto 0);
-
-    rtu_rq_o : out t_ep_internal_rtu_request;
 
     regs_i : in t_ep_out_registers
     );
@@ -56,14 +52,7 @@ architecture behavioral of ep_rx_early_address_match is
     end if;
   end f_compare_slv;
 
-  procedure f_extract_rtu(signal q         : out std_logic_vector;
-                          signal fab       :     t_ep_internal_fabric;
-                          signal at_offset :     std_logic) is
-  begin
-    if(at_offset = '1' and fab.dvalid = '1') then
-      q <= fab.data;
-    end if;
-  end f_extract_rtu;
+ 
   
 begin  -- behavioral
 
@@ -126,24 +115,7 @@ begin  -- behavioral
     end if;
   end process;
 
-  gen_with_rtu : if(g_with_rtu) generate
-    p_gen_rtu_request : process(clk_rx_i)
-    begin
-      if rising_edge(clk_rx_i) then
-        if rst_n_rx_i = '0' then
-          rtu_rq_o.smac <= (others => '0');
-          rtu_rq_o.dmac <= (others => '0');
-        else
-          f_extract_rtu(rtu_rq_o.dmac(47 downto 32), snk_fab_i, hdr_offset(0));
-          f_extract_rtu(rtu_rq_o.dmac(31 downto 16), snk_fab_i, hdr_offset(1));
-          f_extract_rtu(rtu_rq_o.dmac(15 downto 0), snk_fab_i, hdr_offset(2));
-          f_extract_rtu(rtu_rq_o.smac(47 downto 32), snk_fab_i, hdr_offset(3));
-          f_extract_rtu(rtu_rq_o.smac(31 downto 16), snk_fab_i, hdr_offset(4));
-          f_extract_rtu(rtu_rq_o.smac(15 downto 0), snk_fab_i, hdr_offset(5));
-        end if;
-      end if;
-    end process;
-  end generate gen_with_rtu;
+
 
 
   p_match_hp : process(clk_rx_i)
