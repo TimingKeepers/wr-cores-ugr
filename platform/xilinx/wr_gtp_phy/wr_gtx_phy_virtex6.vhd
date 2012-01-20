@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-17
+-- Last update: 2012-01-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -55,7 +55,8 @@ entity wr_gtx_phy_virtex6 is
 
   generic (
     -- set to non-zero value to speed up the simulation by reducing some delays
-    g_simulation : integer := 1
+    g_simulation         : integer := 1;
+    g_use_slave_tx_clock : integer := 0
     );
 
   port (
@@ -65,6 +66,7 @@ entity wr_gtx_phy_virtex6 is
 
     -- TX path, tx_clk_o - synchronous:
 
+    tx_clk_i  : in  std_logic;
     tx_clk_o  : out std_logic;
     -- data input (8 bits, not 8b10b-encoded)
     tx_data_i : in  std_logic_vector(15 downto 0);
@@ -168,6 +170,12 @@ architecture rtl of wr_gtx_phy_virtex6 is
       I : in  std_ulogic);
   end component;
 
+  component BUFR
+    port (
+      O : out std_ulogic;
+      I : in  std_ulogic);
+  end component;
+
   component gtp_phase_align_virtex6
     generic (
       g_simulation : integer);
@@ -206,14 +214,32 @@ architecture rtl of wr_gtx_phy_virtex6 is
       gtx_test_o      : out std_logic_vector(12 downto 0));
   end component;
 
-  signal gtx_rst         : std_logic;
-  signal gtx_loopback    : std_logic_vector(2 downto 0) := "000";
-  signal gtx_reset_done  : std_logic;
-  signal gtx_pll_lockdet : std_logic;
-  signal rst_synced      : std_logic;
-  signal rst_d0          : std_logic;
-  signal reset_counter   : unsigned(9 downto 0);
-  signal gtx_test        : std_logic_vector(12 downto 0);
+  component chipscope_icon
+    port (
+      CONTROL0 : inout std_logic_vector(35 downto 0));
+  end component;
+
+  signal Control0 : std_logic_vector(35 downto 0);
+
+  component chipscope_ila
+    port (
+      CONTROL : inout std_logic_vector(35 downto 0);
+      CLK     : in    std_logic;
+      TRIG0   : in    std_logic_vector(31 downto 0);
+      TRIG1   : in    std_logic_vector(31 downto 0);
+      TRIG2   : in    std_logic_vector(31 downto 0);
+      TRIG3   : in    std_logic_vector(31 downto 0));
+  end component;
+
+  signal trig0, trig1, trig2, trig3 : std_logic_vector(31 downto 0);
+  signal gtx_rst                    : std_logic;
+  signal gtx_loopback               : std_logic_vector(2 downto 0) := "000";
+  signal gtx_reset_done             : std_logic;
+  signal gtx_pll_lockdet            : std_logic;
+  signal rst_synced                 : std_logic;
+  signal rst_d0                     : std_logic;
+  signal reset_counter              : unsigned(9 downto 0);
+  signal gtx_test                   : std_logic_vector(12 downto 0);
 
   signal tx_out_clk_bufin   : std_logic;
   signal rx_rec_clk_bufin   : std_logic;
@@ -259,6 +285,18 @@ begin  -- rtl
 
   tx_enc_err_o <= '0';
 
+  --CS_ICON : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL0);
+
+  --CS_ILA : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL0,
+  --    CLK     => clk_ref_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
   p_gen_reset : process(clk_ref_i)
   begin
@@ -277,7 +315,6 @@ begin  -- rtl
     end if;
   end process;
 
-
   gtx_rst <= rst_synced or std_logic(not reset_counter(reset_counter'left));
 
   U_Twice_Reset_Gen : gtx_reset
@@ -287,17 +324,37 @@ begin  -- rtl
       txpll_lockdet_i => txpll_lockdet,
       gtx_test_o      => gtx_test);
 
+  
+  trig0(15 downto 0)  <= tx_data_i;
+  trig0(17 downto 16) <= tx_k_i;
+  trig0(20)           <= rst_i;
+  trig0(21)           <= loopen_i;
+
+  trig1(15 downto 0)  <= rx_data_int;
+  trig1(17 downto 16) <= rx_k_int;
+
+
+  trig2(0)           <= gtx_rst;
+  trig2(1)           <= txpll_lockdet;
+  trig3(12 downto 0) <= gtx_test;
 
   U_BUF_RxRecClk : BUFG
     port map (
       I => rx_rec_clk_bufin,
       O => rx_rec_clk);
 
+  gen_with_bufg: if(g_use_slave_tx_clock = 0) generate
+  
   U_BUF_TxOutClk : BUFG
     port map (
       I => tx_out_clk_bufin,
       O => tx_out_clk);
+  end generate gen_with_bufg;
 
+  gen_without_bufg:if(g_use_slave_tx_clock = 1) generate
+    tx_out_clk <= tx_clk_i;
+  end generate gen_without_bufg;
+  
   rx_rbclk_o <= rx_rec_clk;
   tx_clk_o   <= tx_out_clk;
 
@@ -333,7 +390,7 @@ begin  -- rtl
       TXDATA_IN             => tx_data_swapped,
       TXOUTCLK_OUT          => tx_out_clk_bufin,
       TXUSRCLK2_IN          => tx_out_clk,
-      TXRUNDISP_OUT => tx_rundisp_v6,
+      TXRUNDISP_OUT         => tx_rundisp_v6,
       TXN_OUT               => pad_txn_o,
       TXP_OUT               => pad_txp_o,
       TXDLYALIGNDISABLE_IN  => tx_dly_align_disable,
@@ -384,6 +441,14 @@ begin  -- rtl
   align_enable     <= serdes_ready;
   everything_ready <= serdes_ready and align_done;
 
+  trig2(3) <= rx_rst_done;
+  trig2(4) <= tx_rst_done;
+  trig2(5) <= txpll_lockdet;
+  trig2(6) <= rxpll_lockdet;
+  trig2(7) <= align_done;
+
+
+
   p_gen_rx_outputs : process(rx_rec_clk, gtx_rst)
   begin
     if(gtx_rst = '1') then
@@ -407,9 +472,9 @@ begin  -- rtl
   begin
     if rising_edge(tx_out_clk) then
       if gtx_rst = '1' then
-        cur_disp       <= RD_MINUS;
+        cur_disp <= RD_MINUS;
       else
-        cur_disp       <= f_next_8b10b_disparity16(cur_disp, tx_k_i, tx_data_i);
+        cur_disp <= f_next_8b10b_disparity16(cur_disp, tx_k_i, tx_data_i);
       end if;
     end if;
   end process;
