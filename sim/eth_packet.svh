@@ -291,6 +291,17 @@ class EthPacketGenerator;
       return v;
       
    endfunction // random_bvec
+
+   task set_seed(int seed_);
+      seed = seed_;
+   endtask // set_seed
+
+   function int get_seed();
+      return seed;
+   endfunction // get_seed
+   
+      
+      
    
    protected function dyn_array seq_payload(int size);
       byte v[];
