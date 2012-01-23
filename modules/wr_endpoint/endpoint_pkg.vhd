@@ -12,6 +12,7 @@ package endpoint_pkg is
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
         g_address_granularity : t_wishbone_address_granularity := WORD;
       g_simulation          : boolean := false;
+      g_tx_force_gap_length : integer := 0;
       g_pcs_16bit           : boolean := false;
       g_rx_buffer_size      : integer := 1024;
       g_with_rx_buffer      : boolean := true;
@@ -101,6 +102,7 @@ package endpoint_pkg is
       g_address_granularity : t_wishbone_address_granularity := WORD;
       g_simulation          : boolean := false;
       g_pcs_16bit           : boolean := false;
+      g_tx_force_gap_length : integer := 0;
       g_rx_buffer_size      : integer := 1024;
       g_with_rx_buffer      : boolean := true;
       g_with_flow_control   : boolean := true;

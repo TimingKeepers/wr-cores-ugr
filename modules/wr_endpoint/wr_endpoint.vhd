@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-01-19
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -45,6 +45,7 @@ entity wr_endpoint is
   generic (
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD;
+    g_tx_force_gap_length: integer := 0;
     g_simulation          : boolean                        := false;
     g_pcs_16bit           : boolean                        := false;
     g_rx_buffer_size      : integer                        := 1024;
@@ -102,9 +103,9 @@ entity wr_endpoint is
 -------------------------------------------------------------------------------
 
     gmii_tx_clk_i : in  std_logic;
-    gmii_txd_o    : out std_logic_vector(7 downto 0);
-    gmii_tx_en_o  : out std_logic;
-    gmii_tx_er_o  : out std_logic;
+    gmii_txd_o    : out std_logic_vector(7 downto 0):=x"00";
+    gmii_tx_en_o  : out std_logic := '0';
+    gmii_tx_er_o  : out std_logic := '0';
 
     gmii_rx_clk_i : in std_logic;
     gmii_rxd_i    : in std_logic_vector(7 downto 0);
@@ -215,6 +216,18 @@ architecture syn of wr_endpoint is
   constant c_zeros : std_logic_vector(63 downto 0) := (others => '0');
   constant c_ones  : std_logic_vector(63 downto 0) := (others => '0');
 
+  function f_pick_rate (pcs_16bit : boolean) return integer is
+  begin
+    if(pcs_16bit) then
+      return 62500000;
+    else
+      return 125000000;
+    end if;
+  end f_pick_rate;
+
+
+
+
 -------------------------------------------------------------------------------
   component dmtd_phase_meas
     generic (
@@ -235,7 +248,8 @@ architecture syn of wr_endpoint is
   component ep_tx_framer
     generic (
       g_with_vlans       : boolean;
-      g_with_timestamper : boolean);
+      g_with_timestamper : boolean;
+      g_force_gap_length : integer);
     port (
       clk_sys_i        : in  std_logic;
       rst_n_i          : in  std_logic;
@@ -327,7 +341,8 @@ architecture syn of wr_endpoint is
   component ep_timestamping_unit
     generic (
       g_timestamp_bits_r : natural;
-      g_timestamp_bits_f : natural);
+      g_timestamp_bits_f : natural;
+      g_ref_clock_rate: integer);
     port (
       clk_ref_i              : in  std_logic;
       clk_sys_i              : in  std_logic;
@@ -555,7 +570,8 @@ begin
   U_Tx_Framer : ep_tx_framer
     generic map (
       g_with_vlans       => g_with_vlans,
-      g_with_timestamper => g_with_timestamper)
+      g_with_timestamper => g_with_timestamper,
+      g_force_gap_length =>g_tx_force_gap_length)
     port map (
       clk_sys_i        => clk_sys_i,
       rst_n_i          => rst_n_i,
@@ -626,13 +642,13 @@ begin
       );
 
 
-  rtu_rq_smac_o <= rtu_rq.smac;
-  rtu_rq_dmac_o <= rtu_rq.dmac;
-  rtu_rq_vid_o <= rtu_rq.vid;
-  rtu_rq_prio_o <= rtu_rq.prio;
-  rtu_rq_has_vid_o <= rtu_rq.has_vid;
+  rtu_rq_smac_o     <= rtu_rq.smac;
+  rtu_rq_dmac_o     <= rtu_rq.dmac;
+  rtu_rq_vid_o      <= rtu_rq.vid;
+  rtu_rq_prio_o     <= rtu_rq.prio;
+  rtu_rq_has_vid_o  <= rtu_rq.has_vid;
   rtu_rq_has_prio_o <= rtu_rq.has_prio;
-  
+
   src_dat_o    <= src_out.dat;
   src_adr_o    <= src_out.adr;
   src_sel_o    <= src_out.sel;
@@ -699,7 +715,8 @@ begin
   U_EP_TSU : ep_timestamping_unit
     generic map (
       g_timestamp_bits_r => 28,
-      g_timestamp_bits_f => 4)
+      g_timestamp_bits_f => 4,
+      g_ref_clock_rate => f_pick_rate(g_pcs_16bit))
     port map (
       clk_ref_i      => clk_ref_i,
       clk_rx_i       => phy_rx_clk_i,

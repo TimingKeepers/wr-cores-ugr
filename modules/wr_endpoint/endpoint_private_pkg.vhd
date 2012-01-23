@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-01-19
+-- Last update: 2012-01-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -202,7 +202,8 @@ package endpoint_private_pkg is
   component ep_timestamping_unit
     generic (
       g_timestamp_bits_r : natural;
-      g_timestamp_bits_f : natural);
+      g_timestamp_bits_f : natural;
+      g_ref_clock_rate : integer);
     port (
       clk_ref_i            : in  std_logic;
       clk_sys_i            : in  std_logic;
