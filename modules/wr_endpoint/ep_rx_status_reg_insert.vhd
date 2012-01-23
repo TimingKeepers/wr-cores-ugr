@@ -132,7 +132,7 @@ begin  -- rtl
 
                 sreg.match_class <= pfilter_pclass_i;
                 sreg.is_hp       <= ematch_is_hp_i;
-                sreg.has_crc     <= '1';
+                sreg.has_crc     <= '0';
                 sreg.has_smac    <= '1';
                 sreg.error       <= '0';
               end if;
