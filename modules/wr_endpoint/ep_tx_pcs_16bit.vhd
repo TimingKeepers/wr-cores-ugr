@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-01-18
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -216,7 +216,7 @@ begin
       g_with_rd_almost_empty   => true,
       g_with_rd_count          => true,
       g_with_wr_almost_full    => true,
-      g_almost_empty_threshold => 16,
+      g_almost_empty_threshold => 32,
       g_almost_full_threshold  => 56)  -- fixme: make this a generic (or WB register)
     port map (
       rst_n_i           => fifo_clear_n,
@@ -443,7 +443,7 @@ begin
             tx_is_k            <= "11";
             tx_odata_reg       <= c_k23_7 & c_k23_7;
             tx_catch_disparity <= '1';
-            tx_cntr            <= "1000";
+            tx_cntr            <= "0100";
             tx_state           <= TX_COMMA_IDLE;
 
 -------------------------------------------------------------------------------
