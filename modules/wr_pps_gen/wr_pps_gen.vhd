@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2011-10-27
+-- Last update: 2012-01-20
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -32,17 +32,18 @@ use work.wishbone_pkg.all;
 entity wr_pps_gen is
   generic(
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-    g_address_granularity : t_wishbone_address_granularity := WORD
-  );
+    g_address_granularity : t_wishbone_address_granularity := WORD;
+    g_ref_clock_rate      : integer                        := 125000000
+    );
   port (
     clk_ref_i : in std_logic;
     clk_sys_i : in std_logic;
 
     rst_n_i : in std_logic;
 
-    wb_adr_i  : in  std_logic_vector(4 downto 0);
-    wb_dat_i  : in  std_logic_vector(31 downto 0);
-    wb_dat_o  : out std_logic_vector(31 downto 0);
+    wb_adr_i   : in  std_logic_vector(4 downto 0);
+    wb_dat_i   : in  std_logic_vector(31 downto 0);
+    wb_dat_o   : out std_logic_vector(31 downto 0);
     wb_cyc_i   : in  std_logic;
     wb_sel_i   : in  std_logic_vector(3 downto 0);
     wb_stb_i   : in  std_logic;
@@ -64,7 +65,7 @@ end wr_pps_gen;
 
 architecture behavioral of wr_pps_gen is
 
-  constant c_PERIOD : integer := 125000000;
+  constant c_PERIOD : integer := g_ref_clock_rate;
 
   component pps_gen_wb
     port (
@@ -237,7 +238,7 @@ begin  -- behavioral
         adjust_in_progress_nsec <= '0';
         adjust_done_nsec        <= '0';
 
-      -- counter is enabled?
+        -- counter is enabled?
       elsif(ppsg_cr_cnt_en = '1') then
 
         -- got ADJUST OFFSET command
