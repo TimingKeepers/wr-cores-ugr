@@ -50,10 +50,11 @@ package wr_fabric_pkg is
   subtype t_wrf_sink_in is t_wrf_source_out;
   subtype t_wrf_sink_out is t_wrf_source_in;
 
-  type t_wrf_sink_in_array is array (natural range <>) of t_wrf_sink_in;
-  type t_wrf_sink_out_array is array (natural range <>) of t_wrf_sink_out;
   type t_wrf_source_in_array is array (natural range <>) of t_wrf_source_in;
   type t_wrf_source_out_array is array (natural range <>) of t_wrf_source_out;
+
+  subtype t_wrf_sink_in_array is t_wrf_source_out_array;
+  subtype t_wrf_sink_out_array is t_wrf_source_in_array;
 
   function f_marshall_wrf_status (stat  : t_wrf_status_reg) return std_logic_vector;
   function f_unmarshall_wrf_status(stat : std_logic_vector) return t_wrf_status_reg;
