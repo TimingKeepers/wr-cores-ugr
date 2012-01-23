@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-01-19
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -201,6 +201,8 @@ architecture behavioral of ep_rx_path is
   end component;
 
   component ep_rx_wb_master
+    generic (
+      g_ignore_ack : boolean);
     port (
       clk_sys_i  : in  std_logic;
       rst_n_i    : in  std_logic;
@@ -448,6 +450,8 @@ begin  -- behavioral
   end generate gen_without_rx_buffer;
   
   U_RX_Wishbone_Master : ep_rx_wb_master
+    generic map (
+      g_ignore_ack => true)
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_sys_i,
