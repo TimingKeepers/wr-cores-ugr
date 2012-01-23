@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-29
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -67,15 +67,19 @@ end ep_rx_buffer;
 
 architecture behavioral of ep_rx_buffer is
 
-  constant c_drop_threshold    : integer := g_size * 7 / 8;
-  constant c_release_threshold : integer := g_size * 6 / 8;
+  constant c_drop_threshold    : integer := g_size - 2;
+  constant c_release_threshold : integer := g_size * 7 / 8;
+
+  type t_write_state is(WAIT_FRAME, DATA);
 
   procedure f_pack_rbuf_contents
     (
+      signal st         : in  t_write_state;
       signal fab        : in  t_ep_internal_fabric;
       signal prev_addr  : in  std_logic_vector;
       signal dout       : out std_logic_vector;
       signal dout_valid : out std_logic) is
+    variable valid_tmp : std_logic;
   begin
     if(fab.sof = '1' or fab.error = '1' or fab.eof = '1') then
       -- tag = 11
@@ -85,7 +89,8 @@ architecture behavioral of ep_rx_buffer is
       dout(14)          <= fab.eof;
       dout(13)          <= fab.error;
       dout(12 downto 0) <= (others => '0');
-      dout_valid        <= '1';
+      valid_tmp         := '1';
+--      dout_valid        <= '1';
     elsif(fab.dvalid = '1') then
 
       if(prev_addr /= fab.addr) then
@@ -95,12 +100,19 @@ architecture behavioral of ep_rx_buffer is
       end if;
 
       dout(15 downto 0) <= fab.data;
-      dout_valid        <= '1';
+      valid_tmp         := '1';
     else
       dout(17 downto 0) <= (others => '0');
-      dout_valid        <= '0';
+      valid_tmp         := '0';
     end if;
 
+    if(fab.sof = '1') then
+      dout_valid <= valid_tmp;
+    elsif(st = DATA) then
+      dout_valid <= valid_tmp;
+    else
+      dout_valid <= '0';
+    end if;
   end f_pack_rbuf_contents;
 
   procedure f_unpack_rbuf_contents
@@ -155,87 +167,15 @@ architecture behavioral of ep_rx_buffer is
   signal q_in_valid, q_out_valid : std_logic;
 
 
-  type t_write_state is(WAIT_FRAME, DATA);
   signal state         : t_write_state;
   signal fab_to_encode : t_ep_internal_fabric;
   signal src_fab_int   : t_ep_internal_fabric;
 
   signal in_prev_addr : std_logic_vector(1 downto 0);
   signal out_cur_addr : std_logic_vector(1 downto 0);
-
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
-
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
-
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
-
-  signal crappify : unsigned(10 downto 0);
   
 begin
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_sys_i,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL);
-
-  TRIG0(15 downto 0)  <= snk_fab_i.data;
-  trig0(16)           <= snk_fab_i.sof;
-  trig0(17)           <= snk_fab_i.eof;
-  trig0(18)           <= snk_fab_i.error;
-  trig0(19)           <= snk_fab_i.bytesel;
-  trig0(20)           <= snk_fab_i.has_rx_timestamp;
-  trig0(21)           <= snk_fab_i.dvalid;
-  trig0(24 downto 23) <= snk_fab_i.addr;
-
-  TRIG1(15 downto 0)  <= src_fab_int.data;
-  trig1(16)           <= src_fab_int.sof;
-  trig1(17)           <= src_fab_int.eof;
-  trig1(18)           <= src_fab_int.error;
-  trig1(19)           <= src_fab_int.bytesel;
-  trig1(20)           <= src_fab_int.has_rx_timestamp;
-  trig1(21)           <= src_fab_int.dvalid;
-  trig1(24 downto 23) <= src_fab_int.addr;
-
-
-  trig2(17 downto 0) <= q_in;
-  trig2(18)          <= q_in_valid;
-  trig3(17 downto 0) <= q_out;
-  trig3(18)          <= q_empty;
-  trig3(19)          <= q_wr;
-  trig3(20)          <= q_rd;
-  trig3(21)          <= q_drop;
-  trig3(22) <= q_in_valid;
-  trig3(23) <= q_out_valid;
-
-  trig3(25 downto 24) <= in_prev_addr;
-  trig3(27 downto 26) <= out_cur_addr;
-
-
-
-
+ 
   p_fifo_write : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -277,10 +217,10 @@ begin
     end if;
   end process;
 
-  p_pack_rbuf: process(fab_to_encode, in_prev_addr)
-    begin
-      f_pack_rbuf_contents(fab_to_encode, in_prev_addr, q_in, q_in_valid);
-    end process;
+  p_pack_rbuf : process(state, fab_to_encode, in_prev_addr)
+  begin
+    f_pack_rbuf_contents(state, fab_to_encode, in_prev_addr, q_in, q_in_valid);
+  end process;
 
 
   p_encode_fifo_in : process(snk_fab_i, state, q_drop)
@@ -321,15 +261,15 @@ begin
       almost_full_o  => open,
       count_o        => q_usedw);
 
- 
   
-  q_rd <=  (not q_empty) and src_dreq_i;
+  
+  q_rd <= (not q_empty) and src_dreq_i;
 
   rd_valid_gen : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_i = '0') then
-        q_out_valid <= '0';
+        q_out_valid  <= '0';
         out_cur_addr <= c_WRF_STATUS;
       else
         q_out_valid <= q_rd;
@@ -343,7 +283,7 @@ begin
     end if;
   end process;
 
-  p_unpack: process(q_out, out_cur_addr, q_out_valid)
+  p_unpack : process(q_out, out_cur_addr, q_out_valid)
   begin
     f_unpack_rbuf_contents(q_out, out_cur_addr, q_out_valid, src_fab_int);
   end process;
