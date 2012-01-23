@@ -7,7 +7,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-10-06
+-- Last update: 2012-01-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -43,7 +43,8 @@ entity ep_timestamping_unit is
 -- size of rising edge timestamp
     g_timestamp_bits_r : natural := 28;
 -- size of falling edge timestamp
-    g_timestamp_bits_f : natural := 4
+    g_timestamp_bits_f : natural := 4;
+    g_ref_clock_rate: integer := 125000000
     );
 
   port (
@@ -174,7 +175,7 @@ begin  -- syn
       g_num_bits_r => g_timestamp_bits_r,
       g_num_bits_f => g_timestamp_bits_f,
       g_init_value => 0,
-      g_max_value  => 124999999)
+      g_max_value  => g_ref_clock_rate-1)
     port map (
 
       clk_i          => clk_ref_i,
@@ -306,6 +307,7 @@ begin  -- syn
 
 -- TX OOB & timestamp combiner
 
+  
   tx_oob_stuff : process (clk_sys_i)
   begin  -- process
     if rising_edge(clk_sys_i) then
@@ -359,7 +361,6 @@ begin  -- syn
     end if;
   end process;
   
-  
-
+  txtsu_port_id_o <= regs_i.ecr_portid_o;
   
 end syn;
