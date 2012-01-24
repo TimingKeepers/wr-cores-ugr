@@ -7,7 +7,6 @@ use work.gn4124_core_pkg.all;
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
---use work.wbconmax_pkg.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -475,6 +474,31 @@ architecture rtl of spec_top is
   signal wrc_slave_o : t_wishbone_slave_out;
 
   signal wb_adr : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
+
+  component xmini_bone
+    generic (
+      g_class_mask    : std_logic_vector(7 downto 0);
+      g_our_ethertype : std_logic_vector(15 downto 0));
+    port (
+      clk_sys_i : in  std_logic;
+      rst_n_i   : in  std_logic;
+      src_o     : out t_wrf_source_out;
+      src_i     : in  t_wrf_source_in;
+      snk_o     : out t_wrf_sink_out;
+      snk_i     : in  t_wrf_sink_in;
+      master_o  : out t_wishbone_master_out;
+      master_i  : in  t_wishbone_master_in);
+  end component;
+
+  signal mbone_rst_n     : std_logic;
+  signal mbone_src_out   : t_wrf_source_out;
+  signal mbone_src_in    : t_wrf_source_in;
+  signal mbone_snk_out   : t_wrf_sink_out;
+  signal mbone_snk_in    : t_wrf_sink_in;
+  signal mbone_wb_out    : t_wishbone_master_out;
+  signal mbone_wb_in     : t_wishbone_master_in;
+  signal dpram_slave2_in : t_wishbone_master_out;
+
 begin
 
   cmp_sys_clk_pll : PLL_BASE
@@ -771,6 +795,11 @@ begin
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
 
+      wrf_src_o => mbone_snk_in,
+      wrf_src_i => mbone_snk_out,
+      wrf_snk_o => mbone_src_in,
+      wrf_snk_i => mbone_src_out,
+
       tm_dac_value_o       => open,
       tm_dac_wr_o          => open,
       tm_clk_aux_lock_en_i => '0',
@@ -781,9 +810,47 @@ begin
       pps_p_o              => pps,
 
       dio_o       => dio_out(4 downto 1),
-      rst_aux_n_o => open
+      rst_aux_n_o => mbone_rst_n
     );
 
+
+  -- Mini-BONE
+  U_MiniBone : xmini_bone
+    generic map (
+      g_class_mask    => x"f0",
+      g_our_ethertype => x"a0a0")
+    port map (
+      clk_sys_i => clk_sys,
+      rst_n_i   => mbone_rst_n,
+      src_o     => mbone_src_out,
+      src_i     => mbone_src_in,
+      snk_o     => mbone_snk_out,
+      snk_i     => mbone_snk_in,
+      master_o  => mbone_wb_out,
+      master_i  => mbone_wb_in);
+
+  U_DPRAM : xwb_dpram
+    generic map (
+      g_size                  => 2048,
+      g_init_file             => "",
+      g_must_have_init_file   => false,
+      g_slave1_interface_mode => CLASSIC,
+      g_slave2_interface_mode => CLASSIC,
+      g_slave1_granularity    => WORD,
+      g_slave2_granularity    => WORD)
+    port map (
+      clk_sys_i => clk_sys,
+      rst_n_i   => mbone_rst_n,
+      slave1_i  => mbone_wb_out,
+      slave1_o  => mbone_wb_in,
+      slave2_i  => dpram_slave2_in,
+      slave2_o  => open);
+
+  dpram_slave2_in.cyc <= '0';
+  dpram_slave2_in.stb <= '0';
+
+  ---------------------
+  ---------------------
 
   U_GTP : wr_gtp_phy_spartan6
     generic map (
