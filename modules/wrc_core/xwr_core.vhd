@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-10-28
+-- Last update: 2012-01-24
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -116,8 +116,8 @@ entity xwr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_en_o    : out std_logic;
-    owr_i       : in  std_logic;
+    owr_en_o : out std_logic;
+    owr_i    : in  std_logic;
 
     -----------------------------------------
     --External WB interface
@@ -128,25 +128,10 @@ entity xwr_core is
     -----------------------------------------
     -- External Fabric I/F
     -----------------------------------------
-    ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
-    ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
-    ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
-    ext_snk_cyc_i   : in  std_logic                     := '0';
-    ext_snk_we_i    : in  std_logic                     := '0';
-    ext_snk_stb_i   : in  std_logic                     := '0';
-    ext_snk_ack_o   : out std_logic;
-    ext_snk_err_o   : out std_logic;
-    ext_snk_stall_o : out std_logic;
-
-    ext_src_adr_o   : out std_logic_vector(1 downto 0);
-    ext_src_dat_o   : out std_logic_vector(15 downto 0);
-    ext_src_sel_o   : out std_logic_vector(1 downto 0);
-    ext_src_cyc_o   : out std_logic;
-    ext_src_stb_o   : out std_logic;
-    ext_src_we_o    : out std_logic;
-    ext_src_ack_i   : in  std_logic := '1';
-    ext_src_err_i   : in  std_logic := '0';
-    ext_src_stall_i : in  std_logic := '0';
+    wrf_src_o : out t_wrf_source_out;
+    wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
+    wrf_snk_o : out t_wrf_sink_out;
+    wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
 
     -----------------------------------------
     -- Timecode/Servo Control
@@ -166,7 +151,7 @@ entity xwr_core is
     -- 1PPS output
     pps_p_o              : out std_logic;
 
-    dio_o : out std_logic_vector(3 downto 0);
+    dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic
     );
 end xwr_core;
@@ -220,12 +205,12 @@ architecture struct of xwr_core is
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
-      owr_en_o    : out std_logic;
-      owr_i       : in  std_logic;
+      owr_en_o : out std_logic;
+      owr_i    : in  std_logic;
 
-      wb_adr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
-      wb_dat_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
-      wb_dat_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
+      wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0);
       wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
       wb_we_i    : in  std_logic;
       wb_cyc_i   : in  std_logic;
@@ -262,7 +247,7 @@ architecture struct of xwr_core is
       tm_cycles_o          : out std_logic_vector(27 downto 0);
       pps_p_o              : out std_logic;
 
-      dio_o     : out std_logic_vector(3 downto 0);
+      dio_o       : out std_logic_vector(3 downto 0);
       rst_aux_n_o : out std_logic
     );
   end component;
@@ -315,12 +300,12 @@ begin
       uart_rxd_i  => uart_rxd_i,
       uart_txd_o  => uart_txd_o,
 
-      owr_en_o    => owr_en_o,
-      owr_i       => owr_i,
+      owr_en_o => owr_en_o,
+      owr_i    => owr_i,
 
-      wb_adr_i  => slave_i.adr,
-      wb_dat_i  => slave_i.dat,
-      wb_dat_o  => slave_o.dat,
+      wb_adr_i   => slave_i.adr,
+      wb_dat_i   => slave_i.dat,
+      wb_dat_o   => slave_o.dat,
       wb_sel_i   => slave_i.sel,
       wb_we_i    => slave_i.we,
       wb_cyc_i   => slave_i.cyc,
@@ -328,25 +313,25 @@ begin
       wb_ack_o   => slave_o.ack,
       wb_stall_o => slave_o.stall,
 
-      ext_snk_adr_i   => ext_snk_adr_i,
-      ext_snk_dat_i   => ext_snk_dat_i,
-      ext_snk_sel_i   => ext_snk_sel_i,
-      ext_snk_cyc_i   => ext_snk_cyc_i,
-      ext_snk_we_i    => ext_snk_we_i,
-      ext_snk_stb_i   => ext_snk_stb_i,
-      ext_snk_ack_o   => ext_snk_ack_o,
-      ext_snk_err_o   => ext_snk_err_o,
-      ext_snk_stall_o => ext_snk_stall_o,
+      ext_snk_adr_i   => wrf_snk_i.adr,
+      ext_snk_dat_i   => wrf_snk_i.dat,
+      ext_snk_sel_i   => wrf_snk_i.sel,
+      ext_snk_cyc_i   => wrf_snk_i.cyc,
+      ext_snk_we_i    => wrf_snk_i.we,
+      ext_snk_stb_i   => wrf_snk_i.stb,
+      ext_snk_ack_o   => wrf_snk_o.ack,
+      ext_snk_err_o   => wrf_snk_o.err,
+      ext_snk_stall_o => wrf_snk_o.stall,
 
-      ext_src_adr_o   => ext_src_adr_o,
-      ext_src_dat_o   => ext_src_dat_o,
-      ext_src_sel_o   => ext_src_sel_o,
-      ext_src_cyc_o   => ext_src_cyc_o,
-      ext_src_stb_o   => ext_src_stb_o,
-      ext_src_we_o    => ext_src_we_o,
-      ext_src_ack_i   => ext_src_ack_i,
-      ext_src_err_i   => ext_src_err_i,
-      ext_src_stall_i => ext_src_stall_i,
+      ext_src_adr_o   => wrf_src_o.adr,
+      ext_src_dat_o   => wrf_src_o.dat,
+      ext_src_sel_o   => wrf_src_o.sel,
+      ext_src_cyc_o   => wrf_src_o.cyc,
+      ext_src_stb_o   => wrf_src_o.stb,
+      ext_src_we_o    => wrf_src_o.we,
+      ext_src_ack_i   => wrf_src_i.ack,
+      ext_src_err_i   => wrf_src_i.err,
+      ext_src_stall_i => wrf_src_i.stall,
 
       tm_dac_value_o       => tm_dac_value_o,
       tm_dac_wr_o          => tm_dac_wr_o,
@@ -357,7 +342,7 @@ begin
       tm_cycles_o          => tm_cycles_o,
       pps_p_o              => pps_p_o,
 
-      dio_o     => dio_o,
+      dio_o       => dio_o,
       rst_aux_n_o => rst_aux_n_o
     );
 

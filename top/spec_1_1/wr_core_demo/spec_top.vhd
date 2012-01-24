@@ -6,6 +6,7 @@ use IEEE.NUMERIC_STD.all;
 use work.gn4124_core_pkg.all;
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
+use work.wr_fabric_pkg.all;
 --use work.wbconmax_pkg.all;
 
 library UNISIM;
@@ -280,25 +281,10 @@ architecture rtl of spec_top is
     slave_i : in  t_wishbone_slave_in;
     slave_o : out t_wishbone_slave_out;
 
-    ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
-    ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
-    ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
-    ext_snk_cyc_i   : in  std_logic                     := '0';
-    ext_snk_we_i    : in  std_logic                     := '0';
-    ext_snk_stb_i   : in  std_logic                     := '0';
-    ext_snk_ack_o   : out std_logic;
-    ext_snk_err_o   : out std_logic;
-    ext_snk_stall_o : out std_logic;
-
-    ext_src_adr_o   : out std_logic_vector(1 downto 0);
-    ext_src_dat_o   : out std_logic_vector(15 downto 0);
-    ext_src_sel_o   : out std_logic_vector(1 downto 0);
-    ext_src_cyc_o   : out std_logic;
-    ext_src_stb_o   : out std_logic;
-    ext_src_we_o    : out std_logic;
-    ext_src_ack_i   : in  std_logic := '1';
-    ext_src_err_i   : in  std_logic := '0';
-    ext_src_stall_i : in  std_logic := '0';
+    wrf_src_o : out t_wrf_source_out;
+    wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
+    wrf_snk_o : out t_wrf_sink_out;
+    wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
 
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
     tm_dac_wr_o          : out std_logic;
@@ -417,17 +403,6 @@ architecture rtl of spec_top is
   -- Reset
   signal rst_a : std_logic;
   signal rst   : std_logic;
-
-  -- CSR wishbone bus
-  --signal wb_adr     : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
-  --signal wb_dat_i   : std_logic_vector((32*c_CSR_WB_SLAVES_NB)-1 downto 0);
-  --signal wb_dat_o   : std_logic_vector(31 downto 0);
-  --signal wb_sel     : std_logic_vector(3 downto 0);
-  --signal wb_cyc     : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
-  --signal wb_stb     : std_logic;
-  --signal wb_we      : std_logic;
-  --signal wb_ack     : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
-  --signal spi_wb_adr : std_logic_vector(4 downto 0);
 
   -- DMA wishbone bus
   signal dma_adr     : std_logic_vector(31 downto 0);
@@ -795,26 +770,6 @@ begin
 
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
-
-      ext_snk_adr_i   => (others => '0'),
-      ext_snk_dat_i   => (others => '0'),
-      ext_snk_sel_i   => (others => '0'),
-      ext_snk_cyc_i   => '0',
-      ext_snk_we_i    => '0',
-      ext_snk_stb_i   => '0',
-      ext_snk_ack_o   => open,
-      ext_snk_err_o   => open,
-      ext_snk_stall_o => open,
-
-      ext_src_adr_o   => open,
-      ext_src_dat_o   => open,
-      ext_src_sel_o   => open,
-      ext_src_cyc_o   => open,
-      ext_src_stb_o   => open,
-      ext_src_we_o    => open,
-      ext_src_ack_i   => '0',
-      ext_src_err_i   => '0',
-      ext_src_stall_i => '0',
 
       tm_dac_value_o       => open,
       tm_dac_wr_o          => open,
