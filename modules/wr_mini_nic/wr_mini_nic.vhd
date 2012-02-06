@@ -930,7 +930,7 @@ begin  -- behavioral
                 nrx_size <= nrx_size - 1;  --the buffer is full, last word was not written
               end if;
               if(mem_arb_rx = '0') then
-                if(ntx_buf_full = '0') then
+                if(nrx_buf_full = '0') then
                   nrx_avail <= nrx_avail - 1;
                 end if;
                 nrx_state <= RX_UPDATE_DESC;
