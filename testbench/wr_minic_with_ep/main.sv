@@ -8,6 +8,7 @@
 `include "ep2ep_wrapper.svh"
 
 
+
 module main;
 
    reg clk_ref  = 1'b0;
@@ -15,8 +16,8 @@ module main;
    
    reg rst_n    = 1'b0;
 
-   always #4ns clk_ref <= ~clk_ref;
-   always@(posedge clk_ref) clk_sys <= ~clk_sys;
+   always #3900ps clk_ref <= ~clk_ref;
+   always #8ns clk_sys <= ~clk_sys;
 
    
    initial begin
@@ -113,15 +114,15 @@ module main;
       .src_err_i  (minic2ep.slave.err),
       .src_ack_i  (minic2ep.slave.ack),
 
-      .snk_dat_i  (ep2minic.master.dat_o), 
-      .snk_adr_i  (ep2minic.master.adr),
-      .snk_sel_i  (ep2minic.master.sel),
-      .snk_cyc_i  (ep2minic.master.cyc),
-      .snk_stb_i  (ep2minic.master.stb), 
-      .snk_we_i    (ep2minic.master.we),
-      .snk_stall_o (ep2minic.master.stall),
-      .snk_err_o   (ep2minic.master.err),
-      .snk_ack_o   (ep2minic.master.ack),
+      .snk_dat_i  (ep2minic.dat_o), 
+      .snk_adr_i  (ep2minic.adr),
+      .snk_sel_i  (ep2minic.sel),
+      .snk_cyc_i  (ep2minic.cyc),
+      .snk_stb_i  (ep2minic.stb), 
+      .snk_we_i    (ep2minic.we),
+      .snk_stall_o (ep2minic.stall),
+      .snk_err_o   (ep2minic.err),
+      .snk_ack_o   (ep2minic.ack),
 
       .txtsu_port_id_i  (5'b0),
       .txtsu_frame_id_i (16'b0),
@@ -129,6 +130,7 @@ module main;
       .txtsu_valid_i   (1'b0),
       .txtsu_ack_o     (),
 
+      
 
       .wb_cyc_i   (U_sys_bus_master.cyc),
       .wb_stb_i   (U_sys_bus_master.stb),
@@ -180,7 +182,7 @@ module main;
       
       gen.set_randomization(EthPacketGenerator::SEQ_PAYLOAD | EthPacketGenerator::ETHERTYPE | EthPacketGenerator::TX_OOB | EthPacketGenerator::EVEN_LENGTH) ;
       gen.set_template(tmpl);
-      gen.set_size(60,1500);
+      gen.set_size(100,200);
       
       for(i=0;i<n_packets;i++)
         begin
@@ -225,7 +227,7 @@ module main;
       EthPacketGenerator gen = new;
       EthPacket pkt, tmpl;
       EthPacket txed[$];
-      int i;
+      int i, cnt;
 
     
       
@@ -245,10 +247,9 @@ module main;
       minic.init();
 
 
-      test_tx_path(10000, minic, sink);
+   //   test_tx_path(3000, minic, sink);
       
 
-/* -----\/----- EXCLUDED -----\/-----
      
          tmpl           = new;
       tmpl.src       = '{1,2,3,4,5,6};
@@ -256,11 +257,15 @@ module main;
       tmpl.has_smac  = 1;
       tmpl.is_q      = 0;
       
-      gen.set_randomization(EthPacketGenerator::SEQ_PAYLOAD | EthPacketGenerator::ETHERTYPE /-*| EthPacketGenerator::RX_OOB*-/) ;
+      gen.set_randomization(EthPacketGenerator::SEQ_PAYLOAD | EthPacketGenerator::ETHERTYPE /*| EthPacketGenerator::RX_OOB*/) ;
       gen.set_template(tmpl);
-      gen.set_size(60,1500);
+      gen.set_size(60,150);
 
-
+      #10us;
+      
+      
+      cnt  = 0;
+      
       fork
          forever
            begin
@@ -272,12 +277,18 @@ module main;
                  EthPacket rxp, sent;
                  minic.recv(rxp);
                  sent  = txed.pop_front();
+                 cnt ++;
+                 
                  if(!sent.equal(rxp, EthPacket::CMP_OOB))
                    begin
                       sent.dump();
                       rxp.dump();
                       $stop;
                    end
+
+                 else
+                   $display("Rx: %x cnt %d", rxp.ethertype, cnt);
+                 
 
                  
               end
@@ -287,7 +298,7 @@ module main;
 
 //         forever
            begin
-              for(i=0;i<100;i++)
+              for(i=0;i<205;i++)
                 begin
                    pkt  = gen.gen();
                    src.send(pkt);
@@ -312,7 +323,6 @@ module main;
       
         
       
- -----/\----- EXCLUDED -----/\----- */
    end // initial begin
 
    

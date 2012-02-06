@@ -19,6 +19,7 @@
 
 
 
+
 class CSimDrv_WR_Endpoint;
 
    protected CBusAccessor m_acc;
@@ -51,7 +52,32 @@ class CSimDrv_WR_Endpoint;
 
    task pfilter_enable(int enable);
       m_acc.write(m_base + `ADDR_EP_PFCR0, enable ? `EP_PFCR0_ENABLE: 0);
-   endtask
+   endtask // pfilter_enable
+
+   task automatic mdio_read(int base, int addr, output int val);
+      reg[31:0] rval;
+
+      m_acc.write(base+`ADDR_EP_MDIO_CR, (addr>>2) << 16);
+      while(1)begin
+	 m_acc.read(base+`ADDR_EP_MDIO_SR, rval);
+	 if(rval[31]) begin
+	    val  = rval[15:0];
+	    return;
+	 end
+      end
+   endtask // mdio_read
+
+   task automatic mdio_write(int base, int addr,int val);
+      reg[31:0] rval;
+
+      m_acc.write(base+`ADDR_EP_MDIO_CR, (addr>>2) << 16 | `EP_MDIO_CR_RW);
+      while(1)begin
+	 m_acc.read(base+`ADDR_EP_MDIO_SR, rval);
+	 if(rval[31])
+	   return;
+      end
+   endtask // automatic
+
         
 
 endclass // CSimDrv_WR_Endpoint
@@ -113,22 +139,31 @@ module main;
         );
 
    wire rxn,rxp,txn,txp;
+   wire [9:0] td;
+   wire [9:0] rd;
+   
    
    old_endpoint_test_wrapper
      #(
-       .g_phy_type("GTP"))
+       .g_phy_type("TBI"))
    U_oldep_wrap   
      (
       .clk_sys_i(clk_sys),
+      
       .clk_ref_i(clk_ref_old),
       .clk_rx_i(clk_ref_new),
       .rst_n_i(rst_n),
 
+      .td_o(td),
+      .rd_i(rd)
+     
+/* -----\/----- EXCLUDED -----\/-----
       .rxp_i(rxp),
       .rxn_i(rxn),
 
       .txp_o(txp),
       .txn_o(txn)
+ -----/\----- EXCLUDED -----/\----- */
       );
 
    reg clk_ref_gtx                       = 1;
@@ -137,22 +172,28 @@ module main;
    
    endpoint_phy_wrapper
      #(
-       .g_phy_type("GTX")) 
+       .g_phy_type("TBI")) 
    U_Wrapped_EP
      (
       .clk_sys_i(clk_sys),
-      .clk_ref_i(clk_ref_new),          
+      .clk_ref_i(clk_ref_new),    
+      .clk_rx_i(clk_ref_new),
       .rst_n_i(rst_n),
 
       .snk (U_wrf_sink.slave),
       .src(U_wrf_source.master),
       .sys(U_sys_bus_master.master),
+
+      .td_o(rd),
+      .rd_i(td)
       
+/* -----\/----- EXCLUDED -----\/-----
       .txn_o(rxn),
       .txp_o(rxp),
 
       .rxn_i(txn),
       .rxp_i(txp)
+ -----/\----- EXCLUDED -----/\----- */
       );
 
    
@@ -204,12 +245,13 @@ module main;
   
       tmpl           = new;
       tmpl.src       = '{1,2,3,4,5,6};
-      tmpl.dst       = '{10,11,12,13,14,15};
+      tmpl.dst       = '{'h00, 'h50, 'hca, 'hfe, 'hba, 'hbe};
       tmpl.has_smac  = 1;
       tmpl.is_q      = is_q;
       tmpl.vid       = 100;
-      
-      gen.set_randomization(EthPacketGenerator::SEQ_PAYLOAD | EthPacketGenerator::ETHERTYPE/* | EthPacketGenerator::TX_OOB*/) ;
+      tmpl.ethertype = 'h88f7;
+  // 
+      gen.set_randomization(EthPacketGenerator::SEQ_PAYLOAD /* | EthPacketGenerator::TX_OOB*/) ;
       gen.set_template(tmpl);
       gen.set_size(64,1500);
 
@@ -245,23 +287,30 @@ module main;
    task init_pfilter(CSimDrv_WR_Endpoint ep_drv);
       PFilterMicrocode mc  = new;
 
-      mc.cmp(0, 'h0a0b, 'hffff, PFilterMicrocode::MOV, 1);
-      mc.cmp(1, 'h0c0a, 'hffff, PFilterMicrocode::AND, 1);
-      mc.cmp(2, 'h0e0f, 'hffff, PFilterMicrocode::AND, 1);
-      mc.logic2(2, 1, PFilterMicrocode::MOV, 0);
-      mc.cmp(3, 'h0102, 'hffff, PFilterMicrocode::MOV, 1);
-      mc.cmp(4, 'h030a, 'hffff, PFilterMicrocode::AND, 1);
-      mc.cmp(5, 'h0506, 'hffff, PFilterMicrocode::AND, 1);
-      mc.logic2(3, 1, PFilterMicrocode::MOV, 0);
-      mc.cmp(6,'h86ba, 'hffff,  PFilterMicrocode::MOV, 4);
+      mc.cmp(0, 'hffff, 'hffff, PFilterMicrocode::MOV, 1);
+      mc.cmp(1, 'hffff, 'hffff, PFilterMicrocode::AND, 1);
+      mc.cmp(2, 'hffff, 'hffff, PFilterMicrocode::AND, 1);
+      mc.cmp(0, 'h011b, 'hffff, PFilterMicrocode::MOV, 2);
+      mc.cmp(1, 'h1900, 'hffff, PFilterMicrocode::AND, 2);
+      mc.cmp(2, 'h0000, 'hffff, PFilterMicrocode::AND, 2);
+      mc.cmp(0, 'h0050, 'hffff, PFilterMicrocode::MOV, 3);
+      mc.cmp(1, 'hcafe, 'hffff, PFilterMicrocode::AND, 3);
+      mc.cmp(2, 'hbabe, 'hffff, PFilterMicrocode::AND, 3);
+      mc.cmp(6, 'ha0a0, 'hffff, PFilterMicrocode::MOV, 4);
+      mc.cmp(6, 'h88f7, 'hffff, PFilterMicrocode::MOV, 5);
 
-      mc.logic3(5, 2, PFilterMicrocode::AND, 3, PFilterMicrocode::OR, 4);
+      mc.logic3(7, 3, PFilterMicrocode::AND, 4, PFilterMicrocode::OR, 5);
+      mc.logic2(23, 7, PFilterMicrocode::NOT, 0);
+      mc.logic2(31, 3, PFilterMicrocode::AND, 4);
+      mc.logic2(24, 5, PFilterMicrocode::MOV, 0);
+      
       
       ep_drv.pfilter_load_microcode(mc.assemble());
       ep_drv.pfilter_enable(1);
    endtask // init_pfilter
    
 
+   
    initial begin
       CWishboneAccessor sys_bus;
       WBPacketSource src  = new(U_wrf_source.get_accessor());
@@ -326,8 +375,10 @@ module main;
         begin
            $display("RX Iter %d", i);
            tx_test(5, 0, 0, o_src, sink);
+/* -----\/----- EXCLUDED -----\/-----
            $display("TX Iter %d", i);
            tx_test(5, 0, 0, src, o_sink);
+ -----/\----- EXCLUDED -----/\----- */
         end
       
    end // initial begin

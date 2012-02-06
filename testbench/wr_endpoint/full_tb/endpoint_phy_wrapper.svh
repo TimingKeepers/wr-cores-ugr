@@ -38,8 +38,8 @@ module endpoint_phy_wrapper
    generate
       if(g_phy_type == "TBI") begin
 
-         assign rx_clock  = clk_rx_i;
-         assign tx_clock  = clk_ref_i;
+         assign rx_clock  = clk_ref_i;
+         assign tx_clock  = clk_rx_i;
          
          
          wr_tbi_phy U_Phy 
@@ -61,11 +61,11 @@ module endpoint_phy_wrapper
             .serdes_rx_bitslide_o (grx_bitslide),
 
 
-            .tbi_refclk_i (clk_ref_new),
-            .tbi_rbclk_i  (clk_ref_old),
+            .tbi_refclk_i (clk_ref_i),
+            .tbi_rbclk_i  (clk_rx_i),
 
-            .tbi_td_o     (n2o),
-            .tbi_rd_i     (o2n),
+            .tbi_td_o     (td_o),
+            .tbi_rd_i     (rd_i),
             .tbi_syncen_o (),
             .tbi_loopen_o (),
             .tbi_prbsen_o (),
@@ -112,7 +112,7 @@ module endpoint_phy_wrapper
        .g_with_rx_buffer(0),
        .g_with_timestamper    (1),
        .g_with_dmtd           (0),
-       .g_with_dpi_classifier (0),
+       .g_with_dpi_classifier (1),
        .g_with_vlans          (0),
        .g_with_rtu            (0)
        ) DUT (
@@ -147,6 +147,7 @@ module endpoint_phy_wrapper
               .src_we_o    (snk.we),
               .src_stall_i (snk.stall),
               .src_ack_i   (snk.ack),
+              .src_err_i(1'b0),
 
               .snk_dat_i   (src.dat_o[15:0]),
               .snk_adr_i   (src.adr[1:0]),
@@ -179,7 +180,7 @@ module endpoint_phy_wrapper
               .wb_stb_i (sys.stb),
               .wb_we_i (sys.we),
               .wb_sel_i(sys.sel),
-              .wb_adr_i(sys.adr[5:0]),
+              .wb_adr_i(sys.adr[7:0]),
               .wb_dat_i(sys.dat_o),
               .wb_dat_o(sys.dat_i),
               .wb_ack_o (sys.ack)
