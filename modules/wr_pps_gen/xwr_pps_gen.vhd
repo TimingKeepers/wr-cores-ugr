@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2011-10-27
+-- Last update: 2012-01-20
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -32,7 +32,8 @@ use work.wishbone_pkg.all;
 entity xwr_pps_gen is
   generic(
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-    g_address_granularity : t_wishbone_address_granularity := WORD
+    g_address_granularity : t_wishbone_address_granularity := WORD;
+    g_ref_clock_rate : integer := 125000000
   );
   port (
     clk_ref_i : in std_logic;
@@ -61,7 +62,8 @@ architecture behavioral of xwr_pps_gen is
   component wr_pps_gen is
     generic(
       g_interface_mode      : t_wishbone_interface_mode;
-      g_address_granularity : t_wishbone_address_granularity
+      g_address_granularity : t_wishbone_address_granularity;
+      g_ref_clock_rate : integer
     );
     port (
       clk_ref_i       : in  std_logic;
@@ -90,7 +92,8 @@ begin  -- behavioral
   WRAPPED_PPSGEN : wr_pps_gen
     generic map(
       g_interface_mode      => g_interface_mode,
-      g_address_granularity => g_address_granularity
+      g_address_granularity => g_address_granularity,
+      g_ref_clock_rate => g_ref_clock_rate
     )
     port map(
       clk_ref_i       => clk_ref_i,
