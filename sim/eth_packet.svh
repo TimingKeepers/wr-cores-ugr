@@ -253,6 +253,7 @@ class EthPacketGenerator;
    static const int      PCP          = (1<<4); 
    static const int      PAYLOAD      = (1<<5);
    static const int      SEQ_PAYLOAD  = (1<<7);
+   static const int      SEQ_ID  = (1<<10);
    static const int TX_OOB             = (1<<6);
    static const int EVEN_LENGTH        = (1<<8);
    static const int RX_OOB             = (1<<9);
@@ -261,7 +262,7 @@ class EthPacketGenerator;
 
    protected int r_flags;
    protected int m_current_frame_id;
-   
+   protected int cur_seq_id;
 
    function new();
       r_flags             =ALL;
@@ -269,6 +270,8 @@ class EthPacketGenerator;
       max_size            = 128;
       m_current_frame_id  = 0;
       template            = new;
+      cur_seq_id = 0;
+      
    endfunction // new
    
    task set_randomization(int flags);
@@ -291,6 +294,17 @@ class EthPacketGenerator;
       return v;
       
    endfunction // random_bvec
+
+   task set_seed(int seed_);
+      seed = seed_;
+   endtask // set_seed
+
+   function int get_seed();
+      return seed;
+   endfunction // get_seed
+   
+      
+      
    
    protected function dyn_array seq_payload(int size);
       byte v[];
@@ -335,6 +349,15 @@ class EthPacketGenerator;
       else if(r_flags & SEQ_PAYLOAD) pkt.payload  = seq_payload(len);
       else pkt.payload                            = template.payload;
 
+      if(r_flags & SEQ_ID)
+        begin
+           pkt.payload[0] = cur_seq_id & 'hff;
+           pkt.payload[1] = (cur_seq_id>>8) & 'hff;
+           pkt.payload[2] = (cur_seq_id>>16) & 'hff;
+           pkt.payload[3] = (cur_seq_id>>24) & 'hff;
+           cur_seq_id++;
+        end
+      
       if(r_flags & TX_OOB)
         begin
            pkt.ts.frame_id                        = m_current_frame_id++;

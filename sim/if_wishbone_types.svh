@@ -25,6 +25,11 @@ typedef enum
   PIPELINED = 1
 } wb_cycle_type_t;
 
+typedef enum {
+  WORD = 0,
+  BYTE = 1
+} wb_address_granularity_t;
+
 typedef struct {
    uint64_t a;
    uint64_t d;

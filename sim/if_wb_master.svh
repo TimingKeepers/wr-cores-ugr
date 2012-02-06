@@ -8,6 +8,11 @@
 //
 
 
+/* Todo:
+   pipelined reads
+   settings wrapped in the accessor object 
+*/
+
 `include "simdrv_defs.svh"
 `include "if_wishbone_types.svh"
 `include "if_wishbone_accessor.svh"
@@ -42,8 +47,9 @@ interface IWishboneMaster
       int gen_random_throttling;
       real throttle_prob;
       int little_endian;
+      int cyc_on_stall;
+      wb_address_granularity_t addr_gran;
    } settings;
-   
 
    modport master 
      (
@@ -61,13 +67,16 @@ interface IWishboneMaster
       );
 
    function automatic logic[g_addr_width-1:0] gen_addr(uint64_t addr, int xfer_size);
-      case(g_data_width)
-	8: return addr;
-	16: return addr >> 1;
-	32: return addr >> 2;
-	64: return addr >> 3;
-	default: $error("IWishbone: invalid WB data bus width [%d bits\n]", g_data_width);
-      endcase // case (xfer_size)
+      if(settings.addr_gran == WORD)
+        case(g_data_width)
+	  8: return addr;
+	  16: return addr >> 1;
+	  32: return addr >> 2;
+	  64: return addr >> 3;
+	  default: $error("IWishbone: invalid WB data bus width [%d bits\n]", g_data_width);
+        endcase // case (xfer_size)
+      else
+        return addr;
    endfunction
 
    function automatic logic[63:0] rev_bits(logic [63:0] x, int nbits);
@@ -189,28 +198,41 @@ interface IWishboneMaster
       if (ack) 
 	ack_cnt--;
    endtask
+
+   task automatic handle_readback(ref wb_xfer_t xf [$], input int read, ref int cur_rdbk);
+      if(ack && read)
+        begin
+           xf[cur_rdbk].d = dat_i;
+           cur_rdbk++;
+        end
+   endtask // handle_readback
    
-   task automatic pipelined_write_cycle 
+   
+   task automatic pipelined_cycle 
      (
-      wb_xfer_t xfer[],
-      int n_xfers,
+      ref wb_xfer_t xfer[$],
+      input int write,
+      input int n_xfers,
       output wb_cycle_result_t result
       );
       
       int i;
       int ack_count ;
       int failure ;
+      int cur_rdbk;
+      
 
       ack_count  = 0;
       failure 	 = 0;
 
       xf_idle 	 = 0;
+      cur_rdbk = 0;
       
       
       if($time != last_access_t) 
 	@(posedge clk_i); /* resynchronize, just in case */
 
-      while(stall)
+      while(stall && !settings.cyc_on_stall)
 	@(posedge clk_i);
       
       cyc       <= 1'b1;
@@ -221,9 +243,9 @@ interface IWishboneMaster
       while(i<n_xfers)
 	begin 
            count_ack(ack_count);
-          
+           handle_readback(xfer, !write, cur_rdbk);
            
-
+          
 	   if(err) begin
 	      result   = R_ERROR;
 	      failure  = 1;
@@ -246,16 +268,25 @@ interface IWishboneMaster
 	   end else begin
 	      adr   <= gen_addr(xfer[i].a, xfer[i].size);
 	      stb   <= 1'b1;
-	      we    <= 1'b1;
-	      sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
-	      dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
+              if(write)
+                begin
+	           we    <= 1'b1;
+	           sel   <= gen_sel(xfer[i].a, xfer[i].size, settings.little_endian);
+	           dat_o <= gen_data(xfer[i].a, xfer[i].d, xfer[i].size, settings.little_endian);
+                end else begin
+                   we<=1'b0;
+                   sel <= 'hffffffff;
+                end
+              
 	      @(posedge clk_i);
               stb      <= 1'b0;
               we       <= 1'b0;
               if(stall)
                 begin
                    stb <= 1'b1;
-                   we  <= 1'b1;
+                   
+                   if(write)
+                     we  <= 1'b1;
                    
                    while(stall)
                      begin
@@ -291,7 +322,8 @@ interface IWishboneMaster
 
 
            count_ack(ack_count);
-           
+           handle_readback(xfer, !write, cur_rdbk);
+
            if(stb && !ack) 
 	     ack_count++;
 	   else if(!stb && ack) 
@@ -337,7 +369,7 @@ class CIWBMasterAccessor extends CWishboneAccessor;
       return (request_queue.size() == 0) && xf_idle;
    endfunction // idle
 endclass // CIWBMasterAccessor
-   
+
 
    function CIWBMasterAccessor get_accessor();
       CIWBMasterAccessor tmp;
@@ -360,8 +392,10 @@ endclass // CIWBMasterAccessor
        end
 
    initial begin
-      settings.gen_random_throttling  = 1;
+      settings.gen_random_throttling  = 0;
       settings.throttle_prob 	      = 0.1;
+      settings.cyc_on_stall = 0;
+      settings.addr_gran = WORD;
    end
 
    
@@ -382,12 +416,8 @@ endclass // CIWBMasterAccessor
              case(c.ctype)
                PIPELINED:
                  begin
-                    if(c.rw) begin
-		       pipelined_write_cycle(c.data, c.data.size(), res);
-
-	               c.result  =res;
-	               c.data    = {};
-                    end
+		    pipelined_cycle(c.data, c.rw, c.data.size(), res);
+	            c.result  =res;
                  end
                CLASSIC:
                  begin

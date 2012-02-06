@@ -21,9 +21,10 @@ virtual class CBusAccessor;
 
    virtual task read(uint64_t addr, ref uint64_t data, input int size = 4, ref int result = _null);
       int res;
-      uint64_t aa[], da[];
+      uint64_t aa[1], da[];
 
-   
+      da= new[1];
+      
       aa[0]  = addr;
       readm(aa, da, size, res);
       data  = da[0];
@@ -33,7 +34,7 @@ virtual class CBusAccessor;
    virtual task write(uint64_t addr, uint64_t data, input int size = 4, ref int result = _null);
       uint64_t aa[1], da[1];
       aa[0]  = addr;
-      da[1]  = data;
+      da[0]  = data;
       writem(aa, da, size, result);
    endtask
 

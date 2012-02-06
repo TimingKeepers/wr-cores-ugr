@@ -97,5 +97,15 @@
 `define EP_DSR_LSTATUS 32'h00000001
 `define EP_DSR_LACT_OFFSET 1
 `define EP_DSR_LACT 32'h00000002
+`define ADDR_EP_DMCR                   8'h3c
+`define EP_DMCR_EN_OFFSET 0
+`define EP_DMCR_EN 32'h00000001
+`define EP_DMCR_N_AVG_OFFSET 16
+`define EP_DMCR_N_AVG 32'h0fff0000
+`define ADDR_EP_DMSR                   8'h40
+`define EP_DMSR_PS_VAL_OFFSET 0
+`define EP_DMSR_PS_VAL 32'h00ffffff
+`define EP_DMSR_PS_RDY_OFFSET 24
+`define EP_DMSR_PS_RDY 32'h01000000
 `define BASE_EP_RMON_RAM               8'h80
 `define SIZE_EP_RMON_RAM               32'h20
