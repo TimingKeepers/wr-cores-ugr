@@ -438,10 +438,6 @@ architecture rtl of spec_top is
   signal wrc_scl_i : std_logic;
   signal wrc_sda_o : std_logic;
   signal wrc_sda_i : std_logic;
-  --signal wrc_gpio_out : std_logic_vector(7 downto 0);
-  --signal wrc_gpio_in  : std_logic_vector(7 downto 0);
-  --signal wrc_gpio_dir : std_logic_vector(7 downto 0);
-  --signal wb_adr_wrc   : std_logic_vector(17 downto 0);
   signal dio       : std_logic_vector(3 downto 0);
 
   signal dac_hpll_load_p1 : std_logic;
@@ -472,6 +468,9 @@ architecture rtl of spec_top is
 
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
+
+  signal owr_en : std_logic;
+  signal owr_i  : std_logic;
 
   signal wb_adr : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 
@@ -734,13 +733,10 @@ begin
     end if;
   end process;
 
---  LED_RED <= std_logic(led_divider(led_divider'high));
   fpga_scl_b <= '0' when wrc_scl_o = '0' else 'Z';
   fpga_sda_b <= '0' when wrc_sda_o = '0' else 'Z';
   wrc_scl_i  <= fpga_scl_b;
   wrc_sda_i  <= fpga_sda_b;
-
-  --wb_adr_wrc <= '0' & wb_adr (16 downto 0);
 
   U_WR_CORE : xwr_core
     generic map (
@@ -789,8 +785,8 @@ begin
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
 
-      owr_en_o => open,
-      owr_i    => '0',
+      owr_en_o => owr_en,
+      owr_i    => owr_i,
 
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
@@ -956,23 +952,16 @@ begin
   dio_led_bot_o <= '0';
 
   dio_out(0)             <= pps;
---  dio_out(4 downto 1)    <= (others => '0');
   dio_oe_n_o(0)          <= '0';
   dio_oe_n_o(4 downto 1) <= (others => '0');
+  
+  dio_onewire_b <= '0' when owr_en = '1' else 'Z';
+  owr_i <= dio_onewire_b;
+
   dio_term_en_o          <= (others => '0');
 
-  dio_sdn_ck_n_o <= '0';
-  dio_sdn_n_o    <= '0';
-
-  --LED_GREEN <= wrc_gpio_out(0);
-  --LED_RED   <= wrc_gpio_out(1);
-
-  --fpga_scl_b <= '0' when wrc_gpio_out(2) = '0' else 'Z';
-  --fpga_sda_b <= '0' when wrc_gpio_out(3) = '0' else 'Z';
-
-  --wrc_gpio_in(4) <= fpga_sda_b;
-  --wrc_gpio_in(5) <= '0';
-  --wrc_gpio_in(6) <= button2_i;
+  dio_sdn_ck_n_o <= '1';
+  dio_sdn_n_o    <= '1';
 
   sfp_mod_def0_b <= '0';
   sfp_mod_def1_b <= '0';
