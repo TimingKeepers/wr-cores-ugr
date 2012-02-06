@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2011-09-11
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -40,7 +40,8 @@ use work.ep_wbgen2_pkg.all;
 entity ep_tx_framer is
   generic(
     g_with_vlans       : boolean;
-    g_with_timestamper : boolean
+    g_with_timestamper : boolean;
+    g_force_gap_length : integer
     );
 
   port (
@@ -92,7 +93,7 @@ entity ep_tx_framer is
 -- control registers
 -------------------------------------------------------------------------------
 
-    regs_i : in  t_ep_out_registers
+    regs_i : in t_ep_out_registers
 
     );
 
@@ -267,29 +268,27 @@ begin  -- behavioral
     p_oob_fsm : process(clk_sys_i)
     begin
       if rising_edge(clk_sys_i) then
-        if (rst_n_i = '0') then
-          oob_state    <= OOB_IDLE;
+        if (rst_n_i = '0' or sof_p1 = '1') then
+          oob_state    <= OOB_1;
           oob.valid    <= '0';
           oob.oob_type <= (others => '0');
         else
           
           case oob_state is
-            when OOB_IDLE =>
-              if sof_p1 = '1' then
-                oob_state <= OOB_1;
-                OOB.valid <= '0';
-              end if;
             when OOB_1 =>
               if(snk_valid = '1' and snk_i.adr = c_WRF_OOB) then
                 oob.oob_type <= snk_i.dat(15 downto 12);
                 oob_state    <= OOB_2;
               end if;
+              
             when OOB_2 =>
-              if(snk_valid = '1' and snk_i.adr = c_WRF_OOB) then
+              if(snk_valid = '1' and snk_i.adr = c_WRF_OOB and oob.oob_type = c_WRF_OOB_TYPE_TX) then
                 oob.frame_id <= snk_i.dat(15 downto 0);
                 oob_state    <= OOB_IDLE;
                 oob.valid    <= '1';
               end if;
+            when OOB_IDLE =>
+              oob_state <= OOB_IDLE;
           end case;
         end if;
       end if;
@@ -612,8 +611,7 @@ begin  -- behavioral
               else                       -- CRC at even position
                 q_eof               <= '1';
                 q_data(15 downto 0) <= crc_value(15 downto 0);
-
-                counter  <= (others => '0');
+                counter  <= to_unsigned(g_force_gap_length, counter'length);
                 tx_ready <= '0';
                 state    <= TXF_GAP;
               end if;
@@ -626,7 +624,7 @@ begin  -- behavioral
               counter  <= (others => '0');
               tx_ready <= '0';
               state    <= TXF_GAP;
-
+              counter  <= to_unsigned(g_force_gap_length, counter'length);
 -------------------------------------------------------------------------------
 -- TX FSM states: WAIT_CRC, EMBED_CRC: dealing with frame checksum field
 -------------------------------------------------------------------------------            
@@ -639,12 +637,18 @@ begin  -- behavioral
               snk_out.rty <= '0';
               q_bytesel   <= '0';
 
-              if(oob.valid = '1') then
-                if(pcs_busy_i = '0') then
+              if(counter = 0 or g_force_gap_length = 0) then
+                
+                if(oob.valid = '1') then
+                  if(pcs_busy_i = '0') then
+                    state <= TXF_IDLE;
+                  end if;
+                else
                   state <= TXF_IDLE;
                 end if;
+
               else
-                state <= TXF_IDLE;
+                counter <= counter - 1;
               end if;
 
 -------------------------------------------------------------------------------
@@ -671,7 +675,7 @@ begin  -- behavioral
 
   stall_int <= not (pcs_dreq_i and tx_ready) and regs_i.ecr_tx_en_o;  -- /dev/null if disabled
 
-  snk_out.stall <= stall_int;
+  snk_out.stall <= stall_int or (not snk_i.cyc and snk_cyc_d0);
 
   p_gen_ack : process(clk_sys_i)
   begin

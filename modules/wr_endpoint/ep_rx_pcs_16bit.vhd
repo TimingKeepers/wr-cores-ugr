@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-10-07
+-- Last update: 2012-01-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -387,7 +387,7 @@ begin
             phy_rx_data_i(15 downto 8) = c_K28_5
             and (phy_rx_data_i(7 downto 0) = c_d21_5
                  or phy_rx_data_i(7 downto 0) = c_d2_2)
-            and phy_rx_k_i = "11");
+            and phy_rx_k_i = "10");
 
 
 -- invalid code received?

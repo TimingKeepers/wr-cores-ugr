@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2011-10-30
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -45,6 +45,7 @@ entity wr_endpoint is
   generic (
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD;
+    g_tx_force_gap_length: integer := 0;
     g_simulation          : boolean                        := false;
     g_pcs_16bit           : boolean                        := false;
     g_rx_buffer_size      : integer                        := 1024;
@@ -66,10 +67,10 @@ entity wr_endpoint is
     clk_ref_i : in std_logic;
 
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
-    clk_sys_i : in std_logic;
+    clk_sys_i  : in std_logic;
 --
-    clk_dmtd_i:in std_logic;
-    
+    clk_dmtd_i : in std_logic;
+
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
 
@@ -102,9 +103,9 @@ entity wr_endpoint is
 -------------------------------------------------------------------------------
 
     gmii_tx_clk_i : in  std_logic;
-    gmii_txd_o    : out std_logic_vector(7 downto 0);
-    gmii_tx_en_o  : out std_logic;
-    gmii_tx_er_o  : out std_logic;
+    gmii_txd_o    : out std_logic_vector(7 downto 0):=x"00";
+    gmii_tx_en_o  : out std_logic := '0';
+    gmii_tx_er_o  : out std_logic := '0';
 
     gmii_rx_clk_i : in std_logic;
     gmii_rxd_i    : in std_logic_vector(7 downto 0);
@@ -123,7 +124,7 @@ entity wr_endpoint is
     src_we_o    : out std_logic;
     src_stall_i : in  std_logic;
     src_ack_i   : in  std_logic;
-    src_err_i : in std_logic;
+    src_err_i   : in  std_logic;
 
     snk_dat_i   : in  std_logic_vector(15 downto 0);
     snk_adr_i   : in  std_logic_vector(1 downto 0);
@@ -189,15 +190,15 @@ entity wr_endpoint is
 -- Wishbone bus
 -------------------------------------------------------------------------------
 
-    wb_cyc_i : in  std_logic;
-    wb_stb_i : in  std_logic;
-    wb_we_i  : in  std_logic;
-    wb_sel_i : in  std_logic_vector(3 downto 0);
-    wb_adr_i : in  std_logic_vector(7 downto 0);
-    wb_dat_i : in  std_logic_vector(31 downto 0);
-    wb_dat_o : out std_logic_vector(31 downto 0);
-    wb_ack_o : out std_logic;
-    wb_stall_o:out std_logic;
+    wb_cyc_i   : in  std_logic;
+    wb_stb_i   : in  std_logic;
+    wb_we_i    : in  std_logic;
+    wb_sel_i   : in  std_logic_vector(3 downto 0);
+    wb_adr_i   : in  std_logic_vector(7 downto 0);
+    wb_dat_i   : in  std_logic_vector(31 downto 0);
+    wb_dat_o   : out std_logic_vector(31 downto 0);
+    wb_ack_o   : out std_logic;
+    wb_stall_o : out std_logic;
 
 -------------------------------------------------------------------------------
 -- Misc stuff
@@ -215,6 +216,18 @@ architecture syn of wr_endpoint is
   constant c_zeros : std_logic_vector(63 downto 0) := (others => '0');
   constant c_ones  : std_logic_vector(63 downto 0) := (others => '0');
 
+  function f_pick_rate (pcs_16bit : boolean) return integer is
+  begin
+    if(pcs_16bit) then
+      return 62500000;
+    else
+      return 125000000;
+    end if;
+  end f_pick_rate;
+
+
+
+
 -------------------------------------------------------------------------------
   component dmtd_phase_meas
     generic (
@@ -231,11 +244,12 @@ architecture syn of wr_endpoint is
       phase_meas_o   : out std_logic_vector(31 downto 0);
       phase_meas_p_o : out std_logic);
   end component;
-  
+
   component ep_tx_framer
     generic (
       g_with_vlans       : boolean;
-      g_with_timestamper : boolean);
+      g_with_timestamper : boolean;
+      g_force_gap_length : integer);
     port (
       clk_sys_i        : in  std_logic;
       rst_n_i          : in  std_logic;
@@ -327,7 +341,8 @@ architecture syn of wr_endpoint is
   component ep_timestamping_unit
     generic (
       g_timestamp_bits_r : natural;
-      g_timestamp_bits_f : natural);
+      g_timestamp_bits_f : natural;
+      g_ref_clock_rate: integer);
     port (
       clk_ref_i              : in  std_logic;
       clk_sys_i              : in  std_logic;
@@ -466,6 +481,7 @@ architecture syn of wr_endpoint is
   signal phase_meas_p  : std_logic;
   signal validity_cntr : unsigned(1 downto 0);
 
+  signal rtu_rq : t_ep_internal_rtu_request;
   
 begin
 
@@ -554,7 +570,8 @@ begin
   U_Tx_Framer : ep_tx_framer
     generic map (
       g_with_vlans       => g_with_vlans,
-      g_with_timestamper => g_with_timestamper)
+      g_with_timestamper => g_with_timestamper,
+      g_force_gap_length =>g_tx_force_gap_length)
     port map (
       clk_sys_i        => clk_sys_i,
       rst_n_i          => rst_n_i,
@@ -617,10 +634,20 @@ begin
       rmon_o => rmon,
       regs_i => regs_fromwb,
 
-      rtu_full_i => rtu_full_i,
-      src_wb_o   => src_out,
-      src_wb_i   => src_in
+      rtu_full_i     => rtu_full_i,
+      rtu_rq_o       => rtu_rq,
+      rtu_rq_valid_o => rtu_rq_strobe_p1_o,
+      src_wb_o       => src_out,
+      src_wb_i       => src_in
       );
+
+
+  rtu_rq_smac_o     <= rtu_rq.smac;
+  rtu_rq_dmac_o     <= rtu_rq.dmac;
+  rtu_rq_vid_o      <= rtu_rq.vid;
+  rtu_rq_prio_o     <= rtu_rq.prio;
+  rtu_rq_has_vid_o  <= rtu_rq.has_vid;
+  rtu_rq_has_prio_o <= rtu_rq.has_prio;
 
   src_dat_o    <= src_out.dat;
   src_adr_o    <= src_out.adr;
@@ -630,39 +657,7 @@ begin
   src_we_o     <= src_out.we;
   src_in.stall <= src_stall_i;
   src_in.ack   <= src_ack_i;
-  src_in.err <= src_err_i;
----------------------------------------------------------------------------------
----- RX buffer
----------------------------------------------------------------------------------
-
---  U_RX_BUF : ep_rx_buffer
---    generic map (
---      g_size_log2 => g_rx_buffer_size_log2)
---    port map (
---      clk_sys_i => clk_sys_i,
---      rst_n_i   => rst_n_i,
-
---      fra_data_i    => rbuf_data,
---      fra_ctrl_i    => rbuf_ctrl,
---      fra_sof_p_i   => rbuf_sof_p,
---      fra_eof_p_i   => rbuf_eof_p,
---      fra_error_p_i => rbuf_error_p,
---      fra_valid_i   => rbuf_valid,
---      fra_bytesel_i => rbuf_bytesel,
---      fra_drop_o    => rbuf_drop,
-
---      fab_data_o    => rx_data_o,
---      fab_ctrl_o    => rx_ctrl_o,
---      fab_sof_p_o   => rx_sof_p1_o,
---      fab_eof_p_o   => rx_eof_p1_o,
---      fab_error_p_o => rx_rerror_p1_o,
---      fab_bytesel_o => rx_bytesel_o,
---      fab_valid_o   => rx_valid_o,
---      fab_dreq_i    => rx_dreq_i,
-
---      ep_ecr_rx_en_fra_i => regs.ecr_rx_en_fra_o,
-
---      buffer_used_o => rx_buffer_used);
+  src_in.err   <= src_err_i;
 
 -------------------------------------------------------------------------------
 -- Flow control unit
@@ -720,7 +715,8 @@ begin
   U_EP_TSU : ep_timestamping_unit
     generic map (
       g_timestamp_bits_r => 28,
-      g_timestamp_bits_f => 4)
+      g_timestamp_bits_f => 4,
+      g_ref_clock_rate => f_pick_rate(g_pcs_16bit))
     port map (
       clk_ref_i      => clk_ref_i,
       clk_rx_i       => phy_rx_clk_i,
@@ -755,8 +751,8 @@ begin
 -------------------------------------------------------------------------------
 
   extended_ADDR <= std_logic_vector(resize(unsigned(wb_adr_i), c_wishbone_address_width));
-  
-  U_Slave_adapter: wb_slave_adapter
+
+  U_Slave_adapter : wb_slave_adapter
     generic map (
       g_master_use_struct  => true,
       g_master_mode        => CLASSIC,
@@ -778,7 +774,7 @@ begin
       sl_stall_o => wb_stall_o,
       master_i   => wb_out,
       master_o   => wb_in);
-  
+
   U_WB_SLAVE : ep_wishbone_controller
     port map (
       rst_n_i   => rst_n_sys,
@@ -804,6 +800,10 @@ begin
       regs_i => regs_towb
       );     
 
+  wb_out.stall <= '0';
+  wb_out.rty   <= '0';
+  wb_out.err   <= '0';
+  wb_out.int   <= '0';
 
   regs_towb <= regs_towb_ep or regs_towb_tsu;
 
@@ -824,17 +824,17 @@ begin
     end if;
   end process;
 
-  
+
 -------------------------------------------------------------------------------
 -- DMTD phase meter
 ------------------------------------------------------------------------------  
 
   U_DMTD : dmtd_phase_meas
     generic map (
-      g_counter_bits        => 14,
-      g_deglitcher_threshold => 1000 )
+      g_counter_bits         => 14,
+      g_deglitcher_threshold => 1000)
     port map (
-      clk_sys_i  => clk_sys_i,
+      clk_sys_i => clk_sys_i,
 
       clk_a_i    => phy_ref_clk_i,
       clk_b_i    => phy_rx_clk_i,
@@ -850,29 +850,42 @@ begin
   begin
     if rising_edge(clk_sys_i) then
       if rst_n_i = '0' then
-        validity_cntr      <= (others => '0');
+        validity_cntr              <= (others => '0');
         regs_towb_ep.dmsr_ps_rdy_i <= '0';
       else
 
         if(regs_fromwb.dmcr_en_o = '0') then
-          validity_cntr      <= (others => '0');
+          validity_cntr              <= (others => '0');
           regs_towb_ep.dmsr_ps_rdy_i <= '0';
-        elsif(regs_fromwb.dmsr_ps_rdy_o= '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
+        elsif(regs_fromwb.dmsr_ps_rdy_o = '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
           regs_towb_ep.dmsr_ps_rdy_i <= '0';
         elsif(phase_meas_p = '1') then
 
           if(validity_cntr = "11") then
             regs_towb_ep.dmsr_ps_rdy_i <= '1';
-            regs_towb_ep.dmsr_ps_val_i     <= phase_meas(23 downto 0);  -- discard few
+            regs_towb_ep.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
           else
             regs_towb_ep.dmsr_ps_rdy_i <= '0';
-            validity_cntr      <= validity_cntr + 1;
+            validity_cntr              <= validity_cntr + 1;
           end if;
         end if;
       end if;
     end if;
   end process;
 
+  gen_leds : if g_with_leds generate
+    U_Led_Ctrl : ep_leds_controller
+      generic map (
+        g_blink_period_log2 => 20)
+      port map (
+        clk_sys_i   => clk_sys_i,
+        rst_n_i     => rst_n_i,
+        dvalid_tx_i => txpcs_fab.dvalid,
+        dvalid_rx_i => rxpcs_fab.dvalid,
+        link_ok_i   => link_ok,
+        led_link_o  => led_link_o,
+        led_act_o   => led_act_o);
+  end generate gen_leds;
 
 end syn;
 

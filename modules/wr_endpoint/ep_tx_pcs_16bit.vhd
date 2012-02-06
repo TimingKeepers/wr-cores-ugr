@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-10-05
+-- Last update: 2012-01-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -145,10 +145,20 @@ architecture behavioral of ep_tx_pcs_16bit is
   signal reset_synced_txclk : std_logic;
 
   signal mdio_mcr_pdown_synced : std_logic;
-  signal s_one : std_logic := '1';
+  signal s_one                 : std_logic := '1';
 
+  signal an_tx_en_synced : std_logic;
 begin
 
+  U_sync_an_tx_en : gc_sync_ffs
+    generic map (
+      g_sync_edge => "positive")
+    port map (
+      clk_i    => phy_tx_clk_i,
+      rst_n_i  => rst_n_i,
+      data_i   => an_tx_en_i,
+      synced_o => an_tx_en_synced);
+  
   U_sync_pcs_busy_o : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
@@ -206,7 +216,7 @@ begin
       g_with_rd_almost_empty   => true,
       g_with_rd_count          => true,
       g_with_wr_almost_full    => true,
-      g_almost_empty_threshold => 16,
+      g_almost_empty_threshold => 32,
       g_almost_full_threshold  => 56)  -- fixme: make this a generic (or WB register)
     port map (
       rst_n_i           => fifo_clear_n,
@@ -281,7 +291,7 @@ begin
 
 
 -- endpoint wants to send Config_Reg
-            if(an_tx_en_i = '1') then
+            if(an_tx_en_synced = '1') then
               tx_state        <= TX_CR12;
               tx_cr_alternate <= '0';
               fifo_rd         <= '0';
@@ -320,7 +330,7 @@ begin
           when TX_CAL =>
             tx_is_k      <= "11";
             tx_odata_reg <= c_k28_7 & c_k28_7;
-
+            tx_cr_alternate <= '1';
             if(mdio_wr_spec_tx_cal_i = '0' and tx_cr_alternate = '1') then
               tx_state <= TX_COMMA_IDLE;
             end if;
@@ -343,10 +353,11 @@ begin
             tx_state        <= TX_CR34;
 
           when TX_CR34 =>
+            tx_is_k                   <= "00";
             tx_odata_reg(15 downto 8) <= an_tx_val_i(7 downto 0);
             tx_odata_reg(7 downto 0)  <= an_tx_val_i(15 downto 8);
 
-            if(an_tx_en_i = '1') then
+            if(an_tx_en_synced = '1') then
               tx_state <= TX_CR12;
             else
               tx_state <= TX_COMMA_IDLE;
@@ -432,7 +443,7 @@ begin
             tx_is_k            <= "11";
             tx_odata_reg       <= c_k23_7 & c_k23_7;
             tx_catch_disparity <= '1';
-            tx_cntr            <= "1000";
+            tx_cntr            <= "0100";
             tx_state           <= TX_COMMA_IDLE;
 
 -------------------------------------------------------------------------------
@@ -446,7 +457,7 @@ begin
     end if;
   end process;
 
-  tx_busy <= '1' when (fifo_empty = '0') or (tx_state /= TX_COMMA_IDLE) else '0';
+  tx_busy    <= '1' when (fifo_empty = '0') or (tx_state /= TX_COMMA_IDLE) else '0';
   pcs_dreq_o <= not fifo_almost_full;
 end behavioral;
 
