@@ -35,7 +35,7 @@
 
 -- Master interconnect:
 --  0x00000000: I/D Memory
---  0x00040000: Peripheral interconnect
+--  0x00020000: Peripheral interconnect
 --      +0x000: Minic
 --      +0x100: Endpoint
 --      +0x200: Softpll
@@ -260,7 +260,7 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   constant c_cfg_base_addr : t_wishbone_address_array(1 downto 0) :=
     (0 => x"00000000",                  -- CPU I/D-mem
-     1 => x"00040000");                 -- Peripherals
+     1 => x"00020000");                 -- Peripherals
 
   constant c_cfg_base_mask : t_wishbone_address_array(1 downto 0) :=
     (0 => x"000f0000",
