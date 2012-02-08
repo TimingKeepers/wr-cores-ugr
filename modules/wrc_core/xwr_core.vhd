@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-01-24
+-- Last update: 2012-02-08
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -134,6 +134,12 @@ entity xwr_core is
     wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
 
     -----------------------------------------
+    -- External Tx Timestamping I/F
+    -----------------------------------------
+    timestamps_o     : out t_txtsu_timestamp;
+    timestamps_ack_i : in  std_logic := '1';
+
+    -----------------------------------------
     -- Timecode/Servo Control
     -----------------------------------------
 
@@ -238,6 +244,12 @@ architecture struct of xwr_core is
       ext_src_err_i   : in  std_logic := '0';
       ext_src_stall_i : in  std_logic := '0';
 
+      txtsu_port_id_o  : out std_logic_vector(4 downto 0);
+      txtsu_frame_id_o : out std_logic_vector(15 downto 0);
+      txtsu_tsval_o    : out std_logic_vector(31 downto 0);
+      txtsu_valid_o    : out std_logic;
+      txtsu_ack_i      : in  std_logic;
+
       tm_dac_value_o       : out std_logic_vector(23 downto 0);
       tm_dac_wr_o          : out std_logic;
       tm_clk_aux_lock_en_i : in  std_logic;
@@ -333,6 +345,12 @@ begin
       ext_src_err_i   => wrf_src_i.err,
       ext_src_stall_i => wrf_src_i.stall,
 
+      txtsu_port_id_o  => timestamps_o.port_id(4 downto 0),
+      txtsu_frame_id_o => timestamps_o.frame_id,
+      txtsu_tsval_o    => timestamps_o.tsval,
+      txtsu_valid_o    => timestamps_o.valid,
+      txtsu_ack_i      => timestamps_ack_i,
+
       tm_dac_value_o       => tm_dac_value_o,
       tm_dac_wr_o          => tm_dac_wr_o,
       tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
@@ -345,5 +363,7 @@ begin
       dio_o       => dio_o,
       rst_aux_n_o => rst_aux_n_o
     );
+
+    timestamps_o.port_id(5) <= '0';
 
 end struct;

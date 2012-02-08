@@ -9,7 +9,14 @@ use work.wr_fabric_pkg.all;
 
 package wrcore_pkg is
 
-  -----------------------------------------------------------------------------
+  type t_txtsu_timestamp is record
+    valid    : std_logic;
+    tsval    : std_logic_vector(31 downto 0);
+    port_id  : std_logic_vector(5 downto 0);
+    frame_id : std_logic_vector(15 downto 0);
+  end record;
+
+  ----------------------------------------------------------------------------- 
   --PPS generator
   -----------------------------------------------------------------------------
   component xwr_pps_gen is

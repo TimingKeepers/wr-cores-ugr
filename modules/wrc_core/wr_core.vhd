@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2011-12-13
+-- Last update: 2012-02-08
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ entity wr_core is
     g_dpram_initf         : string                         := "";
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
-    g_address_granularity : t_wishbone_address_granularity := WORD 
+    g_address_granularity : t_wishbone_address_granularity := WORD
     );
   port(
     clk_sys_i : in std_logic;
@@ -129,15 +129,15 @@ entity wr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_en_o    : out std_logic;
-    owr_i       : in  std_logic;
+    owr_en_o : out std_logic;
+    owr_i    : in  std_logic;
 
     -----------------------------------------
     --External WB interface
     -----------------------------------------
-    wb_adr_i  : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
-    wb_dat_i  : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
-    wb_dat_o  : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
+    wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0);
     wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
     wb_we_i    : in  std_logic;
     wb_cyc_i   : in  std_logic;
@@ -145,9 +145,9 @@ entity wr_core is
     wb_ack_o   : out std_logic;
     wb_stall_o : out std_logic;
 
--------------------------------------------------------------------------------
--- External Fabric I/F
--------------------------------------------------------------------------------    
+    -----------------------------------------
+    -- External Fabric I/F
+    -----------------------------------------
     ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
     ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
     ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
@@ -168,6 +168,15 @@ entity wr_core is
     ext_src_err_i   : in  std_logic := '0';
     ext_src_stall_i : in  std_logic := '0';
 
+    ------------------------------------------
+    -- External TX Timestamp I/F
+    ------------------------------------------
+    txtsu_port_id_o  : out std_logic_vector(4 downto 0);
+    txtsu_frame_id_o : out std_logic_vector(15 downto 0);
+    txtsu_tsval_o    : out std_logic_vector(31 downto 0);
+    txtsu_valid_o    : out std_logic;
+    txtsu_ack_i      : in  std_logic;
+
     -----------------------------------------
     -- Timecode/Servo Control
     -----------------------------------------
@@ -186,8 +195,8 @@ entity wr_core is
     -- 1PPS output
     pps_p_o              : out std_logic;
 
-    dio_o : out std_logic_vector(3 downto 0);
-    rst_aux_n_o :  out std_logic
+    dio_o       : out std_logic_vector(3 downto 0);
+    rst_aux_n_o : out std_logic
     );
 end wr_core;
 
@@ -213,11 +222,11 @@ architecture struct of wr_core is
   --Endpoint
   -----------------------------------------------------------------------------
 
-  signal txtsu_port_id_o  : std_logic_vector(4 downto 0);
-  signal txtsu_frame_id_o : std_logic_vector(16 -1 downto 0);
-  signal txtsu_tsval_o    : std_logic_vector(28 + 4 - 1 downto 0);
-  signal txtsu_valid_o    : std_logic;
-  signal txtsu_ack_i      : std_logic;
+  signal ep_txtsu_port_id  : std_logic_vector(4 downto 0);
+  signal ep_txtsu_frame_id : std_logic_vector(15 downto 0);
+  signal ep_txtsu_tsval    : std_logic_vector(31 downto 0);
+  signal ep_txtsu_valid    : std_logic;
+  signal ep_txtsu_ack      : std_logic;
 
   constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
 
@@ -228,6 +237,7 @@ architecture struct of wr_core is
   signal mnic_mem_addr_o : std_logic_vector(c_mnic_memsize_log2-1 downto 0);
   signal mnic_mem_data_i : std_logic_vector(31 downto 0);
   signal mnic_mem_wr_o   : std_logic;
+  signal mnic_txtsu_ack  : std_logic;
 
   signal mnic_wb_irq_o : std_logic;
 
@@ -289,6 +299,10 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   signal ext_wb_in  : t_wishbone_slave_in;
   signal ext_wb_out : t_wishbone_slave_out;
+
+  -----------------------------------------------------------------------------
+  -- External Tx TSU interface
+  -----------------------------------------------------------------------------
 
   --===========================--
   --         For SPEC          --
@@ -482,14 +496,15 @@ begin
       snk_o => ep_snk_out,
       snk_i => ep_snk_in,
 
-      txtsu_port_id_o  => txtsu_port_id_o,
-      txtsu_frame_id_o => txtsu_frame_id_o,
-      txtsu_tsval_o    => txtsu_tsval_o,
-      txtsu_valid_o    => txtsu_valid_o,
-      txtsu_ack_i      => txtsu_ack_i,
+      txtsu_port_id_o  => ep_txtsu_port_id,
+      txtsu_frame_id_o => ep_txtsu_frame_id,
+      txtsu_tsval_o    => ep_txtsu_tsval,
+      txtsu_valid_o    => ep_txtsu_valid,
+      txtsu_ack_i      => ep_txtsu_ack,
       wb_i             => ep_wb_in,
       wb_o             => ep_wb_out);
 
+  ep_txtsu_ack <= txtsu_ack_i or mnic_txtsu_ack;
   -----------------------------------------------------------------------------
   -- Mini-NIC
   -----------------------------------------------------------------------------
@@ -513,11 +528,11 @@ begin
       snk_o => minic_snk_out,
       snk_i => minic_snk_in,
 
-      txtsu_port_id_i  => txtsu_port_id_o,
-      txtsu_frame_id_i => txtsu_frame_id_o,
-      txtsu_tsval_i    => txtsu_tsval_o,
-      txtsu_valid_i    => txtsu_valid_o,
-      txtsu_ack_o      => txtsu_ack_i,
+      txtsu_port_id_i  => ep_txtsu_port_id,
+      txtsu_frame_id_i => ep_txtsu_frame_id,
+      txtsu_tsval_i    => ep_txtsu_tsval,
+      txtsu_valid_i    => ep_txtsu_valid,
+      txtsu_ack_o      => mnic_txtsu_ack,
 
       wb_i => minic_wb_in,
       wb_o => minic_wb_out
@@ -543,11 +558,6 @@ begin
       iwb_o => cbar_slave_i(1),
       iwb_i => cbar_slave_o(1)
     );
-
-  --cbar_slave_i(1).cyc <= '0';
-  --cbar_slave_i(1).stb <= '0';
-  --cbar_slave_i(2).cyc <= '0';
-  --cbar_slave_i(2).stb <= '0';
 
   -----------------------------------------------------------------------------
   -- Dual-port RAM
@@ -584,12 +594,12 @@ begin
   -----------------------------------------------------------------------------
   PERIPH : wrc_periph
     generic map(
-      g_phys_uart     => g_phys_uart,
-      g_virtual_uart  => g_virtual_uart,
-      g_mem_words     => g_dpram_size)
+      g_phys_uart    => g_phys_uart,
+      g_virtual_uart => g_virtual_uart,
+      g_mem_words    => g_dpram_size)
     port map(
-      clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_n_i,
+      clk_sys_i   => clk_sys_i,
+      rst_n_i     => rst_n_i,
       rst_net_n_o => rst_net_n,
       rst_wrc_n_o => rst_wrc_n,
 
@@ -609,8 +619,8 @@ begin
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
 
-      owr_en_o    => owr_en_o,
-      owr_i       => owr_i
+      owr_en_o => owr_en_o,
+      owr_i    => owr_i
     );
 
   U_Adapter : wb_slave_adapter
@@ -712,7 +722,7 @@ begin
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
-      g_registered  => true 
+      g_registered  => true
       )
     port map(
       clk_sys_i     => clk_sys_i,
@@ -786,5 +796,14 @@ begin
   ext_snk_ack_o   <= ext_snk_out.ack;
   ext_snk_err_o   <= ext_snk_out.err;
   ext_snk_stall_o <= ext_snk_out.stall;
+
+  -----------------------------------------------------------------------------
+  -- External Tx Timestamping I/F
+  -----------------------------------------------------------------------------
+  txtsu_port_id_o  <= ep_txtsu_port_id;
+  txtsu_frame_id_o <= ep_txtsu_frame_id;
+  txtsu_tsval_o    <= ep_txtsu_tsval;
+  txtsu_valid_o    <= '1' when (ep_txtsu_valid = '1' and (ep_txtsu_frame_id /= x"0000")) else
+                      '0';
 
 end struct;

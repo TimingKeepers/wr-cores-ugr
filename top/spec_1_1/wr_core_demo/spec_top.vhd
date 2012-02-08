@@ -285,6 +285,9 @@ architecture rtl of spec_top is
     wrf_snk_o : out t_wrf_sink_out;
     wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
 
+    timestamps_o     : out t_txtsu_timestamp;
+    timestamps_ack_i : in  std_logic := '1';
+
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
     tm_dac_wr_o          : out std_logic;
     tm_clk_aux_lock_en_i : in  std_logic;
@@ -954,11 +957,11 @@ begin
   dio_out(0)             <= pps;
   dio_oe_n_o(0)          <= '0';
   dio_oe_n_o(4 downto 1) <= (others => '0');
-  
-  dio_onewire_b <= '0' when owr_en = '1' else 'Z';
-  owr_i <= dio_onewire_b;
 
-  dio_term_en_o          <= (others => '0');
+  dio_onewire_b <= '0' when owr_en = '1' else 'Z';
+  owr_i         <= dio_onewire_b;
+
+  dio_term_en_o <= (others => '0');
 
   dio_sdn_ck_n_o <= '1';
   dio_sdn_n_o    <= '1';
