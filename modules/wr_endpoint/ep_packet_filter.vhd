@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-27
+-- Last update: 2012-02-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -160,64 +160,8 @@ architecture behavioral of ep_packet_filter is
 
   signal stage1, stage2 : std_logic;
 
- component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
-
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
-
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
-  
 begin  -- behavioral
 
-  -- chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL);
-
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_rx_i,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
-
-  --TRIG0 <= regs;
-  --trig1 <= ir(31 downto 0);
-  --trig2(3 downto 0) <= ir(35 downto 32);
-  --trig2(4) <= stage1;
-  --trig2(5) <= stage2;
-  --trig2(6) <= result_cmp;
-  --trig2(12 downto 7) <= std_logic_vector(pc);
-  --trig2(31 downto 16) <= pmem_rdata;
-  --trig2(13) <=mm_write;
-  --trig2(14) <= result1;
-  --trig2(15) <= result2;
-  -- trig3(0)<= done_int;
-  -- trig3(1)<=snk_fab_i.dvalid;
-  -- trig3(2)<=snk_fab_i.sof;
-  -- trig3(3)<=snk_fab_i.eof;
-  -- trig3(4)<=snk_fab_i.error;
-  -- trig3(31 downto 16) <= snk_fab_i.data;
-   
-  
-  
   
   mm_write <= not regs_i.pfcr0_enable_o and regs_i.pfcr0_mm_write_o and regs_i.pfcr0_mm_write_wr_o;
   mm_wdata <= regs_i.pfcr0_mm_data_msb_o & regs_i.pfcr1_mm_data_lsb_o;
@@ -258,7 +202,7 @@ begin  -- behavioral
       aa_i    => std_logic_vector(pc),
       da_i    => snk_fab_i.data,
       qa_o    => open,
-      clkb_i  => clk_sys_i,
+      clkb_i  => clk_rx_i,
       bweb_i  => "00",
       web_i   => '0',
       ab_i    => insn.offset,
