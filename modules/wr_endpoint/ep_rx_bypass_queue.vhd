@@ -37,9 +37,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-library unisim;
-use unisim.vcomponents.all;
-
 entity ep_rx_bypass_queue is
   generic(
     g_size  : integer := 3;
