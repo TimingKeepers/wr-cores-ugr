@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-10
--- Last update: 2011-10-29
+-- Last update: 2012-02-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ use ieee.std_logic_1164.all;
 
 library unisim;
 use unisim.vcomponents.all;
-  
+
 entity ep_rx_bypass_queue is
   generic(
     g_size  : integer := 3;
@@ -57,9 +57,9 @@ entity ep_rx_bypass_queue is
     valid_o : out std_logic;
     dreq_i  : in  std_logic;
 
-    flush_i : in std_logic;
-    purge_i : in std_logic;
-    empty_o: out std_logic
+    flush_i : in  std_logic;
+    purge_i : in  std_logic;
+    empty_o : out std_logic
     );
 
 end ep_rx_bypass_queue;
@@ -75,7 +75,7 @@ architecture behavioral of ep_rx_bypass_queue is
       d_i   : in  std_logic;
       q_o   : out std_logic);
   end component;
-  
+
   function f_queue_occupation(q : std_logic_vector; check_empty : std_logic) return std_logic is
     variable i : integer;
   begin
@@ -106,10 +106,10 @@ begin  -- behavioral
   qfull  <= f_queue_occupation(q_valid, '0');
 
   empty_o <= qempty;
-  
+
   gen_sreg : for i in 0 to g_width-1 generate
 
-    U_sreg: ep_shift_reg
+    U_sreg : ep_shift_reg
       generic map (
         g_size => g_size)
       port map (
@@ -117,7 +117,7 @@ begin  -- behavioral
         ce_i  => sreg_enable,
         d_i   => d_i(i),
         q_o   => q_o(i));
-    
+
   end generate gen_sreg;
 
 
@@ -154,16 +154,10 @@ begin  -- behavioral
 end behavioral;
 
 
--------------------------------------------------------------------------------
---FIXME: Generic-ize THIS!
--------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-
-library unisim;
-use unisim.vcomponents.all;
 
 entity ep_shift_reg is
   generic(g_size : integer := 16);
@@ -176,33 +170,19 @@ end ep_shift_reg;
 
 architecture rtl of ep_shift_reg is
   signal sreg : std_logic_vector(g_size-1 downto 0);
-  signal size : std_logic_vector(3 downto 0);
 
-  component SRL16E
-    generic (
-      INIT : bit_vector :=x"0000");
-    port (
-      Q   : out STD_ULOGIC;
-      A0  : in  STD_ULOGIC;
-      A1  : in  STD_ULOGIC;
-      A2  : in  STD_ULOGIC;
-      A3  : in  STD_ULOGIC;
-      CE  : in  STD_ULOGIC;
-      CLK : in  STD_ULOGIC;
-      D   : in  STD_ULOGIC);
-  end component;
-  
 begin  -- rtl
-  size <= std_logic_vector(to_unsigned(g_size-1, 4));
 
-  cmp_sreg: SRL16E
-    port map (
-      D   => d_i,
-      Q   => q_o,
-      CE  => ce_i,
-      CLK => clk_i,
-      A0  => size(0),
-      A1  => size(1),
-      A2  => size(2),
-      A3  => size(3));
-  end rtl;
+  process(clk_i)
+  begin
+    if rising_edge(clk_i) then
+      if(ce_i = '1') then
+        sreg(0)                 <= d_i;
+        sreg(g_size-1 downto 1) <= sreg(g_size-2 downto 0);
+      end if;
+    end if;
+  end process;
+
+  q_o <= sreg(g_size-1);
+
+end rtl;
