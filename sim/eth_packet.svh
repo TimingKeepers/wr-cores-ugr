@@ -383,6 +383,21 @@ class EthPacketGenerator;
 endclass // EthPacketGenerator
 
 
+virtual class EthPacketSink;
+
+   static int _null  = 0;
+   
+   pure virtual function int poll();
+   pure virtual task recv(ref EthPacket pkt, ref int result = _null);      
+   
+endclass // EthPacketSink
+
+virtual class EthPacketSource;
+   static int _null  = 0;
+
+   pure virtual task send(ref EthPacket pkt, ref int result = _null);      
+endclass // PacketSource
+
 
   
 

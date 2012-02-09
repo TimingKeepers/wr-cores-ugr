@@ -7,11 +7,6 @@
 
 `include "wb_fabric_defs.svh"
 
-virtual class EthPacketSource;
-   static int _null  = 0;
-
-   pure virtual task send(ref EthPacket pkt, ref int result = _null);      
-endclass // PacketSource
 
 
 class WBPacketSource extends EthPacketSource;
