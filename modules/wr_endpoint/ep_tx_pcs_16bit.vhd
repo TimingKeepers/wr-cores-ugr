@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-01-23
+-- Last update: 2012-01-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ begin
       rst_n_i  => rst_n_i,
       data_i   => an_tx_en_i,
       synced_o => an_tx_en_synced);
-  
+
   U_sync_pcs_busy_o : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
@@ -216,8 +216,8 @@ begin
       g_with_rd_almost_empty   => true,
       g_with_rd_count          => true,
       g_with_wr_almost_full    => true,
-      g_almost_empty_threshold => 32,
-      g_almost_full_threshold  => 56)  -- fixme: make this a generic (or WB register)
+      g_almost_empty_threshold => 20,
+      g_almost_full_threshold  => 58)  -- fixme: make this a generic (or WB register)
     port map (
       rst_n_i           => fifo_clear_n,
       clk_wr_i          => clk_sys_i,
@@ -328,8 +328,8 @@ begin
 -------------------------------------------------------------------------------
 
           when TX_CAL =>
-            tx_is_k      <= "11";
-            tx_odata_reg <= c_k28_7 & c_k28_7;
+            tx_is_k         <= "11";
+            tx_odata_reg    <= c_k28_7 & c_k28_7;
             tx_cr_alternate <= '1';
             if(mdio_wr_spec_tx_cal_i = '0' and tx_cr_alternate = '1') then
               tx_state <= TX_COMMA_IDLE;
@@ -340,6 +340,8 @@ begin
 -------------------------------------------------------------------------------
 
           when TX_CR12 =>
+            fifo_rd <= not fifo_empty;
+
             tx_is_k                   <= "10";
             tx_odata_reg(15 downto 8) <= c_k28_5;
 
@@ -353,6 +355,8 @@ begin
             tx_state        <= TX_CR34;
 
           when TX_CR34 =>
+            fifo_rd <= not fifo_empty;
+
             tx_is_k                   <= "00";
             tx_odata_reg(15 downto 8) <= an_tx_val_i(7 downto 0);
             tx_odata_reg(7 downto 0)  <= an_tx_val_i(15 downto 8);
@@ -457,7 +461,21 @@ begin
     end if;
   end process;
 
-  tx_busy    <= '1' when (fifo_empty = '0') or (tx_state /= TX_COMMA_IDLE) else '0';
+  gen_tx_busy : process(tx_state)
+  begin
+    case (tx_state) is
+      when TX_CR12 =>
+        tx_busy <= '0';
+      when TX_CR34 =>
+        tx_busy <= '0';
+      when TX_COMMA_IDLE =>
+        tx_busy <= '0';
+      when others =>
+        tx_busy <= '1';
+    end case;
+  end process;
+
+--  tx_busy    <= '1' when (fifo_empty = '0') or (tx_state /= TX_COMMA_IDLE) else '0';
   pcs_dreq_o <= not fifo_almost_full;
 end behavioral;
 
