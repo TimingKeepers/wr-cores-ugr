@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-02-08
+-- Last update: 2012-02-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ architecture struct of xwr_core is
       g_simulation          : integer                        := 0;
       g_phys_uart           : boolean                        := true;
       g_virtual_uart        : boolean                        := false;
-      g_ep_rxbuf_size_log2  : integer                        := 12;
+      g_rx_buffer_size  : integer                        := 12;
       g_dpram_initf         : string                         := "";
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
@@ -271,7 +271,7 @@ begin
       g_simulation          => g_simulation,
       g_phys_uart           => g_phys_uart,
       g_virtual_uart        => g_virtual_uart,
-      g_ep_rxbuf_size_log2  => g_ep_rxbuf_size_log2,
+      g_rx_buffer_size  => g_ep_rxbuf_size_log2,
       g_dpram_initf         => g_dpram_initf,
       g_dpram_size          => g_dpram_size,
       g_interface_mode      => g_interface_mode,
