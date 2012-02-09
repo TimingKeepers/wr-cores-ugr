@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2011-11-30
+-- Last update: 2012-02-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -36,8 +36,8 @@ entity wrc_periph is
     g_phys_uart    : boolean := true;
     g_virtual_uart : boolean := false;
     g_cntr_period  : integer := 62500;
-    g_mem_words    : integer := 16384 --in 32-bit words
-  );
+    g_mem_words    : integer := 16384   --in 32-bit words
+    );
   port(
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
@@ -64,7 +64,7 @@ entity wrc_periph is
     -- 1-Wire
     owr_en_o : out std_logic;
     owr_i    : in  std_logic
-  );
+    );
 end wrc_periph;
 
 architecture struct of wrc_periph is
@@ -103,6 +103,8 @@ begin
 
         if(sysc_regs_o.rstr_trig_wr_o = '1' and sysc_regs_o.rstr_trig_o = x"deadbee") then
           rst_wrc_n_o <= not sysc_regs_o.rstr_rst_o;
+        else
+          rst_wrc_n_o <= '1';
         end if;
 
         rst_net_n_o <= not sysc_regs_o.gpsr_net_rst_o;
@@ -214,7 +216,7 @@ begin
     generic map(
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE
-    )
+      )
     port map(
       rst_n_i   => rst_n_i,
       clk_sys_i => clk_sys_i,
@@ -224,7 +226,7 @@ begin
 
       regs_i => sysc_regs_i,
       regs_o => sysc_regs_o
-    );
+      );
 
   --------------------------------------
   -- UART
@@ -235,7 +237,7 @@ begin
       g_with_physical_uart  => g_phys_uart,
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE
-    )
+      )
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_n_i,
@@ -247,7 +249,7 @@ begin
 
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o
-  );
+      );
 
   --------------------------------------
   -- 1-WIRE
@@ -259,7 +261,7 @@ begin
       g_num_ports           => 1,
       g_ow_btp_normal       => "5.0",
       g_ow_btp_overdrive    => "1.0"
-    )
+      )
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_n_i,
@@ -271,7 +273,7 @@ begin
 
       owr_en_o => owr_en_slv,
       owr_i    => owr_in_slv
-    );
+      );
 
   owr_in_slv(0) <= owr_i;
   owr_en_o      <= owr_en_slv(0);
