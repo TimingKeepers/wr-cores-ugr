@@ -6,15 +6,17 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-18
+-- Last update: 2012-01-30
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
 -- Description: Module implements the top level of a 1000Base-X compliant PCS
--- (Physical Coding Sublayer). This includes:
--- - 8/16-bit RX/TX data paths,
+-- (Physical Coding Sublayer) with precise RX/TX timestamping. The PCS module
+-- incorporates:
+-- - configurable 8/16-bit RX/TX data paths,
 -- - TX clock alignment FIFO,
--- - 802.3 Autonegotiation.
+-- - 802.3 autonegotiation.
+-- - White Rabbit serdes-specific features (calibration patterns & bitslide)
 -------------------------------------------------------------------------------
 --
 -- Copyright (c) 2009-2011 CERN / BE-CO-HT
@@ -41,6 +43,7 @@
 -- 2010-11-18  0.4      twlostow  Created (separeted from wrsw_endpoint)
 -- 2011-02-07  0.5      twlostow  Tested on Spartan6 GTP
 -- 2011-10-18  0.6      twlostow  Virtex-6 GTX port
+-- 2012-01-24  0.7      twlostow  Redone TX timestamping
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -53,41 +56,108 @@ use work.endpoint_private_pkg.all;
 entity ep_1000basex_pcs is
 
   generic (
+    -- simulation mode: when true, all internal timeouts are reduced by few orders of
+    -- magnitude to speed up simulations.
     g_simulation : boolean;
+    -- PCS datapath width selection: true = 16-bit (Virtex-6), false = 8-bit
+    -- (Spartan-6 or TBI).
     g_16bit      : boolean);
 
   port (
+
+    ---------------------------------------------------------------------------
+    -- System clock & reset
+    ---------------------------------------------------------------------------
+    
     rst_n_i   : in std_logic;
     clk_sys_i : in std_logic;
 
+    ---------------------------------------------------------------------------
     -- PCS <-> MAC Interface
+    ---------------------------------------------------------------------------
+
+    -- Internal data output (incoming data).
     rxpcs_fab_o             : out t_ep_internal_fabric;
+
+    -- 1: RX FIFO is almost full (drop the packet).
     rxpcs_fifo_almostfull_i : in  std_logic;
+
+    -- 1: RX PCS is busy receiving a packet or waiting for its' timestamp.
     rxpcs_busy_o            : out std_logic;
+
+    -- 1-pulse: RX timestamp trigger (to timestamping unit).
     rxpcs_timestamp_stb_p_o : out std_logic;
-    rxpcs_timestamp_valid_i : in  std_logic;
+
+    -- RX timestamp value (4 falling : 28 rising edge bits).
     rxpcs_timestamp_i       : in  std_logic_vector(31 downto 0);
 
+    -- 1: timestamp on rxpcs_timestamp_i is valid).
+    rxpcs_timestamp_valid_i : in  std_logic;
+
+    -- Internal data input (data to be TXed).
     txpcs_fab_i             : in  t_ep_internal_fabric;
+
+    -- 1: TX error occured.
     txpcs_error_o           : out std_logic;
+
+    -- 1: TX PCS is busy transmitting a packet.
     txpcs_busy_o            : out std_logic;
+
+    -- 1: TX PCS requests another transfer on txpcs_fab_i.
     txpcs_dreq_o            : out std_logic;
+
+    -- 1-pulse: TX timestamp trigger (to timestamping unit).
     txpcs_timestamp_stb_p_o : out std_logic;
 
     link_ok_o : out std_logic;
 
+    -----------------------------------------------------------------------------
     -- GTP/GTX/TBI Serdes interface
+    ---------------------------------------------------------------------------
+
+    -- 1: serdes is reset, 0: serdes is operating normally.
     serdes_rst_o    : out std_logic;
+
+    -- 1: serdes comma alignent is enabled.
     serdes_syncen_o : out std_logic;
+
+    -- 1: serdes near-end PMA loopback is enabled.
     serdes_loopen_o : out std_logic;
+
+    -- 1: serdes TX/RX is enabled.
     serdes_enable_o : out std_logic;
 
+
+    ---------------------------------------------------------------------------
+    -- Serdes TX path (all synchronous to serdes_tx_clk_i)
+    ---------------------------------------------------------------------------
+    
+    -- Transmit path clock:
+    -- 62.5 MHz in 16-bit mode, 125 MHz in 8-bit mode.
     serdes_tx_clk_i       : in  std_logic;
+
+    -- TX Code group. In 16-bit mode, the MSB is TXed first (tx_data_o[15:8],
+    -- then tx_data_o[7:0]). In 8-bit mode only bits [7:0] are used.
     serdes_tx_data_o      : out std_logic_vector(15 downto 0);
+
+    -- TX Control Code: When 1, a K-character is transmitted. In 16-bit mode,
+    -- bit 1 goes first, in 8-bit mode only bit 0 is used.
     serdes_tx_k_o         : out std_logic_vector(1 downto 0);
+
+    -- TX Disparity input: 1 = last transmitted code group ended with negative
+    -- running disparity, 0 = positive RD.
     serdes_tx_disparity_i : in  std_logic;
+
+    -- TX Encoding Error: 1 = PHY encountered a transmission error, drop the current
+    -- packet.
     serdes_tx_enc_err_i   : in  std_logic;
 
+    -------------------------------------------------------------------------------
+    -- Serdes RX path (all synchronous to serdes_rx_clk_i)
+    -------------------------------------------------------------------------------
+
+    -- RX recovered clock. MUST be synchronous to incoming serial data stream
+    -- for proper PTP/SyncE operation. 62.5 MHz in 16-bit mode, 125 MHz in 8-bit mode.
     serdes_rx_clk_i      : in std_logic;
     serdes_rx_data_i     : in std_logic_vector(15 downto 0);
     serdes_rx_k_i        : in std_logic_vector(1 downto 0);
@@ -457,7 +527,7 @@ begin  -- rtl
 
   end generate gen_8bit;
 
-  txpcs_busy_o <= '1' when (synced = '0' and mdio_mcr_uni_en = '0') else txpcs_busy_int;
+  txpcs_busy_o <= txpcs_busy_int;
 
   serdes_rst_o        <= (not pcs_reset_n) or mdio_mcr_pdown;
   mdio_wr_spec_bslide <= serdes_rx_bitslide_i(4 downto 0);
