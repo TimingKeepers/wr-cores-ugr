@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-01-23
+-- Last update: 2012-01-26
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ entity wr_endpoint is
   generic (
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD;
-    g_tx_force_gap_length: integer := 0;
+    g_tx_force_gap_length : integer                        := 0;
     g_simulation          : boolean                        := false;
     g_pcs_16bit           : boolean                        := false;
     g_rx_buffer_size      : integer                        := 1024;
@@ -103,9 +103,9 @@ entity wr_endpoint is
 -------------------------------------------------------------------------------
 
     gmii_tx_clk_i : in  std_logic;
-    gmii_txd_o    : out std_logic_vector(7 downto 0):=x"00";
-    gmii_tx_en_o  : out std_logic := '0';
-    gmii_tx_er_o  : out std_logic := '0';
+    gmii_txd_o    : out std_logic_vector(7 downto 0) := x"00";
+    gmii_tx_en_o  : out std_logic                    := '0';
+    gmii_tx_er_o  : out std_logic                    := '0';
 
     gmii_rx_clk_i : in std_logic;
     gmii_rxd_i    : in std_logic_vector(7 downto 0);
@@ -263,8 +263,13 @@ architecture syn of wr_endpoint is
       fc_pause_delay_i : in  std_logic_vector(15 downto 0);
       fc_pause_ack_o   : out std_logic;
       fc_flow_enable_i : in  std_logic;
-      oob_fid_value_o  : out std_logic_vector(15 downto 0);
-      oob_fid_stb_o    : out std_logic;
+      txtsu_port_id_o  : out std_logic_vector(4 downto 0);
+      txtsu_fid_o      : out std_logic_vector(16 -1 downto 0);
+      txtsu_tsval_o    : out std_logic_vector(28 + 4 - 1 downto 0);
+      txtsu_valid_o    : out std_logic;
+      txtsu_ack_i      : in  std_logic;
+      txts_timestamp_i : in  std_logic_vector(31 downto 0);  --oob_fid_value_o  : out std_logic_vector(15 downto 0);
+--      oob_fid_stb_o    : out std_logic;
       regs_i           : in  t_ep_out_registers);
   end component;
 
@@ -342,7 +347,7 @@ architecture syn of wr_endpoint is
     generic (
       g_timestamp_bits_r : natural;
       g_timestamp_bits_f : natural;
-      g_ref_clock_rate: integer);
+      g_ref_clock_rate   : integer);
     port (
       clk_ref_i              : in  std_logic;
       clk_sys_i              : in  std_logic;
@@ -355,13 +360,9 @@ architecture syn of wr_endpoint is
       rx_timestamp_stb_p_i   : in  std_logic;
       rxts_timestamp_o       : out std_logic_vector(31 downto 0);
       rxts_timestamp_valid_o : out std_logic;
-      txoob_fid_i            : in  std_logic_vector(16 - 1 downto 0);
-      txoob_stb_p_i          : in  std_logic;
-      txtsu_port_id_o        : out std_logic_vector(4 downto 0);
-      txtsu_fid_o            : out std_logic_vector(16 -1 downto 0);
-      txtsu_tsval_o          : out std_logic_vector(28 + 4 - 1 downto 0);
-      txtsu_valid_o          : out std_logic;
-      txtsu_ack_i            : in  std_logic;
+--      txoob_fid_i            : in  std_logic_vector(16 - 1 downto 0);
+--      txoob_stb_p_i          : in  std_logic;
+      txts_timestamp_o       : out std_logic_vector(31 downto 0);
       regs_i                 : in  t_ep_out_registers;
       regs_o                 : out t_ep_in_registers);
   end component;
@@ -387,7 +388,7 @@ architecture syn of wr_endpoint is
   signal rxpcs_timestamp_valid : std_logic;
   signal rxpcs_timestamp_value : std_logic_vector(31 downto 0);
 
-  --signal txts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
+  signal txts_timestamp : std_logic_vector(28 + 4 - 1 downto 0);
   --signal rxts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
   --signal rxts_done_p          : std_logic;
   --signal txts_done_p          : std_logic;
@@ -481,8 +482,9 @@ architecture syn of wr_endpoint is
   signal phase_meas_p  : std_logic;
   signal validity_cntr : unsigned(1 downto 0);
 
-  signal rtu_rq : t_ep_internal_rtu_request;
-  
+  signal rtu_rq               : t_ep_internal_rtu_request;
+  signal dvalid_tx, dvalid_rx : std_logic;
+
 begin
 
   -----------------------------------------------------------------------------
@@ -565,13 +567,13 @@ begin
 -- TX FRAMER
 -------------------------------------------------------------------------------
 
-  txfra_enable <= link_ok and regs_fromwb.ecr_tx_en_o;
+--  txfra_enable <= link_ok and regs_fromwb.ecr_tx_en_o;
 
   U_Tx_Framer : ep_tx_framer
     generic map (
       g_with_vlans       => g_with_vlans,
       g_with_timestamper => g_with_timestamper,
-      g_force_gap_length =>g_tx_force_gap_length)
+      g_force_gap_length => g_tx_force_gap_length)
     port map (
       clk_sys_i        => clk_sys_i,
       rst_n_i          => rst_n_i,
@@ -585,9 +587,16 @@ begin
       fc_pause_delay_i => txfra_pause_delay,
       fc_pause_ack_o   => txfra_pause_ack,
       fc_flow_enable_i => txfra_flow_enable,
-      oob_fid_value_o  => txoob_fid_value,
-      oob_fid_stb_o    => txoob_fid_stb,
-      regs_i           => regs_fromwb);
+      regs_i           => regs_fromwb,
+
+      txts_timestamp_i => txts_timestamp,
+
+      txtsu_port_id_o => txtsu_port_id_o,
+      txtsu_fid_o     => txtsu_frame_id_o,
+      txtsu_tsval_o   => txtsu_tsval_o,
+      txtsu_valid_o   => txtsu_valid_o,
+      txtsu_ack_i     => txtsu_ack_i
+      );
 
 
   txfra_flow_enable <= '1';
@@ -716,7 +725,7 @@ begin
     generic map (
       g_timestamp_bits_r => 28,
       g_timestamp_bits_f => 4,
-      g_ref_clock_rate => f_pick_rate(g_pcs_16bit))
+      g_ref_clock_rate   => f_pick_rate(g_pcs_16bit))
     port map (
       clk_ref_i      => clk_ref_i,
       clk_rx_i       => phy_rx_clk_i,
@@ -732,18 +741,12 @@ begin
       rxts_timestamp_o       => rxpcs_timestamp_value,
       rxts_timestamp_valid_o => rxpcs_timestamp_valid,
 
-      txoob_fid_i   => txoob_fid_value,
-      txoob_stb_p_i => txoob_fid_stb,
+      --txoob_fid_i   => txoob_fid_value,
+      --txoob_stb_p_i => txoob_fid_stb,
 
-
-      txtsu_port_id_o => txtsu_port_id_o,
-      txtsu_fid_o     => txtsu_frame_id_o,
-      txtsu_tsval_o   => txtsu_tsval_o,
-      txtsu_valid_o   => txtsu_valid_o,
-      txtsu_ack_i     => txtsu_ack_i,
-
-      regs_i => regs_fromwb,
-      regs_o => regs_towb_tsu);
+      txts_timestamp_o => txts_timestamp,
+      regs_i           => regs_fromwb,
+      regs_o           => regs_towb_tsu);
 
 
 -------------------------------------------------------------------------------
@@ -873,6 +876,9 @@ begin
     end if;
   end process;
 
+  dvalid_tx <= snk_cyc_i and snk_stb_i;
+  dvalid_rx <= src_out.cyc and src_out.stb;
+
   gen_leds : if g_with_leds generate
     U_Led_Ctrl : ep_leds_controller
       generic map (
@@ -880,8 +886,8 @@ begin
       port map (
         clk_sys_i   => clk_sys_i,
         rst_n_i     => rst_n_i,
-        dvalid_tx_i => txpcs_fab.dvalid,
-        dvalid_rx_i => rxpcs_fab.dvalid,
+        dvalid_tx_i => dvalid_tx,
+        dvalid_rx_i => dvalid_rx,
         link_ok_i   => link_ok,
         led_link_o  => led_link_o,
         led_act_o   => led_act_o);
