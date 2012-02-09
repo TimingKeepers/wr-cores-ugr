@@ -231,7 +231,7 @@ architecture rtl of spec_top is
     g_simulation          : integer                        := 0;
     g_phys_uart           : boolean                        := true;
     g_virtual_uart        : boolean                        := false;
-    g_ep_rxbuf_size_log2  : integer                        := 12;
+    g_ep_rxbuf_size       : integer                        := 1024;
     g_dpram_initf         : string                         := "";
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
@@ -746,7 +746,7 @@ begin
       g_simulation          => 0,
       g_phys_uart           => true,
       g_virtual_uart        => false,
-      g_ep_rxbuf_size_log2  => 12,
+      g_ep_rxbuf_size       => 1024,
       g_dpram_initf         => "",
       g_dpram_size          => 16384,
       g_interface_mode      => PIPELINED,
