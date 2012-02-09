@@ -30,9 +30,9 @@ end xwb_fabric_source;
 architecture rtl of xwb_fabric_source is
 
   constant c_fifo_width : integer := 16 + 2 + 4;
-  
+
   signal q_valid, full, we, rd, rd_d0 : std_logic;
-  signal fin, fout           : std_logic_vector(c_fifo_width-1 downto 0);
+  signal fin, fout                    : std_logic_vector(c_fifo_width-1 downto 0);
 
   signal pre_dvalid : std_logic;
   signal pre_eof    : std_logic;
@@ -42,6 +42,7 @@ architecture rtl of xwb_fabric_source is
   signal post_dvalid, post_eof, post_bytesel, post_sof : std_logic;
 
   signal err_status : t_wrf_status_reg;
+  signal cyc_int    : std_logic;
   
 begin  -- rtl
 
@@ -64,36 +65,37 @@ begin  -- rtl
       g_data_width => c_fifo_width,
       g_size       => 16)
     port map (
-      rst_n_i => rst_n_i,
-      clk_i   => clk_i,
-      d_i     => fin,
-      we_i    => we,
-      q_o     => fout,
-      rd_i    => rd,
-      almost_full_o  => full,
-      q_valid_o => q_valid);
+      rst_n_i       => rst_n_i,
+      clk_i         => clk_i,
+      d_i           => fin,
+      we_i          => we,
+      q_o           => fout,
+      rd_i          => rd,
+      almost_full_o => full,
+      q_valid_o     => q_valid);
 
-  post_sof <= fout(21);
-  post_eof <= fout(20);
+  post_sof    <= fout(21);
+  post_eof    <= fout(20);
   post_dvalid <= fout(18);
-  
+
   p_gen_cyc : process(clk_i)
   begin
     if rising_edge(clk_i) then
       if rst_n_i = '0' then
-        src_o.cyc <= '0';
+        cyc_int <= '0';
       else
-        if(src_i.stall = '0') then
+        if(src_i.stall = '0' and q_valid = '1') then
           if(post_sof = '1')then
-            src_o.cyc <= '1';
+            cyc_int <= '1';
           elsif(post_eof = '1') then
-            src_o.cyc <= '0';
+            cyc_int <= '0';
           end if;
         end if;
       end if;
     end if;
   end process;
 
+  src_o.cyc <= cyc_int or post_sof;
   src_o.we  <= '1';
   src_o.stb <= post_dvalid and q_valid;
   src_o.sel <= '1' & not fout(19);
@@ -125,7 +127,7 @@ entity wb_fabric_source is
     src_we_o    : out std_logic;
     src_stall_i : in  std_logic;
     src_ack_i   : in  std_logic;
-    src_err_i   : in std_logic;
+    src_err_i   : in  std_logic;
 
     -- Decoded & buffered fabric
     addr_i    : in  std_logic_vector(1 downto 0);
@@ -157,13 +159,13 @@ architecture wrapper of wb_fabric_source is
       dreq_o    : out std_logic);
   end component;
 
-  signal src_in : t_wrf_source_in;
+  signal src_in  : t_wrf_source_in;
   signal src_out : t_wrf_source_out;
   
 begin  -- wrapper
 
   
-  U_Wrapped_Source: xwb_fabric_source
+  U_Wrapped_Source : xwb_fabric_source
     port map (
       clk_i     => clk_i,
       rst_n_i   => rst_n_i,
@@ -180,14 +182,14 @@ begin  -- wrapper
 
   src_cyc_o <= src_out.cyc;
   src_stb_o <= src_out.stb;
-  src_we_o <= src_out.we;
+  src_we_o  <= src_out.we;
   src_sel_o <= src_out.sel;
   src_adr_o <= src_out.adr;
   src_dat_o <= src_out.dat;
 
-  src_in.rty <= '0';
-  src_in.err <= src_err_i;
-  src_in.ack <= src_ack_i;
+  src_in.rty   <= '0';
+  src_in.err   <= src_err_i;
+  src_in.ack   <= src_ack_i;
   src_in.stall <= src_stall_i;
 
   

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2012-01-16
--- Last update: 2012-01-17
+-- Last update: 2012-01-22
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ begin  -- rtl
 
   post_data <= fout_reg(15 downto 0);
   post_addr <= fout_reg(17 downto 16);
-  post_sof  <= fout_reg(21) and rd_d0 and q_valid;
+  post_sof  <= fout_reg(21) and rd_d0; --and q_valid;
 
   post_dvalid <= fout_reg(18);
 
