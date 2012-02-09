@@ -12,10 +12,19 @@ peripheral {
       
       field {
          name = "Reset trigger";
-         prefix = "HRST";
-         description = "Write 0xdeadbeef to reset the WR Core";
+         prefix = "TRIG";
+         description = "Write 0xdeadbee latch the state of RSTR.RST to the reset line of the LM32 CPU.";
          type = PASS_THROUGH;
-         size = 32;
+         size = 28;
+      };
+      
+      field {
+      	name = "Reset line state value";
+      	prefix = "RST";
+      	description = "State of the reset line";
+      	type = BIT;
+      	access_bus = READ_WRITE;
+      	access_dev = READ_ONLY;      
       };
    };
 
@@ -148,6 +157,7 @@ peripheral {
                         <b>f_tick = f_clk_sys / (TDIV * 256)</b>";
          prefix = "TDIV";
          size = 12;
+         type = SLV;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };

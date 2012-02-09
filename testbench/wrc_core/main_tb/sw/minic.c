@@ -8,7 +8,7 @@
 #include "endpoint_regs.h"
 
 #define BASE_MINIC 0x10000
-#define BASE_EP 0x20000
+#define BASE_EP 0x10100
 
 #define MINIC_DMA_TX_BUF_SIZE 1024
 

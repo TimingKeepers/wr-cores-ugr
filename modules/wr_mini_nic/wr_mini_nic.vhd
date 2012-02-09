@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2011-11-02
+-- Last update: 2012-01-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -329,20 +329,15 @@ begin  -- behavioral
   end process;
 
   mem_arb_tx   <= not mem_arb_rx;
-  mem_addr_int <= std_logic_vector(ntx_mem_a)   when mem_arb_rx = '0' else std_logic_vector(nrx_mem_a);
+  mem_addr_int <= std_logic_vector(ntx_mem_a) when mem_arb_rx = '0' else std_logic_vector(nrx_mem_a);
   mem_data_o   <= nrx_mem_d;
   ntx_mem_d    <= mem_data_i;
-  mem_wr_int   <= (nrx_mem_wr and not bad_addr) when mem_arb_rx = '1' else '0';
-  mem_wr_o <= mem_wr_int;
+  --mem_wr_int   <= (nrx_mem_wr and not bad_addr) when mem_arb_rx = '1' else '0';
+  --mem_wr_o <= mem_wr_int;
+  mem_wr_o     <= nrx_mem_wr                  when mem_arb_rx = '1' else '0';
 
   mem_addr_o <= mem_addr_int;
 
-  TRIG0(g_memsize_log2-1 downto 0) <= mem_addr_int;
-  trig0(16)                        <= bad_addr;
-  trig0(17)                        <= nrx_mem_wr;
-  trig0(18)                        <= mem_arb_rx;
-  trig1 <= nrx_mem_d;
-  trig0(19) <= mem_wr_int;
 
 
   p_gen_bad_addr : process(mem_addr_int, regs_out)
@@ -648,6 +643,22 @@ begin  -- behavioral
 -- RX Path (Fabric ->  Host)
 -------------------------------------------------------------------------------  
 
+
+  --TRIG0(2 downto 0) <= std_logic_vector(nrx_state);
+  --TRIG0(3) <= nrx_buf_full;
+  --TRIG0(g_memsize_log2-1+4 downto 4) <= std_logic_vector(nrx_avail);
+
+  --TRIG1(g_memsize_log2-1 downto 0) <= mem_addr_int;
+  --TRIG1(16)                        <= bad_addr;
+  --TRIG1(17)                        <= nrx_mem_wr;
+  --TRIG1(18)                        <= mem_arb_rx;
+  --TRIG2 <= nrx_mem_d;
+  --TRIG1(19) <= mem_wr_int;
+
+
+
+
+
   nrx_status_reg <= f_unmarshall_wrf_status(snk_dat_i);
 
   nrx_valid <= '1' when snk_cyc_i = '1' and snk_stall_int = '0' and snk_stb_i = '1' and
@@ -736,6 +747,7 @@ begin  -- behavioral
 -- on the RX fabric and then we commence reception of the packet.
 -------------------------------------------------------------------------------
             when RX_WAIT_SOF =>
+--            TRIG0(2 downto 0) <= "000";
 
               nrx_newpacket <= '0';
               nrx_done      <= '0';
@@ -762,6 +774,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------              
               
             when RX_ALLOCATE_DESCRIPTOR =>
+--            TRIG0(2 downto 0) <= "001";
 
 -- wait until we have memory access
               if(mem_arb_rx = '0') then
@@ -769,8 +782,10 @@ begin  -- behavioral
 -- make sure the bit 31 is 0 (RX descriptor is invalid)
                 nrx_mem_d       <= (others => '0');
                 nrx_mem_a_saved <= nrx_mem_a;
-                nrx_avail       <= nrx_avail - 1;
-                nrx_mem_wr      <= '1';
+                if(nrx_avail /= to_unsigned(0, nrx_avail'length)) then
+                  nrx_avail  <= nrx_avail - 1;
+                  nrx_mem_wr <= '1';
+                end if;
 
 
 -- allow the fabric to receive the data
@@ -784,6 +799,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------              
               
             when RX_DATA =>
+--            TRIG0(2 downto 0) <= "010";
 
               nrx_mem_wr <= '0';
 
@@ -805,9 +821,15 @@ begin  -- behavioral
                 end if;
 
                 -- abort/error/end-of-frame?
-                if(nrx_stat_error = '1' or snk_cyc_i = '0') then
-                  nrx_error <= nrx_stat_error;
-                  nrx_done  <= '1';
+                if(nrx_stat_error = '1' or snk_cyc_i = '0' or nrx_avail = to_unsigned(0, nrx_avail'length)) then
+
+                  if(nrx_stat_error = '1' or nrx_avail = to_unsigned(0, nrx_avail'length)) then
+                    nrx_error <= '1';
+                  else
+                    nrx_error <= '0';
+                  end if;
+                  --nrx_error <= '1' when nrx_stat_error='1' or nrx_avail=to_unsigned(0, nrx_avail'length) else '0';
+                  nrx_done <= '1';
 
                   -- flush the remaining packet data into the DMA buffer
                   nrx_state <= RX_MEM_FLUSH;
@@ -878,6 +900,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_RESYNC =>
+--            TRIG0(2 downto 0) <= "011";
 
               -- check for error/abort conditions, they may appear even when
               -- the fabric is not accepting the data (tx_dreq_o = 0)
@@ -898,11 +921,18 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_FLUSH =>
+--            TRIG0(2 downto 0) <= "100";
               nrx_stall_mask <= '1';
 
-              nrx_mem_wr <= '1';
+              if(nrx_buf_full = '0') then
+                nrx_mem_wr <= '1';
+              else
+                nrx_size <= nrx_size - 1;  --the buffer is full, last word was not written
+              end if;
               if(mem_arb_rx = '0') then
-                nrx_avail <= nrx_avail - 1;
+                if(nrx_buf_full = '0') then
+                  nrx_avail <= nrx_avail - 1;
+                end if;
                 nrx_state <= RX_UPDATE_DESC;
               end if;
 
@@ -914,6 +944,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_UPDATE_DESC =>
+--            TRIG0(2 downto 0) <= "101";
               nrx_stall_mask <= '1';
 
               if(mem_arb_rx = '0') then
