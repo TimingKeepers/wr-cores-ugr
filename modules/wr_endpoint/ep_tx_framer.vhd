@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-01-23
+-- Last update: 2012-02-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -85,9 +85,28 @@ entity ep_tx_framer is
 -- OOB/TSU signals
 -------------------------------------------------------------------------------    
 
+-- Port ID value
+    txtsu_port_id_o : out std_logic_vector(4 downto 0);
+-- Frame ID value
+    txtsu_fid_o     : out std_logic_vector(16 -1 downto 0);
+-- Encoded timestamps
+    txtsu_tsval_o   : out std_logic_vector(28 + 4 - 1 downto 0);
+    -- TX timestamp valid: HI tells the TX timestamping unit that there is a valid
+-- timestmap on txtsu_tsval_o, txtsu_fid_o and txtsu_port_id_o. Line remains HI
+-- until assertion of txtsu_ack_i.
+    txtsu_valid_o : out std_logic;
+
+-- TX timestamp acknowledge: HI indicates that TXTSU has successfully received
+-- the timestamp
+    txtsu_ack_i : in std_logic;
+
+
+    txts_timestamp_i : in std_logic_vector(31 downto 0);
+
+    
     -- OOB frame tag value and strobing signal
-    oob_fid_value_o : out std_logic_vector(15 downto 0);
-    oob_fid_stb_o   : out std_logic;
+--    oob_fid_value_o : out std_logic_vector(15 downto 0);
+--    oob_fid_stb_o   : out std_logic;
 
 -------------------------------------------------------------------------------
 -- control registers
@@ -104,7 +123,7 @@ architecture behavioral of ep_tx_framer is
 
   constant c_IFG_LENGTH : integer := 1;
 
-  type t_tx_framer_state is (TXF_IDLE, TXF_ADDR, TXF_PAUSE, TXF_QHEADER, TXF_DATA, TXF_OOB, TXF_WAIT_CRC, TXF_EMBED_CRC1, TXF_EMBED_CRC2, TXF_EMBED_CRC3, TXF_GAP, TXF_PAD, TXF_ABORT);
+  type t_tx_framer_state is (TXF_IDLE, TXF_ADDR, TXF_PAUSE, TXF_QHEADER, TXF_DATA, TXF_OOB, TXF_WAIT_CRC, TXF_EMBED_CRC1, TXF_EMBED_CRC2, TXF_EMBED_CRC3, TXF_GAP, TXF_PAD, TXF_ABORT, TXF_STORE_TSTAMP);
 
 -- general signals
   signal state    : t_tx_framer_state;
@@ -173,7 +192,24 @@ architecture behavioral of ep_tx_framer is
 
   signal vut_stored_tag       : std_logic_vector(15 downto 0);
   signal vut_stored_ethertype : std_logic_vector(15 downto 0);
-  
+
+  function f_fabric_2_slv (
+    in_i : t_wrf_sink_in;
+    in_o : t_wrf_sink_out) return std_logic_vector is
+    variable tmp : std_logic_vector(31 downto 0);
+  begin
+    tmp(15 downto 0)  := in_i.dat;
+    tmp(17 downto 16) := in_i.adr;
+    tmp(19 downto 18) := in_i.sel;
+    tmp(20)           := in_i.cyc;
+    tmp(21)           := in_i.stb;
+    tmp(22)           := in_i.we;
+    tmp(23)           := in_o.ack;
+    tmp(24)           := in_o.stall;
+    tmp(25)           := in_o.err;
+    tmp(26)           := in_o.rty;
+    return tmp;
+  end f_fabric_2_slv;
   
 begin  -- behavioral
 
@@ -320,7 +356,8 @@ begin  -- behavioral
         crc_gen_enable_mask <= '1';
         crc_gen_force_reset <= '0';
 
-        oob_fid_stb_o <= '0';
+        --oob_fid_stb_o <= '0';
+        txtsu_valid_o <= '0';
 
       else
 
@@ -352,7 +389,9 @@ begin  -- behavioral
               snk_out.err <= '0';
               snk_out.rty <= '0';
 
+              txtsu_valid_o <= '0';
               q_abort <= '0';
+              q_eof      <= '0';
 
               tx_ready <= fc_flow_enable_i;
 
@@ -362,7 +401,6 @@ begin  -- behavioral
               if(pcs_dreq_i = '1' and (sof_p1 = '1' or fc_pause_p_i = '1') and regs_i.ecr_tx_en_o = '1') then
                                         -- enable writing to PCS FIFO
                 q_sof      <= '1';
-                q_eof      <= '0';
                 write_mask <= '1';
 
 
@@ -567,9 +605,9 @@ begin  -- behavioral
                 tx_ready <= '0';
 
                                         -- check if we have an OOB block
-                if(oob.valid = '1' and oob.oob_type = c_WRF_OOB_TYPE_TX and g_with_timestamper) then
-                  oob_fid_stb_o <= '1';
-                end if;
+                --if(oob.valid = '1'  and g_with_timestamper) then
+                --  oob_fid_stb_o <= '1';
+                --end if;
               end if;
 
               if(snk_valid = '1' and snk_i.adr = c_WRF_DATA) then
@@ -587,7 +625,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------            
 
             when TXF_WAIT_CRC =>
-              oob_fid_stb_o       <= '0';
+              --oob_fid_stb_o       <= '0';
               q_valid             <= '0';
               state               <= TXF_EMBED_CRC1;
               crc_gen_enable_mask <= '0';
@@ -638,10 +676,15 @@ begin  -- behavioral
               q_bytesel   <= '0';
 
               if(counter = 0 or g_force_gap_length = 0) then
-                
-                if(oob.valid = '1') then
+
+                -- Submit the TX timestamp to the TXTSU queue
+                if(oob.valid = '1' and oob.oob_type = c_WRF_OOB_TYPE_TX) then
                   if(pcs_busy_i = '0') then
-                    state <= TXF_IDLE;
+                    txtsu_valid_o <='1';
+                    txtsu_tsval_o <= txts_timestamp_i;
+                    txtsu_port_id_o <= regs_i.ecr_portid_o;
+                    txtsu_fid_o <= oob.frame_id;
+                    state <= TXF_STORE_TSTAMP;
                   end if;
                 else
                   state <= TXF_IDLE;
@@ -651,6 +694,12 @@ begin  -- behavioral
                 counter <= counter - 1;
               end if;
 
+            when TXF_STORE_TSTAMP =>
+              if(txtsu_ack_i = '1') then
+                txtsu_valid_o <= '0';
+                state <= TXF_IDLE;
+              end if;
+              
 -------------------------------------------------------------------------------
 -- TX FSM state ABORT: signalize underlying PCS block to abort the frame
 -- immediately, corrupting its contents
@@ -661,7 +710,7 @@ begin  -- behavioral
               q_abort <= '1';
 
               counter <= (others => '0');
-              state   <= TXF_GAP;
+              state   <= TXF_IDLE;
 
             when others => null;
           end case;
@@ -670,12 +719,10 @@ begin  -- behavioral
     end if;
   end process;
 
-  oob_fid_value_o <= oob.frame_id;
 
+  stall_int <= (not (pcs_dreq_i and tx_ready) and regs_i.ecr_tx_en_o) or (snk_i.cyc xor snk_cyc_d0);  -- /dev/null if disabled
 
-  stall_int <= not (pcs_dreq_i and tx_ready) and regs_i.ecr_tx_en_o;  -- /dev/null if disabled
-
-  snk_out.stall <= stall_int or (not snk_i.cyc and snk_cyc_d0);
+  snk_out.stall <= stall_int;
 
   p_gen_ack : process(clk_sys_i)
   begin
