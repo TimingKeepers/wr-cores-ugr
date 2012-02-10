@@ -1,0 +1,1 @@
+modules = {"local" : ["wr_gtp_phy", "chipscope"]}
