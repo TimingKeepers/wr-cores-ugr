@@ -206,9 +206,6 @@ begin
   sysc_regs_i.gpsr_fmc_sda_i <= sda_i;
   sysc_regs_i.gpsr_fmc_scl_i <= scl_i;
 
-  -- Memsize
-  sysc_regs_i.hwfr_memsize_i <= memsize_i;
-
   ----------------------------------------
   -- SYSCON
   ----------------------------------------
