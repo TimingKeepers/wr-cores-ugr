@@ -160,6 +160,19 @@ architecture rtl of EXPLODER_ng is
       master_i  : in  t_wishbone_master_in);
   end component;
 
+  component xetherbone_core
+   
+    port (
+      clk_sys_i : in  std_logic;
+      rst_n_i   : in  std_logic;
+      snk_i     : in  t_wrf_sink_in;
+      snk_o     : out t_wrf_sink_out;
+      src_i     : in  t_wrf_source_in;
+      src_o     : out t_wrf_source_out;
+      master_i  : in  t_wishbone_master_in;
+      master_o  : out t_wishbone_master_out);
+  end component;
+  
 
   -- LCLK from GN4124 used as system clock
   signal l_clk : std_logic;
@@ -235,6 +248,8 @@ architecture rtl of EXPLODER_ng is
   signal mb_master_in  : t_wishbone_master_in;
 
   signal dummy_gpio, gpio_out : std_logic_vector(31 downto 0);
+
+
   
 begin
 
@@ -331,11 +346,10 @@ begin
       pad_txp_o      => sfp_txp_o,
       pad_rxp_i      => sfp_rxp_i);
 
+  
 
-  U_mbone : xmini_bone
-    generic map (
-      g_class_mask    => x"f0",
-      g_our_ethertype => x"a0a0")
+  U_ebone : xetherbone_core
+   
     port map (
       clk_sys_i => l_cLKp,
       rst_n_i   => nreset,
