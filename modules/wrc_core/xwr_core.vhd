@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-02-09
+-- Last update: 2012-02-17
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -158,7 +158,9 @@ entity xwr_core is
     pps_p_o              : out std_logic;
 
     dio_o       : out std_logic_vector(3 downto 0);
-    rst_aux_n_o : out std_logic
+    rst_aux_n_o : out std_logic;
+
+    link_ok_o   : out std_logic
     );
 end xwr_core;
 
@@ -169,7 +171,7 @@ architecture struct of xwr_core is
       g_simulation          : integer                        := 0;
       g_phys_uart           : boolean                        := true;
       g_virtual_uart        : boolean                        := false;
-      g_rx_buffer_size  : integer                        := 12;
+      g_rx_buffer_size      : integer                        := 12;
       g_dpram_initf         : string                         := "";
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
@@ -260,7 +262,9 @@ architecture struct of xwr_core is
       pps_p_o              : out std_logic;
 
       dio_o       : out std_logic_vector(3 downto 0);
-      rst_aux_n_o : out std_logic
+      rst_aux_n_o : out std_logic;
+
+      link_ok_o   : out std_logic
     );
   end component;
 
@@ -361,7 +365,9 @@ begin
       pps_p_o              => pps_p_o,
 
       dio_o       => dio_o,
-      rst_aux_n_o => rst_aux_n_o
+      rst_aux_n_o => rst_aux_n_o,
+
+      link_ok_o   => link_ok_o
     );
 
     timestamps_o.port_id(5) <= '0';

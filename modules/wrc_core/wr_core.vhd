@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-02-08
+-- Last update: 2012-02-17
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -196,7 +196,9 @@ entity wr_core is
     pps_p_o              : out std_logic;
 
     dio_o       : out std_logic_vector(3 downto 0);
-    rst_aux_n_o : out std_logic
+    rst_aux_n_o : out std_logic;
+
+    link_ok_o   : out std_logic
     );
 end wr_core;
 
@@ -502,7 +504,8 @@ begin
       txtsu_valid_o    => ep_txtsu_valid,
       txtsu_ack_i      => ep_txtsu_ack,
       wb_i             => ep_wb_in,
-      wb_o             => ep_wb_out);
+      wb_o             => ep_wb_out,
+      led_link_o       => link_ok_o);
 
   ep_txtsu_ack <= txtsu_ack_i or mnic_txtsu_ack;
   -----------------------------------------------------------------------------
