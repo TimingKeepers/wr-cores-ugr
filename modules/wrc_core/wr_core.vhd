@@ -547,7 +547,7 @@ begin
   -- LM32
   -----------------------------------------------------------------------------  
   LM32_CORE : xwb_lm32
-    generic map(g_profile => "medium")
+    generic map(g_profile => "medium_icache_debug")
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_wrc_n,
