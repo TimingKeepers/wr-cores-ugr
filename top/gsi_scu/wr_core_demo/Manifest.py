@@ -5,4 +5,5 @@ modules = {
     "svn" : "http://svn.ohwr.org/etherbone-core/hdl/EB_SPEC_Test"
 };
 
-files = ["exploder_ng.vhd", "pow_reset.vhd"]
+files = ["scu_top.vhd", "pow_reset.vhd", "spec_serial_dac_arb.vhd",
+	"spec_serial_dac.vhd"]
