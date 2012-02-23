@@ -106,6 +106,11 @@ package wrcore_pkg is
       scl_i       : in  std_logic;
       sda_o       : out std_logic;
       sda_i       : in  std_logic;
+      sfp_scl_o   : out std_logic;
+      sfp_scl_i   : in  std_logic;
+      sfp_sda_o   : out std_logic;
+      sfp_sda_i   : in  std_logic;
+      sfp_det_i   : in  std_logic;
       memsize_i   : in  std_logic_vector(3 downto 0);
       btn1_i      : in  std_logic;
       btn2_i      : in  std_logic;

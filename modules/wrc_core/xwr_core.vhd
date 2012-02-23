@@ -104,6 +104,11 @@ entity xwr_core is
     scl_i       : in  std_logic;
     sda_o       : out std_logic;
     sda_i       : in  std_logic;
+    sfp_scl_o   : out std_logic;
+    sfp_scl_i   : in  std_logic;
+    sfp_sda_o   : out std_logic;
+    sfp_sda_i   : in  std_logic;
+    sfp_det_i   : in  std_logic;
     btn1_i      : in  std_logic;
     btn2_i      : in  std_logic;
 
@@ -207,6 +212,11 @@ architecture struct of xwr_core is
       scl_i       : in  std_logic;
       sda_o       : out std_logic;
       sda_i       : in  std_logic;
+      sfp_scl_o   : out std_logic;
+      sfp_scl_i   : in  std_logic;
+      sfp_sda_o   : out std_logic;
+      sfp_sda_i   : in  std_logic;
+      sfp_det_i   : in  std_logic;
       btn1_i      : in  std_logic;
       btn2_i      : in  std_logic;
 
@@ -311,6 +321,11 @@ begin
       scl_i       => scl_i,
       sda_o       => sda_o,
       sda_i       => sda_i,
+      sfp_scl_o   => sfp_scl_o,
+      sfp_scl_i   => sfp_scl_i,
+      sfp_sda_o   => sfp_sda_o,
+      sfp_sda_i   => sfp_sda_i,
+      sfp_det_i   => sfp_det_i,
       btn1_i      => btn1_i,
       btn2_i      => btn2_i,
       uart_rxd_i  => uart_rxd_i,

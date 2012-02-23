@@ -94,6 +94,40 @@ peripheral {
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+
+      field {
+         name = "SFP detect (MOD_DEF0 signal)";
+         prefix = "sfp_det";
+         description = "read : returns the state of the SFP's MOD_DEF0 line";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "SFP I2C bitbanged SCL";
+         prefix = "sfp_scl";
+         description = "write 1: Set SFP SCL line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         align = 8;
+      };
+      
+      field {
+         name = "SFP I2C bitbanged SDA";
+         prefix = "sfp_sda";
+         description = "write 1: Set SFP SDA line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         align = 9;
+      };
+
    };
 
    reg {
@@ -129,6 +163,23 @@ peripheral {
                         read : returns the current status of the SCL line.";
          type = MONOSTABLE;
       };
+
+      field {
+         name = "SFP I2C bitbanged SCL";
+         prefix = "sfp_scl";
+         description = "write 1: Set SFP SCL line to 0.";
+         type = MONOSTABLE;
+         align = 8;
+      };
+
+      field {
+         name = "FMC I2C bitbanged SDA";
+         prefix = "sfp_sda";
+         description = "write 1: Set SFP SDA line to 0.";
+         type = MONOSTABLE;
+         align = 9;
+      };
+
    };
 
    reg {

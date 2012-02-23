@@ -92,7 +92,7 @@ entity spec_top is
       sfp_rxp_i : in std_logic;
       sfp_rxn_i : in std_logic;
 
-      sfp_mod_def0_b    : inout std_logic;  -- rate_select
+      sfp_mod_def0_b    : in    std_logic;     -- sfp detect
       sfp_mod_def1_b    : inout std_logic;  -- scl
       sfp_mod_def2_b    : inout std_logic;  -- sda
       sfp_rate_select_b : inout std_logic;
@@ -268,6 +268,11 @@ architecture rtl of spec_top is
     scl_i       : in  std_logic;
     sda_o       : out std_logic;
     sda_i       : in  std_logic;
+    sfp_scl_o   : out std_logic;
+    sfp_scl_i   : in  std_logic;
+    sfp_sda_o   : out std_logic;
+    sfp_sda_i   : in  std_logic;
+    sfp_det_i   : in  std_logic;
     btn1_i      : in  std_logic;
     btn2_i      : in  std_logic;
 
@@ -441,6 +446,10 @@ architecture rtl of spec_top is
   signal wrc_scl_i : std_logic;
   signal wrc_sda_o : std_logic;
   signal wrc_sda_i : std_logic;
+  signal sfp_scl_o : std_logic;
+  signal sfp_scl_i : std_logic;
+  signal sfp_sda_o : std_logic;
+  signal sfp_sda_i : std_logic;
   signal dio       : std_logic_vector(3 downto 0);
 
   signal dac_hpll_load_p1 : std_logic;
@@ -741,6 +750,11 @@ begin
   wrc_scl_i  <= fpga_scl_b;
   wrc_sda_i  <= fpga_sda_b;
 
+  sfp_mod_def1_b <= '0' when sfp_scl_o = '0' else 'Z';
+  sfp_mod_def2_b <= '0' when sfp_sda_o = '0' else 'Z';
+  sfp_scl_i <= sfp_mod_def1_b;
+  sfp_sda_i <= sfp_mod_def2_b;
+
   U_WR_CORE : xwr_core
     generic map (
       g_simulation          => 0,
@@ -778,10 +792,15 @@ begin
 
       led_red_o   => LED_RED,
       led_green_o => LED_GREEN,
-      scl_o       => wrc_scl_o,         --fpga_scl_b,
-      scl_i       => wrc_scl_i,         --fpga_scl_b,
-      sda_o       => wrc_sda_o,         --fpga_sda_b,
-      sda_i       => wrc_sda_i,         --fpga_sda_b,
+      scl_o       => wrc_scl_o,
+      scl_i       => wrc_scl_i,
+      sda_o       => wrc_sda_o,
+      sda_i       => wrc_sda_i,
+      sfp_scl_o   => sfp_scl_o,
+      sfp_scl_i   => sfp_scl_i,
+      sfp_sda_o   => sfp_sda_o,
+      sfp_sda_i   => sfp_sda_i,
+      sfp_det_i   => sfp_mod_def0_b,
       btn1_i      => button1_i,
       btn2_i      => button2_i,
 
@@ -965,10 +984,6 @@ begin
 
   dio_sdn_ck_n_o <= '1';
   dio_sdn_n_o    <= '1';
-
-  sfp_mod_def0_b <= '0';
-  sfp_mod_def1_b <= '0';
-  sfp_mod_def2_b <= '0';
 
   sfp_tx_disable_o <= '0';
 
