@@ -118,8 +118,8 @@ package wrcore_pkg is
       slave_o     : out t_wishbone_slave_out_array(0 to 2);
       uart_rxd_i  : in  std_logic;
       uart_txd_o  : out std_logic;
-      owr_en_o    : out std_logic;
-      owr_i       : in  std_logic
+      owr_en_o    : out std_logic_vector(1 downto 0);
+      owr_i       : in  std_logic_vector(1 downto 0)
     );
   end component;
 

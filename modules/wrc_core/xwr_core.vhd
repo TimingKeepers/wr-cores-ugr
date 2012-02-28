@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-02-17
+-- Last update: 2012-02-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -121,8 +121,8 @@ entity xwr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_en_o : out std_logic;
-    owr_i    : in  std_logic;
+    owr_en_o : out std_logic_vector(1 downto 0);
+    owr_i    : in  std_logic_vector(1 downto 0);
 
     -----------------------------------------
     --External WB interface
@@ -165,7 +165,7 @@ entity xwr_core is
     dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic;
 
-    link_ok_o   : out std_logic
+    link_ok_o : out std_logic
     );
 end xwr_core;
 
@@ -223,8 +223,8 @@ architecture struct of xwr_core is
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
-      owr_en_o : out std_logic;
-      owr_i    : in  std_logic;
+      owr_en_o : out std_logic_vector(1 downto 0);
+      owr_i    : in  std_logic_vector(1 downto 0);
 
       wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
       wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
@@ -274,7 +274,7 @@ architecture struct of xwr_core is
       dio_o       : out std_logic_vector(3 downto 0);
       rst_aux_n_o : out std_logic;
 
-      link_ok_o   : out std_logic
+      link_ok_o : out std_logic
     );
   end component;
 
@@ -382,7 +382,7 @@ begin
       dio_o       => dio_o,
       rst_aux_n_o => rst_aux_n_o,
 
-      link_ok_o   => link_ok_o
+      link_ok_o => link_ok_o
     );
 
     timestamps_o.port_id(5) <= '0';

@@ -82,6 +82,8 @@ entity spec_top is
       button1_i : in std_logic;
       button2_i : in std_logic;
 
+      thermo_id : inout std_logic;      -- 1-Wire interface to DS18B20
+
       -------------------------------------------------------------------------
       -- SFP pins
       -------------------------------------------------------------------------
@@ -92,7 +94,7 @@ entity spec_top is
       sfp_rxp_i : in std_logic;
       sfp_rxn_i : in std_logic;
 
-      sfp_mod_def0_b    : in    std_logic;     -- sfp detect
+      sfp_mod_def0_b    : in    std_logic;  -- sfp detect
       sfp_mod_def1_b    : inout std_logic;  -- scl
       sfp_mod_def2_b    : inout std_logic;  -- sda
       sfp_rate_select_b : inout std_logic;
@@ -279,8 +281,8 @@ architecture rtl of spec_top is
     uart_rxd_i : in  std_logic;
     uart_txd_o : out std_logic;
 
-    owr_en_o : out std_logic;
-    owr_i    : in  std_logic;
+    owr_en_o : out std_logic_vector(1 downto 0);
+    owr_i    : in  std_logic_vector(1 downto 0);
 
     slave_i : in  t_wishbone_slave_in;
     slave_o : out t_wishbone_slave_out;
@@ -481,8 +483,8 @@ architecture rtl of spec_top is
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
 
-  signal owr_en : std_logic;
-  signal owr_i  : std_logic;
+  signal owr_en : std_logic_vector(1 downto 0);
+  signal owr_i  : std_logic_vector(1 downto 0);
 
   signal wb_adr : std_logic_vector(c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 
@@ -752,8 +754,11 @@ begin
 
   sfp_mod_def1_b <= '0' when sfp_scl_o = '0' else 'Z';
   sfp_mod_def2_b <= '0' when sfp_sda_o = '0' else 'Z';
-  sfp_scl_i <= sfp_mod_def1_b;
-  sfp_sda_i <= sfp_mod_def2_b;
+  sfp_scl_i      <= sfp_mod_def1_b;
+  sfp_sda_i      <= sfp_mod_def2_b;
+
+  thermo_id <= '0' when owr_en(0) = '1' else 'Z';
+  owr_i(0)  <= thermo_id;
 
   U_WR_CORE : xwr_core
     generic map (
@@ -977,8 +982,8 @@ begin
   dio_oe_n_o(0)          <= '0';
   dio_oe_n_o(4 downto 1) <= (others => '0');
 
-  dio_onewire_b <= '0' when owr_en = '1' else 'Z';
-  owr_i         <= dio_onewire_b;
+  dio_onewire_b <= '0' when owr_en(1) = '1' else 'Z';
+  owr_i(1)      <= dio_onewire_b;
 
   dio_term_en_o <= (others => '0');
 

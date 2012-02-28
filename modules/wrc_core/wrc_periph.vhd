@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-04-04
--- Last update: 2012-02-09
+-- Last update: 2012-02-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -67,8 +67,8 @@ entity wrc_periph is
     uart_txd_o : out std_logic;
 
     -- 1-Wire
-    owr_en_o : out std_logic;
-    owr_i    : in  std_logic
+    owr_en_o : out std_logic_vector(1 downto 0);
+    owr_i    : in  std_logic_vector(1 downto 0)
     );
 end wrc_periph;
 
@@ -84,9 +84,6 @@ architecture struct of wrc_periph is
 
   signal sysc_regs_i : t_sysc_in_registers;
   signal sysc_regs_o : t_sysc_out_registers;
-
-  signal owr_en_slv : std_logic_vector(0 downto 0);
-  signal owr_in_slv : std_logic_vector(0 downto 0);
 
   signal cntr_div      : unsigned(23 downto 0);
   signal cntr_tics     : unsigned(31 downto 0);
@@ -290,7 +287,7 @@ begin
     generic map(
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
-      g_num_ports           => 1,
+      g_num_ports           => 2,
       g_ow_btp_normal       => "5.0",
       g_ow_btp_overdrive    => "1.0"
       )
@@ -303,11 +300,8 @@ begin
       slave_o => slave_o(2),
       desc_o  => open,
 
-      owr_en_o => owr_en_slv,
-      owr_i    => owr_in_slv
+      owr_en_o => owr_en_o,
+      owr_i    => owr_i
       );
-
-  owr_in_slv(0) <= owr_i;
-  owr_en_o      <= owr_en_slv(0);
 
 end struct;

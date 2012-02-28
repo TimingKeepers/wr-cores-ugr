@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-02-17
+-- Last update: 2012-02-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -133,8 +133,8 @@ entity wr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_en_o : out std_logic;
-    owr_i    : in  std_logic;
+    owr_en_o : out std_logic_vector(1 downto 0);
+    owr_i    : in  std_logic_vector(1 downto 0);
 
     -----------------------------------------
     --External WB interface
@@ -202,7 +202,7 @@ entity wr_core is
     dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic;
 
-    link_ok_o   : out std_logic
+    link_ok_o : out std_logic
     );
 end wr_core;
 
