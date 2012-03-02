@@ -718,11 +718,14 @@ begin
   -----------------------------------------------------------------------------
   -- WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  WB_SECONDARY_CON : xwb_crossbar
+  WB_SECONDARY_CON : xwb_sdwb_crossbar
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
-      g_registered  => true
+      g_registered  => true,
+      g_address     => c_secbar_base_addr,  --cbar_address,
+      g_mask        => c_secbar_base_mask,  --cbar_mask
+      g_sdwb_addr   => x"00000800"
       )
     port map(
       clk_sys_i     => clk_sys_i,
@@ -732,10 +735,7 @@ begin
       slave_o(0)    => cbar_master_i(1),
       -- Slave connections (INTERCON is a master)
       master_i      => secbar_master_i,
-      master_o      => secbar_master_o,
-      -- Address of the slaves connected
-      cfg_address_i => c_secbar_base_addr,  --cbar_address,
-      cfg_mask_i    => c_secbar_base_mask   --cbar_mask
+      master_o      => secbar_master_o
       );
 
   secbar_master_i(0) <= minic_wb_out;
