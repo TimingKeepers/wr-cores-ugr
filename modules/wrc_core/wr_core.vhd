@@ -259,13 +259,36 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --WB intercon
   -----------------------------------------------------------------------------
-  constant c_cfg_base_addr : t_wishbone_address_array(1 downto 0) :=
-    (0 => x"00000000",                  -- CPU I/D-mem
-     1 => x"00020000");                 -- Peripherals
-
-  constant c_cfg_base_mask : t_wishbone_address_array(1 downto 0) :=
-    (0 => x"000f0000",
-     1 => x"000f0000");
+  constant c_layout : t_sdwb_device_array(1 downto 0) :=
+   (0 => ( -- CPU I/D-mem
+      wbd_begin     => x"0000000000000000",
+      wbd_end       => x"000000000001ffff", -- 128K
+      sdwb_child    => x"0000000000000000",
+      wbd_flags     => x"01", -- big-endian, no-child, present
+      wbd_width     => x"07", -- 8/16/32-bit port granularity
+      abi_ver_major => x"01",
+      abi_ver_minor => x"01",
+      abi_class     => x"00000001", -- block memory
+      dev_vendor    => x"0000CE42", -- CERN
+      dev_device    => x"262ceba1",
+      dev_version   => x"00000001",
+      dev_date      => x"20120305",
+      description   => "LM32 Block RAM  "),
+    1 => ( -- Peripherals
+      wbd_begin     => x"0000000000020000",
+      wbd_end       => x"0000000000020fff",
+      sdwb_child    => x"0000000000020800",
+      wbd_flags     => x"05", -- big-endian, child, present
+      wbd_width     => x"07", -- 8/16/32-bit port granularity
+      abi_ver_major => x"01",
+      abi_ver_minor => x"01",
+      abi_class     => x"00000000", -- undocumented device
+      dev_vendor    => x"0000CE42", -- CERN
+      dev_device    => x"8ec51bd0",
+      dev_version   => x"00000001",
+      dev_date      => x"20120305",
+      description   => "WR-Peripherals  "));
+  constant c_sdwb_address : t_wishbone_address := x"00030000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
   signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
@@ -643,14 +666,14 @@ begin
   -----------------------------------------------------------------------------
   -- WB intercon
   -----------------------------------------------------------------------------
-  WB_CON : xwb_crossbar
+  WB_CON : xwb_sdwb_crossbar
     generic map(
       g_num_masters => 3,
       g_num_slaves  => 2,
       g_registered  => false,
-      -- Address of the slaves connected
-      g_address     => c_cfg_base_addr,
-      g_mask        => c_cfg_base_mask
+      g_wraparound  => true,
+      g_layout      => c_layout,
+      g_sdwb_addr   => c_sdwb_address
       )  
     port map(
       clk_sys_i     => clk_sys_i,
