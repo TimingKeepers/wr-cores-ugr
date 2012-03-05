@@ -28,6 +28,7 @@
 -- Date        Version  Author          Description
 -- 2011-02-02  1.0      greg.d          Created
 -- 2011-10-25  2.0      greg.d          Redesigned and wishbonized
+-- 2012-03-05  3.0      wterpstra       Added SDWB descriptors
 -------------------------------------------------------------------------------
 
 
@@ -274,22 +275,15 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  constant c_secbar_base_addr : t_wishbone_address_array(6 downto 0) :=
-    (0 => x"00000000",                  -- Mini-NIC
-     1 => x"00000100",                  -- Endpoint
-     2 => x"00000200",                  -- SoftPLL
-     3 => x"00000300",                  -- PPSgen
-     4 => x"00000400",                  -- Syscon
-     5 => x"00000500",                  -- UART
-     6 => x"00000600");                 -- 1-Wire
-  constant c_secbar_base_mask : t_wishbone_address_array(6 downto 0) :=
-    (0 => x"00000f00",                  -- Mini-NIC
-     1 => x"00000f00",                  -- Endpoint
-     2 => x"00000f00",                  -- SoftPLL
-     3 => x"00000f00",                  -- PPSgen
-     4 => x"00000f00",                  -- Syscon
-     5 => x"00000f00",                  -- UART
-     6 => x"00000f00");                 -- 1-Wire
+  constant c_secbar_layout : t_sdwb_device_array(6 downto 0) :=
+    (f_sdwb_set_address(c_xwr_mini_nic_sdwb, x"00000000"),
+     f_sdwb_set_address(c_xwr_endpoint_sdwb, x"00000100"),
+     f_sdwb_set_address(c_xwr_softpll_sdwb,  x"00000200"),
+     f_sdwb_set_address(c_xwr_pps_gen_sdwb,  x"00000300"),
+     f_sdwb_set_address(c_wrc_periph0_sdwb,  x"00000400"),  -- Syscon
+     f_sdwb_set_address(c_wrc_periph1_sdwb,  x"00000500"),  -- UART
+     f_sdwb_set_address(c_wrc_periph2_sdwb,  x"00000600")); -- 1-Wire
+  constant c_secbar_sdwb_address : t_wishbone_address := x"00000800";
 
   signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
   signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
@@ -718,15 +712,14 @@ begin
   -----------------------------------------------------------------------------
   -- WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  WB_SECONDARY_CON : xwb_crossbar
+  WB_SECONDARY_CON : xwb_sdwb_crossbar
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
       g_registered  => true,
---      g_wraparound  => true,
-      g_address     => c_secbar_base_addr,  --cbar_address,
-      g_mask        => c_secbar_base_mask   --cbar_mask
---      g_sdwb_addr   => x"00000800"
+      g_wraparound  => true,
+      g_layout      => c_secbar_layout,
+      g_sdwb_addr   => c_secbar_sdwb_address
       )
     port map(
       clk_sys_i     => clk_sys_i,
