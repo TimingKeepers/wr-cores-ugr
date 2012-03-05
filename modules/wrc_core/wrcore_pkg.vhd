@@ -19,6 +19,20 @@ package wrcore_pkg is
   ----------------------------------------------------------------------------- 
   --PPS generator
   -----------------------------------------------------------------------------
+  constant c_xwr_pps_gen_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"de0d8ced",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-PPS-Generator");
   component xwr_pps_gen is
     generic(
       g_interface_mode      : t_wishbone_interface_mode;
@@ -42,6 +56,20 @@ package wrcore_pkg is
   -----------------------------------------------------------------------------
   --Mini NIC
   -----------------------------------------------------------------------------
+  constant c_xwr_mini_nic_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"ab28633a",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-Mini-NIC     ");
   component xwr_mini_nic
     generic (
       g_interface_mode       : t_wishbone_interface_mode;
@@ -88,6 +116,48 @@ package wrcore_pkg is
     );
   end component;
 
+  constant c_wrc_periph0_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"ff07fc47",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-Periph-Syscon");
+  constant c_wrc_periph1_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"e2d13d04",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-Periph-UART  ");
+  constant c_wrc_periph2_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"779c5443",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-Periph-1Wire ");
   component wrc_periph is
     generic(
       g_phys_uart    : boolean := true;
@@ -121,6 +191,20 @@ package wrcore_pkg is
   -----------------------------------------------------------------------------
   -- Soft-PLL
   -----------------------------------------------------------------------------
+  constant c_xwr_softpll_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"65158dc0",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-Soft-PLL     ");
   component xwr_softpll is
     generic(
       g_deglitcher_threshold : integer;
