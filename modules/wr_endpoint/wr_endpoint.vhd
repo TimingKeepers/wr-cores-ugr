@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-01-26
+-- Last update: 2012-02-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -47,15 +47,16 @@ entity wr_endpoint is
     g_address_granularity : t_wishbone_address_granularity := WORD;
     g_tx_force_gap_length : integer                        := 0;
     g_simulation          : boolean                        := false;
-    g_pcs_16bit           : boolean                        := false;
+    g_pcs_16bit           : boolean                        := true;
     g_rx_buffer_size      : integer                        := 1024;
     g_with_rx_buffer      : boolean                        := true;
     g_with_flow_control   : boolean                        := true;
     g_with_timestamper    : boolean                        := true;
-    g_with_dpi_classifier : boolean                        := true;
+    g_with_dpi_classifier : boolean                        := false;
     g_with_vlans          : boolean                        := true;
     g_with_rtu            : boolean                        := true;
-    g_with_leds           : boolean                        := true
+    g_with_leds           : boolean                        := true;
+    g_with_dmtd : boolean := false
     );
   port (
 
@@ -832,6 +833,7 @@ begin
 -- DMTD phase meter
 ------------------------------------------------------------------------------  
 
+gen_with_dmtd:  if(g_with_dmtd) generate
   U_DMTD : dmtd_phase_meas
     generic map (
       g_counter_bits         => 14,
@@ -876,6 +878,8 @@ begin
     end if;
   end process;
 
+end generate gen_with_dmtd;
+  
   dvalid_tx <= snk_cyc_i and snk_stb_i;
   dvalid_rx <= src_out.cyc and src_out.stb;
 
