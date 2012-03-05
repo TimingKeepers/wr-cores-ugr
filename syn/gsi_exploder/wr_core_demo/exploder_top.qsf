@@ -704,6 +704,7 @@ set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK=00
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK_LENGTH=901" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_LOWORD=41299" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_HIWORD=6785" -section_id auto_signaltap_0
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/sdwb_rom.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_sdwb_crossbar.vhd"
 set_global_assignment -name SDC_FILE ../../../top/gsi_exploder/wr_core_demo/exploder_top.sdc
 set_global_assignment -name VHDL_FILE ../../../top/gsi_exploder/wr_core_demo/spec_serial_dac_arb.vhd

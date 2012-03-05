@@ -653,7 +653,10 @@ begin
     generic map(
       g_num_masters => 3,
       g_num_slaves  => 2,
-      g_registered  => true
+      g_registered  => false,
+      -- Address of the slaves connected
+      g_address     => c_cfg_base_addr,
+      g_mask        => c_cfg_base_mask
       )  
     port map(
       clk_sys_i     => clk_sys_i,
@@ -663,10 +666,7 @@ begin
       slave_o       => cbar_slave_o,
       -- Slave connections (INTERCON is a master)
       master_i      => cbar_master_i,
-      master_o      => cbar_master_o,
-      -- Address of the slaves connected
-      cfg_address_i => c_cfg_base_addr,  --cbar_address,
-      cfg_mask_i    => c_cfg_base_mask   --cbar_mask
+      master_o      => cbar_master_o
       );
 
   cbar_slave_i(2) <= ext_wb_in;
@@ -718,14 +718,15 @@ begin
   -----------------------------------------------------------------------------
   -- WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  WB_SECONDARY_CON : xwb_sdwb_crossbar
+  WB_SECONDARY_CON : xwb_crossbar
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
       g_registered  => true,
+--      g_wraparound  => true,
       g_address     => c_secbar_base_addr,  --cbar_address,
-      g_mask        => c_secbar_base_mask,  --cbar_mask
-      g_sdwb_addr   => x"00000800"
+      g_mask        => c_secbar_base_mask   --cbar_mask
+--      g_sdwb_addr   => x"00000800"
       )
     port map(
       clk_sys_i     => clk_sys_i,
