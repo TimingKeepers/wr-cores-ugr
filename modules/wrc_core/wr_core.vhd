@@ -276,13 +276,13 @@ architecture struct of wr_core is
   --WB Secondary Crossbar
   -----------------------------------------------------------------------------
   constant c_secbar_layout : t_sdwb_device_array(6 downto 0) :=
-    (f_sdwb_set_address(c_xwr_mini_nic_sdwb, x"00000000"),
-     f_sdwb_set_address(c_xwr_endpoint_sdwb, x"00000100"),
-     f_sdwb_set_address(c_xwr_softpll_sdwb,  x"00000200"),
-     f_sdwb_set_address(c_xwr_pps_gen_sdwb,  x"00000300"),
-     f_sdwb_set_address(c_wrc_periph0_sdwb,  x"00000400"),  -- Syscon
-     f_sdwb_set_address(c_wrc_periph1_sdwb,  x"00000500"),  -- UART
-     f_sdwb_set_address(c_wrc_periph2_sdwb,  x"00000600")); -- 1-Wire
+    (0 => f_sdwb_set_address(c_xwr_mini_nic_sdwb, x"00000000"),
+     1 => f_sdwb_set_address(c_xwr_endpoint_sdwb, x"00000100"),
+     2 => f_sdwb_set_address(c_xwr_softpll_sdwb,  x"00000200"),
+     3 => f_sdwb_set_address(c_xwr_pps_gen_sdwb,  x"00000300"),
+     4 => f_sdwb_set_address(c_wrc_periph0_sdwb,  x"00000400"),  -- Syscon
+     5 => f_sdwb_set_address(c_wrc_periph1_sdwb,  x"00000500"),  -- UART
+     6 => f_sdwb_set_address(c_wrc_periph2_sdwb,  x"00000600")); -- 1-Wire
   constant c_secbar_sdwb_address : t_wishbone_address := x"00000800";
 
   signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
