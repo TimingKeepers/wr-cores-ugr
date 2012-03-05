@@ -23,8 +23,8 @@ entity scu_top is
       -----------------------------------------
       -- UART on front panel
       -----------------------------------------
-      uart_rxd_i : in  std_logic;
-      uart_txd_o : out std_logic;
+      uart_rxd_i : in  std_logic_vector(1 downto 0);
+      uart_txd_o : out std_logic_vector(1 downto 0);
 
       serial_to_cb_o : out std_logic;
 
@@ -43,9 +43,14 @@ entity scu_top is
       -----------------------------------------
       lemo_io    : out std_logic_vector(2 downto 1);
       lemo_en_in : out std_logic_vector(2 downto 1);
-      lemo_led   : out std_logic_vector(2 downto 1)
-
-
+      lemo_led   : out std_logic_vector(2 downto 1);
+		
+		LPC_AD			: inout std_logic_vector(3 downto 0);
+		LPC_FPGA_CLK	: in std_logic;
+		LPC_SERIRQ		: in std_logic;
+		nLPC_DRQ0		: in std_logic;
+		nLPC_FRAME		: in std_logic;
+		nPCI_RESET		: in std_logic
       );
 
 end scu_top;
@@ -192,6 +197,31 @@ architecture rtl of scu_top is
       dac_sclk_o  : out std_logic;
       dac_din_o   : out std_logic);
   end component;
+  
+	component lpc_uart is
+	port (
+
+		lpc_clk:			in std_logic;
+		lpc_serirq:		out std_logic;
+		lpc_ad:			inout std_logic_vector(3 downto 0);
+		lpc_frame_n:	in std_logic;
+		lpc_reset_n:	in std_logic;
+		
+		serial_rxd:		in std_logic;
+		serial_txd:		out std_logic;
+		serial_dtr:		out std_logic;
+		serial_dcd:		in std_logic;
+		serial_dsr:		in std_logic;
+		serial_ri:		in std_logic;
+		serial_cts:		in std_logic;
+		serial_rts:		out std_logic;
+		
+		      
+		seven_seg_L:	out std_logic_vector(7 downto 0);    -- SSeg Data output
+		seven_seg_H:	out std_logic_vector(7 downto 0)    -- SSeg Data output  
+	
+	);
+	end component lpc_uart;
 
 
   -- LCLK from GN4124 used as system clock
@@ -259,6 +289,9 @@ architecture rtl of scu_top is
 
   signal clk_reconf : std_logic;
   
+  signal lpc_oe : std_logic;
+  signal lad_o : std_logic_vector(3 downto 0);
+  
 begin
   
   reset : pow_reset
@@ -315,8 +348,8 @@ begin
       btn1_i => '0',
       btn2_i => '0',
 
-      uart_rxd_i => uart_rxd_i,
-      uart_txd_o => uart_txd_o,
+      uart_rxd_i => uart_rxd_i(0),
+      uart_txd_o => uart_txd_o(0),
 
       owr_i => '0',
 
@@ -386,6 +419,31 @@ begin
       rst_n_i    => nreset,
       pulse_i    => pps,
       extended_o => lemo_led(1));
+		
+		
+	lpc_slave: lpc_uart
+		port map (
+						lpc_clk => LPC_FPGA_CLK,
+						lpc_serirq => open,
+						lpc_ad => LPC_AD,
+						lpc_frame_n => nLPC_FRAME,
+						lpc_reset_n => nPCI_RESET,
+		
+						serial_rxd => uart_rxd_i(1),
+						serial_txd => uart_txd_o(1),
+						serial_dtr => open,
+						serial_dcd => '0',
+						serial_dsr => '0',
+						serial_ri => '0',
+						serial_cts => '0',
+						serial_rts => open,
+		
+		      
+						seven_seg_L => open,
+						seven_seg_H => open
+						);
+						
+	--LPC_AD <= lad_o when lpc_oe = '1' else "ZZZZ";
 
   serial_to_cb_o   <= '0';
   wrc_slave_in.cyc <= '0';
@@ -395,6 +453,10 @@ begin
   lemo_en_in <= "00";                   -- configured as output
   lemo_io(1) <= pps;
   lemo_io(2) <= '0';
+
+	--LPC_SERIRQ <= '0';
+	--nLPC_DRQ0 <= '1';
+	
   
 end rtl;
 
