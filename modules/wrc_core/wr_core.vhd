@@ -257,45 +257,6 @@ architecture struct of wr_core is
   signal sysc_out_regs  : t_sysc_out_registers;
 
   -----------------------------------------------------------------------------
-  --WB intercon
-  -----------------------------------------------------------------------------
-  constant c_layout : t_sdwb_device_array(1 downto 0) :=
-   (0 => ( -- CPU I/D-mem
-      wbd_begin     => x"0000000000000000",
-      wbd_end       => x"000000000001ffff", -- 128K
-      sdwb_child    => x"0000000000000000",
-      wbd_flags     => x"01", -- big-endian, no-child, present
-      wbd_width     => x"07", -- 8/16/32-bit port granularity
-      abi_ver_major => x"01",
-      abi_ver_minor => x"01",
-      abi_class     => x"00000001", -- block memory
-      dev_vendor    => x"0000CE42", -- CERN
-      dev_device    => x"262ceba1",
-      dev_version   => x"00000001",
-      dev_date      => x"20120305",
-      description   => "LM32 Block RAM  "),
-    1 => ( -- Peripherals
-      wbd_begin     => x"0000000000020000",
-      wbd_end       => x"0000000000020fff",
-      sdwb_child    => x"0000000000020800",
-      wbd_flags     => x"05", -- big-endian, child, present
-      wbd_width     => x"07", -- 8/16/32-bit port granularity
-      abi_ver_major => x"01",
-      abi_ver_minor => x"01",
-      abi_class     => x"00000000", -- undocumented device
-      dev_vendor    => x"0000CE42", -- CERN
-      dev_device    => x"8ec51bd0",
-      dev_version   => x"00000001",
-      dev_date      => x"20120305",
-      description   => "WR-Peripherals  "));
-  constant c_sdwb_address : t_wishbone_address := x"00030000";
-
-  signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
-  signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
-  signal cbar_master_i : t_wishbone_master_in_array(1 downto 0);
-  signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
-
-  -----------------------------------------------------------------------------
   --WB Secondary Crossbar
   -----------------------------------------------------------------------------
   constant c_secbar_layout : t_sdwb_device_array(6 downto 0) :=
@@ -307,9 +268,24 @@ architecture struct of wr_core is
      5 => f_sdwb_set_address(c_wrc_periph1_sdwb,  x"00000500"),  -- UART
      6 => f_sdwb_set_address(c_wrc_periph2_sdwb,  x"00000600")); -- 1-Wire
   constant c_secbar_sdwb_address : t_wishbone_address := x"00000800";
+  constant c_secbar_bridge_sdwb : t_sdwb_device := 
+     f_xwb_sdwb_crossbar_sdwb(true, c_secbar_layout, c_secbar_sdwb_address);
 
   signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
   signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
+
+  -----------------------------------------------------------------------------
+  --WB intercon
+  -----------------------------------------------------------------------------
+  constant c_layout : t_sdwb_device_array(1 downto 0) :=
+   (0 => f_sdwb_set_address(f_xwb_dpram(g_dpram_size), x"00000000"),
+    1 => f_sdwb_set_address(c_secbar_bridge_sdwb,      x"00020000"));
+  constant c_sdwb_address : t_wishbone_address := x"00030000";
+
+  signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
+  signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
+  signal cbar_master_i : t_wishbone_master_in_array(1 downto 0);
+  signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
 
   -----------------------------------------------------------------------------
   --External WB interface
