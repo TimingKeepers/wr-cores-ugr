@@ -205,8 +205,43 @@ architecture rtl of exploder_top is
       dac_sclk_o  : out std_logic;
       dac_din_o   : out std_logic);
   end component;
+  
+  constant c_xwr_gpio_32_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"000000000000001f",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"04", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"00000651", -- GSI
+    dev_device    => x"35aa6b95",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "GSI_GPIO_32     ");
 
+  -- WR core layout
+  constant c_wrcore_bridge_sdwb : t_sdwb_device := 
+     f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
+  
+  -- Top crossbar layout
+  constant c_slaves : natural := 3;
+  constant c_masters : natural := 1;
+  constant c_test_dpram_size : natural := 2048;
+  constant c_layout : t_sdwb_device_array(c_slaves-1 downto 0) :=
+   (0 => f_sdwb_set_address(f_xwb_dpram(c_test_dpram_size), x"00000000"),
+    1 => f_sdwb_set_address(c_xwr_gpio_32_sdwb,             x"00100000"),
+    2 => f_sdwb_set_address(c_wrcore_bridge_sdwb,           x"00200000"));
+  constant c_sdwb_address : t_wishbone_address := x"00300000";
 
+  signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
+  signal cbar_slave_o  : t_wishbone_slave_out_array(c_masters-1 downto 0);
+  signal cbar_master_i : t_wishbone_master_in_array(c_slaves-1 downto 0);
+  signal cbar_master_o : t_wishbone_master_out_array(c_slaves-1 downto 0);
+  
+  
+  
   -- LCLK from GN4124 used as system clock
   signal l_clk : std_logic;
 
@@ -349,8 +384,8 @@ begin
 
       owr_i => '0',
 
-      slave_i => wrc_slave_in,
-      slave_o => wrc_slave_out,
+      slave_i => cbar_master_o(2),
+      slave_o => cbar_master_i(2),
 
       wrf_src_i => mb_snk_out,
       wrf_src_o => mb_snk_in,
@@ -419,8 +454,26 @@ begin
       pulse_i    => pps,
       extended_o => ext_pps);
 		
-	U_ebone : xetherbone_core
-   
+  test_ram : xwb_dpram
+    generic map(
+      g_size                  => c_test_dpram_size,
+      g_init_file             => "",
+      g_must_have_init_file   => false,
+      g_slave1_interface_mode => PIPELINED,
+      g_slave2_interface_mode => PIPELINED,
+      g_slave1_granularity    => BYTE,
+      g_slave2_granularity    => WORD)  
+    port map(
+      clk_sys_i => l_clkp,
+      rst_n_i   => nreset,
+
+      slave1_i => cbar_master_o(0),
+      slave1_o => cbar_master_i(0),
+      slave2_i => cc_dummy_slave_in,
+      slave2_o => open
+    );
+    
+    U_ebone : xetherbone_core
     port map (
       clk_sys_i => l_clkp,
       rst_n_i   => nreset,
@@ -428,8 +481,8 @@ begin
       src_i     => mb_src_in,
       snk_o     => mb_snk_out,
       snk_i     => mb_snk_in,
-      master_o  => mb_master_out,
-      master_i  => mb_master_in);
+      master_o  => cbar_slave_i(0),
+      master_i  => cbar_slave_o(0));
 
 --  U_GPIO : xwb_gpio_port
 --    generic map (
@@ -446,6 +499,8 @@ begin
 --      gpio_out_o => gpio_out,
 --      gpio_in_i  => x"00000000");
 
+	cbar_master_i(1) <= mb_master_in;
+	mb_master_out <= cbar_master_o(1);
 	gpio : process(l_clkp)
 	begin
 		if rising_edge(l_clkp) then
@@ -461,7 +516,25 @@ begin
 	mb_master_in.stall <= '0';
 	mb_master_in.dat <= std_logic_vector(to_unsigned(0,mb_master_in.dat'length-pio_reg'length)) & pio_reg;
 	
-	-- gpio_out to leds
+  GSI_CON : xwb_sdwb_crossbar
+   generic map(
+     g_num_masters => c_masters,
+     g_num_slaves  => c_slaves,
+     g_registered  => true,
+     g_wraparound  => true,
+     g_layout      => c_layout,
+     g_sdwb_addr   => c_sdwb_address)
+   port map(
+     clk_sys_i     => l_clkp,
+     rst_n_i       => nreset,
+     -- Master connections (INTERCON is a slave)
+     slave_i       => cbar_slave_i,
+     slave_o       => cbar_slave_o,
+     -- Slave connections (INTERCON is a master)
+     master_i      => cbar_master_i,
+     master_o      => cbar_master_o);
+
+-- gpio_out to leds
 	
 	hpv(3) <= not ext_pps;
 		
