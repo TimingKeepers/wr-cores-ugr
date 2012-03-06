@@ -269,7 +269,7 @@ architecture struct of wr_core is
      6 => f_sdwb_set_address(c_wrc_periph2_sdwb,  x"00000600")); -- 1-Wire
   constant c_secbar_sdwb_address : t_wishbone_address := x"00000800";
   constant c_secbar_bridge_sdwb : t_sdwb_device := 
-     f_xwb_sdwb_crossbar_sdwb(true, c_secbar_layout, c_secbar_sdwb_address);
+     f_xwb_bridge_layout_sdwb(true, c_secbar_layout, c_secbar_sdwb_address);
 
   signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
   signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
@@ -646,7 +646,7 @@ begin
     generic map(
       g_num_masters => 3,
       g_num_slaves  => 2,
-      g_registered  => false,
+      g_registered  => true,
       g_wraparound  => true,
       g_layout      => c_layout,
       g_sdwb_addr   => c_sdwb_address
