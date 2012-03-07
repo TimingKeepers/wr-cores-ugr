@@ -10,22 +10,23 @@ package endpoint_pkg is
   component wr_endpoint
     generic (
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-        g_address_granularity : t_wishbone_address_granularity := WORD;
-      g_simulation          : boolean := false;
-      g_tx_force_gap_length : integer := 0;
-      g_pcs_16bit           : boolean := false;
-      g_rx_buffer_size      : integer := 1024;
-      g_with_rx_buffer      : boolean := true;
-      g_with_flow_control   : boolean := true;
-      g_with_timestamper    : boolean := true;
-      g_with_dpi_classifier : boolean := false;
-      g_with_vlans          : boolean := false;
-      g_with_rtu            : boolean := false;
-      g_with_leds           : boolean := false);
+      g_address_granularity : t_wishbone_address_granularity := WORD;
+      g_simulation          : boolean                        := false;
+      g_tx_force_gap_length : integer                        := 0;
+      g_pcs_16bit           : boolean                        := false;
+      g_rx_buffer_size      : integer                        := 1024;
+      g_with_rx_buffer      : boolean                        := true;
+      g_with_flow_control   : boolean                        := true;
+      g_with_timestamper    : boolean                        := true;
+      g_with_dpi_classifier : boolean                        := false;
+      g_with_vlans          : boolean                        := false;
+      g_with_rtu            : boolean                        := false;
+      g_with_leds           : boolean                        := false;
+      g_with_dmtd           : boolean                        := false);
     port (
       clk_ref_i          : in  std_logic;
       clk_sys_i          : in  std_logic;
-      clk_dmtd_i : in std_logic := '0';
+      clk_dmtd_i         : in  std_logic                     := '0';
       rst_n_i            : in  std_logic;
       pps_csync_p1_i     : in  std_logic                     := '0';
       phy_rst_o          : out std_logic;
@@ -49,7 +50,7 @@ package endpoint_pkg is
       gmii_rx_clk_i      : in  std_logic                     := '0';
       gmii_rxd_i         : in  std_logic_vector(7 downto 0)  := x"00";
       gmii_rx_er_i       : in  std_logic                     := '0';
-      gmii_rx_dv_i       : in  std_logic := '0';
+      gmii_rx_dv_i       : in  std_logic                     := '0';
       src_dat_o          : out std_logic_vector(15 downto 0);
       src_adr_o          : out std_logic_vector(1 downto 0);
       src_sel_o          : out std_logic_vector(1 downto 0);
@@ -91,7 +92,7 @@ package endpoint_pkg is
       wb_dat_i           : in  std_logic_vector(31 downto 0);
       wb_dat_o           : out std_logic_vector(31 downto 0);
       wb_ack_o           : out std_logic;
-      wb_stall_o: out std_logic;
+      wb_stall_o         : out std_logic;
       led_link_o         : out std_logic;
       led_act_o          : out std_logic);
   end component;
@@ -100,21 +101,22 @@ package endpoint_pkg is
     generic (
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity : t_wishbone_address_granularity := WORD;
-      g_simulation          : boolean := false;
-      g_pcs_16bit           : boolean := false;
-      g_tx_force_gap_length : integer := 0;
-      g_rx_buffer_size      : integer := 1024;
-      g_with_rx_buffer      : boolean := true;
-      g_with_flow_control   : boolean := true;
-      g_with_timestamper    : boolean := true;
-      g_with_dpi_classifier : boolean := false;
-      g_with_vlans          : boolean := false;
-      g_with_rtu            : boolean := false;
-      g_with_leds           : boolean := false);
+      g_simulation          : boolean                        := false;
+      g_pcs_16bit           : boolean                        := false;
+      g_tx_force_gap_length : integer                        := 0;
+      g_rx_buffer_size      : integer                        := 1024;
+      g_with_rx_buffer      : boolean                        := true;
+      g_with_flow_control   : boolean                        := true;
+      g_with_timestamper    : boolean                        := true;
+      g_with_dpi_classifier : boolean                        := false;
+      g_with_vlans          : boolean                        := false;
+      g_with_rtu            : boolean                        := false;
+      g_with_leds           : boolean                        := false;
+      g_with_dmtd           : boolean                        := false);
     port (
       clk_ref_i          : in  std_logic;
       clk_sys_i          : in  std_logic;
-      clk_dmtd_i: in std_logic := '0';
+      clk_dmtd_i         : in  std_logic                    := '0';
       rst_n_i            : in  std_logic;
       pps_csync_p1_i     : in  std_logic                    := '0';
       phy_rst_o          : out std_logic;
@@ -157,8 +159,8 @@ package endpoint_pkg is
       rtu_rq_has_vid_o   : out std_logic;
       rtu_rq_prio_o      : out std_logic_vector(3 - 1 downto 0);
       rtu_rq_has_prio_o  : out std_logic;
-      wb_i               : in    t_wishbone_slave_in;
-      wb_o               : out    t_wishbone_slave_out;
+      wb_i               : in  t_wishbone_slave_in;
+      wb_o               : out t_wishbone_slave_out;
       led_link_o         : out std_logic;
       led_act_o          : out std_logic);
   end component;

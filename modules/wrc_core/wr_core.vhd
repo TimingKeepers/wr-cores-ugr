@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-02-28
+-- Last update: 2012-03-07
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -471,7 +471,8 @@ begin
       g_with_dpi_classifier => true,
       g_with_vlans          => false,
       g_with_rtu            => false,
-      g_with_leds           => false)
+      g_with_leds           => false,
+      g_with_dmtd           => true)
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,

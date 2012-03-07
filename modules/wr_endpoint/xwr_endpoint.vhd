@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-01-23
+-- Last update: 2012-03-07
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -31,17 +31,18 @@ entity xwr_endpoint is
   generic (
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD;
-    g_simulation          : boolean := false;
-    g_tx_force_gap_length : integer := 0;
-    g_pcs_16bit           : boolean := false;
-    g_rx_buffer_size      : integer := 1024;
-    g_with_rx_buffer      : boolean := true;
-    g_with_flow_control   : boolean := true;
-    g_with_timestamper    : boolean := true;
-    g_with_dpi_classifier : boolean := true;
-    g_with_vlans          : boolean := true;
-    g_with_rtu            : boolean := true;
-    g_with_leds           : boolean := true
+    g_simulation          : boolean                        := false;
+    g_tx_force_gap_length : integer                        := 0;
+    g_pcs_16bit           : boolean                        := false;
+    g_rx_buffer_size      : integer                        := 1024;
+    g_with_rx_buffer      : boolean                        := true;
+    g_with_flow_control   : boolean                        := true;
+    g_with_timestamper    : boolean                        := true;
+    g_with_dpi_classifier : boolean                        := true;
+    g_with_vlans          : boolean                        := true;
+    g_with_rtu            : boolean                        := true;
+    g_with_leds           : boolean                        := true;
+    g_with_dmtd           : boolean                        := true
     );
   port (
 
@@ -55,8 +56,8 @@ entity xwr_endpoint is
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
     clk_sys_i : in std_logic;
 
-    clk_dmtd_i: in std_logic;
-    
+    clk_dmtd_i : in std_logic;
+
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
 
@@ -93,21 +94,21 @@ entity xwr_endpoint is
     gmii_tx_en_o  : out std_logic;
     gmii_tx_er_o  : out std_logic;
 
-    gmii_rx_clk_i : in std_logic := '0';
+    gmii_rx_clk_i : in std_logic                    := '0';
     gmii_rxd_i    : in std_logic_vector(7 downto 0) := x"00";
-    gmii_rx_er_i  : in std_logic := '0';
-    gmii_rx_dv_i  : in std_logic := '0';
+    gmii_rx_er_i  : in std_logic                    := '0';
+    gmii_rx_dv_i  : in std_logic                    := '0';
 
     ---------------------------------------------------------------------------
     -- Wishbone I/O
     ---------------------------------------------------------------------------
 
-    src_o: out t_wrf_source_out;
-    src_i: in t_wrf_source_in;
+    src_o : out t_wrf_source_out;
+    src_i : in  t_wrf_source_in;
 
-    snk_o: out t_wrf_sink_out;
-    snk_i: in t_wrf_sink_in;
-    
+    snk_o : out t_wrf_sink_out;
+    snk_i : in  t_wrf_sink_in;
+
 -------------------------------------------------------------------------------
 -- TX timestamping unit interface
 -------------------------------------------------------------------------------  
@@ -132,10 +133,10 @@ entity xwr_endpoint is
 -------------------------------------------------------------------------------
 
 -- 1 indicates that coresponding RTU port is full.
-    rtu_full_i : in std_logic:='0';
+    rtu_full_i : in std_logic := '0';
 
 -- 1 indicates that coresponding RTU port is almost full.
-    rtu_almost_full_i : in std_logic:='0';
+    rtu_almost_full_i : in std_logic := '0';
 
 -- request strobe, single HI pulse begins evaluation of the request. 
     rtu_rq_strobe_p1_o : out std_logic;
@@ -161,30 +162,30 @@ entity xwr_endpoint is
 -- Wishbone bus
 -------------------------------------------------------------------------------
 
-  wb_i: in t_wishbone_slave_in;
-  wb_o: out t_wishbone_slave_out;
-  
+  wb_i : in  t_wishbone_slave_in;
+  wb_o : out t_wishbone_slave_out;
+
 -------------------------------------------------------------------------------
 -- Misc stuff
 -------------------------------------------------------------------------------
 
-  led_link_o: out std_logic;
-  led_act_o: out std_logic
+  led_link_o : out std_logic;
+  led_act_o  : out std_logic
 
     );
 
 end xwr_endpoint;
 
 architecture syn of xwr_endpoint is
-  
+
 begin
 
-  U_Wrapped_Endpoint: wr_endpoint
+  U_Wrapped_Endpoint : wr_endpoint
     generic map (
-      g_interface_mode => g_interface_mode,
+      g_interface_mode      => g_interface_mode,
       g_address_granularity => g_address_granularity,
       g_tx_force_gap_length => g_tx_force_gap_length,
-      
+
       g_simulation          => g_simulation,
       g_pcs_16bit           => g_pcs_16bit,
       g_rx_buffer_size      => g_rx_buffer_size,
@@ -194,11 +195,12 @@ begin
       g_with_dpi_classifier => g_with_dpi_classifier,
       g_with_vlans          => g_with_vlans,
       g_with_rtu            => g_with_rtu,
-      g_with_leds           => g_with_leds)
+      g_with_leds           => g_with_leds,
+      g_with_dmtd           => g_with_dmtd)
     port map (
       clk_ref_i          => clk_ref_i,
       clk_sys_i          => clk_sys_i,
-      clk_dmtd_i => clk_dmtd_i,
+      clk_dmtd_i         => clk_dmtd_i,
       rst_n_i            => rst_n_i,
       pps_csync_p1_i     => pps_csync_p1_i,
       phy_rst_o          => phy_rst_o,
@@ -264,10 +266,10 @@ begin
       wb_dat_i           => wb_i.dat,
       wb_dat_o           => wb_o.dat,
       wb_ack_o           => wb_o.ack,
-      wb_stall_o => wb_o.stall,
+      wb_stall_o         => wb_o.stall,
       led_link_o         => led_link_o,
       led_act_o          => led_act_o);
-  
+
 end syn;
 
 
