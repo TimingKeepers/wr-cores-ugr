@@ -58,10 +58,11 @@ architecture behavioral of ep_rx_wb_master is
   signal tmp_sel : std_logic;
   signal tmp_dat : std_logic_vector(15 downto 0);
   signal tmp_adr : std_logic_vector(1 downto 0);
+ signal enter_idle: std_logic;
 
 begin  -- behavioral
   
-  snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0' and snk_fab_i.sof = '0') else '0';
+  snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0' and snk_fab_i.sof = '0' and enter_idle = '0') else '0';
 
   p_count_acks : process(clk_sys_i)
   begin
@@ -89,10 +90,11 @@ begin  -- behavioral
         src_out_int.we  <= '1';
         src_out_int.adr <= c_WRF_DATA;
         src_out_int.cyc <= '0';
-        
+        enter_idle <= '1';
       else
         case state is
           when IDLE =>
+enter_idle <= '0';
             src_out_int.adr <= snk_fab_i.addr;
             src_out_int.dat <= snk_fab_i.data;
 
@@ -113,6 +115,7 @@ begin  -- behavioral
 
             if(src_wb_i.err = '1') then
               state <= IDLE;
+	    enter_idle <= '1';
               src_out_int.cyc <= '0';
               src_out_int.stb <= '0';
             elsif(snk_fab_i.error = '1') then
@@ -134,6 +137,7 @@ begin  -- behavioral
           when FLUSH_STALL =>
             if(src_wb_i.err = '1') then
               state <= IDLE;
+enter_idle <= '1';
               src_out_int.cyc <= '0';
               src_out_int.stb <= '0';
             elsif(src_wb_i.stall = '0') then
@@ -147,7 +151,8 @@ begin  -- behavioral
 
           when THROW_ERROR =>
             if(src_wb_i.err = '1') then
-              state <= IDLE;
+	      enter_idle <= '1';
+ state <= IDLE;
               src_out_int.cyc <= '0';
               src_out_int.stb <= '0';
             elsif(src_wb_i.stall = '0') then
@@ -166,6 +171,7 @@ begin  -- behavioral
 
             if(((ack_count = 0) or g_ignore_ack) and src_out_int.stb = '0') then
               src_out_int.cyc <= '0';
+enter_idle <= '1';
               state           <= IDLE;
             end if;
           when others => null;
