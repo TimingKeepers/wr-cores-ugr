@@ -21,6 +21,16 @@ virtual class CWishboneAccessor extends CBusAccessor;
    virtual function automatic int poll();
       return 0;
    endfunction // poll
+   
+   // ML stuff [slave only]
+   virtual function automatic int  permanent_stall_enable();
+     $display("CWisboneAccessor: permanent_stall: ON");
+   endfunction;
+
+   // ML stuff [slave only]
+   virtual function automatic int  permanent_stall_disable();
+     $display("CWisboneAccessor: permanent_stall: OFF");
+   endfunction;
 
    // [slave only] adds a simulation event (e.g. a forced STALL, RETRY, ERROR)
    // evt = event type (STALL, ERROR, RETRY)

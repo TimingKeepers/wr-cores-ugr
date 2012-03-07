@@ -21,6 +21,13 @@ class WBPacketSink extends EthPacketSink;
       return m_acc.poll();
       endfunction // poll
 
+   function int permanent_stall_enable();
+     return m_acc.permanent_stall_enable();
+   endfunction  
+   function int permanent_stall_disable();
+     return m_acc.permanent_stall_disable();
+   endfunction  
+
    protected task decode_status(uint64_t stat, ref EthPacket pkt);
       if(stat & 'h2)
        pkt.error      = 1'b1;

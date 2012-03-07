@@ -63,8 +63,11 @@ interface IWishboneSlave
       real stall_prob;
    } settings;
 
+   int permanent_stall = 0;
 
    function automatic int _poll(); return poll(); endfunction
+   function automatic int _permanent_stall_enable();  return permanent_stall_enable(); endfunction
+   function automatic int _permanent_stall_disable(); return permanent_stall_disable(); endfunction
    task automatic _get(ref wb_cycle_t xfer); get(xfer); endtask
 
    class CIWBSlaveAccessor extends CWishboneAccessor;
@@ -72,7 +75,15 @@ interface IWishboneSlave
       function automatic int poll();
          return _poll();
       endfunction
-      
+
+      function automatic int permanent_stall_enable();
+         return _permanent_stall_enable();
+      endfunction
+
+      function automatic int permanent_stall_disable();
+         return _permanent_stall_disable();
+      endfunction     
+  
       task get(ref wb_cycle_t xfer);
          _get(xfer);
       endtask
@@ -88,7 +99,18 @@ interface IWishboneSlave
       tmp  = new;
       return tmp;
    endfunction // get_accessor
-      
+     
+   function automatic int permanent_stall_enable();
+      permanent_stall = 1;
+      $display("permanent stall ON");
+      return permanent_stall;
+   endfunction
+
+   function automatic int permanent_stall_disable();
+      permanent_stall = 0;
+      $display("permanent stall OFF");
+      return permanent_stall;
+   endfunction 
    
    function automatic int poll();
       return c_queue.size() != 0;
@@ -152,7 +174,10 @@ interface IWishboneSlave
    
    task pipelined_fsm();
 
-      if(settings.gen_random_stalls)
+      // ML
+      if(permanent_stall)
+	stall               <= 1;
+      else if(settings.gen_random_stalls)
 	gen_random_stalls();
       else
         stall               <= 0;
