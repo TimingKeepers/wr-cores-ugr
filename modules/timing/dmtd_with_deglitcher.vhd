@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2011-10-29
+-- Last update: 2012-03-06
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ entity dmtd_with_deglitcher is
     -- the following formula:
     -- g_counter_bits = log2(f_in / abs(f_in - f_dmtd)) + 1
     g_counter_bits : natural := 17;
-    g_chipscope: boolean := false
+    g_chipscope    : boolean := false
     );
   port (
     -- resets for different clock domains
@@ -79,6 +79,13 @@ entity dmtd_with_deglitcher is
 
     -- [clk_dmtd_i] phase shift direction: 1 - forward, 0 - backward
     shift_dir_i : in std_logic;
+
+    -- DMTD clock enable, active high. Can be used to reduce the DMTD sampling
+    -- frequency - for example, two 10 MHz signals cannot be sampled directly
+    -- with a 125 MHz clock, but it's possible with a 5 MHz reference, obtained
+    -- by asserting clk_dmtd_en_i every 25 clk_dmtd_i cycles.
+
+    clk_dmtd_en_i : in std_logic := '1';
 
     -- [clk_dmtd_i] deglitcher threshold
     deglitch_threshold_i : in std_logic_vector(15 downto 0);
@@ -113,7 +120,7 @@ architecture rtl of dmtd_with_deglitcher is
   --attribute keep of clk_i_d1: signal is “true”;
   --attribute keep of clk_i_d2: signal is “true”;
   --attribute keep of clk_i_d3: signal is “true”;
-  
+
   signal clk_i_d0, clk_i_d1, clk_i_d2, clk_i_d3 : std_logic;
 
   signal new_edge_sreg : std_logic_vector(5 downto 0);
@@ -167,8 +174,8 @@ begin  -- rtl
         state         <= WAIT_STABLE_0;
         free_cntr     <= (others => '0');
         new_edge_sreg <= (others => '0');
-      else
-
+      elsif(clk_dmtd_en_i = '1') then
+        
         if (shift_en_i = '0') then      -- phase shifter
           free_cntr <= free_cntr + 1;
         elsif (shift_dir_i = '1') then
@@ -192,8 +199,8 @@ begin  -- rtl
 
           when WAIT_EDGE =>
             if (clk_i_d3 /= '0') then   -- got a glitch?
-              state   <= GOT_EDGE;
-              tag_int <= free_cntr;
+              state     <= GOT_EDGE;
+              tag_int   <= free_cntr;
               stab_cntr <= (others => '0');
             end if;
 
@@ -202,18 +209,18 @@ begin  -- rtl
               tag_int <= tag_int + 1;
             end if;
 
-             if stab_cntr = unsigned(deglitch_threshold_i) then
+            if stab_cntr = unsigned(deglitch_threshold_i) then
               state         <= WAIT_STABLE_0;
               tag_o         <= std_logic_vector(tag_int);
               new_edge_sreg <= (others => '1');
-              stab_cntr <= (others => '0');
+              stab_cntr     <= (others => '0');
             elsif (clk_i_d3 = '0') then
               stab_cntr <= (others => '0');
             else
               stab_cntr <= stab_cntr + 1;
             end if;
 
-          
+            
         end case;
       end if;
     end if;
@@ -230,9 +237,9 @@ begin  -- rtl
       npulse_o => open,
       ppulse_o => new_edge_p);
 
-  tag_stb_p1_o   <= new_edge_p;
+  tag_stb_p1_o <= new_edge_p;
 
-  gc_extend_pulse_1: gc_extend_pulse
+  gc_extend_pulse_1 : gc_extend_pulse
     generic map (
       g_width => 3000)
     port map (
@@ -241,30 +248,30 @@ begin  -- rtl
       pulse_i    => new_edge_p,
       extended_o => dbg_dmtdout_o);
 
-gen_with_csc:  if(g_chipscope) generate
+  gen_with_csc : if(g_chipscope) generate
 
-  chipscope_ila_1 : chipscope_ila
-    port map (
-      CONTROL => CONTROL,
-      CLK     => clk_dmtd_i,
-      TRIG0   => TRIG0,
-      TRIG1   => TRIG1,
-      TRIG2   => TRIG2,
-      TRIG3   => TRIG3);
+    chipscope_ila_1 : chipscope_ila
+      port map (
+        CONTROL => CONTROL,
+        CLK     => clk_dmtd_i,
+        TRIG0   => TRIG0,
+        TRIG1   => TRIG1,
+        TRIG2   => TRIG2,
+        TRIG3   => TRIG3);
 
-  chipscope_icon_1 : chipscope_icon
-    port map (
-      CONTROL0 => CONTROL);
+    chipscope_icon_1 : chipscope_icon
+      port map (
+        CONTROL0 => CONTROL);
 
-  
-  TRIG0(tag_int'left downto 0) <= std_logic_vector(tag_int);
-  TRIG0(31) <=clk_i_d3;
-  TRIG0(30) <= '1' when (state = WAIT_STABLE_0) else '0';
-  TRIG0(29) <= '1' when (state = WAIT_EDGE) else '0';
-  TRIG0(28) <= '1' when (state = GOT_EDGE) else '0';
-  TRIG1(stab_cntr'left downto 0) <= std_logic_vector(stab_cntr);
-  TRIG2(free_cntr'left downto 0) <= std_logic_vector(free_cntr);
+    
+    TRIG0(tag_int'left downto 0)   <= std_logic_vector(tag_int);
+    TRIG0(31)                      <= clk_i_d3;
+    TRIG0(30)                      <= '1' when (state = WAIT_STABLE_0) else '0';
+    TRIG0(29)                      <= '1' when (state = WAIT_EDGE)     else '0';
+    TRIG0(28)                      <= '1' when (state = GOT_EDGE)      else '0';
+    TRIG1(stab_cntr'left downto 0) <= std_logic_vector(stab_cntr);
+    TRIG2(free_cntr'left downto 0) <= std_logic_vector(free_cntr);
 
-end generate gen_with_csc;
+  end generate gen_with_csc;
   
 end rtl;
