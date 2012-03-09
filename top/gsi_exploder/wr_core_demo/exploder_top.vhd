@@ -9,7 +9,7 @@ use work.wr_fabric_pkg.all;
 
 library work;
 use work.wishbone_pkg.all;
-
+use work.wb_cores_pkg_gsi.all;
 
 entity exploder_top is
   port
@@ -226,13 +226,14 @@ architecture rtl of exploder_top is
      f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
   
   -- Top crossbar layout
-  constant c_slaves : natural := 3;
+  constant c_slaves : natural := 4;
   constant c_masters : natural := 1;
   constant c_test_dpram_size : natural := 2048;
   constant c_layout : t_sdwb_device_array(c_slaves-1 downto 0) :=
    (0 => f_sdwb_set_address(f_xwb_dpram(c_test_dpram_size), x"00000000"),
     1 => f_sdwb_set_address(c_xwr_gpio_32_sdwb,             x"00100000"),
-    2 => f_sdwb_set_address(c_wrcore_bridge_sdwb,           x"00200000"));
+    2 => f_sdwb_set_address(c_xwr_wb_timestamp_latch_sdwb,  x"00180000"),
+    3 => f_sdwb_set_address(c_wrcore_bridge_sdwb,           x"00200000"));
   constant c_sdwb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
@@ -320,6 +321,9 @@ architecture rtl of exploder_top is
   signal pio_reg:	std_logic_vector(3 downto 0);
   signal ext_pps: std_logic;
   
+  signal tm_utc    : std_logic_vector(39 downto 0);
+  signal tm_cycles : std_logic_vector(27 downto 0);
+
 begin
   
   reset : pow_reset
@@ -372,8 +376,8 @@ begin
       phy_loopen_o       => phy_loopen,
 
 		
-		led_green_o => led_green,
-		led_red_o => led_red,
+      led_green_o => led_green,
+      led_red_o => led_red,
       scl_i  => '0',
       sda_i  => '0',
       btn1_i => '0',
@@ -384,8 +388,8 @@ begin
 
       owr_i => '0',
 
-      slave_i => cbar_master_o(2),
-      slave_o => cbar_master_i(2),
+      slave_i => cbar_master_o(3),
+      slave_o => cbar_master_i(3),
 
       wrf_src_i => mb_snk_out,
       wrf_src_o => mb_snk_in,
@@ -399,7 +403,10 @@ begin
       dac_hpll_data_o    => dac_hpll_data,
 
       dac_dpll_load_p1_o => dac_dpll_load_p1,
-      dac_dpll_data_o    => dac_dpll_data
+      dac_dpll_data_o    => dac_dpll_data,
+      
+      tm_utc_o    => tm_utc,
+      tm_cycles_o => tm_cycles
       );
 
   wr_gxb_phy_arriaii_1 : wr_gxb_phy_arriaii
@@ -473,7 +480,7 @@ begin
       slave2_o => open
     );
     
-    U_ebone : xetherbone_core
+  U_ebone : xetherbone_core
     port map (
       clk_sys_i => l_clkp,
       rst_n_i   => nreset,
@@ -483,7 +490,23 @@ begin
       snk_i     => mb_snk_in,
       master_o  => cbar_slave_i(0),
       master_i  => cbar_slave_o(0));
-
+    
+  TLU : wb_timestamp_latch
+    generic map (
+      g_num_triggers => 1,
+      g_fifo_depth   => 4)
+    port map (
+      ref_clk_i       => clk_125m_pllref_p,
+      sys_clk_i       => l_clkp,
+      nRSt_i          => nreset,
+      triggers_i      => (others => '0'),
+      tm_time_valid_i => '0',
+      tm_utc_i        => tm_utc,
+      tm_cycles_i     => tm_cycles,
+      pps_p_i         => '0',
+      wb_slave_i      => cbar_master_o(2),
+      wb_slave_o      => cbar_master_i(2));
+      
 --  U_GPIO : xwb_gpio_port
 --    generic map (
 --      g_interface_mode         => CLASSIC,
