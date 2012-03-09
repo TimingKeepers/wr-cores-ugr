@@ -4,15 +4,12 @@ use ieee.numeric_std.all;
 
 entity lpc_uart is
 	port (
-		--clk_50:			in std_logic;
-		--clk_100:		out std_logic;
-		
-		lpc_clk:		in std_logic;
-		lpc_serirq:		out std_logic;
+		lpc_clk:			in std_logic;
+		lpc_serirq:		inout std_logic;
 		lpc_ad:			inout std_logic_vector(3 downto 0);
 		lpc_frame_n:	in std_logic;
 		lpc_reset_n:	in std_logic;
-		
+
 		serial_rxd:		in std_logic;
 		serial_txd:		out std_logic;
 		serial_dtr:		out std_logic;
@@ -126,6 +123,17 @@ architecture lpc_uart_arch of lpc_uart is
 	);
 	END component;
 	
+	component serirq_slave is
+	port (
+			clk_i : in std_logic;
+			nrst_i : in std_logic;
+         irq_i : in std_logic_vector(31 downto 0);
+         serirq_o : out std_logic;
+			serirq_i : in std_logic;
+			serirq_oe : out std_logic
+	);
+	end component;
+	
 	constant uart_base_addr:	unsigned(15 downto 0) := x"03F8";
    
 	signal io_addr:			std_logic_vector(15 downto 0);
@@ -146,12 +154,21 @@ architecture lpc_uart_arch of lpc_uart is
 	signal lad_oe:		std_logic;
 	signal io_data_valid:	std_logic;
 	signal rst:	std_logic;
+	
+	signal serirq_i: std_logic;
+	signal serirq_o: std_logic;
+	signal serirq_oe: std_logic;
+	signal irq_vector: std_logic_vector(31 downto 0);
+	signal uart_int: std_logic;
    
 begin
 
 	rst <= not lpc_reset_n;
 	s_wr_en <= io_bus_we and io_data_valid;
 	s_rd_en <= not io_bus_we and io_data_valid;
+	
+	
+	irq_vector <= x"FFFFFF" & "111" & not uart_int & "1111";	-- IRQ4 is IRQ frame 4 on CA945
 	
 	decoder: lpc_peripheral port map (
 		clk_i => lpc_clk,
@@ -178,9 +195,6 @@ begin
 	pcode: postcode port map (
 	
 		lclk => lpc_clk,
-		--pdata_valid => s_paddr_valid,
-		--paddr_valid => s_pdata_valid,
-		
 		data_valid => io_data_valid,
 		paddr => io_addr,
 		pdata => io_to_slave,
@@ -201,7 +215,7 @@ begin
 		din => io_to_slave,
 		dout => io_from_slave,
 		ddis => open,
-		int => open,
+		int => uart_int,
 		out1n => open,
 		out2n => open,
 		rclk => s_baudout,
@@ -216,8 +230,17 @@ begin
 		sout => serial_txd
 	);
 	
+	serirq: serirq_slave port map (
+			clk_i => lpc_clk,
+			nrst_i => lpc_reset_n,
+			irq_i => irq_vector,
+         serirq_o => serirq_o,
+			serirq_i =>  serirq_i,
+			serirq_oe => serirq_oe
+		);
 	
-	tri_state: process (lad_oe)
+	
+	tri_lad: process (lad_oe)
 	begin
 		if lad_oe = '1' then
 			lpc_ad <= s_lad_o;
@@ -227,6 +250,21 @@ begin
 	end process;
 	
 	s_lad_i <= lpc_ad;
+	
+	
+	tri_serirq: process (serirq_oe)
+	begin
+		if serirq_oe = '1' then
+			lpc_serirq <= serirq_o;
+		else
+			lpc_serirq <= 'Z';
+		end if;
+	end process;
+	
+	serirq_i <= lpc_serirq;
+	
+	
+	
 	
 	uart_addr_deco:	process (lpc_clk, io_addr)
 	begin

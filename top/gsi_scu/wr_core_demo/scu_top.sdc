@@ -9,3 +9,4 @@ create_clock -period 125Mhz -name clk_125m_pllref_p [get_ports {clk_125m_pllref_
 create_clock -period 125Mhz -name L_CLKp [get_ports {L_CLKp}]
 create_clock -period 125Mhz -name F_PLL_6p [get_ports {F_PLL_6p}]
 create_clock -period 20Mhz -name clk_20m_vcxo_i [get_ports {clk_20m_vcxo_i}]
+create_clock -period 33Mhz -name LPC_FPGA_CLK [get_ports {LPC_FPGA_CLK}]

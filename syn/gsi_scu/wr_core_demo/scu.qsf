@@ -132,14 +132,12 @@ set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_RAM_BLOCK_TYPE=M9
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_INFO=805334528" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_POWER_UP_TRIGGER=0" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_STORAGE_QUALIFIER_INVERSION_MASK_LENGTH=0" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_SEGMENT_SIZE=4096" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_ATTRIBUTE_MEM_MODE=OFF" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_STATE_FLOW_USE_GENERATED=0" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_STATE_BITS=11" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_BUFFER_FULL_STOP=1" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_CURRENT_RESOURCE_WIDTH=1" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_LEVEL=1" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_SAMPLE_DEPTH=4096" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_IN_ENABLED=0" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_ADVANCED_TRIGGER_ENTITY=basic,1," -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_LEVEL_PIPELINE=1" -section_id auto_signaltap_0
@@ -160,189 +158,6 @@ set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[4] -to
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[5] -to LPC_SERIRQ -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[6] -to dac_din -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[7] -to dac_sclk -section_id auto_signaltap_0
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/postcode.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_transmitter.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_receiver.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_interrupt.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_baudgen.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_16750.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_mv_filter.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_input_sync.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_fifo.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_edge_detect.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_counter.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_clock_div.vhd
-set_global_assignment -name SDC_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.sdc
-set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/pow_reset.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/genram_pkg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wishbone_pkg.vhd"
-set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_source.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/dec_8b10b.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/enc_8b10b.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gencores_pkg.vhd"
-set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/disparity_gen_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/timing/dmtd_phase_meas.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/timing/dmtd_with_deglitcher.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/timing/multi_dmtd_with_deglitcher.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/timing/hpll_period_detect.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_packet_buffer.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_pkg.vhd"
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wbgen2_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/xwr_mini_nic.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll/softpll_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll/wr_softpll.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll/xwr_softpll.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_registers_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/endpoint_private_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_pcs_8bit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_pcs_16bit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_16bit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_autonegotiation.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_pcs_tbi_mdio_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_1000basex_pcs.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_crc_size_check.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_bypass_queue.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_path.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_wb_master.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_oob_insert.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_early_address_match.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_clock_alignment_fifo.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_framer.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_packet_filter.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_vlan_unit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_ts_counter.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_status_reg_insert.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_timestamping_unit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_leds_controller.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rtu_header_extract.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_buffer.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_sync_detect.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_sync_detect_16bit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_wishbone_controller.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_8bit.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/endpoint_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/wr_endpoint.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/xwr_endpoint.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_pps_gen/pps_gen_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_pps_gen/wr_pps_gen.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_pps_gen/xwr_pps_gen.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrcore_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wr_core.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_dpram.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/exploder_ng.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_periph.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wb_reset.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wbp_mux.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_core.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_syscon_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/altgx_reconf.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/arria_phy.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/wr_gxb_phy_arriaii.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/wr_tbi_phy.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_crc_gen.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_moving_average.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_extend_pulse.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_delay_gen.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_dual_pi_controller.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_serial_dac.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_sync_ffs.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_pulse_synchronizer.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_frequency_meter.vhd"
-set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_sink.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/memory_loader_pkg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/generic_shiftreg_fifo.vhd"
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/wr_mini_nic.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_async_fifo.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_dpram.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_spram.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_sync_fifo.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_async_bridge/wb_async_bridge.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_async_bridge/xwb_async_bridge.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_onewire_master/wb_onewire_master.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_onewire_master/xwb_onewire_master.vhd"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_onewire_master/sockit_owm.v"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/i2c_master_bit_ctrl.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/i2c_master_byte_ctrl.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/i2c_master_top.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/wb_i2c_master.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/xwb_i2c_master.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_bus_fanout/xwb_bus_fanout.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_dpram/xwb_dpram.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_gpio_port/wb_gpio_port.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_gpio_port/xwb_gpio_port.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_simple_timer/wb_tics.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_simple_timer/xwb_tics.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_async_rx.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_async_tx.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_baud_gen.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_pkg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_wb.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/wb_simple_uart.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/xwb_simple_uart.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/vic_prio_enc.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/wb_slave_vic.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/wb_vic.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/xwb_vic.vhd"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_clgen.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_shift.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_top.v"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/wb_spi.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/xwb_spi.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_crossbar.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/generated/xwb_lm32.vhd"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/generated/lm32_allprofiles.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_mc_arithmetic.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/jtag_cores.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_adder.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_addsub.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_dp_ram.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_logic_op.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_ram.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_shifter.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/platform/generic/lm32_multiplier.v"
-set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/platform/altera/jtag_tap.v"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_slave_adapter/wb_slave_adapter.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xloader_registers_pkg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xwb_xilinx_fpga_loader.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/wb_xilinx_fpga_loader.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xloader_wb.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_dpssram.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_eic.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_fifo_async.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_fifo_sync.vhd"
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wb_slave.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/mini_bone/mini_bone.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/mini_bone/xmini_bone.vhd
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/alt_FIFO_am_full_flag.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_HDR_pkg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_checksum.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/wishbone_package32.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/wishbone_package16.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_2_wb_converter.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_RX_CTRL.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_TX_CTRL.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/piso_flag.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/vhdl_2008_workaround_pkg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/sipo_flag.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/WB_bus_adapter_streaming_sg.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_CORE.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/eb_config_new.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/xetherbone_core.vhd"
-set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/sys_pll/sys_pll.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_etherbone.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/dmtd_clk_pll/dmtd_clk_pll.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/spec_serial_dac_arb.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/spec_serial_dac.vhd
-set_global_assignment -name SIGNALTAP_FILE lpc.stp
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_decoder.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_peripheral.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_uart.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_input_filter.vhd
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[8] -to "lpc_uart:lpc_slave|lpc_peripheral:decoder|dat_cnt[0]" -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[9] -to "lpc_uart:lpc_slave|lpc_peripheral:decoder|dat_cnt[1]" -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[10] -to "lpc_uart:lpc_slave|lpc_peripheral:decoder|dat_cnt[2]" -section_id auto_signaltap_0
@@ -557,94 +372,601 @@ set_location_assignment PIN_AD12 -to uart_rxd_i[1]
 set_location_assignment PIN_Y12 -to uart_txd_o[1]
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[113] -to "lpc_uart:lpc_slave|serial_rxd" -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[114] -to "lpc_uart:lpc_slave|serial_txd" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[115] -to "lpc_uart:lpc_slave|uart_16750:uart|RD" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[116] -to "lpc_uart:lpc_slave|uart_16750:uart|RST" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[117] -to "lpc_uart:lpc_slave|uart_16750:uart|WR" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[118] -to nLPC_DRQ0 -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[119] -to nLPC_FRAME -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[120] -to ndac_cs[1] -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[121] -to ndac_cs[2] -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[122] -to "spec_serial_dac_arb:U_DAC_ARB|load1_i" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[123] -to "spec_serial_dac_arb:U_DAC_ARB|load2_i" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[124] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[0]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[125] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[10]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[126] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[11]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[127] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[12]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[128] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[13]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[129] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[14]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[130] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[15]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[131] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[1]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[132] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[2]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[133] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[3]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[134] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[4]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[135] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[5]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[136] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[6]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[137] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[7]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[138] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[8]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[139] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[9]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[140] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[0]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[141] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[10]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[142] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[11]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[143] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[12]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[144] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[13]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[145] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[14]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[146] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[15]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[147] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[1]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[148] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[2]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[149] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[3]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[150] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[4]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[151] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[5]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[152] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[6]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[153] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[7]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[154] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[8]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[155] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[9]" -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[113] -to "lpc_uart:lpc_slave|serial_rxd" -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[114] -to "lpc_uart:lpc_slave|serial_txd" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[115] -to "lpc_uart:lpc_slave|uart_16750:uart|RD" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[116] -to "lpc_uart:lpc_slave|uart_16750:uart|RST" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[117] -to "lpc_uart:lpc_slave|uart_16750:uart|WR" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[118] -to nLPC_DRQ0 -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[119] -to nLPC_FRAME -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[120] -to ndac_cs[1] -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[121] -to ndac_cs[2] -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[122] -to "spec_serial_dac_arb:U_DAC_ARB|load1_i" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[123] -to "spec_serial_dac_arb:U_DAC_ARB|load2_i" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[124] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[0]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[125] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[10]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[126] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[11]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[127] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[12]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[128] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[13]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[129] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[14]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[130] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[15]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[131] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[1]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[132] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[2]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[133] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[3]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[134] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[4]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[135] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[5]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[136] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[6]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[137] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[7]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[138] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[8]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[139] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[9]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[140] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[0]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[141] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[10]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[142] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[11]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[143] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[12]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[144] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[13]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[145] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[14]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[146] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[15]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[147] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[1]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[148] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[2]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[149] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[3]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[150] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[4]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[151] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[5]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[152] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[6]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[153] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[7]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[154] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[8]" -section_id auto_signaltap_0
-set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[155] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[9]" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_DATA_BITS=156" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_BITS=156" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK_LENGTH=494" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_LOWORD=30478" -section_id auto_signaltap_0
-set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_HIWORD=46693" -section_id auto_signaltap_0
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_sdwb_crossbar.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/sdwb_rom.vhd"
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/postcode.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_transmitter.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_receiver.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_interrupt.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_baudgen.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_16750.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_mv_filter.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_input_sync.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_edge_detect.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_counter.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_clock_div.vhd
+set_global_assignment -name SDC_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.sdc
+set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/pow_reset.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/genram_pkg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wishbone_pkg.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_source.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/dec_8b10b.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/enc_8b10b.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gencores_pkg.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/disparity_gen_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/timing/dmtd_phase_meas.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/timing/dmtd_with_deglitcher.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/timing/multi_dmtd_with_deglitcher.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/timing/hpll_period_detect.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_packet_buffer.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_pkg.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wbgen2_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/xwr_mini_nic.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll/softpll_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll/wr_softpll.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll/xwr_softpll.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_registers_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/endpoint_private_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_pcs_8bit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_pcs_16bit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_16bit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_autonegotiation.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_pcs_tbi_mdio_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_1000basex_pcs.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_crc_size_check.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_bypass_queue.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_path.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_wb_master.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_oob_insert.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_early_address_match.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_clock_alignment_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_framer.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_packet_filter.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_vlan_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_ts_counter.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_status_reg_insert.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_timestamping_unit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_leds_controller.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rtu_header_extract.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_buffer.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_sync_detect.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_sync_detect_16bit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_wishbone_controller.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_8bit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/endpoint_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/wr_endpoint.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/xwr_endpoint.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_pps_gen/pps_gen_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_pps_gen/wr_pps_gen.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_pps_gen/xwr_pps_gen.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrcore_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wr_core.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_dpram.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/exploder_ng.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_periph.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wb_reset.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wbp_mux.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_core.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_syscon_wb.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/altgx_reconf.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/arria_phy.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/wr_gxb_phy_arriaii.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/wr_tbi_phy.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_crc_gen.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_moving_average.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_extend_pulse.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_delay_gen.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_dual_pi_controller.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_serial_dac.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_sync_ffs.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_pulse_synchronizer.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_frequency_meter.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_sink.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/memory_loader_pkg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/generic_shiftreg_fifo.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/wr_mini_nic.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_async_fifo.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_dpram.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_spram.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/altera/generic_sync_fifo.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_async_bridge/wb_async_bridge.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_async_bridge/xwb_async_bridge.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_onewire_master/wb_onewire_master.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_onewire_master/xwb_onewire_master.vhd"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_onewire_master/sockit_owm.v"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/i2c_master_bit_ctrl.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/i2c_master_byte_ctrl.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/i2c_master_top.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/wb_i2c_master.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_i2c_master/xwb_i2c_master.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_bus_fanout/xwb_bus_fanout.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_dpram/xwb_dpram.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_gpio_port/wb_gpio_port.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_gpio_port/xwb_gpio_port.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_simple_timer/wb_tics.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_simple_timer/xwb_tics.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_async_rx.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_async_tx.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_baud_gen.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_pkg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_wb.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/wb_simple_uart.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_uart/xwb_simple_uart.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/vic_prio_enc.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/wb_slave_vic.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/wb_vic.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_vic/xwb_vic.vhd"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_clgen.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_shift.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_top.v"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/wb_spi.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_spi/xwb_spi.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_crossbar.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/generated/xwb_lm32.vhd"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/generated/lm32_allprofiles.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_mc_arithmetic.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/jtag_cores.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_adder.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_addsub.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_dp_ram.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_logic_op.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_ram.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_shifter.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/platform/generic/lm32_multiplier.v"
+set_global_assignment -name VERILOG_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_lm32/platform/altera/jtag_tap.v"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_slave_adapter/wb_slave_adapter.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xloader_registers_pkg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xwb_xilinx_fpga_loader.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/wb_xilinx_fpga_loader.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xloader_wb.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_dpssram.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_eic.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_fifo_async.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_fifo_sync.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wb_slave.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/mini_bone/mini_bone.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/mini_bone/xmini_bone.vhd
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/alt_FIFO_am_full_flag.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_HDR_pkg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_checksum.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/wishbone_package32.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/wishbone_package16.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_2_wb_converter.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_RX_CTRL.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_TX_CTRL.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/piso_flag.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/vhdl_2008_workaround_pkg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/sipo_flag.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/WB_bus_adapter_streaming_sg.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_CORE.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/eb_config_new.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/xetherbone_core.vhd"
+set_global_assignment -name SIGNALTAP_FILE stp1.stp
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/sys_pll/sys_pll.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_etherbone.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/dmtd_clk_pll/dmtd_clk_pll.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/spec_serial_dac_arb.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/spec_serial_dac.vhd
+set_global_assignment -name SIGNALTAP_FILE lpc.stp
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_decoder.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_peripheral.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_uart.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_input_filter.vhd
+set_global_assignment -name VERILOG_FILE ../../../top/gsi_scu/wr_core_demo/serirq_slave.v
+set_global_assignment -name VERILOG_FILE ../../../top/gsi_scu/wr_core_demo/serirq_defines.v
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[115] -to "lpc_uart:lpc_slave|serirq_slave:serirq|clk_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[116] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[117] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[118] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[119] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[120] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[121] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[122] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[123] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[124] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[17]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[125] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[18]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[126] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[19]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[127] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[128] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[20]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[129] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[21]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[130] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[22]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[131] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[23]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[132] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[24]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[133] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[25]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[134] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[26]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[135] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[27]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[136] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[28]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[137] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[29]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[138] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[139] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[30]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[140] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[31]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[141] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[142] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[143] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[144] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[145] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[146] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[147] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[148] -to "lpc_uart:lpc_slave|serirq_slave:serirq|found_start" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[149] -to "lpc_uart:lpc_slave|serirq_slave:serirq|found_stop" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[150] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_changed" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[115] -to "lpc_uart:lpc_slave|serirq_slave:serirq|clk_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[116] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[117] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[118] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[119] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[120] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[121] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[122] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[123] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[124] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[17]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[125] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[18]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[126] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[19]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[127] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[128] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[20]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[129] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[21]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[130] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[22]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[131] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[23]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[132] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[24]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[133] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[25]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[134] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[26]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[135] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[27]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[136] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[28]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[137] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[29]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[138] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[139] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[30]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[140] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[31]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[141] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[142] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[143] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[144] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[145] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[146] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[147] -to "lpc_uart:lpc_slave|serirq_slave:serirq|current_irq[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[148] -to "lpc_uart:lpc_slave|serirq_slave:serirq|found_start" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[149] -to "lpc_uart:lpc_slave|serirq_slave:serirq|found_stop" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[150] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_changed" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[151] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[152] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[153] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[154] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[155] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[156] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[157] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[158] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[159] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[160] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[161] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[162] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[163] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[164] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[17]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[165] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[18]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[166] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[19]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[167] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[168] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[20]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[169] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[21]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[170] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[22]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[171] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[23]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[172] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[24]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[173] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[25]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[174] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[26]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[175] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[27]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[176] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[28]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[177] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[29]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[178] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[179] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[30]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[180] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[31]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[181] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[182] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[183] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[184] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[185] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[186] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[187] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[188] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[189] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_mode" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[190] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_o" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[191] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_oe" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[192] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000000000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[193] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000001000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[194] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000010000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[195] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000100000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[196] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0001000000000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[197] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[198] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[199] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[200] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[201] -to "lpc_uart:lpc_slave|uart_16750:uart|RD" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[202] -to "lpc_uart:lpc_slave|uart_16750:uart|RST" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[203] -to "lpc_uart:lpc_slave|uart_16750:uart|WR" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[204] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[205] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[206] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[207] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[208] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[209] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[210] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[211] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[212] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[213] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[214] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[215] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[216] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[217] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[218] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[219] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[220] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[221] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[222] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[223] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[224] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[225] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[226] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[227] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[228] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[229] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[230] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[231] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[232] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[233] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[234] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[235] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[236] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[237] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[238] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[239] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[240] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[241] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[242] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[243] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[151] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[152] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[153] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[154] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[155] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_cnt[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[156] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[157] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[158] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[159] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[160] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[161] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[162] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[163] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[164] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[17]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[165] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[18]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[166] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[19]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[167] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[168] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[20]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[169] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[21]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[170] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[22]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[171] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[23]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[172] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[24]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[173] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[25]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[174] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[26]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[175] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[27]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[176] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[28]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[177] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[29]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[178] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[179] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[30]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[180] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[31]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[181] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[182] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[183] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[184] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[185] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[186] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[187] -to "lpc_uart:lpc_slave|serirq_slave:serirq|irq_i[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[188] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[189] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_mode" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[190] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_o" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[191] -to "lpc_uart:lpc_slave|serirq_slave:serirq|serirq_oe" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[192] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000000000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[193] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000001000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[194] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000010000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[195] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0000000100000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[196] -to "lpc_uart:lpc_slave|serirq_slave:serirq|state.0001000000000" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[197] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[198] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[199] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[200] -to "lpc_uart:lpc_slave|serirq_slave:serirq|stop_clk_cnt[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[201] -to "lpc_uart:lpc_slave|uart_16750:uart|RD" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[202] -to "lpc_uart:lpc_slave|uart_16750:uart|RST" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[203] -to "lpc_uart:lpc_slave|uart_16750:uart|WR" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[204] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[205] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[206] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[207] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[208] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[209] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[210] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[211] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLL[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[212] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[213] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[214] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[215] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[216] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[217] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[218] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[219] -to "lpc_uart:lpc_slave|uart_16750:uart|iDLM[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[220] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[221] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[222] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[223] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[224] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[225] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[226] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[227] -to "lpc_uart:lpc_slave|uart_16750:uart|iIER[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[228] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[229] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[230] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[231] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[232] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[233] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[234] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[235] -to "lpc_uart:lpc_slave|uart_16750:uart|iIIR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[236] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[237] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[238] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[239] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[240] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[241] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[242] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[243] -to "lpc_uart:lpc_slave|uart_16750:uart|iLCR[7]" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_SEGMENT_SIZE=4096" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_SAMPLE_DEPTH=4096" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[244] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[245] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[246] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[247] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[248] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[249] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[250] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[251] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[252] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[253] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[254] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[255] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[256] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[257] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[258] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[259] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[260] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|BAUDTICK" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[261] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[262] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[263] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[264] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[265] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[266] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[267] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[268] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[269] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[270] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[271] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[272] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[273] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[274] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[275] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[276] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[277] -to nLPC_DRQ0 -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[278] -to nLPC_FRAME -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[279] -to ndac_cs[1] -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[280] -to ndac_cs[2] -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[281] -to "spec_serial_dac_arb:U_DAC_ARB|load1_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[282] -to "spec_serial_dac_arb:U_DAC_ARB|load2_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[283] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[284] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[285] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[286] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[287] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[288] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[289] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[290] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[291] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[292] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[293] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[294] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[295] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[296] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[297] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[298] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[299] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[300] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[301] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[302] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[303] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[304] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[305] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[306] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[307] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[308] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[309] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[310] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[311] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[312] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[313] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[314] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[244] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[245] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[246] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[247] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[248] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[249] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[250] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[251] -to "lpc_uart:lpc_slave|uart_16750:uart|iMCR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[252] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[253] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[254] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[255] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[256] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[257] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[258] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[259] -to "lpc_uart:lpc_slave|uart_16750:uart|iMSR[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[260] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|BAUDTICK" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[261] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[262] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[263] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[264] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[265] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[266] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[267] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[268] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[269] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[270] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[271] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[272] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[273] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[274] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[275] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[276] -to "lpc_uart:lpc_slave|uart_16750:uart|uart_baudgen:UART_BG16|DIVIDER[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[277] -to nLPC_DRQ0 -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[278] -to nLPC_FRAME -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[279] -to ndac_cs[1] -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[280] -to ndac_cs[2] -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[281] -to "spec_serial_dac_arb:U_DAC_ARB|load1_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[282] -to "spec_serial_dac_arb:U_DAC_ARB|load2_i" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[283] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[284] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[285] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[286] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[287] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[288] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[289] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[290] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[291] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[292] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[293] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[294] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[295] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[296] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[297] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[298] -to "spec_serial_dac_arb:U_DAC_ARB|val1_i[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[299] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[300] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[301] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[302] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[303] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[304] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[305] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[306] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[307] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[308] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[309] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[310] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[311] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[312] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[313] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_data_in[314] -to "spec_serial_dac_arb:U_DAC_ARB|val2_i[9]" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_DATA_BITS=315" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_BITS=315" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK_LENGTH=971" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_LOWORD=26042" -section_id auto_signaltap_0
+set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_HIWORD=21575" -section_id auto_signaltap_0
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

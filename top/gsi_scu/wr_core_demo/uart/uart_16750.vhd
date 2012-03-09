@@ -758,8 +758,9 @@ begin
  
  
     -- Baudrate generator
-    iBaudgenDiv <= iDLM & iDLL;
-    UART_BG16: uart_baudgen port map (CLK         => CLK,
+    --iBaudgenDiv <= iDLM & iDLL;
+    iBaudgenDiv <= x"0011"; -- 33000000 / 16x 115200 = 18
+	 UART_BG16: uart_baudgen port map (CLK         => CLK,
                                       RST         => RST,
                                       CE          => BAUDCE,
                                       CLEAR       => '0',

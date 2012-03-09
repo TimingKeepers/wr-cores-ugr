@@ -249,7 +249,7 @@ begin
 		if  ((byte_cnt = xfr_len) and lpc_write = '1') or ((byte_cnt = 0) and lpc_write = '0') then
 			--io_bus_addr <= lpc_adr_reg(15 downto 0);
 			io_bus_dat_o <= lpc_dat_o(7 downto 0);
-			lpc_dat_i <=  x"000000" & io_bus_dat_i; -- padding 
+			 
 			io_bus_we <= lpc_write;
 			got_ack <= '1';
 		--elsif io_ack = '1' then
@@ -271,6 +271,8 @@ begin
 				state <= LPC_ST_SYNC;
 				lad_o <= LPC_SYNC_SWAIT;
 			end if;
+			
+			lpc_dat_i <=  x"000000" & io_bus_dat_i; -- padding
 			
 			lad_oe <= '1';	-- // start driving LAD
 			

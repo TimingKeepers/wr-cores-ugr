@@ -47,7 +47,7 @@ entity scu_top is
 		
 		LPC_AD			: inout std_logic_vector(3 downto 0);
 		LPC_FPGA_CLK	: in std_logic;
-		LPC_SERIRQ		: in std_logic;
+		LPC_SERIRQ		: inout std_logic;
 		nLPC_DRQ0		: in std_logic;
 		nLPC_FRAME		: in std_logic;
 		nPCI_RESET		: in std_logic
@@ -202,7 +202,7 @@ architecture rtl of scu_top is
 	port (
 
 		lpc_clk:			in std_logic;
-		lpc_serirq:		out std_logic;
+		lpc_serirq:		inout std_logic;
 		lpc_ad:			inout std_logic_vector(3 downto 0);
 		lpc_frame_n:	in std_logic;
 		lpc_reset_n:	in std_logic;
@@ -291,6 +291,7 @@ architecture rtl of scu_top is
   
   signal lpc_oe : std_logic;
   signal lad_o : std_logic_vector(3 downto 0);
+
   
 begin
   
@@ -424,11 +425,11 @@ begin
 	lpc_slave: lpc_uart
 		port map (
 						lpc_clk => LPC_FPGA_CLK,
-						lpc_serirq => open,
+						lpc_serirq => LPC_SERIRQ,
 						lpc_ad => LPC_AD,
 						lpc_frame_n => nLPC_FRAME,
 						lpc_reset_n => nPCI_RESET,
-		
+
 						serial_rxd => uart_rxd_i(1),
 						serial_txd => uart_txd_o(1),
 						serial_dtr => open,
@@ -437,13 +438,10 @@ begin
 						serial_ri => '0',
 						serial_cts => '0',
 						serial_rts => open,
-		
-		      
+
 						seven_seg_L => open,
 						seven_seg_H => open
 						);
-						
-	--LPC_AD <= lad_o when lpc_oe = '1' else "ZZZZ";
 
   serial_to_cb_o   <= '0';
   wrc_slave_in.cyc <= '0';
@@ -453,9 +451,6 @@ begin
   lemo_en_in <= "00";                   -- configured as output
   lemo_io(1) <= pps;
   lemo_io(2) <= '0';
-
-	--LPC_SERIRQ <= '0';
-	--nLPC_DRQ0 <= '1';
 	
   
 end rtl;
