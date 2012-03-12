@@ -228,15 +228,29 @@ architecture rtl of exploder_top is
   -- WR core layout
   constant c_wrcore_bridge_sdwb : t_sdwb_device := f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
   
+  -- Ref clock crossbar
+  constant c_ref_slaves  : natural := 2;
+  constant c_ref_masters : natural := 1;
+  constant c_ref_layout : t_sdwb_device_array(c_ref_slaves-1 downto 0) :=
+   (0 => f_sdwb_set_address(c_xwr_gpio_32_sdwb,            x"00000000"),
+    1 => f_sdwb_set_address(c_xwr_wb_timestamp_latch_sdwb, x"00080000"));
+  constant c_ref_sdwb_address : t_wishbone_address := x"000C0000";
+  constant c_ref_bridge : t_sdwb_device := 
+    f_xwb_bridge_layout_sdwb(true, c_ref_layout, c_ref_sdwb_address);
+  
+  signal cbar_ref_slave_i  : t_wishbone_slave_in_array (c_ref_masters-1 downto 0);
+  signal cbar_ref_slave_o  : t_wishbone_slave_out_array(c_ref_masters-1 downto 0);
+  signal cbar_ref_master_i : t_wishbone_master_in_array(c_ref_slaves-1 downto 0);
+  signal cbar_ref_master_o : t_wishbone_master_out_array(c_ref_slaves-1 downto 0);
+  
   -- Top crossbar layout
-  constant c_slaves : natural := 4;
+  constant c_slaves : natural := 3;
   constant c_masters : natural := 1;
   constant c_test_dpram_size : natural := 2048;
   constant c_layout : t_sdwb_device_array(c_slaves-1 downto 0) :=
    (0 => f_sdwb_set_address(f_xwb_dpram(c_test_dpram_size), x"00000000"),
-    1 => f_sdwb_set_address(c_xwr_gpio_32_sdwb,             x"00100000"),
-    2 => f_sdwb_set_address(c_xwr_wb_timestamp_latch_sdwb,  x"00180000"),
-    3 => f_sdwb_set_address(c_wrcore_bridge_sdwb,           x"00200000"));
+    1 => f_sdwb_set_address(c_ref_bridge,                   x"00100000"),
+    2 => f_sdwb_set_address(c_wrcore_bridge_sdwb,           x"00200000"));
   constant c_sdwb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
@@ -396,8 +410,8 @@ begin
 
       owr_i => '0',
 
-      slave_i => cbar_master_o(3),
-      slave_o => cbar_master_i(3),
+      slave_i => cbar_master_o(2),
+      slave_o => cbar_master_i(2),
 
       wrf_src_i => mb_snk_out,
       wrf_src_o => mb_snk_in,
@@ -517,14 +531,14 @@ begin
       g_fifo_depth   => 10)
     port map (
       ref_clk_i       => clk_125m_pllref_p,
-      sys_clk_i       => l_clkp,
+      sys_clk_i       => clk_125m_pllref_p,
       nRSt_i          => nreset,
       triggers_i      => triggers,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_utc,
       tm_cycles_i     => tm_cycles,
-      wb_slave_i      => cbar_master_o(2),
-      wb_slave_o      => cbar_master_i(2));
+      wb_slave_i      => cbar_ref_master_o(1),
+      wb_slave_o      => cbar_ref_master_i(1));
       
 --  U_GPIO : xwb_gpio_port
 --    generic map (
@@ -541,23 +555,50 @@ begin
 --      gpio_out_o => gpio_out,
 --      gpio_in_i  => x"00000000");
 
-	cbar_master_i(1) <= mb_master_in;
-	mb_master_out <= cbar_master_o(1);
-	gpio : process(l_clkp)
-	begin
-		if rising_edge(l_clkp) then
-			if mb_master_out.cyc = '1' and mb_master_out.stb = '1' and mb_master_out.we = '1' then
-				pio_reg <= mb_master_out.dat(7 downto 0);
-				
-			end if;
-			mb_master_in.ack <= mb_master_out.cyc and mb_master_out.stb;
-		end if;
-	end process;
-	mb_master_in.err <= '0';
-	mb_master_in.rty <= '0';
-	mb_master_in.stall <= '0';
-	mb_master_in.dat <= std_logic_vector(to_unsigned(0,mb_master_in.dat'length-pio_reg'length)) & pio_reg;
+  cbar_ref_master_i(0) <= mb_master_in;
+  mb_master_out <= cbar_ref_master_o(0);
+  gpio : process(clk_125m_pllref_p)
+  begin
+    if rising_edge(clk_125m_pllref_p) then
+      if mb_master_out.cyc = '1' and mb_master_out.stb = '1' and mb_master_out.we = '1' then
+        pio_reg <= mb_master_out.dat(7 downto 0);
+      end if;
+      mb_master_in.ack <= mb_master_out.cyc and mb_master_out.stb;
+    end if;
+  end process;
+  mb_master_in.err <= '0';
+  mb_master_in.rty <= '0';
+  mb_master_in.stall <= '0';
+  mb_master_in.dat <= std_logic_vector(to_unsigned(0,mb_master_in.dat'length-pio_reg'length)) & pio_reg;
 	
+  GSI_REF_CON : xwb_sdwb_crossbar
+   generic map(
+     g_num_masters => c_ref_masters,
+     g_num_slaves  => c_ref_slaves,
+     g_registered  => true,
+     g_wraparound  => true,
+     g_layout      => c_ref_layout,
+     g_sdwb_addr   => c_ref_sdwb_address)
+   port map(
+     clk_sys_i     => l_clkp,
+     rst_n_i       => nreset,
+     -- Master connections (INTERCON is a slave)
+     slave_i       => cbar_ref_slave_i,
+     slave_o       => cbar_ref_slave_o,
+     -- Slave connections (INTERCON is a master)
+     master_i      => cbar_ref_master_i,
+     master_o      => cbar_ref_master_o);
+  
+  cross_my_clocks : xwb_clock_crossing
+    port map(
+      rst_n_i      => nreset,
+      slave_clk_i  => l_clkp,
+      slave_i      => cbar_master_o(1),
+      slave_o      => cbar_master_i(1),
+      master_clk_i => clk_125m_pllref_p,
+      master_i     => cbar_ref_slave_o(0),
+      master_o     => cbar_ref_slave_i(0));
+   
   GSI_CON : xwb_sdwb_crossbar
    generic map(
      g_num_masters => c_masters,
