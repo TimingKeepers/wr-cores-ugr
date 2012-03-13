@@ -110,7 +110,7 @@ architecture rtl of exploder_top is
       g_phys_uart           : boolean                        := true;
       g_virtual_uart        : boolean                        := false;
       g_ep_rxbuf_size       : integer                        := 12;
-      g_dpram_initf         : string                         := "../../../../wr-core-software/wrc.ram";
+      g_dpram_initf         : string                         := "";
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity : t_wishbone_address_granularity := WORD
@@ -325,8 +325,6 @@ architecture rtl of exploder_top is
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
 
-  signal wrc_slave_in  : t_wishbone_slave_in;
-  signal wrc_slave_out : t_wishbone_slave_out;
   signal nreset        : std_logic := '0';
   signal led_green		: std_logic;
   signal led_red			: std_logic;
@@ -562,6 +560,7 @@ begin
       mb_master_in.ack <= mb_master_out.cyc and mb_master_out.stb;
     end if;
   end process;
+  mb_master_in.int <= '0';
   mb_master_in.err <= '0';
   mb_master_in.rty <= '0';
   mb_master_in.stall <= '0';
@@ -630,8 +629,6 @@ begin
 	-- wr status leds
 	hpv(1) <= not led_green;
 	hpv(0) <= not led_red;
-	
-  wrc_slave_in.cyc <= '0';
 
   sfp_tx_disable_o <= '0';
 
