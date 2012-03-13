@@ -580,7 +580,7 @@ begin
      g_layout      => c_ref_layout,
      g_sdwb_addr   => c_ref_sdwb_address)
    port map(
-     clk_sys_i     => l_clkp,
+     clk_sys_i     => clk_125m_pllref_p,,
      rst_n_i       => nreset,
      -- Master connections (INTERCON is a slave)
      slave_i       => cbar_ref_slave_i,
