@@ -110,7 +110,7 @@ architecture rtl of exploder_top is
       g_phys_uart           : boolean                        := true;
       g_virtual_uart        : boolean                        := false;
       g_ep_rxbuf_size       : integer                        := 12;
-      g_dpram_initf         : string                         := "";
+      g_dpram_initf         : string                         := "../../../../wr-core-software/wrc.ram";
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity : t_wishbone_address_granularity := WORD
@@ -224,6 +224,12 @@ architecture rtl of exploder_top is
     dev_version   => x"00000001",
     dev_date      => x"20120305",
     description   => "GSI_GPIO_32     ");
+    
+  component flash_loader
+     port (
+        noe_in      : in std_logic
+     );
+  end component;
 
   -- WR core layout
   constant c_wrcore_bridge_sdwb : t_sdwb_device := f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
@@ -348,6 +354,11 @@ architecture rtl of exploder_top is
   
 begin
   
+  Inst_flash_loader_v01 : flash_loader
+    port map (
+      noe_in   => '0'
+    );
+   
   reset : pow_reset
     port map (
       clk    => l_cLKp,
@@ -540,21 +551,6 @@ begin
       wb_slave_i      => cbar_ref_master_o(1),
       wb_slave_o      => cbar_ref_master_i(1));
       
---  U_GPIO : xwb_gpio_port
---    generic map (
---      g_interface_mode         => CLASSIC,
---      g_address_granularity    => BYTE,
---      g_num_pins               => 32,
---      g_with_builtin_tristates => false)
---    port map (
---      clk_sys_i  => l_clkp,
---      rst_n_i    => nreset,
---      slave_i    => mb_master_out,
---      slave_o    => mb_master_in,
---      gpio_b     => dummy_gpio,
---      gpio_out_o => gpio_out,
---      gpio_in_i  => x"00000000");
-
   cbar_ref_master_i(0) <= mb_master_in;
   mb_master_out <= cbar_ref_master_o(0);
   gpio : process(clk_125m_pllref_p)
@@ -580,7 +576,7 @@ begin
      g_layout      => c_ref_layout,
      g_sdwb_addr   => c_ref_sdwb_address)
    port map(
-     clk_sys_i     => clk_125m_pllref_p,,
+     clk_sys_i     => clk_125m_pllref_p,
      rst_n_i       => nreset,
      -- Master connections (INTERCON is a slave)
      slave_i       => cbar_ref_slave_i,
