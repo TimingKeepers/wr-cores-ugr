@@ -58,9 +58,11 @@ interface IWishboneSlave
    struct {
       wb_cycle_type_t mode;
       int gen_random_stalls;
+      int gen_random_errors;
       int stall_min_duration;
       int stall_max_duration;
       real stall_prob;
+      real error_prob;
    } settings;
 
    int permanent_stall = 0;
@@ -199,6 +201,11 @@ interface IWishboneSlave
 	 c_queue.push_back(current_cycle);
       end
 
+      if(cyc && settings.gen_random_errors && probability_hit(settings.error_prob))
+        err <= 1;
+      else
+        err <= 0;
+      
       if(stb && we && !stall && cyc) begin
          int oc, lzc, tzc;
          
