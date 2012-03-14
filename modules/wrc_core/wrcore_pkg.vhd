@@ -154,6 +154,37 @@ package wrcore_pkg is
     );
   end component;
 
+  component xwr_softpll_ng is
+    generic(
+      g_tag_bits                 : integer;
+      g_interface_mode           : t_wishbone_interface_mode;
+      g_address_granularity      : t_wishbone_address_granularity;
+      g_num_ref_inputs           : integer;
+      g_num_outputs              : integer);
+    port(
+      clk_sys_i : in std_logic;
+      rst_n_i   : in std_logic;
+      clk_ref_i  : in std_logic_vector(g_num_ref_inputs-1 downto 0);
+      clk_fb_i   : in std_logic_vector(g_num_outputs-1 downto 0);
+      clk_dmtd_i : in std_logic;
+
+      dac_dmtd_data_o : out std_logic_vector(15 downto 0);
+      dac_dmtd_load_o : out std_logic;
+  
+      dac_out_data_o : out std_logic_vector(15 downto 0);
+      dac_out_sel_o  : out std_logic_vector(3 downto 0);
+      dac_out_load_o : out std_logic;
+  
+      out_enable_i : in  std_logic_vector(g_num_outputs-1 downto 0);
+      out_locked_o : out std_logic_vector(g_num_outputs-1 downto 0);
+  
+      slave_i : in  t_wishbone_slave_in;
+      slave_o : out t_wishbone_slave_out;
+  
+      debug_o : out std_logic_vector(3 downto 0)
+      );
+  end component;
+
   -----------------------------------------------------------------------------
   -- WBP MUX
   -----------------------------------------------------------------------------

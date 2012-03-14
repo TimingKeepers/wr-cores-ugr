@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-03-07
+-- Last update: 2012-03-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -233,6 +233,7 @@ architecture struct of wr_core is
   signal ep_txtsu_tsval    : std_logic_vector(31 downto 0);
   signal ep_txtsu_valid    : std_logic;
   signal ep_txtsu_ack      : std_logic;
+  signal ep_led_link       : std_logic;
 
   constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
 
@@ -424,36 +425,45 @@ begin
   -----------------------------------------------------------------------------
   -- Software PLL
   -----------------------------------------------------------------------------
-  U_SOFTPLL : xwr_softpll
-    generic map (
-      g_deglitcher_threshold => 3000,
-      g_tag_bits             => 20,
-      g_interface_mode       => PIPELINED,
-      g_address_granularity  => BYTE)
-    port map (
-      clk_sys_i  => clk_sys_i,
-      rst_n_i    => rst_net_n,
-      clk_ref_i  => clk_ref_i,
-      clk_dmtd_i => clk_dmtd_i,
-      clk_rx_i   => phy_rx_rbclk_i,
-      clk_aux_i  => clk_aux_i,
 
-      dac_hpll_data_o => dac_hpll_data_o,
-      dac_hpll_load_o => dac_hpll_load_p1_o,
+  U_SOFTPLL : xwr_softpll_ng
+    generic map(
+      g_tag_bits                 => 20,
+      g_interface_mode           => PIPELINED,
+      g_address_granularity      => BYTE,
+      g_num_ref_inputs           => 1,
+      g_num_outputs              => 1)
+    port map(
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_net_n,
+  
+  -- Reference inputs (i.e. the RX clocks recovered by the PHYs)
+      clk_ref_i(0) => phy_rx_rbclk_i,
+  -- Feedback clocks (i.e. the outputs of the main or aux oscillator)
+      clk_fb_i(0)  => clk_ref_i,
+  -- DMTD Offset clock
+      clk_dmtd_i   => clk_dmtd_i,
 
-      dac_dmpll_data_o => dac_dpll_data_o,
-      dac_dmpll_load_o => dac_dpll_load_p1_o,
+  -- DMTD oscillator drive
+      dac_dmtd_data_o  => dac_hpll_data_o,
+      dac_dmtd_load_o  => dac_hpll_load_p1_o,
+  
+  -- Output channel DAC value
+      dac_out_data_o   => dac_dpll_data_o, --: out std_logic_vector(15 downto 0);
+  -- Output channel select (0 = channel 0, etc. )
+      dac_out_sel_o    => open, --for now use only one output
+      dac_out_load_o   => dac_dpll_load_p1_o,
+  
+      out_enable_i     => (others=>'0'),
+      out_locked_o     => open,
+  
+      slave_i     => spll_wb_in,
+      slave_o     => spll_wb_out,
+  
+      debug_o     => dio_o
+    );
 
-      dac_aux_data_o => tm_dac_value_o,
-      dac_aux_load_o => tm_dac_wr_o,
-
-      clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
-      clk_aux_locked_o  => tm_clk_aux_locked_o,
-
-      slave_i  => spll_wb_in,
-      slave_o  => spll_wb_out,
-      wb_irq_o => softpll_irq,
-      debug_o  => dio_o);
+  softpll_irq <= spll_wb_out.int;
 
   -----------------------------------------------------------------------------
   -- Endpoint
@@ -471,7 +481,7 @@ begin
       g_with_dpi_classifier => true,
       g_with_vlans          => false,
       g_with_rtu            => false,
-      g_with_leds           => false,
+      g_with_leds           => true,
       g_with_dmtd           => true)
     port map (
       clk_ref_i      => clk_ref_i,
@@ -510,9 +520,12 @@ begin
       txtsu_ack_i      => ep_txtsu_ack,
       wb_i             => ep_wb_in,
       wb_o             => ep_wb_out,
-      led_link_o       => link_ok_o);
+      led_link_o       => ep_led_link,
+      led_act_o        => led_red_o);
 
   ep_txtsu_ack <= txtsu_ack_i or mnic_txtsu_ack;
+  led_green_o <= ep_led_link;
+  link_ok_o   <= ep_led_link;
   -----------------------------------------------------------------------------
   -- Mini-NIC
   -----------------------------------------------------------------------------
@@ -581,7 +594,7 @@ begin
       g_slave2_granularity    => WORD)  
     port map(
       clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_net_n,
+      rst_n_i   => rst_n_i,
 
       slave1_i => cbar_master_o(0),
       slave1_o => cbar_master_i(0),
@@ -611,8 +624,8 @@ begin
       rst_net_n_o => rst_net_n,
       rst_wrc_n_o => rst_wrc_n,
 
-      led_red_o   => led_red_o,
-      led_green_o => led_green_o,
+      led_red_o   => open, --led_red_o,
+      led_green_o => open, --led_green_o,
       scl_o       => scl_o,
       scl_i       => scl_i,
       sda_o       => sda_o,
