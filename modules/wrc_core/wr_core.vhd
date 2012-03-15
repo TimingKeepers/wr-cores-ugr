@@ -65,6 +65,7 @@ entity wr_core is
     g_virtual_uart        : boolean                        := false;
     g_rx_buffer_size      : integer                        := 1024;
     g_dpram_initf         : string                         := "";
+    g_dpram_initv         : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity : t_wishbone_address_granularity := WORD
@@ -239,8 +240,6 @@ architecture struct of wr_core is
   signal mnic_mem_data_i : std_logic_vector(31 downto 0);
   signal mnic_mem_wr_o   : std_logic;
   signal mnic_txtsu_ack  : std_logic;
-
-  signal mnic_wb_irq_o : std_logic;
 
   -----------------------------------------------------------------------------
   --Dual-port RAM
@@ -531,8 +530,6 @@ begin
       wb_o => minic_wb_out
     );
 
-  mnic_wb_irq_o <= '0';
-
   lm32_irq_slv(31 downto 1) <= (others => '0');
   lm32_irq_slv(0)           <= softpll_irq;  -- according to the doc, it's active low.
 
@@ -559,6 +556,7 @@ begin
     generic map(
       g_size                  => g_dpram_size,
       g_init_file             => g_dpram_initf,
+      g_init_value            => g_dpram_initv,
       g_must_have_init_file   => true,
       g_slave1_interface_mode => PIPELINED,
       g_slave2_interface_mode => PIPELINED,

@@ -10,6 +10,7 @@ use work.wr_fabric_pkg.all;
 library work;
 use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
+use work.wrc_bin_pkg.all;
 
 
 entity exploder_top is
@@ -111,6 +112,7 @@ architecture rtl of exploder_top is
       g_virtual_uart        : boolean                        := false;
       g_ep_rxbuf_size       : integer                        := 12;
       g_dpram_initf         : string                         := "";
+      g_dpram_initv         : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity : t_wishbone_address_granularity := WORD
@@ -383,6 +385,7 @@ begin
       g_virtual_uart        => false,
       g_ep_rxbuf_size       => 4096,
       g_dpram_initf         => "",
+      g_dpram_initv         => c_xwb_dpram_init_nothing, -- wrc_bin_init,
       g_dpram_size          => 16384,
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE)

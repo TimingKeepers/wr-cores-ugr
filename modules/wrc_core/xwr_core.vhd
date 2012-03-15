@@ -51,6 +51,7 @@ entity xwr_core is
     g_virtual_uart        : boolean                        := false;
     g_ep_rxbuf_size       : integer                        := 1024;
     g_dpram_initf         : string                         := "";
+    g_dpram_initv         : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
     g_dpram_size          : integer                        := 16384;  --in 32-bit words
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD
@@ -171,6 +172,7 @@ architecture struct of xwr_core is
       g_virtual_uart        : boolean                        := false;
       g_rx_buffer_size  : integer                        := 12;
       g_dpram_initf         : string                         := "";
+      g_dpram_initv         : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
       g_dpram_size          : integer                        := 16384;  --in 32-bit words
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity : t_wishbone_address_granularity := WORD);
@@ -273,6 +275,7 @@ begin
       g_virtual_uart        => g_virtual_uart,
       g_rx_buffer_size      => g_ep_rxbuf_size,
       g_dpram_initf         => g_dpram_initf,
+      g_dpram_initv         => g_dpram_initv,
       g_dpram_size          => g_dpram_size,
       g_interface_mode      => g_interface_mode,
       g_address_granularity => g_address_granularity)
@@ -365,5 +368,11 @@ begin
     );
 
     timestamps_o.port_id(5) <= '0';
+    
+    slave_o.err <= '0';
+    slave_o.rty <= '0';
+    slave_o.int <= '0';
+    
+    wrf_snk_o.rty <= '0';
 
 end struct;
