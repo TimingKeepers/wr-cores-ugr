@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2012-01-18
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -67,8 +67,9 @@ entity ep_rx_pcs_16bit is
     pcs_fab_o             : out t_ep_internal_fabric;
 
 
-    timestamp_stb_p_o : out std_logic;  -- strobe for RX timestamping
+    timestamp_trigger_p_a_o : out std_logic;  -- strobe for RX timestamping
     timestamp_i       : in  std_logic_vector(31 downto 0);
+    timestamp_stb_i: in std_logic;
     timestamp_valid_i : in  std_logic;
 
 -------------------------------------------------------------------------------
@@ -411,6 +412,7 @@ begin
 -- reads: almost everything
 -- writes: almost everything
 
+  
   rx_fsm : process (phy_rx_clk_i, reset_synced_rxclk)
   begin
     if rising_edge(phy_rx_clk_i) then
@@ -436,7 +438,7 @@ begin
 
         rmon_rx_overrun_p_int   <= '0';
         rmon_invalid_code_p_int <= '0';
-        timestamp_stb_p_o       <= '0';
+        timestamp_trigger_p_a_o       <= '0';
         timestamp_pending       <= "000";
       else                              -- normal PCS operation
 
@@ -466,7 +468,7 @@ begin
             pcs_fab_o.has_rx_timestamp <= '0';
 
             rx_busy           <= '0';
-            timestamp_stb_p_o <= '0';
+            timestamp_trigger_p_a_o <= '0';
 
             -- insert the RX timestamp into the FIFO
             if(timestamp_pending /= "000") then
@@ -583,7 +585,7 @@ begin
               -- the right position, start receiving the frame payload
               if d_is_preamble_sfd = '1' then
 -- generate the RX timestamp pulse
-                timestamp_stb_p_o <= '1';
+                timestamp_trigger_p_a_o <= '1';
 
 -- we've got an SFD at proper offset from the beginning of the preamble
                 if (preamble_cntr = "010") or (preamble_cntr = "001") then
@@ -662,7 +664,7 @@ begin
 
           when RX_EXTEND =>
 
-            timestamp_stb_p_o <= '0';
+            timestamp_trigger_p_a_o <= '0';
             pcs_fab_o.dvalid  <= '0';
 
             if d_is_extend = '1' then   -- got carrier extend. Just keep
@@ -672,10 +674,10 @@ begin
               pcs_fab_o.error <= '0';
             elsif d_is_idle = '1' then  -- got comma, real end-of-frame
               -- indicate the correct ending of the current frame in the RX FIFO
-              pcs_fab_o.eof              <= not timestamp_valid_i;
+              pcs_fab_o.eof              <= not timestamp_stb_i;
               pcs_fab_o.error            <= '0';
-              pcs_fab_o.has_rx_timestamp <= timestamp_valid_i;
-              timestamp_pending          <= (others => timestamp_valid_i);
+              pcs_fab_o.has_rx_timestamp <= timestamp_stb_i;
+              timestamp_pending          <= (others => timestamp_stb_i);
 
               rx_state <= RX_NOFRAME;
             else
@@ -733,6 +735,8 @@ begin
 
 -- drive the "RX PCS Sync Lost" event counter
   rmon_o.rx_sync_lost <= rx_sync_lost_p and (not mdio_mcr_pdown_i);
+
+  pcs_fab_o.rx_timestamp_valid <= timestamp_valid_i;
 
 end behavioral;
 

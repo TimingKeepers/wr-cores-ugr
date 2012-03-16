@@ -87,7 +87,7 @@ begin
   begin
 
     if(snk_fab_i.has_rx_timestamp = '1')then
-      src_fab_o.data   <= c_WRF_OOB_TYPE_RX & "0000000" & regs_i.ecr_portid_o;
+      src_fab_o.data   <= c_WRF_OOB_TYPE_RX & (not snk_fab_i.rx_timestamp_valid) & "000000" & regs_i.ecr_portid_o;
       src_fab_o.dvalid <= '1';
       src_fab_o.addr   <= c_WRF_OOB;
     else

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-02-09
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ entity wr_endpoint is
     g_with_vlans          : boolean                        := true;
     g_with_rtu            : boolean                        := true;
     g_with_leds           : boolean                        := true;
-    g_with_dmtd : boolean := false
+    g_with_dmtd           : boolean                        := false
     );
   port (
 
@@ -69,14 +69,19 @@ entity wr_endpoint is
 
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
     clk_sys_i  : in std_logic;
---
-    clk_dmtd_i : in std_logic;
+
+-- DMTD offset clock for phase tracking - used only if g_with_dmtd == true
+   clk_dmtd_i : in std_logic;
 
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
 
 -- PPS input (1 clk_ref_i cycle HI) for synchronizing timestamp counter
     pps_csync_p1_i : in std_logic;
+
+-- PPS valid input (clk_ref_i domain), when 1, the external PPS generator/servo
+-- is not adjusting the time scale, so we can safely timestamp.
+    pps_valid_i : in std_logic := '1';
 
 -------------------------------------------------------------------------------
 -- PHY Interace (8/16 bit PCS)
@@ -142,19 +147,23 @@ entity wr_endpoint is
 -- TX timestamping unit interface
 -------------------------------------------------------------------------------  
 
--- port ID value
+-- Port ID value
     txtsu_port_id_o : out std_logic_vector(4 downto 0);
+-- Frame ID value
+    txtsu_frame_id_o     : out std_logic_vector(16 -1 downto 0);
 
--- frame ID value
-    txtsu_frame_id_o : out std_logic_vector(16 - 1 downto 0);
+-- TX Timestamp and correctness info
+    txtsu_ts_value_o     : out std_logic_vector(28 + 4 - 1 downto 0);
+    txtsu_ts_incorrect_o : out std_logic;
 
--- timestamp values: gathered on rising clock edge (the main timestamp)
-    txtsu_tsval_o : out std_logic_vector(28 + 4 - 1 downto 0);
+-- TX timestamp strobe: HI tells the TX timestamping unit that a timestamp is
+-- available on txtsu_ts_value_o, txtsu_fid_o andd txtsu_port_id_o. The correctness
+-- of the timestamping is indiacted on txtsu_ts_incorrect_o. Line remains HI
+-- until assertion of txtsu_ack_i.
+    txtsu_stb_o : out std_logic;
 
--- HI indicates a valid timestamp/frame ID pair for the TXTSU
-    txtsu_valid_o : out std_logic;
-
--- HI acknowledges that the TXTSU have recorded the timestamp
+-- TX timestamp acknowledge: HI indicates that TXTSU has successfully received
+-- the timestamp
     txtsu_ack_i : in std_logic;
 
 -------------------------------------------------------------------------------
@@ -252,26 +261,27 @@ architecture syn of wr_endpoint is
       g_with_timestamper : boolean;
       g_force_gap_length : integer);
     port (
-      clk_sys_i        : in  std_logic;
-      rst_n_i          : in  std_logic;
-      pcs_fab_o        : out t_ep_internal_fabric;
-      pcs_error_i      : in  std_logic;
-      pcs_busy_i       : in  std_logic;
-      pcs_dreq_i       : in  std_logic;
-      snk_i            : in  t_wrf_sink_in;
-      snk_o            : out t_wrf_sink_out;
-      fc_pause_p_i     : in  std_logic;
-      fc_pause_delay_i : in  std_logic_vector(15 downto 0);
-      fc_pause_ack_o   : out std_logic;
-      fc_flow_enable_i : in  std_logic;
-      txtsu_port_id_o  : out std_logic_vector(4 downto 0);
-      txtsu_fid_o      : out std_logic_vector(16 -1 downto 0);
-      txtsu_tsval_o    : out std_logic_vector(28 + 4 - 1 downto 0);
-      txtsu_valid_o    : out std_logic;
-      txtsu_ack_i      : in  std_logic;
-      txts_timestamp_i : in  std_logic_vector(31 downto 0);  --oob_fid_value_o  : out std_logic_vector(15 downto 0);
---      oob_fid_stb_o    : out std_logic;
-      regs_i           : in  t_ep_out_registers);
+      clk_sys_i              : in  std_logic;
+      rst_n_i                : in  std_logic;
+      pcs_fab_o              : out t_ep_internal_fabric;
+      pcs_error_i            : in  std_logic;
+      pcs_busy_i             : in  std_logic;
+      pcs_dreq_i             : in  std_logic;
+      snk_i                  : in  t_wrf_sink_in;
+      snk_o                  : out t_wrf_sink_out;
+      fc_pause_p_i           : in  std_logic;
+      fc_pause_delay_i       : in  std_logic_vector(15 downto 0);
+      fc_pause_ack_o         : out std_logic;
+      fc_flow_enable_i       : in  std_logic;
+      txtsu_port_id_o        : out std_logic_vector(4 downto 0);
+      txtsu_fid_o            : out std_logic_vector(16 -1 downto 0);
+      txtsu_ts_value_o       : out std_logic_vector(28 + 4 - 1 downto 0);
+      txtsu_ts_incorrect_o   : out std_logic;
+      txtsu_stb_o            : out std_logic;
+      txtsu_ack_i            : in  std_logic;
+      txts_timestamp_i       : in  std_logic_vector(31 downto 0);
+      txts_timestamp_valid_i : in  std_logic;
+      regs_i                 : in  t_ep_out_registers);
   end component;
 
   component ep_rx_path
@@ -301,47 +311,47 @@ architecture syn of wr_endpoint is
       rtu_rq_valid_o         : out   std_logic);
   end component;
 
-
   component ep_1000basex_pcs
     generic (
       g_simulation : boolean;
       g_16bit      : boolean);
     port (
-      rst_n_i                 : in    std_logic;
-      clk_sys_i               : in    std_logic;
-      rxpcs_fab_o             : out   t_ep_internal_fabric;
-      rxpcs_fifo_almostfull_i : in    std_logic;
-      rxpcs_busy_o            : out   std_logic;
-      rxpcs_timestamp_stb_p_o : out   std_logic;
-      rxpcs_timestamp_valid_i : in    std_logic;
-      rxpcs_timestamp_i       : in    std_logic_vector(31 downto 0);
-      txpcs_fab_i             : in    t_ep_internal_fabric;
-      txpcs_error_o           : out   std_logic;
-      txpcs_busy_o            : out   std_logic;
-      txpcs_dreq_o            : out   std_logic;
-      txpcs_timestamp_stb_p_o : out   std_logic;
-      link_ok_o               : out   std_logic;
-      serdes_rst_o            : out   std_logic;
-      serdes_syncen_o         : out   std_logic;
-      serdes_loopen_o         : out   std_logic;
-      serdes_enable_o         : out   std_logic;
-      serdes_tx_clk_i         : in    std_logic;
-      serdes_tx_data_o        : out   std_logic_vector(15 downto 0);
-      serdes_tx_k_o           : out   std_logic_vector(1 downto 0);
-      serdes_tx_disparity_i   : in    std_logic;
-      serdes_tx_enc_err_i     : in    std_logic;
-      serdes_rx_clk_i         : in    std_logic;
-      serdes_rx_data_i        : in    std_logic_vector(15 downto 0);
-      serdes_rx_k_i           : in    std_logic_vector(1 downto 0);
-      serdes_rx_enc_err_i     : in    std_logic;
-      serdes_rx_bitslide_i    : in    std_logic_vector(4 downto 0);
-      rmon_o                  : inout t_rmon_triggers;
-      mdio_addr_i             : in    std_logic_vector(15 downto 0);
-      mdio_data_i             : in    std_logic_vector(15 downto 0);
-      mdio_data_o             : out   std_logic_vector(15 downto 0);
-      mdio_stb_i              : in    std_logic;
-      mdio_rw_i               : in    std_logic;
-      mdio_ready_o            : out   std_logic);
+      rst_n_i                       : in    std_logic;
+      clk_sys_i                     : in    std_logic;
+      rxpcs_fab_o                   : out   t_ep_internal_fabric;
+      rxpcs_fifo_almostfull_i       : in    std_logic;
+      rxpcs_busy_o                  : out   std_logic;
+      rxpcs_timestamp_trigger_p_a_o : out   std_logic;
+      rxpcs_timestamp_i             : in    std_logic_vector(31 downto 0);
+      rxpcs_timestamp_stb_i         : in    std_logic;
+      rxpcs_timestamp_valid_i       : in    std_logic;
+      txpcs_fab_i                   : in    t_ep_internal_fabric;
+      txpcs_error_o                 : out   std_logic;
+      txpcs_busy_o                  : out   std_logic;
+      txpcs_dreq_o                  : out   std_logic;
+      txpcs_timestamp_trigger_p_a_o : out   std_logic;
+      link_ok_o                     : out   std_logic;
+      serdes_rst_o                  : out   std_logic;
+      serdes_syncen_o               : out   std_logic;
+      serdes_loopen_o               : out   std_logic;
+      serdes_enable_o               : out   std_logic;
+      serdes_tx_clk_i               : in    std_logic;
+      serdes_tx_data_o              : out   std_logic_vector(15 downto 0);
+      serdes_tx_k_o                 : out   std_logic_vector(1 downto 0);
+      serdes_tx_disparity_i         : in    std_logic;
+      serdes_tx_enc_err_i           : in    std_logic;
+      serdes_rx_clk_i               : in    std_logic;
+      serdes_rx_data_i              : in    std_logic_vector(15 downto 0);
+      serdes_rx_k_i                 : in    std_logic_vector(1 downto 0);
+      serdes_rx_enc_err_i           : in    std_logic;
+      serdes_rx_bitslide_i          : in    std_logic_vector(4 downto 0);
+      rmon_o                        : inout t_rmon_triggers;
+      mdio_addr_i                   : in    std_logic_vector(15 downto 0);
+      mdio_data_i                   : in    std_logic_vector(15 downto 0);
+      mdio_data_o                   : out   std_logic_vector(15 downto 0);
+      mdio_stb_i                    : in    std_logic;
+      mdio_rw_i                     : in    std_logic;
+      mdio_ready_o                  : out   std_logic);
   end component;
 
   component ep_timestamping_unit
@@ -350,22 +360,24 @@ architecture syn of wr_endpoint is
       g_timestamp_bits_f : natural;
       g_ref_clock_rate   : integer);
     port (
-      clk_ref_i              : in  std_logic;
-      clk_sys_i              : in  std_logic;
-      clk_rx_i               : in  std_logic;
-      rst_n_rx_i             : in  std_logic;
-      rst_n_ref_i            : in  std_logic;
-      rst_n_sys_i            : in  std_logic;
-      pps_csync_p1_i         : in  std_logic;
-      tx_timestamp_stb_p_i   : in  std_logic;
-      rx_timestamp_stb_p_i   : in  std_logic;
-      rxts_timestamp_o       : out std_logic_vector(31 downto 0);
-      rxts_timestamp_valid_o : out std_logic;
---      txoob_fid_i            : in  std_logic_vector(16 - 1 downto 0);
---      txoob_stb_p_i          : in  std_logic;
-      txts_timestamp_o       : out std_logic_vector(31 downto 0);
-      regs_i                 : in  t_ep_out_registers;
-      regs_o                 : out t_ep_in_registers);
+      clk_ref_i                  : in  std_logic;
+      clk_sys_i                  : in  std_logic;
+      clk_rx_i                   : in  std_logic;
+      rst_n_rx_i                 : in  std_logic;
+      rst_n_ref_i                : in  std_logic;
+      rst_n_sys_i                : in  std_logic;
+      pps_csync_p1_i             : in  std_logic;
+      pps_valid_i                : in  std_logic;
+      tx_timestamp_trigger_p_a_i : in  std_logic;
+      rx_timestamp_trigger_p_a_i : in  std_logic;
+      rxts_timestamp_o           : out std_logic_vector(31 downto 0);
+      rxts_timestamp_stb_o       : out std_logic;
+      rxts_timestamp_valid_o     : out std_logic;
+      txts_timestamp_o           : out std_logic_vector(31 downto 0);
+      txts_timestamp_stb_o       : out std_logic;
+      txts_timestamp_valid_o     : out std_logic;
+      regs_i                     : in  t_ep_out_registers;
+      regs_o                     : out t_ep_in_registers);
   end component;
 
 -------------------------------------------------------------------------------
@@ -384,15 +396,18 @@ architecture syn of wr_endpoint is
   signal txoob_fid_value : std_logic_vector(15 downto 0);
   signal txoob_fid_stb   : std_logic;
 
-  signal txpcs_timestamp_stb_p : std_logic;
-  signal rxpcs_timestamp_stb_p : std_logic;
-  signal rxpcs_timestamp_valid : std_logic;
-  signal rxpcs_timestamp_value : std_logic_vector(31 downto 0);
+  signal txpcs_timestamp_trigger_p_a : std_logic;
 
-  signal txts_timestamp : std_logic_vector(28 + 4 - 1 downto 0);
-  --signal rxts_timestamp_value : std_logic_vector(28 + 4 - 1 downto 0);
-  --signal rxts_done_p          : std_logic;
-  --signal txts_done_p          : std_logic;
+  signal txts_timestamp_stb   : std_logic;
+  signal txts_timestamp_valid : std_logic;
+  signal txts_timestamp_value : std_logic_vector(31 downto 0);
+
+
+  signal rxpcs_timestamp_stb         : std_logic;
+  signal rxpcs_timestamp_trigger_p_a : std_logic;
+  signal rxpcs_timestamp_valid       : std_logic;
+  signal rxpcs_timestamp_value       : std_logic_vector(31 downto 0);
+
 
 -------------------------------------------------------------------------------
 -- RX PCS -> RX DEFRAMER signals
@@ -526,15 +541,18 @@ begin
       rxpcs_fab_o             => rxpcs_fab,
       rxpcs_busy_o            => rxpcs_busy,
       rxpcs_fifo_almostfull_i => rxpcs_fifo_almostfull,
-      rxpcs_timestamp_stb_p_o => rxpcs_timestamp_stb_p,
-      rxpcs_timestamp_i       => rxpcs_timestamp_value,
-      rxpcs_timestamp_valid_i => rxpcs_timestamp_valid,
 
-      txpcs_fab_i             => txpcs_fab,
-      txpcs_busy_o            => txpcs_busy,
-      txpcs_dreq_o            => txpcs_dreq,
-      txpcs_error_o           => txpcs_error,
-      txpcs_timestamp_stb_p_o => txpcs_timestamp_stb_p,
+      rxpcs_timestamp_trigger_p_a_o => rxpcs_timestamp_trigger_p_a,
+      rxpcs_timestamp_i             => rxpcs_timestamp_value,
+      rxpcs_timestamp_stb_i         => rxpcs_timestamp_stb,
+      rxpcs_timestamp_valid_i       => rxpcs_timestamp_valid,
+
+      txpcs_fab_i   => txpcs_fab,
+      txpcs_busy_o  => txpcs_busy,
+      txpcs_dreq_o  => txpcs_dreq,
+      txpcs_error_o => txpcs_error,
+
+      txpcs_timestamp_trigger_p_a_o => txpcs_timestamp_trigger_p_a,
 
       link_ok_o => link_ok,
 
@@ -590,13 +608,15 @@ begin
       fc_flow_enable_i => txfra_flow_enable,
       regs_i           => regs_fromwb,
 
-      txts_timestamp_i => txts_timestamp,
+      txts_timestamp_i       => txts_timestamp_value,
+      txts_timestamp_valid_i => txts_timestamp_valid,
 
-      txtsu_port_id_o => txtsu_port_id_o,
-      txtsu_fid_o     => txtsu_frame_id_o,
-      txtsu_tsval_o   => txtsu_tsval_o,
-      txtsu_valid_o   => txtsu_valid_o,
-      txtsu_ack_i     => txtsu_ack_i
+      txtsu_port_id_o      => txtsu_port_id_o,
+      txtsu_fid_o          => txtsu_frame_id_o,
+      txtsu_ts_value_o     => txtsu_ts_value_o,
+      txtsu_ts_incorrect_o => txtsu_ts_incorrect_o,
+      txtsu_stb_o          => txtsu_stb_o,
+      txtsu_ack_i          => txtsu_ack_i
       );
 
 
@@ -735,19 +755,20 @@ begin
       rst_n_sys_i    => rst_n_sys,
       rst_n_ref_i    => rst_n_ref,
       pps_csync_p1_i => pps_csync_p1_i,
+      pps_valid_i => pps_valid_i,
 
-      tx_timestamp_stb_p_i => txpcs_timestamp_stb_p,
-      rx_timestamp_stb_p_i => rxpcs_timestamp_stb_p,
+      tx_timestamp_trigger_p_a_i => txpcs_timestamp_trigger_p_a,
+      rx_timestamp_trigger_p_a_i => rxpcs_timestamp_trigger_p_a,
 
       rxts_timestamp_o       => rxpcs_timestamp_value,
       rxts_timestamp_valid_o => rxpcs_timestamp_valid,
+      rxts_timestamp_stb_o => rxpcs_timestamp_stb,
 
-      --txoob_fid_i   => txoob_fid_value,
-      --txoob_stb_p_i => txoob_fid_stb,
+      txts_timestamp_o       => txts_timestamp_value,
+      txts_timestamp_valid_o => txts_timestamp_valid,
 
-      txts_timestamp_o => txts_timestamp,
-      regs_i           => regs_fromwb,
-      regs_o           => regs_towb_tsu);
+      regs_i => regs_fromwb,
+      regs_o => regs_towb_tsu);
 
 
 -------------------------------------------------------------------------------
@@ -833,53 +854,53 @@ begin
 -- DMTD phase meter
 ------------------------------------------------------------------------------  
 
-gen_with_dmtd:  if(g_with_dmtd) generate
-  U_DMTD : dmtd_phase_meas
-    generic map (
-      g_counter_bits         => 14,
-      g_deglitcher_threshold => 1000)
-    port map (
-      clk_sys_i => clk_sys_i,
+  gen_with_dmtd : if(g_with_dmtd) generate
+    U_DMTD : dmtd_phase_meas
+      generic map (
+        g_counter_bits         => 14,
+        g_deglitcher_threshold => 1000)
+      port map (
+        clk_sys_i => clk_sys_i,
 
-      clk_a_i    => phy_ref_clk_i,
-      clk_b_i    => phy_rx_clk_i,
-      clk_dmtd_i => clk_dmtd_i,
-      rst_n_i    => rst_n_i,
+        clk_a_i    => phy_ref_clk_i,
+        clk_b_i    => phy_rx_clk_i,
+        clk_dmtd_i => clk_dmtd_i,
+        rst_n_i    => rst_n_i,
 
-      en_i           => regs_fromwb.dmcr_en_o,
-      navg_i         => regs_fromwb.dmcr_n_avg_o,
-      phase_meas_o   => phase_meas,
-      phase_meas_p_o => phase_meas_p);
+        en_i           => regs_fromwb.dmcr_en_o,
+        navg_i         => regs_fromwb.dmcr_n_avg_o,
+        phase_meas_o   => phase_meas,
+        phase_meas_p_o => phase_meas_p);
 
-  p_dmtd_update : process(clk_sys_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
-        validity_cntr              <= (others => '0');
-        regs_towb_ep.dmsr_ps_rdy_i <= '0';
-      else
-
-        if(regs_fromwb.dmcr_en_o = '0') then
+    p_dmtd_update : process(clk_sys_i)
+    begin
+      if rising_edge(clk_sys_i) then
+        if rst_n_i = '0' then
           validity_cntr              <= (others => '0');
           regs_towb_ep.dmsr_ps_rdy_i <= '0';
-        elsif(regs_fromwb.dmsr_ps_rdy_o = '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
-          regs_towb_ep.dmsr_ps_rdy_i <= '0';
-        elsif(phase_meas_p = '1') then
+        else
 
-          if(validity_cntr = "11") then
-            regs_towb_ep.dmsr_ps_rdy_i <= '1';
-            regs_towb_ep.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
-          else
+          if(regs_fromwb.dmcr_en_o = '0') then
+            validity_cntr              <= (others => '0');
             regs_towb_ep.dmsr_ps_rdy_i <= '0';
-            validity_cntr              <= validity_cntr + 1;
+          elsif(regs_fromwb.dmsr_ps_rdy_o = '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then
+            regs_towb_ep.dmsr_ps_rdy_i <= '0';
+          elsif(phase_meas_p = '1') then
+
+            if(validity_cntr = "11") then
+              regs_towb_ep.dmsr_ps_rdy_i <= '1';
+              regs_towb_ep.dmsr_ps_val_i <= phase_meas(23 downto 0);  -- discard few
+            else
+              regs_towb_ep.dmsr_ps_rdy_i <= '0';
+              validity_cntr              <= validity_cntr + 1;
+            end if;
           end if;
         end if;
       end if;
-    end if;
-  end process;
+    end process;
 
-end generate gen_with_dmtd;
-  
+  end generate gen_with_dmtd;
+
   dvalid_tx <= snk_cyc_i and snk_stb_i;
   dvalid_rx <= src_out.cyc and src_out.stb;
 

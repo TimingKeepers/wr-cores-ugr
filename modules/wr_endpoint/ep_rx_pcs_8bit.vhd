@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2011-10-07
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -72,9 +72,11 @@ entity ep_rx_pcs_8bit is
     pcs_fab_o             : out t_ep_internal_fabric;
 
 
-    timestamp_stb_p_o : out std_logic;  -- strobe for RX timestamping
-    timestamp_i       : in  std_logic_vector(31 downto 0);
-    timestamp_valid_i : in  std_logic;
+    timestamp_trigger_p_a_o : out std_logic;  -- strobe for RX timestamping
+
+    timestamp_i           : in  std_logic_vector(31 downto 0);
+    timestamp_stb_i       : in  std_logic;
+    timestamp_valid_i     : in  std_logic;
 
 -------------------------------------------------------------------------------
 -- PHY interface
@@ -172,6 +174,7 @@ architecture behavioral of ep_rx_pcs_8bit is
   signal fifo_almostfull    : std_logic;
   signal fifo_clear_n       : std_logic;
   signal fifo_with_rx_ts    : std_logic;
+  signal fifo_ts_valid    : std_logic;
 
 -- Synchronization detection FSM signals
   signal rx_synced, rx_even : std_logic;
@@ -336,13 +339,14 @@ begin
   -- FIFO input data formatting
   fifo_wrreq <= fifo_wr_toggle and fifo_mask_write;
 
-  pcs_fab_o.data        <= fifo_rx_data;
-  pcs_fab_o.sof         <= fifo_sof and fifo_wrreq;
-  pcs_fab_o.eof         <= fifo_eof and fifo_wrreq;
-  pcs_fab_o.bytesel     <= fifo_bytesel;
-  pcs_fab_o.error       <= fifo_error and fifo_wrreq;
+  pcs_fab_o.data             <= fifo_rx_data;
+  pcs_fab_o.sof              <= fifo_sof and fifo_wrreq;
+  pcs_fab_o.eof              <= fifo_eof and fifo_wrreq;
+  pcs_fab_o.bytesel          <= fifo_bytesel;
+  pcs_fab_o.error            <= fifo_error and fifo_wrreq;
   pcs_fab_o.has_rx_timestamp <= fifo_with_rx_ts;
-  pcs_fab_o.dvalid      <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
+  pcs_fab_o.rx_timestamp_valid <= timestamp_valid_i;
+  pcs_fab_o.dvalid           <= not (fifo_sof or fifo_eof or fifo_error) and fifo_wrreq;
 
   fifo_almostfull <= pcs_fifo_almostfull_i;
 
@@ -472,7 +476,7 @@ begin
         rmon_rx_overrun_p_int   <= '0';
         rmon_invalid_code_p_int <= '0';
 
-        timestamp_stb_p_o <= '0';
+        timestamp_trigger_p_a_o <= '0';
         timestamp_pending <= "000";
       else                              -- normal PCS operation
 
@@ -502,7 +506,7 @@ begin
             fifo_bytesel <= '0';
 
             rx_busy           <= '0';
-            timestamp_stb_p_o <= '0';
+            timestamp_trigger_p_a_o <= '0';
 
             -- insert the RX timestamp into the FIFO
             if(timestamp_pending /= "000") then
@@ -559,7 +563,7 @@ begin
             fifo_mask_write <= '0';
             fifo_wr_toggle  <= '0';
             fifo_with_rx_ts <= '0';
-            
+
             if (d_err = '1' or d_is_k = '1' or d_is_even = '1' or rx_synced = '0') then
               rmon_invalid_code_p_int <= d_err;
               rx_state                <= RX_NOFRAME;
@@ -670,7 +674,7 @@ begin
               -- the right position, start receiving the frame payload
               if d_is_sfd_char = '1' then
 -- generate the RX timestamp pulse
-                timestamp_stb_p_o <= '1';
+                timestamp_trigger_p_a_o <= '1';
 
 -- we've got an SFD at proper offset from the beginning of the preamble
                 if (preamble_cntr = "010") or (preamble_cntr = "001") then
@@ -685,7 +689,7 @@ begin
                 
               elsif (d_is_preamble_char = '1') then
                 preamble_cntr <= preamble_cntr - 1;
-              -- got duplicated SPD code?
+                -- got duplicated SPD code?
               elsif (d_is_spd = '1') then
                 preamble_cntr <= "111";
               end if;
@@ -757,7 +761,7 @@ begin
 
           when RX_EXTEND =>
 
-            timestamp_stb_p_o <= '0';
+            timestamp_trigger_p_a_o <= '0';
 
             if d_is_extend = '1' then    -- got carrier extend. Just keep
                                          -- receiving it.
@@ -765,12 +769,12 @@ begin
               rx_state        <= RX_EXTEND;
             elsif d_is_comma = '1' then  -- got comma, real end-of-frame
               -- indicate the correct ending of the current frame in the RX FIFO
-              fifo_eof          <= not timestamp_valid_i;
-              fifo_with_rx_ts   <= timestamp_valid_i;
+              fifo_eof          <= not timestamp_stb_i;
+              fifo_with_rx_ts   <= timestamp_stb_i;
               fifo_mask_write   <= '1';
               fifo_wr_toggle    <= '1';
-              timestamp_pending <= (others => timestamp_valid_i);
-                                   
+              timestamp_pending <= (others => timestamp_stb_i);
+
 
               rx_state <= RX_COMMA;
               

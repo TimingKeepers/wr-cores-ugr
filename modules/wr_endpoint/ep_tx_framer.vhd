@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-02-09
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -90,26 +90,27 @@ entity ep_tx_framer is
 -- Frame ID value
     txtsu_fid_o     : out std_logic_vector(16 -1 downto 0);
 -- Encoded timestamps
-    txtsu_tsval_o   : out std_logic_vector(28 + 4 - 1 downto 0);
-    -- TX timestamp valid: HI tells the TX timestamping unit that there is a valid
--- timestmap on txtsu_tsval_o, txtsu_fid_o and txtsu_port_id_o. Line remains HI
+    txtsu_ts_value_o   : out std_logic_vector(28 + 4 - 1 downto 0);
+    txtsu_ts_incorrect_o : out std_logic;
+
+-- TX timestamp strobe: HI tells the TX timestamping unit that a timestamp is
+-- available on txtsu_ts_value_o, txtsu_fid_o andd txtsu_port_id_o. The correctness
+-- of the timestamping is indiacted on txtsu_ts_incorrect_o. Line remains HI
 -- until assertion of txtsu_ack_i.
-    txtsu_valid_o : out std_logic;
+    txtsu_stb_o : out std_logic;
 
 -- TX timestamp acknowledge: HI indicates that TXTSU has successfully received
 -- the timestamp
     txtsu_ack_i : in std_logic;
 
-
+---------------------------------------------------------------------------
+-- Timestamp input from the timestamping unit
+---------------------------------------------------------------------------
     txts_timestamp_i : in std_logic_vector(31 downto 0);
-
+    txts_timestamp_valid_i : in std_logic;
     
-    -- OOB frame tag value and strobing signal
---    oob_fid_value_o : out std_logic_vector(15 downto 0);
---    oob_fid_stb_o   : out std_logic;
-
 -------------------------------------------------------------------------------
--- control registers
+-- Control registers
 -------------------------------------------------------------------------------
 
     regs_i : in t_ep_out_registers
@@ -170,7 +171,7 @@ architecture behavioral of ep_tx_framer is
   signal stall_int    : std_logic;
   signal stall_int_d0 : std_logic;
   signal untagging    : std_logic;
-
+  signal got_error : std_logic;
 
 
   function b2s (x : boolean)
@@ -356,8 +357,7 @@ begin  -- behavioral
         crc_gen_enable_mask <= '1';
         crc_gen_force_reset <= '0';
 
-        --oob_fid_stb_o <= '0';
-        txtsu_valid_o <= '0';
+        txtsu_stb_o <= '0';
 
       else
 
@@ -374,7 +374,10 @@ begin  -- behavioral
         elsif (state /= TXF_IDLE and pcs_error_i = '1') then
           tx_ready    <= '0';
           counter     <= (others => '0');
-          snk_out.err <= '1';
+
+--UGLY FIX (to cover bug in the swcore)
+--          snk_out.err <= '1';
+          got_error <= '1';
           state       <= TXF_GAP;
         else
 
@@ -388,8 +391,9 @@ begin  -- behavioral
 
               snk_out.err <= '0';
               snk_out.rty <= '0';
-
-              txtsu_valid_o <= '0';
+              got_error <= '0';
+              
+              txtsu_stb_o <= '0';
               q_abort <= '0';
               q_eof      <= '0';
 
@@ -678,10 +682,11 @@ begin  -- behavioral
               if(counter = 0 or g_force_gap_length = 0) then
 
                 -- Submit the TX timestamp to the TXTSU queue
-                if(oob.valid = '1' and oob.oob_type = c_WRF_OOB_TYPE_TX) then
+                if(oob.valid = '1' and oob.oob_type = c_WRF_OOB_TYPE_TX and got_error = '0') then
                   if(pcs_busy_i = '0') then
-                    txtsu_valid_o <='1';
-                    txtsu_tsval_o <= txts_timestamp_i;
+                    txtsu_stb_o <='1';
+                    txtsu_ts_incorrect_o <= not txts_timestamp_valid_i;
+                    txtsu_ts_value_o <= txts_timestamp_i;
                     txtsu_port_id_o <= regs_i.ecr_portid_o;
                     txtsu_fid_o <= oob.frame_id;
                     state <= TXF_STORE_TSTAMP;
@@ -696,7 +701,7 @@ begin  -- behavioral
 
             when TXF_STORE_TSTAMP =>
               if(txtsu_ack_i = '1') then
-                txtsu_valid_o <= '0';
+                txtsu_stb_o <= '0';
                 state <= TXF_IDLE;
               end if;
               

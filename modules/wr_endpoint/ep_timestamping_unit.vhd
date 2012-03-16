@@ -1,13 +1,13 @@
 -------------------------------------------------------------------------------
--- Title      : Optical 1000base-X endpoint - PMA interface - IEEE1588/WhiteRabbit
+-- Title      : Optical 1000base-X endpoint - IEEE1588/WhiteRabbit
 --              timestamping unit
--- Project    : White Rabbit Switch
+-- Project    : White Rabbit 
 -------------------------------------------------------------------------------
 -- File       : ep_timestamping_unit.vhd
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-02-09
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -20,12 +20,12 @@
 --   occur during sampling asynchronous timestamp strobes.
 -- Both timestamps are taken using refclk_i.
 -------------------------------------------------------------------------------
--- Copyright (c) 2009 Tomasz Wlostowski
+-- Copyright (c) 2009 - 2012 CERN
 -------------------------------------------------------------------------------
 -- Revisions  :
--- Date        Version  Author  Description
--- 2009-06-22  0.1      slayer  Created
--------------------------------------------------------------------------------s
+-- Date        Version  Author          Description
+-- 2009-06-22  0.1      twlostow        Created
+-------------------------------------------------------------------------------
 
 
 
@@ -65,22 +65,38 @@ entity ep_timestamping_unit is
 -- PPS pulse input (active HI for 1 clk_ref_i cycle) for internal TS counter synchronization
     pps_csync_p1_i : in std_logic;
 
--- asynchronous TX/RX timestamp strobes (from PCS)
-    tx_timestamp_stb_p_i : in std_logic;
-    rx_timestamp_stb_p_i : in std_logic;
+    pps_valid_i : in std_logic;
+
+-- asynchronous TX/RX timestamp triggers (from PCS)
+    tx_timestamp_trigger_p_a_i : in std_logic;
+    rx_timestamp_trigger_p_a_i : in std_logic;
 
 -------------------------------------------------------------------------------
--- RX Timestamp outpt
+-- RX Timestamp output (clk_rx_i clock domain)
 -------------------------------------------------------------------------------
 
     -- RX timestamp (to RX deframer)
     rxts_timestamp_o : out std_logic_vector(31 downto 0);
 
+    -- RX timestamp strobe (back to the PCSr). When HI,
+    -- rxts_timestamp_o and rxts_timestamp_valid_o contain information about
+    -- the RX timestamp and its validity
+    rxts_timestamp_stb_o : out std_logic;
+
     -- RX timestamp valid (to RX deframer)
     rxts_timestamp_valid_o : out std_logic;
 
+-------------------------------------------------------------------------------
+-- TX Timestamp output (clk_ref_i clock domain)
+-------------------------------------------------------------------------------    
+    
     -- TX timestamp output (to TXTSU/Framer)
     txts_timestamp_o : out std_logic_vector(31 downto 0);
+
+    -- TX timestamp strobe (to TXTSU/Framer). When HI,
+    -- txts_timestamp_o and txts_timestamp_valid_o contain information about
+    -- the TX timestamp and its validity
+    txts_timestamp_stb_o : out std_logic;
 
     -- TX timestamp valid (to TXTSU/Framer)
     txts_timestamp_valid_o : out std_logic;
@@ -142,6 +158,8 @@ architecture syn of ep_timestamping_unit is
   signal fid_valid  : std_logic;
 
   signal txts_valid : std_logic;
+
+  signal valid_rx, valid_tx : std_logic;
   
 begin  -- syn
 
@@ -171,7 +189,7 @@ begin  -- syn
     port map (
       clk_i    => clk_ref_i,
       rst_n_i  => rst_n_ref_i,
-      data_i   => tx_timestamp_stb_p_i,
+      data_i   => tx_timestamp_trigger_p_a_i,
       synced_o => open,
       npulse_o => open,
       ppulse_o => take_tx_synced_p);
@@ -182,7 +200,7 @@ begin  -- syn
     port map (
       clk_i    => clk_ref_i,
       rst_n_i  => rst_n_ref_i,
-      data_i   => rx_timestamp_stb_p_i,
+      data_i   => rx_timestamp_trigger_p_a_i,
       synced_o => open,
       npulse_o => open,
       ppulse_o => take_rx_synced_p);
@@ -194,7 +212,7 @@ begin  -- syn
     port map (
       clk_i    => clk_ref_i,
       rst_n_i  => rst_n_ref_i,
-      data_i   => tx_timestamp_stb_p_i,
+      data_i   => tx_timestamp_trigger_p_a_i,
       synced_o => open,
       npulse_o => open,
       ppulse_o => take_tx_synced_p_fedge);
@@ -205,7 +223,7 @@ begin  -- syn
     port map (
       clk_i    => clk_ref_i,
       rst_n_i  => rst_n_ref_i,
-      data_i   => rx_timestamp_stb_p_i,
+      data_i   => rx_timestamp_trigger_p_a_i,
       synced_o => open,
       npulse_o => open,
       ppulse_o => take_rx_synced_p_fedge);
@@ -226,6 +244,7 @@ begin  -- syn
 
         if take_rx_synced_p = '1' then
           cntr_rx_r                                                           <= cntr_r;
+          valid_rx                                                            <= pps_valid_i;
           rx_sync_delay(rx_sync_delay'length-1 downto rx_sync_delay'length-4) <= (others => '1');
         else
           rx_sync_delay <= '0' & rx_sync_delay(rx_sync_delay'length-1 downto 1);
@@ -233,6 +252,7 @@ begin  -- syn
 
         if take_tx_synced_p = '1' then
           cntr_tx_r                                                           <= cntr_r;
+          valid_tx                                                            <= pps_valid_i;
           tx_sync_delay(tx_sync_delay'length-1 downto tx_sync_delay'length-4) <= (others => '1');
         else
           tx_sync_delay <= '0' & tx_sync_delay(tx_sync_delay'length-1 downto 1);
@@ -288,13 +308,15 @@ begin  -- syn
   begin
     if rising_edge(clk_rx_i) then
       if(rst_n_rx_i = '0') then
-        rxts_timestamp_valid_o <= '0';
+        rxts_timestamp_stb_o   <= '0';
         rxts_timestamp_o       <= (others => '0');
+        rxts_timestamp_valid_o <= '0';
       else
         if(regs_i. tscr_en_rxts_o = '0') then
-          rxts_timestamp_valid_o <= '0';
+          rxts_timestamp_stb_o <= '0';
         elsif(rx_ts_done = '1' and regs_i.tscr_en_rxts_o = '1') then
-          rxts_timestamp_valid_o <= '1';
+          rxts_timestamp_stb_o   <= '1';
+          rxts_timestamp_valid_o <= valid_rx;
           rxts_timestamp_o       <= cntr_rx_f & cntr_rx_r;
         end if;
       end if;
@@ -306,9 +328,13 @@ begin  -- syn
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_sys_i = '0') then
-        txts_timestamp_o <= (others => '0');
+        txts_timestamp_o       <= (others => '0');
+        txts_timestamp_stb_o   <= '0';
+        txts_timestamp_valid_o <= '0';
       elsif(tx_ts_done = '1' and regs_i.tscr_en_txts_o = '1') then
-        txts_timestamp_o <= cntr_tx_f & cntr_tx_r;
+        txts_timestamp_o       <= cntr_tx_f & cntr_tx_r;
+        txts_timestamp_stb_o   <= '1';
+        txts_timestamp_valid_o <= valid_tx;
       end if;
     end if;
   end process;

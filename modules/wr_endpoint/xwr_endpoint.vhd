@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-03-07
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -64,6 +64,10 @@ entity xwr_endpoint is
 -- PPS input (1 clk_ref_i cycle HI) for synchronizing timestamp counter
     pps_csync_p1_i : in std_logic := '0';
 
+-- PPS valid input (clk_ref_i domain), when 1, the external PPS generator/servo
+-- is not adjusting the time scale, so we can safely timestamp.
+    pps_valid_i : in std_logic := '1';
+
 -------------------------------------------------------------------------------
 -- PHY Interace (8/16 bit PCS)
 -------------------------------------------------------------------------------    
@@ -113,20 +117,24 @@ entity xwr_endpoint is
 -- TX timestamping unit interface
 -------------------------------------------------------------------------------  
 
--- port ID value
-    txtsu_port_id_o : out std_logic_vector(4 downto 0);
+-- Port ID value
+    txtsu_port_id_o  : out std_logic_vector(4 downto 0);
+-- Frame ID value
+    txtsu_frame_id_o : out std_logic_vector(16 -1 downto 0);
 
--- frame ID value
-    txtsu_frame_id_o : out std_logic_vector(16 - 1 downto 0);
+-- TX Timestamp and correctness info
+    txtsu_ts_value_o     : out std_logic_vector(28 + 4 - 1 downto 0);
+    txtsu_ts_incorrect_o : out std_logic;
 
--- timestamp values: gathered on rising clock edge (the main timestamp)
-    txtsu_tsval_o : out std_logic_vector(28 + 4 - 1 downto 0);
+-- TX timestamp strobe: HI tells the TX timestamping unit that a timestamp is
+-- available on txtsu_ts_value_o, txtsu_fid_o andd txtsu_port_id_o. The correctness
+-- of the timestamping is indiacted on txtsu_ts_incorrect_o. Line remains HI
+-- until assertion of txtsu_ack_i.
+    txtsu_stb_o : out std_logic;
 
--- HI indicates a valid timestamp/frame ID pair for the TXTSU
-    txtsu_valid_o : out std_logic;
-
--- HI acknowledges that the TXTSU have recorded the timestamp
-    txtsu_ack_i : in std_logic := '1';
+-- TX timestamp acknowledge: HI indicates that TXTSU has successfully received
+-- the timestamp
+    txtsu_ack_i : in std_logic;
 
 -------------------------------------------------------------------------------
 -- RTU interface
@@ -162,15 +170,15 @@ entity xwr_endpoint is
 -- Wishbone bus
 -------------------------------------------------------------------------------
 
-  wb_i : in  t_wishbone_slave_in;
-  wb_o : out t_wishbone_slave_out;
+    wb_i : in  t_wishbone_slave_in;
+    wb_o : out t_wishbone_slave_out;
 
 -------------------------------------------------------------------------------
 -- Misc stuff
 -------------------------------------------------------------------------------
 
-  led_link_o : out std_logic;
-  led_act_o  : out std_logic
+    led_link_o : out std_logic;
+    led_act_o  : out std_logic
 
     );
 
@@ -198,77 +206,78 @@ begin
       g_with_leds           => g_with_leds,
       g_with_dmtd           => g_with_dmtd)
     port map (
-      clk_ref_i          => clk_ref_i,
-      clk_sys_i          => clk_sys_i,
-      clk_dmtd_i         => clk_dmtd_i,
-      rst_n_i            => rst_n_i,
-      pps_csync_p1_i     => pps_csync_p1_i,
-      phy_rst_o          => phy_rst_o,
-      phy_loopen_o       => phy_loopen_o,
-      phy_enable_o       => phy_enable_o,
-      phy_syncen_o       => phy_syncen_o,
-      phy_ref_clk_i      => phy_ref_clk_i,
-      phy_tx_data_o      => phy_tx_data_o,
-      phy_tx_k_o         => phy_tx_k_o,
-      phy_tx_disparity_i => phy_tx_disparity_i,
-      phy_tx_enc_err_i   => phy_tx_enc_err_i,
-      phy_rx_data_i      => phy_rx_data_i,
-      phy_rx_clk_i       => phy_rx_clk_i,
-      phy_rx_k_i         => phy_rx_k_i,
-      phy_rx_enc_err_i   => phy_rx_enc_err_i,
-      phy_rx_bitslide_i  => phy_rx_bitslide_i,
-      gmii_tx_clk_i      => gmii_tx_clk_i,
-      gmii_txd_o         => gmii_txd_o,
-      gmii_tx_en_o       => gmii_tx_en_o,
-      gmii_tx_er_o       => gmii_tx_er_o,
-      gmii_rx_clk_i      => gmii_rx_clk_i,
-      gmii_rxd_i         => gmii_rxd_i,
-      gmii_rx_er_i       => gmii_rx_er_i,
-      gmii_rx_dv_i       => gmii_rx_dv_i,
-      src_dat_o          => src_o.dat,
-      src_adr_o          => src_o.adr,
-      src_sel_o          => src_o.sel,
-      src_cyc_o          => src_o.cyc,
-      src_stb_o          => src_o.stb,
-      src_we_o           => src_o.we,
-      src_stall_i        => src_i.stall,
-      src_ack_i          => src_i.ack,
-      src_err_i          => src_i.err,
-      snk_dat_i          => snk_i.dat,
-      snk_adr_i          => snk_i.adr,
-      snk_sel_i          => snk_i.sel,
-      snk_cyc_i          => snk_i.cyc,
-      snk_stb_i          => snk_i.stb,
-      snk_we_i           => snk_i.we,
-      snk_stall_o        => snk_o.stall,
-      snk_ack_o          => snk_o.ack,
-      snk_err_o          => snk_o.err,
-      snk_rty_o          => snk_o.rty,
-      txtsu_port_id_o    => txtsu_port_id_o,
-      txtsu_frame_id_o   => txtsu_frame_id_o,
-      txtsu_tsval_o      => txtsu_tsval_o,
-      txtsu_valid_o      => txtsu_valid_o,
-      txtsu_ack_i        => txtsu_ack_i,
-      rtu_full_i         => rtu_full_i,
-      rtu_almost_full_i  => rtu_almost_full_i,
-      rtu_rq_strobe_p1_o => rtu_rq_strobe_p1_o,
-      rtu_rq_smac_o      => rtu_rq_smac_o,
-      rtu_rq_dmac_o      => rtu_rq_dmac_o,
-      rtu_rq_vid_o       => rtu_rq_vid_o,
-      rtu_rq_has_vid_o   => rtu_rq_has_vid_o,
-      rtu_rq_prio_o      => rtu_rq_prio_o,
-      rtu_rq_has_prio_o  => rtu_rq_has_prio_o,
-      wb_cyc_i           => wb_i.cyc,
-      wb_stb_i           => wb_i.stb,
-      wb_we_i            => wb_i.we,
-      wb_sel_i           => wb_i.sel,
-      wb_adr_i           => wb_i.adr(7 downto 0),
-      wb_dat_i           => wb_i.dat,
-      wb_dat_o           => wb_o.dat,
-      wb_ack_o           => wb_o.ack,
-      wb_stall_o         => wb_o.stall,
-      led_link_o         => led_link_o,
-      led_act_o          => led_act_o);
+      clk_ref_i            => clk_ref_i,
+      clk_sys_i            => clk_sys_i,
+      clk_dmtd_i           => clk_dmtd_i,
+      rst_n_i              => rst_n_i,
+      pps_csync_p1_i       => pps_csync_p1_i,
+      phy_rst_o            => phy_rst_o,
+      phy_loopen_o         => phy_loopen_o,
+      phy_enable_o         => phy_enable_o,
+      phy_syncen_o         => phy_syncen_o,
+      phy_ref_clk_i        => phy_ref_clk_i,
+      phy_tx_data_o        => phy_tx_data_o,
+      phy_tx_k_o           => phy_tx_k_o,
+      phy_tx_disparity_i   => phy_tx_disparity_i,
+      phy_tx_enc_err_i     => phy_tx_enc_err_i,
+      phy_rx_data_i        => phy_rx_data_i,
+      phy_rx_clk_i         => phy_rx_clk_i,
+      phy_rx_k_i           => phy_rx_k_i,
+      phy_rx_enc_err_i     => phy_rx_enc_err_i,
+      phy_rx_bitslide_i    => phy_rx_bitslide_i,
+      gmii_tx_clk_i        => gmii_tx_clk_i,
+      gmii_txd_o           => gmii_txd_o,
+      gmii_tx_en_o         => gmii_tx_en_o,
+      gmii_tx_er_o         => gmii_tx_er_o,
+      gmii_rx_clk_i        => gmii_rx_clk_i,
+      gmii_rxd_i           => gmii_rxd_i,
+      gmii_rx_er_i         => gmii_rx_er_i,
+      gmii_rx_dv_i         => gmii_rx_dv_i,
+      src_dat_o            => src_o.dat,
+      src_adr_o            => src_o.adr,
+      src_sel_o            => src_o.sel,
+      src_cyc_o            => src_o.cyc,
+      src_stb_o            => src_o.stb,
+      src_we_o             => src_o.we,
+      src_stall_i          => src_i.stall,
+      src_ack_i            => src_i.ack,
+      src_err_i            => src_i.err,
+      snk_dat_i            => snk_i.dat,
+      snk_adr_i            => snk_i.adr,
+      snk_sel_i            => snk_i.sel,
+      snk_cyc_i            => snk_i.cyc,
+      snk_stb_i            => snk_i.stb,
+      snk_we_i             => snk_i.we,
+      snk_stall_o          => snk_o.stall,
+      snk_ack_o            => snk_o.ack,
+      snk_err_o            => snk_o.err,
+      snk_rty_o            => snk_o.rty,
+      txtsu_port_id_o      => txtsu_port_id_o,
+      txtsu_frame_id_o     => txtsu_frame_id_o,
+      txtsu_ts_value_o     => txtsu_ts_value_o,
+      txtsu_ts_incorrect_o => txtsu_ts_incorrect_o,
+      txtsu_stb_o          => txtsu_stb_o,
+      txtsu_ack_i          => txtsu_ack_i,
+      rtu_full_i           => rtu_full_i,
+      rtu_almost_full_i    => rtu_almost_full_i,
+      rtu_rq_strobe_p1_o   => rtu_rq_strobe_p1_o,
+      rtu_rq_smac_o        => rtu_rq_smac_o,
+      rtu_rq_dmac_o        => rtu_rq_dmac_o,
+      rtu_rq_vid_o         => rtu_rq_vid_o,
+      rtu_rq_has_vid_o     => rtu_rq_has_vid_o,
+      rtu_rq_prio_o        => rtu_rq_prio_o,
+      rtu_rq_has_prio_o    => rtu_rq_has_prio_o,
+      wb_cyc_i             => wb_i.cyc,
+      wb_stb_i             => wb_i.stb,
+      wb_we_i              => wb_i.we,
+      wb_sel_i             => wb_i.sel,
+      wb_adr_i             => wb_i.adr(7 downto 0),
+      wb_dat_i             => wb_i.dat,
+      wb_dat_o             => wb_o.dat,
+      wb_ack_o             => wb_o.ack,
+      wb_stall_o           => wb_o.stall,
+      led_link_o           => led_link_o,
+      led_act_o            => led_act_o);
 
 end syn;
 

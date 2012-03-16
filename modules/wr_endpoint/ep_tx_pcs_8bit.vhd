@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2011-10-05
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -101,7 +101,7 @@ entity ep_tx_pcs_8bit is
     an_tx_val_i : in std_logic_vector(15 downto 0);
 
 -- Timestamp strobe
-    timestamp_stb_p_o : out std_logic;
+    timestamp_trigger_p_a_o : out std_logic;
 
 -- RMON counters
     rmon_o : inout t_rmon_triggers;
@@ -251,7 +251,7 @@ begin
 -- The PCS is reset or disabled
       if(reset_synced_txclk = '0' or mdio_mcr_pdown_synced = '1') then
         tx_state           <= TX_COMMA;
-        timestamp_stb_p_o  <= '0';
+        timestamp_trigger_p_a_o  <= '0';
         fifo_rd            <= '0';
         tx_error           <= '0';
         tx_odata_reg       <= (others => '0');
@@ -394,7 +394,7 @@ begin
 
             if (tx_cntr = "0000") then
               tx_state          <= TX_SFD;
-              timestamp_stb_p_o <= '1';
+              timestamp_trigger_p_a_o <= '1';
               tx_rdreq_toggle   <= '1';
             end if;
 
@@ -412,7 +412,7 @@ begin
 
           when TX_DATA =>
 
-            timestamp_stb_p_o <= '0';
+            timestamp_trigger_p_a_o <= '0';
 
             -- toggle the TX FIFO request line, so we read a 16-bit word
             -- every 2 phy_tx_clk_i periods

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-01-20
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -116,6 +116,7 @@ package endpoint_private_pkg is
     dvalid           : std_logic;
     bytesel          : std_logic;
     has_rx_timestamp : std_logic;
+    rx_timestamp_valid : std_logic;
     data             : std_logic_vector(15 downto 0);
     addr             : std_logic_vector(1 downto 0);
   end record;
@@ -203,7 +204,7 @@ package endpoint_private_pkg is
     generic (
       g_timestamp_bits_r : natural;
       g_timestamp_bits_f : natural;
-      g_ref_clock_rate : integer);
+      g_ref_clock_rate   : integer);
     port (
       clk_ref_i            : in  std_logic;
       clk_sys_i            : in  std_logic;
@@ -299,24 +300,6 @@ package endpoint_private_pkg is
       led_act_o   : out std_logic);
   end component;
 
-  --function f_pack_fifo_contents (
-  --  data             : std_logic_vector;
-  --  sof              : std_logic;
-  --  eof              : std_logic;
-  --  bytesel          : std_logic;
-  --  error            : std_logic;
-  --  has_rx_timestamp : std_logic := '0';
-  --  early_eof        : boolean   := false
-
-  --  ) return std_logic_vector;
-
-  --function f_fifo_is_data(data          : in std_logic_vector; valid : in std_logic; early_eof : boolean := false) return std_logic;
-  --function f_fifo_is_sof(data           : in std_logic_vector; valid : in std_logic; early_eof : boolean := false) return std_logic;
-  --function f_fifo_is_eof(data           : in std_logic_vector; valid : in std_logic; early_eof : boolean := false) return std_logic;
-  --function f_fifo_is_error(data         : in std_logic_vector; valid : in std_logic; early_eof : boolean := false) return std_logic;
-  --function f_fifo_has_rx_timestamp(data : in std_logic_vector; valid : in std_logic; early_eof : boolean := false) return std_logic;
-  --function f_fifo_is_single_byte(data   : in std_logic_vector; valid : in std_logic; early_eof : boolean := false) return std_logic;
-
   procedure f_pack_fifo_contents (
     signal fab        : in  t_ep_internal_fabric;
     signal dout       : out std_logic_vector;
@@ -381,7 +364,8 @@ package body endpoint_private_pkg is
         dout(14)          <= fab.eof;
         dout(13)          <= fab.error;
         dout(12)          <= fab.has_rx_timestamp;
-        dout(11 downto 0) <= (others => 'X');
+        dout(11)          <= fab.rx_timestamp_valid;
+        dout(10 downto 0) <= (others => 'X');
         dout_valid        <= '1';
       elsif(fab.dvalid = '1') then
         dout(17)          <= fab.bytesel;
@@ -412,6 +396,7 @@ package body endpoint_private_pkg is
         fab.eof              <= din(17);
         fab.error            <= not din(17) and din(16) and din(13);
         fab.has_rx_timestamp <= '0';
+        fab.rx_timestamp_valid <= '0';
         fab.bytesel          <= din(17) and din(16);
 
       else
@@ -420,6 +405,7 @@ package body endpoint_private_pkg is
         fab.eof              <= din(16) and din(14);
         fab.error            <= din(16) and din(13);
         fab.has_rx_timestamp <= din(16) and din(12);
+        fab.rx_timestamp_valid <= din(16) and din(11);
         fab.bytesel          <= (not din(16)) and din(17);
       end if;
     else
@@ -429,6 +415,7 @@ package body endpoint_private_pkg is
       fab.eof              <= '0';
       fab.error            <= '0';
       fab.has_rx_timestamp <= '0';
+      fab.rx_timestamp_valid <= '0';
       fab.data             <= (others => 'X');
     end if;
   end f_unpack_fifo_contents;

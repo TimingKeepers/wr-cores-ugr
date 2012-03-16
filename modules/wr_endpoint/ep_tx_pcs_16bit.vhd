@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-01-25
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ entity ep_tx_pcs_16bit is
     an_tx_val_i : in std_logic_vector(15 downto 0);
 
 -- Timestamp strobe
-    timestamp_stb_p_o : out std_logic;
+    timestamp_trigger_p_a_o : out std_logic;
 
 -- RMON counters
     rmon_o : inout t_rmon_triggers;
@@ -259,7 +259,7 @@ begin
 -- The PCS is reset or disabled
       if(reset_synced_txclk = '0' or mdio_mcr_pdown_synced = '1') then
         tx_state           <= TX_COMMA_IDLE;
-        timestamp_stb_p_o  <= '0';
+        timestamp_trigger_p_a_o  <= '0';
         fifo_rd            <= '0';
         tx_error           <= '0';
         tx_odata_reg       <= (others => '0');
@@ -386,7 +386,7 @@ begin
 
             if (tx_cntr = "0000") then
               tx_state          <= TX_SFD;
-              timestamp_stb_p_o <= '1';
+              timestamp_trigger_p_a_o <= '1';
               fifo_rd           <= '1';
             end if;
 
@@ -401,7 +401,7 @@ begin
             tx_state     <= TX_DATA;
 
           when TX_DATA =>
-            timestamp_stb_p_o <= '0';
+            timestamp_trigger_p_a_o <= '0';
 
             if((fifo_empty = '1' or fifo_fab.error = '1') and fifo_fab.eof = '0') then  -- FIFO underrun?
               tx_odata_reg       <= c_k30_7 & c_k23_7;  -- emit error propagation code

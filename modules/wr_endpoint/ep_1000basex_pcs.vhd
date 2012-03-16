@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-01-30
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ entity ep_1000basex_pcs is
     ---------------------------------------------------------------------------
     -- System clock & reset
     ---------------------------------------------------------------------------
-    
+
     rst_n_i   : in std_logic;
     clk_sys_i : in std_logic;
 
@@ -77,37 +77,39 @@ entity ep_1000basex_pcs is
     ---------------------------------------------------------------------------
 
     -- Internal data output (incoming data).
-    rxpcs_fab_o             : out t_ep_internal_fabric;
+    rxpcs_fab_o : out t_ep_internal_fabric;
 
     -- 1: RX FIFO is almost full (drop the packet).
-    rxpcs_fifo_almostfull_i : in  std_logic;
+    rxpcs_fifo_almostfull_i : in std_logic;
 
     -- 1: RX PCS is busy receiving a packet or waiting for its' timestamp.
-    rxpcs_busy_o            : out std_logic;
+    rxpcs_busy_o : out std_logic;
 
     -- 1-pulse: RX timestamp trigger (to timestamping unit).
-    rxpcs_timestamp_stb_p_o : out std_logic;
+    rxpcs_timestamp_trigger_p_a_o : out std_logic;
 
     -- RX timestamp value (4 falling : 28 rising edge bits).
-    rxpcs_timestamp_i       : in  std_logic_vector(31 downto 0);
+    rxpcs_timestamp_i : in std_logic_vector(31 downto 0);
+
+    rxpcs_timestamp_stb_i : in std_logic;
 
     -- 1: timestamp on rxpcs_timestamp_i is valid).
-    rxpcs_timestamp_valid_i : in  std_logic;
+    rxpcs_timestamp_valid_i : in std_logic;
 
     -- Internal data input (data to be TXed).
-    txpcs_fab_i             : in  t_ep_internal_fabric;
+    txpcs_fab_i : in t_ep_internal_fabric;
 
     -- 1: TX error occured.
-    txpcs_error_o           : out std_logic;
+    txpcs_error_o : out std_logic;
 
     -- 1: TX PCS is busy transmitting a packet.
-    txpcs_busy_o            : out std_logic;
+    txpcs_busy_o : out std_logic;
 
     -- 1: TX PCS requests another transfer on txpcs_fab_i.
-    txpcs_dreq_o            : out std_logic;
+    txpcs_dreq_o : out std_logic;
 
     -- 1-pulse: TX timestamp trigger (to timestamping unit).
-    txpcs_timestamp_stb_p_o : out std_logic;
+    txpcs_timestamp_trigger_p_a_o : out std_logic;
 
     link_ok_o : out std_logic;
 
@@ -116,7 +118,7 @@ entity ep_1000basex_pcs is
     ---------------------------------------------------------------------------
 
     -- 1: serdes is reset, 0: serdes is operating normally.
-    serdes_rst_o    : out std_logic;
+    serdes_rst_o : out std_logic;
 
     -- 1: serdes comma alignent is enabled.
     serdes_syncen_o : out std_logic;
@@ -131,26 +133,26 @@ entity ep_1000basex_pcs is
     ---------------------------------------------------------------------------
     -- Serdes TX path (all synchronous to serdes_tx_clk_i)
     ---------------------------------------------------------------------------
-    
+
     -- Transmit path clock:
     -- 62.5 MHz in 16-bit mode, 125 MHz in 8-bit mode.
-    serdes_tx_clk_i       : in  std_logic;
+    serdes_tx_clk_i : in std_logic;
 
     -- TX Code group. In 16-bit mode, the MSB is TXed first (tx_data_o[15:8],
     -- then tx_data_o[7:0]). In 8-bit mode only bits [7:0] are used.
-    serdes_tx_data_o      : out std_logic_vector(15 downto 0);
+    serdes_tx_data_o : out std_logic_vector(15 downto 0);
 
     -- TX Control Code: When 1, a K-character is transmitted. In 16-bit mode,
     -- bit 1 goes first, in 8-bit mode only bit 0 is used.
-    serdes_tx_k_o         : out std_logic_vector(1 downto 0);
+    serdes_tx_k_o : out std_logic_vector(1 downto 0);
 
     -- TX Disparity input: 1 = last transmitted code group ended with negative
     -- running disparity, 0 = positive RD.
-    serdes_tx_disparity_i : in  std_logic;
+    serdes_tx_disparity_i : in std_logic;
 
     -- TX Encoding Error: 1 = PHY encountered a transmission error, drop the current
     -- packet.
-    serdes_tx_enc_err_i   : in  std_logic;
+    serdes_tx_enc_err_i : in std_logic;
 
     -------------------------------------------------------------------------------
     -- Serdes RX path (all synchronous to serdes_rx_clk_i)
@@ -183,44 +185,44 @@ architecture rtl of ep_1000basex_pcs is
 
   component ep_tx_pcs_8bit
     port (
-      rst_n_i               : in    std_logic;
-      clk_sys_i             : in    std_logic;
-      pcs_fab_i             : in    t_ep_internal_fabric;
-      pcs_error_o           : out   std_logic;
-      pcs_busy_o            : out   std_logic;
-      pcs_dreq_o            : out   std_logic;
-      mdio_mcr_pdown_i      : in    std_logic;
-      mdio_wr_spec_tx_cal_i : in    std_logic;
-      an_tx_en_i            : in    std_logic;
-      an_tx_val_i           : in    std_logic_vector(15 downto 0);
-      timestamp_stb_p_o     : out   std_logic;
-      rmon_o                : inout t_rmon_triggers;
-      phy_tx_clk_i          : in    std_logic;
-      phy_tx_data_o         : out   std_logic_vector(7 downto 0);
-      phy_tx_k_o            : out   std_logic;
-      phy_tx_disparity_i    : in    std_logic;
-      phy_tx_enc_err_i      : in    std_logic);
+      rst_n_i                 : in    std_logic;
+      clk_sys_i               : in    std_logic;
+      pcs_fab_i               : in    t_ep_internal_fabric;
+      pcs_error_o             : out   std_logic;
+      pcs_busy_o              : out   std_logic;
+      pcs_dreq_o              : out   std_logic;
+      mdio_mcr_pdown_i        : in    std_logic;
+      mdio_wr_spec_tx_cal_i   : in    std_logic;
+      an_tx_en_i              : in    std_logic;
+      an_tx_val_i             : in    std_logic_vector(15 downto 0);
+      timestamp_trigger_p_a_o : out   std_logic;
+      rmon_o                  : inout t_rmon_triggers;
+      phy_tx_clk_i            : in    std_logic;
+      phy_tx_data_o           : out   std_logic_vector(7 downto 0);
+      phy_tx_k_o              : out   std_logic;
+      phy_tx_disparity_i      : in    std_logic;
+      phy_tx_enc_err_i        : in    std_logic);
   end component;
 
   component ep_tx_pcs_16bit
     port (
-      rst_n_i               : in    std_logic;
-      clk_sys_i             : in    std_logic;
-      pcs_fab_i             : in    t_ep_internal_fabric;
-      pcs_error_o           : out   std_logic;
-      pcs_busy_o            : out   std_logic;
-      pcs_dreq_o            : out   std_logic;
-      mdio_mcr_pdown_i      : in    std_logic;
-      mdio_wr_spec_tx_cal_i : in    std_logic;
-      an_tx_en_i            : in    std_logic;
-      an_tx_val_i           : in    std_logic_vector(15 downto 0);
-      timestamp_stb_p_o     : out   std_logic;
-      rmon_o                : inout t_rmon_triggers;
-      phy_tx_clk_i          : in    std_logic;
-      phy_tx_data_o         : out   std_logic_vector(15 downto 0);
-      phy_tx_k_o            : out   std_logic_vector(1 downto 0);
-      phy_tx_disparity_i    : in    std_logic;
-      phy_tx_enc_err_i      : in    std_logic);
+      rst_n_i                 : in    std_logic;
+      clk_sys_i               : in    std_logic;
+      pcs_fab_i               : in    t_ep_internal_fabric;
+      pcs_error_o             : out   std_logic;
+      pcs_busy_o              : out   std_logic;
+      pcs_dreq_o              : out   std_logic;
+      mdio_mcr_pdown_i        : in    std_logic;
+      mdio_wr_spec_tx_cal_i   : in    std_logic;
+      an_tx_en_i              : in    std_logic;
+      an_tx_val_i             : in    std_logic_vector(15 downto 0);
+      timestamp_trigger_p_a_o : out   std_logic;
+      rmon_o                  : inout t_rmon_triggers;
+      phy_tx_clk_i            : in    std_logic;
+      phy_tx_data_o           : out   std_logic_vector(15 downto 0);
+      phy_tx_k_o              : out   std_logic_vector(1 downto 0);
+      phy_tx_disparity_i      : in    std_logic;
+      phy_tx_enc_err_i        : in    std_logic);
   end component;
 
   component ep_rx_pcs_8bit
@@ -232,8 +234,9 @@ architecture rtl of ep_1000basex_pcs is
       pcs_fifo_almostfull_i      : in    std_logic;
       pcs_busy_o                 : out   std_logic;
       pcs_fab_o                  : out   t_ep_internal_fabric;
-      timestamp_stb_p_o          : out   std_logic;
+      timestamp_trigger_p_a_o    : out   std_logic;  -- strobe for RX timestamping
       timestamp_i                : in    std_logic_vector(31 downto 0);
+      timestamp_stb_i            : in    std_logic;
       timestamp_valid_i          : in    std_logic;
       phy_rx_clk_i               : in    std_logic;
       phy_rx_data_i              : in    std_logic_vector(7 downto 0);
@@ -251,7 +254,7 @@ architecture rtl of ep_1000basex_pcs is
       rmon_o                     : inout t_rmon_triggers);
   end component;
 
-    component ep_rx_pcs_16bit
+  component ep_rx_pcs_16bit
     generic (
       g_simulation : boolean);
     port (
@@ -260,8 +263,9 @@ architecture rtl of ep_1000basex_pcs is
       pcs_fifo_almostfull_i      : in    std_logic;
       pcs_busy_o                 : out   std_logic;
       pcs_fab_o                  : out   t_ep_internal_fabric;
-      timestamp_stb_p_o          : out   std_logic;
+      timestamp_trigger_p_a_o    : out   std_logic;  -- strobe for RX timestamping
       timestamp_i                : in    std_logic_vector(31 downto 0);
+      timestamp_stb_i            : in    std_logic;
       timestamp_valid_i          : in    std_logic;
       phy_rx_clk_i               : in    std_logic;
       phy_rx_data_i              : in    std_logic_vector(15 downto 0);
@@ -414,10 +418,10 @@ begin  -- rtl
         mdio_mcr_pdown_i      => mdio_mcr_pdown,
         mdio_wr_spec_tx_cal_i => mdio_wr_spec_tx_cal,
 
-        an_tx_en_i        => an_tx_en,
-        an_tx_val_i       => an_tx_val,
-        timestamp_stb_p_o => txpcs_timestamp_stb_p_o,
-        rmon_o            => rmon_o,
+        an_tx_en_i              => an_tx_en,
+        an_tx_val_i             => an_tx_val,
+        timestamp_trigger_p_a_o => txpcs_timestamp_trigger_p_a_o,
+        rmon_o                  => rmon_o,
 
         phy_tx_clk_i       => serdes_tx_clk_i,
         phy_tx_data_o      => serdes_tx_data_o,
@@ -437,9 +441,10 @@ begin  -- rtl
         pcs_fab_o             => rxpcs_fab_o,
         pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
 
-        timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
-        timestamp_i       => rxpcs_timestamp_i,
-        timestamp_valid_i => rxpcs_timestamp_valid_i,
+        timestamp_trigger_p_a_o => rxpcs_timestamp_trigger_p_a_o,
+        timestamp_i             => rxpcs_timestamp_i,
+        timestamp_valid_i       => rxpcs_timestamp_valid_i,
+        timestamp_stb_i         => rxpcs_timestamp_stb_i,
 
         mdio_mcr_pdown_i           => mdio_mcr_pdown,
         mdio_wr_spec_cal_crst_i    => mdio_wr_spec_cal_crst,
@@ -477,10 +482,10 @@ begin  -- rtl
         mdio_mcr_pdown_i      => mdio_mcr_pdown,
         mdio_wr_spec_tx_cal_i => mdio_wr_spec_tx_cal,
 
-        an_tx_en_i        => an_tx_en,
-        an_tx_val_i       => an_tx_val,
-        timestamp_stb_p_o => txpcs_timestamp_stb_p_o,
-        rmon_o            => rmon_o,
+        an_tx_en_i              => an_tx_en,
+        an_tx_val_i             => an_tx_val,
+        timestamp_trigger_p_a_o => txpcs_timestamp_trigger_p_a_o,
+        rmon_o                  => rmon_o,
 
         phy_tx_clk_i       => serdes_tx_clk_i,
         phy_tx_data_o      => serdes_tx_data_o(7 downto 0),
@@ -502,9 +507,10 @@ begin  -- rtl
         pcs_fab_o             => rxpcs_fab_o,
         pcs_fifo_almostfull_i => rxpcs_fifo_almostfull_i,
 
-        timestamp_stb_p_o => rxpcs_timestamp_stb_p_o,
-        timestamp_i       => rxpcs_timestamp_i,
-        timestamp_valid_i => rxpcs_timestamp_valid_i,
+        timestamp_trigger_p_a_o => rxpcs_timestamp_trigger_p_a_o,
+        timestamp_i             => rxpcs_timestamp_i,
+        timestamp_valid_i       => rxpcs_timestamp_valid_i,
+        timestamp_stb_i         => rxpcs_timestamp_stb_i,
 
         mdio_mcr_pdown_i           => mdio_mcr_pdown,
         mdio_wr_spec_cal_crst_i    => mdio_wr_spec_cal_crst,
