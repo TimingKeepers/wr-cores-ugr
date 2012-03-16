@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-01-20
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -57,6 +57,8 @@ entity wr_pps_gen is
     pps_csync_o : out std_logic;
     pps_out_o   : out std_logic;
 
+    pps_valid_o: out std_logic;
+    
     tm_utc_o        : out std_logic_vector(39 downto 0);
     tm_cycles_o     : out std_logic_vector(27 downto 0);
     tm_time_valid_o : out std_logic
@@ -160,6 +162,8 @@ architecture behavioral of wr_pps_gen is
   
 begin  -- behavioral
 
+  pps_valid_o <= '1';                   -- fixme: drive to 0 during adjustment
+  
   resized_addr(4 downto 0)                          <= wb_adr_i;
   resized_addr(c_wishbone_address_width-1 downto 5) <= (others => '0');
 

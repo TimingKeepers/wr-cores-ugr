@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-01-20
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -33,8 +33,8 @@ entity xwr_pps_gen is
   generic(
     g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity : t_wishbone_address_granularity := WORD;
-    g_ref_clock_rate : integer := 125000000
-  );
+    g_ref_clock_rate      : integer                        := 125000000
+    );
   port (
     clk_ref_i : in std_logic;
     clk_sys_i : in std_logic;
@@ -50,11 +50,13 @@ entity xwr_pps_gen is
     pps_csync_o : out std_logic;
     pps_out_o   : out std_logic;
 
+    pps_valid_o : out std_logic;
+
     tm_utc_o        : out std_logic_vector(39 downto 0);
     tm_cycles_o     : out std_logic_vector(27 downto 0);
     tm_time_valid_o : out std_logic
 
-  );
+    );
 end xwr_pps_gen;
 
 architecture behavioral of xwr_pps_gen is
@@ -63,15 +65,15 @@ architecture behavioral of xwr_pps_gen is
     generic(
       g_interface_mode      : t_wishbone_interface_mode;
       g_address_granularity : t_wishbone_address_granularity;
-      g_ref_clock_rate : integer
-    );
+      g_ref_clock_rate      : integer
+      );
     port (
       clk_ref_i       : in  std_logic;
       clk_sys_i       : in  std_logic;
       rst_n_i         : in  std_logic;
-      wb_adr_i       : in  std_logic_vector(4 downto 0);
-      wb_dat_i       : in  std_logic_vector(31 downto 0);
-      wb_dat_o       : out std_logic_vector(31 downto 0);
+      wb_adr_i        : in  std_logic_vector(4 downto 0);
+      wb_dat_i        : in  std_logic_vector(31 downto 0);
+      wb_dat_o        : out std_logic_vector(31 downto 0);
       wb_cyc_i        : in  std_logic;
       wb_sel_i        : in  std_logic_vector(3 downto 0);
       wb_stb_i        : in  std_logic;
@@ -81,27 +83,29 @@ architecture behavioral of xwr_pps_gen is
       pps_in_i        : in  std_logic;
       pps_csync_o     : out std_logic;
       pps_out_o       : out std_logic;
+      pps_valid_o     : out std_logic;
       tm_utc_o        : out std_logic_vector(39 downto 0);
       tm_cycles_o     : out std_logic_vector(27 downto 0);
       tm_time_valid_o : out std_logic
-    );
+      );
   end component;
   
 begin  -- behavioral
 
+  
   WRAPPED_PPSGEN : wr_pps_gen
     generic map(
       g_interface_mode      => g_interface_mode,
       g_address_granularity => g_address_granularity,
-      g_ref_clock_rate => g_ref_clock_rate
-    )
+      g_ref_clock_rate      => g_ref_clock_rate
+      )
     port map(
       clk_ref_i       => clk_ref_i,
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_i,
-      wb_adr_i       => slave_i.adr(4 downto 0),
-      wb_dat_i       => slave_i.dat,
-      wb_dat_o       => slave_o.dat,
+      wb_adr_i        => slave_i.adr(4 downto 0),
+      wb_dat_i        => slave_i.dat,
+      wb_dat_o        => slave_o.dat,
       wb_cyc_i        => slave_i.cyc,
       wb_sel_i        => slave_i.sel,
       wb_stb_i        => slave_i.stb,
@@ -111,10 +115,11 @@ begin  -- behavioral
       pps_in_i        => pps_in_i,
       pps_csync_o     => pps_csync_o,
       pps_out_o       => pps_out_o,
+      pps_valid_o     => pps_valid_o,
       tm_utc_o        => tm_utc_o,
       tm_cycles_o     => tm_cycles_o,
       tm_time_valid_o => tm_time_valid_o
-    );
+      );
 
 
 end behavioral;
