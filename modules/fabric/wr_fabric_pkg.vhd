@@ -62,7 +62,7 @@ package wr_fabric_pkg is
   constant c_dummy_src_in : t_wrf_source_in :=
     ('0', '0', '0', '0');
   constant c_dummy_snk_in : t_wrf_sink_in :=
-    ((others=>'X'), (others=>'X'), '0', '0', 'X', (others=>'X'));
+    ("XX", "XXXXXXXXXXXXXXXX", '0', '0', '0', "XX");
 
 end wr_fabric_pkg;
 
