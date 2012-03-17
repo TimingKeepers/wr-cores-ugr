@@ -10,10 +10,11 @@ use work.wr_fabric_pkg.all;
 package wrcore_pkg is
 
   type t_txtsu_timestamp is record
-    valid    : std_logic;
+    stb    : std_logic;
     tsval    : std_logic_vector(31 downto 0);
     port_id  : std_logic_vector(5 downto 0);
     frame_id : std_logic_vector(15 downto 0);
+    incorrect : std_logic;
   end record;
 
   ----------------------------------------------------------------------------- 
@@ -23,7 +24,7 @@ package wrcore_pkg is
     generic(
       g_interface_mode      : t_wishbone_interface_mode;
       g_address_granularity : t_wishbone_address_granularity
-    );
+      );
     port (
       clk_ref_i       : in  std_logic;
       clk_sys_i       : in  std_logic;
@@ -33,10 +34,11 @@ package wrcore_pkg is
       pps_in_i        : in  std_logic;
       pps_csync_o     : out std_logic;
       pps_out_o       : out std_logic;
+      pps_valid_o     : out std_logic;
       tm_utc_o        : out std_logic_vector(39 downto 0);
       tm_cycles_o     : out std_logic_vector(27 downto 0);
       tm_time_valid_o : out std_logic
-    );
+      );
   end component;
 
   -----------------------------------------------------------------------------
@@ -75,7 +77,7 @@ package wrcore_pkg is
     generic(
       g_interface_mode      : t_wishbone_interface_mode;
       g_address_granularity : t_wishbone_address_granularity
-    );
+      );
     port (
       rst_n_i   : in std_logic;
       clk_sys_i : in std_logic;
@@ -85,7 +87,7 @@ package wrcore_pkg is
 
       regs_i : in  t_sysc_in_registers;
       regs_o : out t_sysc_out_registers
-    );
+      );
   end component;
 
   component wrc_periph is
@@ -94,7 +96,7 @@ package wrcore_pkg is
       g_virtual_uart : boolean := false;
       g_cntr_period  : integer := 62500;
       g_mem_words    : integer := 16384
-    );
+      );
     port(
       clk_sys_i   : in  std_logic;
       rst_n_i     : in  std_logic;
@@ -120,7 +122,7 @@ package wrcore_pkg is
       uart_txd_o  : out std_logic;
       owr_en_o    : out std_logic_vector(1 downto 0);
       owr_i       : in  std_logic_vector(1 downto 0)
-    );
+      );
   end component;
 
   -----------------------------------------------------------------------------
@@ -151,7 +153,7 @@ package wrcore_pkg is
       slave_o           : out t_wishbone_slave_out;
       wb_irq_o          : out std_logic;
       debug_o           : out std_logic_vector(3 downto 0)
-    );
+      );
   end component;
 
   -----------------------------------------------------------------------------
@@ -178,7 +180,7 @@ package wrcore_pkg is
       ext_snk_o    : out t_wrf_sink_out;
       ext_snk_i    : in  t_wrf_sink_in;
       class_core_i : in  std_logic_vector(7 downto 0)
-    );
+      );
   end component;
 
 end wrcore_pkg;

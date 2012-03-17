@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-03-07
+-- Last update: 2012-03-16
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -175,11 +175,12 @@ entity wr_core is
     ------------------------------------------
     -- External TX Timestamp I/F
     ------------------------------------------
-    txtsu_port_id_o  : out std_logic_vector(4 downto 0);
-    txtsu_frame_id_o : out std_logic_vector(15 downto 0);
-    txtsu_tsval_o    : out std_logic_vector(31 downto 0);
-    txtsu_valid_o    : out std_logic;
-    txtsu_ack_i      : in  std_logic;
+    txtsu_port_id_o      : out std_logic_vector(4 downto 0);
+    txtsu_frame_id_o     : out std_logic_vector(15 downto 0);
+    txtsu_ts_value_o     : out std_logic_vector(31 downto 0);
+    txtsu_ts_incorrect_o : out std_logic;
+    txtsu_stb_o          : out std_logic;
+    txtsu_ack_i          : in  std_logic;
 
     -----------------------------------------
     -- Timecode/Servo Control
@@ -215,6 +216,8 @@ architecture struct of wr_core is
   --PPS generator
   -----------------------------------------------------------------------------
   signal s_pps_csync : std_logic;
+  signal pps_valid   : std_logic;
+
   signal ppsg_wb_in  : t_wishbone_slave_in;
   signal ppsg_wb_out : t_wishbone_slave_out;
 
@@ -228,11 +231,11 @@ architecture struct of wr_core is
   --Endpoint
   -----------------------------------------------------------------------------
 
-  signal ep_txtsu_port_id  : std_logic_vector(4 downto 0);
-  signal ep_txtsu_frame_id : std_logic_vector(15 downto 0);
-  signal ep_txtsu_tsval    : std_logic_vector(31 downto 0);
-  signal ep_txtsu_valid    : std_logic;
-  signal ep_txtsu_ack      : std_logic;
+  signal ep_txtsu_port_id           : std_logic_vector(4 downto 0);
+  signal ep_txtsu_frame_id          : std_logic_vector(15 downto 0);
+  signal ep_txtsu_ts_value          : std_logic_vector(31 downto 0);
+  signal ep_txtsu_ts_incorrect      : std_logic;
+  signal ep_txtsu_stb, ep_txtsu_ack : std_logic;
 
   constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
 
@@ -351,6 +354,7 @@ architecture struct of wr_core is
   signal ext_snk_in  : t_wrf_sink_in;
   signal dummy       : std_logic_vector(31 downto 0);
 
+
   component xwbp_mux
     port (
       clk_sys_i    : in  std_logic;
@@ -415,11 +419,12 @@ begin
       pps_in_i    => '0',
       pps_csync_o => s_pps_csync,
       pps_out_o   => pps_p_o,
+      pps_valid_o => pps_valid,
 
       tm_utc_o        => tm_utc_o,
       tm_cycles_o     => tm_cycles_o,
       tm_time_valid_o => tm_time_valid_o
-    );
+      );
 
   -----------------------------------------------------------------------------
   -- Software PLL
@@ -479,6 +484,7 @@ begin
       clk_dmtd_i     => clk_dmtd_i,
       rst_n_i        => rst_net_n,
       pps_csync_p1_i => s_pps_csync,
+      pps_valid_i    => pps_valid,
 
       phy_rst_o                     => phy_rst_o,
       phy_loopen_o                  => phy_loopen_o,
@@ -503,14 +509,15 @@ begin
       snk_o => ep_snk_out,
       snk_i => ep_snk_in,
 
-      txtsu_port_id_o  => ep_txtsu_port_id,
-      txtsu_frame_id_o => ep_txtsu_frame_id,
-      txtsu_tsval_o    => ep_txtsu_tsval,
-      txtsu_valid_o    => ep_txtsu_valid,
-      txtsu_ack_i      => ep_txtsu_ack,
-      wb_i             => ep_wb_in,
-      wb_o             => ep_wb_out,
-      led_link_o       => link_ok_o);
+      txtsu_port_id_o      => ep_txtsu_port_id,
+      txtsu_frame_id_o     => ep_txtsu_frame_id,
+      txtsu_ts_value_o     => ep_txtsu_ts_value,
+      txtsu_ts_incorrect_o => ep_txtsu_ts_incorrect,
+      txtsu_stb_o          => ep_txtsu_stb,
+      txtsu_ack_i          => ep_txtsu_ack,
+      wb_i                 => ep_wb_in,
+      wb_o                 => ep_wb_out,
+      led_link_o           => link_ok_o);
 
   ep_txtsu_ack <= txtsu_ack_i or mnic_txtsu_ack;
   -----------------------------------------------------------------------------
@@ -538,13 +545,13 @@ begin
 
       txtsu_port_id_i  => ep_txtsu_port_id,
       txtsu_frame_id_i => ep_txtsu_frame_id,
-      txtsu_tsval_i    => ep_txtsu_tsval,
-      txtsu_valid_i    => ep_txtsu_valid,
+      txtsu_tsval_i    => ep_txtsu_ts_value,
+      txtsu_valid_i    => ep_txtsu_stb,
       txtsu_ack_o      => mnic_txtsu_ack,
 
       wb_i => minic_wb_in,
       wb_o => minic_wb_out
-    );
+      );
 
   mnic_wb_irq_o <= '0';
 
@@ -565,7 +572,7 @@ begin
       dwb_i => cbar_slave_o(0),
       iwb_o => cbar_slave_i(1),
       iwb_i => cbar_slave_o(1)
-    );
+      );
 
   -----------------------------------------------------------------------------
   -- Dual-port RAM
@@ -587,7 +594,7 @@ begin
       slave1_o => cbar_master_i(0),
       slave2_i => dpram_wbb_i,
       slave2_o => dpram_wbb_o
-    );
+      );
 
   dpram_wbb_i.cyc                                 <= '1';
   dpram_wbb_i.stb                                 <= '1';
@@ -634,7 +641,7 @@ begin
 
       owr_en_o => owr_en_o,
       owr_i    => owr_i
-    );
+      );
 
   U_Adapter : wb_slave_adapter
     generic map(
@@ -813,10 +820,11 @@ begin
   -----------------------------------------------------------------------------
   -- External Tx Timestamping I/F
   -----------------------------------------------------------------------------
-  txtsu_port_id_o  <= ep_txtsu_port_id;
-  txtsu_frame_id_o <= ep_txtsu_frame_id;
-  txtsu_tsval_o    <= ep_txtsu_tsval;
-  txtsu_valid_o    <= '1' when (ep_txtsu_valid = '1' and (ep_txtsu_frame_id /= x"0000")) else
-                      '0';
+  txtsu_port_id_o      <= ep_txtsu_port_id;
+  txtsu_frame_id_o     <= ep_txtsu_frame_id;
+  txtsu_ts_value_o     <= ep_txtsu_ts_value;
+  txtsu_ts_incorrect_o <= ep_txtsu_ts_incorrect;
+  txtsu_stb_o          <= '1' when (ep_txtsu_stb = '1' and (ep_txtsu_frame_id /= x"0000")) else
+                    '0';
 
 end struct;
