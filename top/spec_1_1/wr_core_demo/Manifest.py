@@ -5,5 +5,5 @@ fetchto = "../../../ip_cores"
 modules = {
     "local" : ["../../../",
                "../../../modules/mini_bone"],
-    "svn" : [ "http://svn.ohwr.org/gn4124-core/branches/hdlmake-compliant/rtl" ]
+    "svn" : [ "http://svn.ohwr.org/gn4124-core/trunk/hdl/gn4124core/rtl" ]
     }
