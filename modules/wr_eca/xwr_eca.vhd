@@ -44,6 +44,12 @@ architecture rtl of xwr_eca is
     end loop;
   end update;
   
+  function idx(v : std_logic_vector) return std_logic_vector is
+    alias result : std_logic_vector(v'length-1 downto 0) is v;
+  begin
+    return result;
+  end idx;
+  
   signal r_toggle : t_wishbone_data;
   signal r_utchi  : t_wishbone_data;
   signal r_utclo  : t_wishbone_data;
@@ -96,10 +102,10 @@ begin
   w_data(c_wishbone_data_width*2-1 downto c_wishbone_data_width*1) <= r_cycle;
   w_data(c_wishbone_data_width*1-1 downto c_wishbone_data_width*0) <= r_val;
   
-  f_tm_utc   <= r_data(c_wishbone_data_width*4-1 downto c_wishbone_data_width*3)(7 downto 0) &
-                r_data(c_wishbone_data_width*3-1 downto c_wishbone_data_width*2)(31 downto 0);
-  f_tm_cycle <= r_data(c_wishbone_data_width*2-1 downto c_wishbone_data_width*1)(27 downto 0);
-  f_val      <= r_data(c_wishbone_data_width*1-1 downto c_wishbone_data_width*0);
+  f_tm_utc   <= idx(r_data(c_wishbone_data_width*4-1 downto c_wishbone_data_width*3))(7 downto 0) &
+                idx(r_data(c_wishbone_data_width*3-1 downto c_wishbone_data_width*2))(31 downto 0);
+  f_tm_cycle <= idx(r_data(c_wishbone_data_width*2-1 downto c_wishbone_data_width*1))(27 downto 0);
+  f_val      <= idx(r_data(c_wishbone_data_width*1-1 downto c_wishbone_data_width*0));
   
   f_tm_full  <= f_tm_utc & f_tm_cycle;
   tm_full_i  <= tm_utc_i & tm_cycle_i;

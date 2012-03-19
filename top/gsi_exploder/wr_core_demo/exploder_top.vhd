@@ -11,7 +11,7 @@ library work;
 use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 use work.wrc_bin_pkg.all;
-
+use work.xwr_eca_pkg.all;
 
 entity exploder_top is
   port
@@ -237,11 +237,12 @@ architecture rtl of exploder_top is
   constant c_wrcore_bridge_sdwb : t_sdwb_device := f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
   
   -- Ref clock crossbar
-  constant c_ref_slaves  : natural := 2;
+  constant c_ref_slaves  : natural := 3;
   constant c_ref_masters : natural := 1;
   constant c_ref_layout : t_sdwb_device_array(c_ref_slaves-1 downto 0) :=
    (0 => f_sdwb_set_address(c_xwr_gpio_32_sdwb,            x"00000000"),
-    1 => f_sdwb_set_address(c_xwr_wb_timestamp_latch_sdwb, x"00080000"));
+    1 => f_sdwb_set_address(c_xwr_eca_sdwb,                x"00040000"),
+    2 => f_sdwb_set_address(c_xwr_wb_timestamp_latch_sdwb, x"00080000"));
   constant c_ref_sdwb_address : t_wishbone_address := x"000C0000";
   constant c_ref_bridge : t_sdwb_device := 
     f_xwb_bridge_layout_sdwb(true, c_ref_layout, c_ref_sdwb_address);
@@ -549,9 +550,19 @@ begin
       tm_time_valid_i => '0',
       tm_utc_i        => tm_utc,
       tm_cycles_i     => tm_cycles,
-      wb_slave_i      => cbar_ref_master_o(1),
-      wb_slave_o      => cbar_ref_master_i(1));
-      
+      wb_slave_i      => cbar_ref_master_o(2),
+      wb_slave_o      => cbar_ref_master_i(2));
+  
+  ECA : xwr_eca
+    port map(
+      clk_i      => clk_125m_pllref_p,
+      rst_n_i    => nreset,
+      slave_i    => cbar_ref_master_o(1),
+      slave_o    => cbar_ref_master_i(1),
+      tm_utc_i   => tm_utc,
+      tm_cycle_i => tm_cycles,
+      toggle_o   => open);
+  
   cbar_ref_master_i(0) <= mb_master_in;
   mb_master_out <= cbar_ref_master_o(0);
   gpio : process(clk_125m_pllref_p)
