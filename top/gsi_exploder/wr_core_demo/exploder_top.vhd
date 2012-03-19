@@ -11,6 +11,7 @@ library work;
 use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 
+
 entity exploder_top is
   port
     (
@@ -43,7 +44,10 @@ entity exploder_top is
 		-- hpv2: orange
 		-- hpv3: blue
       -----------------------------------------
-      hpv   : out std_logic_vector(7 downto 0)
+      hpv   : out std_logic_vector(7 downto 0);
+		
+		la_port_o : out std_logic_vector(3 downto 0);
+		la_port_i : in std_logic_vector(1 downto 0)
 
 
       );
@@ -222,8 +226,7 @@ architecture rtl of exploder_top is
     description   => "GSI_GPIO_32     ");
 
   -- WR core layout
-  constant c_wrcore_bridge_sdwb : t_sdwb_device := 
-     f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
+  constant c_wrcore_bridge_sdwb : t_sdwb_device := f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
   
   -- Top crossbar layout
   constant c_slaves : natural := 4;
@@ -318,12 +321,17 @@ architecture rtl of exploder_top is
   signal mb_master_in  : t_wishbone_master_in;
   
   signal dummy_gpio, gpio_out : std_logic_vector(31 downto 0);
-  signal pio_reg:	std_logic_vector(3 downto 0);
+  signal pio_reg:	std_logic_vector(7 downto 0);
   signal ext_pps: std_logic;
   
   signal tm_utc    : std_logic_vector(39 downto 0);
   signal tm_cycles : std_logic_vector(27 downto 0);
 
+  signal fake_tm_utc    : std_logic_vector(39 downto 0);
+  signal fake_tm_cycles : std_logic_vector(27 downto 0);
+  
+  signal triggers : std_logic_vector(3 downto 0);
+  
 begin
   
   reset : pow_reset
@@ -490,20 +498,31 @@ begin
       snk_i     => mb_snk_in,
       master_o  => cbar_slave_i(0),
       master_i  => cbar_slave_o(0));
-    
+  
+--fake_timestamp_1: fake_timestamp
+--   port map (
+--     ref_clk_i   => clk_125m_pllref_p,
+--     nRSt_i      => nreset,
+--     cnt_clr     => '0',
+--     tm_utc_o    => fake_tm_utc,
+--     tm_cycles_o => fake_tm_cycles);
+--	  
+
+  
+  triggers <= la_port_i(1 downto 0) & pio_reg(0 downto 0) & pps;
+  
   TLU : wb_timestamp_latch
     generic map (
-      g_num_triggers => 1,
-      g_fifo_depth   => 4)
+      g_num_triggers => 4,
+      g_fifo_depth   => 10)
     port map (
       ref_clk_i       => clk_125m_pllref_p,
       sys_clk_i       => l_clkp,
       nRSt_i          => nreset,
-      triggers_i      => (others => '0'),
+      triggers_i      => triggers,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_utc,
       tm_cycles_i     => tm_cycles,
-      pps_p_i         => '0',
       wb_slave_i      => cbar_master_o(2),
       wb_slave_o      => cbar_master_i(2));
       
@@ -528,7 +547,7 @@ begin
 	begin
 		if rising_edge(l_clkp) then
 			if mb_master_out.cyc = '1' and mb_master_out.stb = '1' and mb_master_out.we = '1' then
-				pio_reg <= mb_master_out.dat(3 downto 0);
+				pio_reg <= mb_master_out.dat(7 downto 0);
 				
 			end if;
 			mb_master_in.ack <= mb_master_out.cyc and mb_master_out.stb;
@@ -563,7 +582,14 @@ begin
 		
 	-- unused leds off	
 	hpv(2) <= '1';
-	hpv(7 downto 4) <= pio_reg;
+	hpv(7 downto 4) <= pio_reg(3 downto 0);
+	
+	
+	-- 4 more gpios
+	la_port_o(3 downto 0) <= pio_reg(7 downto 4);
+	
+	
+	
 	-- wr status leds
 	hpv(1) <= not led_green;
 	hpv(0) <= not led_red;
