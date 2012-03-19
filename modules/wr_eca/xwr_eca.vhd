@@ -78,6 +78,9 @@ begin
   slave_o.STALL <= '0';
   slave_o.DAT   <= slave_o_DAT;
   
+  -- Output pins
+  toggle_o <= r_toggle;
+  
   fifo : gc_wfifo 
     generic map(
       sync_depth => 1,
@@ -163,6 +166,8 @@ begin
             when 7 => update(r_val);
             when others => r_toggle <= toggle;
           end case;
+	else
+	  r_toggle <= toggle;
         end if;
         
         slave_o_ACK <= slave_i.CYC and slave_i.STB;
