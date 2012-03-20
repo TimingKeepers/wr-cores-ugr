@@ -105,8 +105,8 @@ begin
 
         if(sysc_regs_o.rstr_trig_wr_o = '1' and sysc_regs_o.rstr_trig_o = x"deadbee") then
           rst_wrc_n_o <= not sysc_regs_o.rstr_rst_o;
-        else
-          rst_wrc_n_o <= '1';
+        --else
+          --rst_wrc_n_o <= '1';
         end if;
 
         rst_net_n_o <= not sysc_regs_o.gpsr_net_rst_o;
