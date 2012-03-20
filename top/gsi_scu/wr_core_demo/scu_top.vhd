@@ -62,7 +62,12 @@ entity scu_top is
 		-----------------------------------------------------------------------
 		-- User LEDs
 		-----------------------------------------------------------------------
-		leds_o			: out std_logic_vector(3 downto 0)
+		leds_o			: out std_logic_vector(3 downto 0);
+		
+		-----------------------------------------------------------------------
+		-- OneWire
+		-----------------------------------------------------------------------
+		OneWire_CB		: inout std_logic
 		
       );
 
@@ -393,9 +398,16 @@ architecture rtl of scu_top is
   signal lad_o : std_logic_vector(3 downto 0);
   
   signal eca_toggle: std_logic_vector(31 downto 0);
+  
+  signal owr_en_o: std_logic;
+  signal owr_i:	std_logic;
 
   
 begin
+
+	-- open drain buffer for one wire
+	owr_i	<= OneWire_CB;
+	OneWire_CB <= '0' when owr_en_o = '1' else 'Z';
 
 	  Inst_flash_loader_v01 : flash_loader
     port map (
@@ -459,7 +471,8 @@ begin
       uart_rxd_i => uart_rxd_i(0),
       uart_txd_o => uart_txd_o(0),
 
-      owr_i => '0',
+		owr_en_o => owr_en_o,
+      owr_i => owr_i,
 		
 		slave_i => cbar_master_o(2),
       slave_o => cbar_master_i(2),
