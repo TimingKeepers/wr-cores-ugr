@@ -248,8 +248,8 @@ begin  -- behavioral
 	 
 	 
     tm_fifo_in(i) <= sub_cap_delay(tm_utc_i, tm_cycles_i);
-    tm_word0(i)   <= tm_fifo_out(i)(67 downto 36);
-    tm_word1(i)   <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_out(i)(35 downto 28);
+    tm_word0(i)   <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_out(i)(67 downto 60);
+	 tm_word1(i)   <= tm_fifo_out(i)(59 downto 28);
     tm_word2(i)   <= std_logic_vector(to_unsigned(0, 32-28)) & tm_fifo_out(i)(27 downto 0);
 
     sync_trig_edge_reg : gc_sync_ffs

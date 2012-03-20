@@ -91,16 +91,23 @@ set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to sfp_rxp_i
 set_location_assignment PIN_C24 -to "sfp_rxp_i(n)"
 set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to sfp_txp_o
 set_location_assignment PIN_B22 -to "sfp_txp_o(n)"
-set_location_assignment PIN_H4 -to uart_rxd_i
-set_location_assignment PIN_G3 -to uart_txd_o
+set_location_assignment PIN_M3 -to uart_rxd_i
+set_location_assignment PIN_M1 -to uart_txd_o
 set_global_assignment -name ENABLE_SIGNALTAP OFF
 set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
+set_location_assignment PIN_N2 -to la_port_i[0]
+set_location_assignment PIN_M4 -to la_port_i[1]
+set_location_assignment PIN_L4 -to la_port_o[0]
+set_location_assignment PIN_K3 -to la_port_o[1]
+set_location_assignment PIN_J4 -to la_port_o[2]
+set_location_assignment PIN_G2 -to la_port_o[3]
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/fake_timestamp.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_cores_pkg_gsi.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_timestamp_latch.vhd
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_clock_crossing/xwb_clock_crossing.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_dma/xwb_dma.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_wfifo.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_dual_clock_ram.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/wb_cores_pkg_gsi.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/wb_timestamp_latch.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/sdwb_rom.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_sdwb_crossbar.vhd"
 set_global_assignment -name SDC_FILE ../../../top/gsi_exploder/wr_core_demo/exploder_top.sdc
