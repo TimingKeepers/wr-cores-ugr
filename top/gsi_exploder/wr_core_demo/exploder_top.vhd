@@ -10,7 +10,7 @@ use work.wr_fabric_pkg.all;
 library work;
 use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
-use work.wrc_bin_pkg.all;
+--use work.wrc_bin_pkg.all;
 use work.xwr_eca_pkg.all;
 
 entity exploder_top is
@@ -352,6 +352,7 @@ architecture rtl of exploder_top is
   signal fake_tm_cycles : std_logic_vector(27 downto 0);
   
   signal triggers : std_logic_vector(3 downto 0);
+  signal eca_out	: std_logic_vector(31 downto 0);
   
 begin
   
@@ -536,7 +537,7 @@ begin
 --	  
 
   
-  triggers <= la_port_i(1 downto 0) & pio_reg(0 downto 0) & pps;
+  triggers <= pio_reg(0 downto 0) & la_port_i(0 downto 0) & eca_out(0) & pps;
   
   TLU : wb_timestamp_latch
     generic map (
@@ -561,7 +562,7 @@ begin
       slave_o    => cbar_ref_master_i(1),
       tm_utc_i   => tm_utc,
       tm_cycle_i => tm_cycles,
-      toggle_o   => open);
+      toggle_o   => eca_out);
   
   cbar_ref_master_i(0) <= mb_master_in;
   mb_master_out <= cbar_ref_master_o(0);
@@ -632,13 +633,14 @@ begin
 		
 	-- unused leds off	
 	hpv(2) <= '1';
-	hpv(7 downto 4) <= pio_reg(3 downto 0);
+	
 	
 	
 	-- 4 more gpios
-	la_port_o(3 downto 0) <= pio_reg(7 downto 4);
-	
-	
+	--la_port_o(3 downto 1) <= pio_reg(6 downto 4);
+	la_port_o(0) <= eca_out(0); 
+	hpv(7) 		 <= eca_out(1);
+	hpv(6 downto 4) <= pio_reg(2 downto 0);
 	
 	-- wr status leds
 	hpv(1) <= not led_green;

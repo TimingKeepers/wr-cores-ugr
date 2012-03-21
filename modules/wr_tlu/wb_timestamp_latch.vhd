@@ -11,8 +11,8 @@
 --! 0x00C n..0 channel(n) trigger set armed    (wo)
 --! 0x010 n..0 channel(n) trigger clr armed    (wo)
 --! 0x014 n..0 channel(n) trigger edge status  (ro)
---! 0x014 n..0 channel(n) trigger edge set pos (wo)
---! 0x014 n..0 channel(n) trigger edge set neg (wo)
+--! 0x018 n..0 channel(n) trigger edge set pos (wo)
+--! 0x01C n..0 channel(n) trigger edge set neg (wo)
 --! 0x400 start of FIFO addresses
 --!
 --! FIFO 0 area is at 0x400, FIFO n is at 0x400 + n*0x020
