@@ -56,6 +56,7 @@ architecture rtl of xwr_eca is
   signal r_cycle  : t_wishbone_data;
   signal r_val    : t_wishbone_data;
   signal r_valid  : std_logic;
+  signal r_tm_full  : std_logic_vector(67 downto 0);
   
   signal slave_o_ACK : std_logic;
   signal slave_o_DAT : t_wishbone_data;
@@ -119,21 +120,25 @@ begin
   begin
     if rising_edge(clk_i) then
       if rst_n_i = '0' then
-        r_toggle <= (others => '0');
-        r_utchi  <= (others => '0');
-        r_utclo  <= (others => '0');
-        r_cycle  <= (others => '0');
-        r_val    <= (others => '0');
-        r_valid  <= '0';
+        r_toggle  <= (others => '0');
+        r_utchi   <= (others => '0');
+        r_utclo   <= (others => '0');
+        r_cycle   <= (others => '0');
+        r_val     <= (others => '0');
+        r_valid   <= '0';
+        r_tm_full <= (others => '0');
       else
         -- Check for record to pop
-        if valid = '1' and unsigned(f_tm_full) <= unsigned(tm_full_i) then
+        if valid = '1' and unsigned(f_tm_full) <= unsigned(r_tm_full) then
           toggle := r_toggle xor f_val;
           valid := '0';
         else
           toggle := r_toggle;
           valid := r_valid;
         end if;
+        
+        -- Compensate the clock by two cycles to meet the deadline exactly
+        r_tm_full <= std_logic_vector(unsigned(tm_full_i) + to_unsigned(2, 68));
         
         if valid = '0' and r_rdy = '1' then
           r_en <= '1';
