@@ -270,8 +270,8 @@ architecture struct of wr_core is
      1 => x"00020000");                 -- Peripherals
 
   constant c_cfg_base_mask : t_wishbone_address_array(1 downto 0) :=
-    (0 => x"000f0000",
-     1 => x"000f0000");
+    (0 => x"00030000",
+     1 => x"00030000");
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
   signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
