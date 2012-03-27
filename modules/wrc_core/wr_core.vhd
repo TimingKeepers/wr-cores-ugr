@@ -428,7 +428,7 @@ begin
 
   U_SOFTPLL : xwr_softpll_ng
     generic map(
-      g_tag_bits                 => 20,
+      g_tag_bits                 => 22,
       g_interface_mode           => PIPELINED,
       g_address_granularity      => BYTE,
       g_num_ref_inputs           => 1,
@@ -454,7 +454,7 @@ begin
       dac_out_sel_o    => open, --for now use only one output
       dac_out_load_o   => dac_dpll_load_p1_o,
   
-      out_enable_i     => (others=>'0'),
+      out_enable_i(0)  => '1',
       out_locked_o     => open,
   
       slave_i     => spll_wb_in,
