@@ -251,7 +251,7 @@ endinterface
   .l_wr_rdy   (IF_NAME.L2P.l_wr_rdy),\
   .p_rd_d_rdy (IF_NAME.L2P.p_rd_d_rdy),\
   .tx_error   (IF_NAME.L2P.tx_error),\
-  .vc_rdy     (IF_NAME.L2P.vc_rdy)
+  .vc_rdy     (IF_NAME.P2L.vc_rdy)
 
 `endif //  `ifndef __GN4124_BFM_SVH
     
