@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-03-16
+-- Last update: 2012-03-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -394,7 +394,6 @@ begin
 
             if (tx_cntr = "0000") then
               tx_state          <= TX_SFD;
-              timestamp_trigger_p_a_o <= '1';
               tx_rdreq_toggle   <= '1';
             end if;
 
@@ -409,10 +408,10 @@ begin
             tx_odata_reg    <= c_preamble_sfd;
             tx_rdreq_toggle <= '1';
             tx_state        <= TX_DATA;
+            timestamp_trigger_p_a_o <= '1';
 
           when TX_DATA =>
 
-            timestamp_trigger_p_a_o <= '0';
 
             -- toggle the TX FIFO request line, so we read a 16-bit word
             -- every 2 phy_tx_clk_i periods
@@ -449,6 +448,7 @@ begin
 -- State EPD: send End-of-frame delimeter
 -------------------------------------------------------------------------------            
           when TX_EPD =>
+            timestamp_trigger_p_a_o <= '0';
 
             tx_is_k      <= '1';
             tx_odata_reg <= c_k29_7;

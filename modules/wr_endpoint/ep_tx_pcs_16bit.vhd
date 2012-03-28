@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-03-16
+-- Last update: 2012-03-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -386,7 +386,6 @@ begin
 
             if (tx_cntr = "0000") then
               tx_state          <= TX_SFD;
-              timestamp_trigger_p_a_o <= '1';
               fifo_rd           <= '1';
             end if;
 
@@ -398,10 +397,10 @@ begin
           when TX_SFD =>
             tx_is_k      <= "00";
             tx_odata_reg <= c_preamble_char & c_preamble_sfd;
+            timestamp_trigger_p_a_o <= '1';
             tx_state     <= TX_DATA;
 
           when TX_DATA =>
-            timestamp_trigger_p_a_o <= '0';
 
             if((fifo_empty = '1' or fifo_fab.error = '1') and fifo_fab.eof = '0') then  -- FIFO underrun?
               tx_odata_reg       <= c_k30_7 & c_k23_7;  -- emit error propagation code
@@ -434,6 +433,7 @@ begin
 -- State EPD: send End-of-frame delimeter
 -------------------------------------------------------------------------------
           when TX_EPD =>
+            timestamp_trigger_p_a_o <= '0';
             tx_is_k            <= "11";
             tx_odata_reg       <= c_k29_7 & c_k23_7;
             tx_catch_disparity <= '1';
