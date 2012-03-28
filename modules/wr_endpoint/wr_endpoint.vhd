@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-03-16
+-- Last update: 2012-03-21
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -901,8 +901,8 @@ begin
 
   end generate gen_with_dmtd;
 
-  dvalid_tx <= snk_cyc_i and snk_stb_i;
-  dvalid_rx <= src_out.cyc and src_out.stb;
+  dvalid_tx <= snk_cyc_i and snk_stb_i and link_ok;
+  dvalid_rx <= src_out.cyc and src_out.stb and link_ok;
 
   gen_leds : if g_with_leds generate
     U_Led_Ctrl : ep_leds_controller
