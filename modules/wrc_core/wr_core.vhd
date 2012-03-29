@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-03-16
+-- Last update: 2012-03-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -673,20 +673,20 @@ begin
     generic map(
       g_num_masters => 3,
       g_num_slaves  => 2,
-      g_registered  => true
+      g_registered  => true,
+      -- Address of the slaves connected
+      g_address     => c_cfg_base_addr,
+      g_mask        => c_cfg_base_mask
       )  
     port map(
-      clk_sys_i     => clk_sys_i,
-      rst_n_i       => rst_n_i,
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_n_i,
       -- Master connections (INTERCON is a slave)
-      slave_i       => cbar_slave_i,
-      slave_o       => cbar_slave_o,
+      slave_i   => cbar_slave_i,
+      slave_o   => cbar_slave_o,
       -- Slave connections (INTERCON is a master)
-      master_i      => cbar_master_i,
-      master_o      => cbar_master_o,
-      -- Address of the slaves connected
-      cfg_address_i => c_cfg_base_addr,  --cbar_address,
-      cfg_mask_i    => c_cfg_base_mask   --cbar_mask
+      master_i  => cbar_master_i,
+      master_o  => cbar_master_o
       );
 
   cbar_slave_i(2) <= ext_wb_in;
@@ -742,20 +742,20 @@ begin
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
-      g_registered  => true
+      g_registered  => true,
+      -- Address of the slaves connected
+      g_address     => c_secbar_base_addr,
+      g_mask        => c_secbar_base_mask
       )
     port map(
-      clk_sys_i     => clk_sys_i,
-      rst_n_i       => rst_n_i,
+      clk_sys_i  => clk_sys_i,
+      rst_n_i    => rst_n_i,
       -- Master connections (INTERCON is a slave)
-      slave_i(0)    => cbar_master_o(1),
-      slave_o(0)    => cbar_master_i(1),
+      slave_i(0) => cbar_master_o(1),
+      slave_o(0) => cbar_master_i(1),
       -- Slave connections (INTERCON is a master)
-      master_i      => secbar_master_i,
-      master_o      => secbar_master_o,
-      -- Address of the slaves connected
-      cfg_address_i => c_secbar_base_addr,  --cbar_address,
-      cfg_mask_i    => c_secbar_base_mask   --cbar_mask
+      master_i   => secbar_master_i,
+      master_o   => secbar_master_o
       );
 
   secbar_master_i(0) <= minic_wb_out;
@@ -825,6 +825,6 @@ begin
   txtsu_ts_value_o     <= ep_txtsu_ts_value;
   txtsu_ts_incorrect_o <= ep_txtsu_ts_incorrect;
   txtsu_stb_o          <= '1' when (ep_txtsu_stb = '1' and (ep_txtsu_frame_id /= x"0000")) else
-                    '0';
+                          '0';
 
 end struct;
