@@ -388,8 +388,8 @@ virtual class EthPacketSink;
    static int _null  = 0;
    
    pure virtual function int poll();
-   pure virtual function int permanent_stall_enable();
-   pure virtual function int permanent_stall_disable();
+   virtual function int permanent_stall_enable(); endfunction
+   virtual function int permanent_stall_disable(); endfunction
    pure virtual task recv(ref EthPacket pkt, ref int result = _null);      
    
 endclass // EthPacketSink
