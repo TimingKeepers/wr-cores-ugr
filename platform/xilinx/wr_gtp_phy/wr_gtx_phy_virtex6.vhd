@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-01-20
+-- Last update: 2012-03-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library unisim;
-use unisim.all;
+use unisim.vcomponents.all;
 
 library work;
 use work.gencores_pkg.all;
@@ -55,19 +55,19 @@ entity wr_gtx_phy_virtex6 is
 
   generic (
     -- set to non-zero value to speed up the simulation by reducing some delays
-    g_simulation         : integer := 1;
+    g_simulation         : integer := 0;
     g_use_slave_tx_clock : integer := 0
     );
 
   port (
 
-    -- Reference 125 MHz clock input for the transceiver.
+    -- Reference 62.5 MHz clock input for the TX/RX logic (not the GTX itself)
     clk_ref_i : in std_logic;
+    -- Reference 62.5 MHz clock for the GTX transceiver
+    clk_gtx_i : in std_logic;
+    
+    -- TX path, clk_ref_i - synchronous:
 
-    -- TX path, tx_clk_o - synchronous:
-
-    tx_clk_i  : in  std_logic;
-    tx_clk_o  : out std_logic;
     -- data input (8 bits, not 8b10b-encoded)
     tx_data_i : in  std_logic_vector(15 downto 0);
 
@@ -171,9 +171,14 @@ architecture rtl of wr_gtx_phy_virtex6 is
   end component;
 
   component BUFR
+    generic (
+      BUFR_DIVIDE : string := "BYPASS";
+      SIM_DEVICE  : string := "VIRTEX6");
     port (
-      O : out std_ulogic;
-      I : in  std_ulogic);
+      O   : out std_ulogic;
+      CE  : in  std_ulogic := '1';
+      CLR : in  std_ulogic := '0';
+      I   : in  std_ulogic);
   end component;
 
   component gtp_phase_align_virtex6
@@ -214,23 +219,6 @@ architecture rtl of wr_gtx_phy_virtex6 is
       gtx_test_o      : out std_logic_vector(12 downto 0));
   end component;
 
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector(35 downto 0));
-  end component;
-
-  signal Control0 : std_logic_vector(35 downto 0);
-
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
-
   signal trig0, trig1, trig2, trig3 : std_logic_vector(31 downto 0);
   signal gtx_rst                    : std_logic;
   signal gtx_loopback               : std_logic_vector(2 downto 0) := "000";
@@ -241,9 +229,7 @@ architecture rtl of wr_gtx_phy_virtex6 is
   signal reset_counter              : unsigned(9 downto 0);
   signal gtx_test                   : std_logic_vector(12 downto 0);
 
-  signal tx_out_clk_bufin   : std_logic;
   signal rx_rec_clk_bufin   : std_logic;
-  signal tx_out_clk         : std_logic;
   signal rx_rec_clk         : std_logic;
   signal rx_comma_det       : std_logic;
   signal rx_byte_is_aligned : std_logic;
@@ -285,19 +271,6 @@ begin  -- rtl
 
   tx_enc_err_o <= '0';
 
-  --CS_ICON : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL0);
-
-  --CS_ILA : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL0,
-  --    CLK     => clk_ref_i,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
   p_gen_reset : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
@@ -324,39 +297,12 @@ begin  -- rtl
       txpll_lockdet_i => txpll_lockdet,
       gtx_test_o      => gtx_test);
 
-  
-  trig0(15 downto 0)  <= tx_data_i;
-  trig0(17 downto 16) <= tx_k_i;
-  trig0(20)           <= rst_i;
-  trig0(21)           <= loopen_i;
-
-  trig1(15 downto 0)  <= rx_data_int;
-  trig1(17 downto 16) <= rx_k_int;
-
-
-  trig2(0)           <= gtx_rst;
-  trig2(1)           <= txpll_lockdet;
-  trig3(12 downto 0) <= gtx_test;
-
   U_BUF_RxRecClk : BUFG
     port map (
       I => rx_rec_clk_bufin,
       O => rx_rec_clk);
 
-  gen_with_bufg: if(g_use_slave_tx_clock = 0) generate
-  
-  U_BUF_TxOutClk : BUFG
-    port map (
-      I => tx_out_clk_bufin,
-      O => tx_out_clk);
-  end generate gen_with_bufg;
-
-  gen_without_bufg:if(g_use_slave_tx_clock = 1) generate
-    tx_out_clk <= tx_clk_i;
-  end generate gen_without_bufg;
-  
   rx_rbclk_o <= rx_rec_clk;
-  tx_clk_o   <= tx_out_clk;
 
   tx_is_k_swapped <= tx_k_i(0) & tx_k_i(1);
   tx_data_swapped <= tx_data_i(7 downto 0) & tx_data_i(15 downto 8);
@@ -388,8 +334,8 @@ begin  -- rtl
       TXCHARISK_IN          => tx_is_k_swapped,
       GTXTEST_IN            => gtx_test,
       TXDATA_IN             => tx_data_swapped,
-      TXOUTCLK_OUT          => tx_out_clk_bufin,
-      TXUSRCLK2_IN          => tx_out_clk,
+      TXOUTCLK_OUT          => open,
+      TXUSRCLK2_IN          => clk_ref_i,
       TXRUNDISP_OUT         => tx_rundisp_v6,
       TXN_OUT               => pad_txn_o,
       TXP_OUT               => pad_txp_o,
@@ -405,14 +351,14 @@ begin  -- rtl
       TXPLLLKDET_OUT        => txpll_lockdet,
       TXRESETDONE_OUT       => tx_rst_done);
 
-  mgtrefclk_in <= '0' & clk_ref_i;
+  mgtrefclk_in <= '0' & clk_gtx_i;
 
   U_Phase_Align : gtp_phase_align_virtex6
     generic map (
       g_simulation => g_simulation)
     port map (
       gtp_rst_i                   => gtx_rst,
-      gtp_tx_clk_i                => tx_out_clk,
+      gtp_tx_clk_i                => clk_ref_i,
       gtp_tx_en_pma_phase_align_o => tx_en_pma_phase_align,
       gtp_tx_pma_set_phase_o      => tx_pma_set_phase,
       gtp_tx_dly_align_disable_o  => tx_dly_align_disable,
@@ -468,9 +414,9 @@ begin  -- rtl
     end if;
   end process;
 
-  p_gen_tx_disparity : process(tx_out_clk)
+  p_gen_tx_disparity : process(clk_ref_i)
   begin
-    if rising_edge(tx_out_clk) then
+    if rising_edge(clk_ref_i) then
       if gtx_rst = '1' then
         cur_disp <= RD_MINUS;
       else
