@@ -171,8 +171,8 @@ architecture rtl of scu_top is
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
-      owr_en_o : out std_logic;
-      owr_i    : in  std_logic;
+      owr_en_o : out std_logic_vector(1 downto 0);
+      owr_i    : in  std_logic_vector(1 downto 0);
 
       slave_i : in  t_wishbone_slave_in;
       slave_o : out t_wishbone_slave_out;
@@ -399,15 +399,16 @@ architecture rtl of scu_top is
   
   signal eca_toggle: std_logic_vector(31 downto 0);
   
-  signal owr_en_o: std_logic;
-  signal owr_i:	std_logic;
+  signal owr_en_o: std_logic_vector(1 downto 0);
+  signal owr_i:	std_logic_vector(1 downto 0);
 
   
 begin
 
 	-- open drain buffer for one wire
-	owr_i	<= OneWire_CB;
-	OneWire_CB <= '0' when owr_en_o = '1' else 'Z';
+	owr_i(0) <= OneWire_CB;
+	
+	OneWire_CB <= '0' when owr_en_o(0) = '1' else 'Z';
 
 	  Inst_flash_loader_v01 : flash_loader
     port map (
