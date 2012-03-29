@@ -21,7 +21,7 @@ module endpoint_phy_wrapper
 
    wire rx_clock;
    
-   parameter g_phy_type   = "GTP";   
+   parameter string g_phy_type   = "GTP";   
 
    wire[15:0] gtx_data;
    wire [1:0]gtx_k;
@@ -34,6 +34,11 @@ module endpoint_phy_wrapper
    wire [3:0] grx_bitslide;
    wire gtp_rst;
    wire tx_clock;
+
+  initial begin
+      $display("Selected PHY Type: %s", g_phy_type);
+      $stop;
+   end
    
    generate
       if(g_phy_type == "TBI") begin
@@ -100,7 +105,36 @@ module endpoint_phy_wrapper
               .pad_rxn_i (rxn_i),
               .pad_rxp_i (rxp_i)
     );
-                   
+         
+      end else if (g_phy_type == "GTP") begin // if (g_phy_type == "TBI")
+         wr_gtp_phy_spartan6
+           #(
+             .g_simulation(1)
+             ) U_PHY 
+             (
+              .clk_ref_i(clk_ref_i),
+              .clk_ref_o(tx_clock),
+              
+              .ch0_tx_data_i (gtx_data[7:0]),
+              .ch0_tx_k_i (gtx_k[0]),
+              .ch0_tx_disparity_o (gtx_disparity),
+              .ch0_tx_enc_err_o(gtx_enc_error),
+              .ch0_rx_rbclk_o (rx_clock),
+              .ch0_rx_data_o (grx_data[7:0]),
+              .ch0_rx_k_o  (grx_k[0]),
+              .ch0_rx_enc_err_o (grx_enc_error),
+              .ch0_rx_bitslide_o  (),
+
+              .rst_i    (!rst_n_i),
+              .loopen_i (1'b0),
+
+              .pad_txn_o (txn_o),
+              .pad_txp_o (txp_o),
+
+              .pad_rxn_i (rxn_i),
+              .pad_rxp_i (rxp_i)
+              );
+         
       end // else: !if(g_phy_type == "TBI")
    endgenerate
    
@@ -160,10 +194,6 @@ module endpoint_phy_wrapper
               .snk_err_o   (src.err),
               .snk_rty_o   (src.rty),
 
-              .txtsu_port_id_o (),
-              .txtsu_frame_id_o (),
-              .txtsu_tsval_o (),
-              .txtsu_valid_o (),
               .txtsu_ack_i (1'b1),
 
               .rtu_full_i (1'b0),
