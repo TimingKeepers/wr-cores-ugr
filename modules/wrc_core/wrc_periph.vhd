@@ -88,6 +88,8 @@ architecture struct of wrc_periph is
   signal cntr_div      : unsigned(23 downto 0);
   signal cntr_tics     : unsigned(31 downto 0);
   signal cntr_overflow : std_logic;
+  
+  signal rst_wrc_n_o_reg : std_logic := '1';
 
 
 begin
@@ -101,14 +103,16 @@ begin
       if(rst_n_i = '0') then
         rst_wrc_n_o <= '0';
         rst_net_n_o <= '0';
+        rst_wrc_n_o_reg <= '1'; -- Resume CPU 1 cycle after reset
       else
 
         if(sysc_regs_o.rstr_trig_wr_o = '1' and sysc_regs_o.rstr_trig_o = x"deadbee") then
-          rst_wrc_n_o <= not sysc_regs_o.rstr_rst_o;
+          rst_wrc_n_o_reg <= not sysc_regs_o.rstr_rst_o;
         --else
           --rst_wrc_n_o <= '1';
         end if;
-
+        
+        rst_wrc_n_o <= rst_wrc_n_o_reg;
         rst_net_n_o <= not sysc_regs_o.gpsr_net_rst_o;
       end if;
     end if;
