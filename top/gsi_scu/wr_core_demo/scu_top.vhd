@@ -30,9 +30,7 @@ entity scu_top is
 
       serial_to_cb_o : out std_logic;
 
-      sfp_tx_disable_o : out std_logic;
-      sfp_txp_o        : out std_logic;
-      sfp_rxp_i        : in  std_logic;
+      
       ------------------------------------------------------------------------
       -- WR DAC signals
       ------------------------------------------------------------------------
@@ -67,7 +65,20 @@ entity scu_top is
 		-----------------------------------------------------------------------
 		-- OneWire
 		-----------------------------------------------------------------------
-		OneWire_CB		: inout std_logic
+		OneWire_CB		: inout std_logic;
+		
+		-----------------------------------------------------------------------
+		-- Timing SFP 
+		-----------------------------------------------------------------------
+		sfp_tx_disable_o : out std_logic;
+      sfp_txp_o        : out std_logic;
+      sfp_rxp_i        : in  std_logic;
+		
+		sfp1_mod0			: in std_logic;			-- grounded by module
+		sfp1_mod1			: inout std_logic;		-- SCL
+		sfp1_mod2			: inout std_logic			-- SDA
+		
+		
 		
       );
 
@@ -401,6 +412,11 @@ architecture rtl of scu_top is
   
   signal owr_en_o: std_logic_vector(1 downto 0);
   signal owr_i:	std_logic_vector(1 downto 0);
+  
+  signal sda_i:	std_logic;
+  signal sda_o:	std_logic;
+  signal scl_i:	std_logic;
+  signal scl_o:	std_logic;
 
   
 begin
@@ -409,6 +425,13 @@ begin
 	owr_i(0) <= OneWire_CB;
 	
 	OneWire_CB <= '0' when owr_en_o(0) = '1' else 'Z';
+	
+	-- open drain buffer for SFP i2c
+	scl_i <= sfp1_mod1;
+	sda_i <= sfp1_mod2;
+	
+	sfp1_mod1 <= '0' when scl_o = '0' else 'Z';
+	sfp1_mod2 <= '0' when sda_o = '0' else 'Z';
 
 	  Inst_flash_loader_v01 : flash_loader
     port map (
@@ -464,8 +487,10 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      scl_i  => '0',
-      sda_i  => '0',
+      scl_i  => scl_i,
+      sda_i  => sda_i,
+		sda_o  => sda_o,
+		scl_o  => scl_o,
       btn1_i => '0',
       btn2_i => '0',
 
