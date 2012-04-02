@@ -282,6 +282,8 @@ architecture rtl of exploder_top is
   signal mb_master_in  : t_wishbone_master_in;
   
   signal dummy_gpio, gpio_out : std_logic_vector(31 downto 0);
+  signal pio_reg:	std_logic_vector(3 downto 0);
+  signal ext_pps: std_logic;
   
 begin
   
@@ -415,7 +417,7 @@ begin
       clk_i      => l_clkp,
       rst_n_i    => nreset,
       pulse_i    => pps,
-      extended_o => hpv(3));
+      extended_o => ext_pps);
 		
 	U_ebone : xetherbone_core
    
@@ -448,7 +450,8 @@ begin
 	begin
 		if rising_edge(l_clkp) then
 			if mb_master_out.cyc = '1' and mb_master_out.stb = '1' and mb_master_out.we = '1' then
-				hpv(7 downto 4) <= mb_master_out.dat(3 downto 0);
+				pio_reg <= mb_master_out.dat(3 downto 0);
+				
 			end if;
 			mb_master_in.ack <= mb_master_out.cyc and mb_master_out.stb;
 		end if;
@@ -456,13 +459,15 @@ begin
 	mb_master_in.err <= '0';
 	mb_master_in.rty <= '0';
 	mb_master_in.stall <= '0';
-	mb_master_in.dat <= (others => '0');
+	mb_master_in.dat <= std_logic_vector(to_unsigned(0,mb_master_in.dat'length-pio_reg'length)) & pio_reg;
 	
 	-- gpio_out to leds
+	
+	hpv(3) <= not ext_pps;
 		
 	-- unused leds off	
 	hpv(2) <= '1';
-	
+	hpv(7 downto 4) <= pio_reg;
 	-- wr status leds
 	hpv(1) <= not led_green;
 	hpv(0) <= not led_red;
