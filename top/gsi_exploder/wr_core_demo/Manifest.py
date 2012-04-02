@@ -5,5 +5,4 @@ modules = {
     "git" : "git://ohwr.org/hdl-core-lib/etherbone-core.git"
 };
 
-files = ["scu_top.vhd", "pow_reset.vhd", "spec_serial_dac_arb.vhd",
-	"spec_serial_dac.vhd"]
+files = ["exploder_top.sdc", "exploder_top.vhd", "pow_reset.vhd", "spec_serial_dac.vhd", "flash_loader.vhd"]

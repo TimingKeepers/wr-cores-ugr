@@ -11,7 +11,7 @@ library work;
 use work.wishbone_pkg.all;
 
 
-entity EXPLODER_ng is
+entity pexaria2a_top is
   port
     (
       clk_20m_vcxo_i    : in std_logic;  -- 20MHz VCXO clock
@@ -21,29 +21,60 @@ entity EXPLODER_ng is
       nres   : in std_logic;            -- powerup reset
 
       -----------------------------------------
-      --UART
+      -- UART on front panel
       -----------------------------------------
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
-      serial_to_cb_o : out std_logic;
-
       sfp_tx_disable_o : out std_logic;
       sfp_txp_o        : out std_logic;
       sfp_rxp_i        : in  std_logic;
+      ------------------------------------------------------------------------
+      -- WR DAC signals
+      ------------------------------------------------------------------------
+      dac_sclk         : out std_logic;
+      dac_din          : out std_logic;
+      ndac_cs          : out std_logic_vector(2 downto 1);
 
-      leds_o : out std_logic_vector(3 downto 0)
+      -----------------------------------------
+      -- LED on baseboard
+		-- hpv0: red
+		-- hpv1: green
+		-- hpv2: orange
+		-- hpv3: blue
+      -----------------------------------------
+      hpv   : out std_logic_vector(7 downto 0)
+
+
       );
 
-end EXPLODER_ng;
+end pexaria2a_top;
 
-architecture rtl of EXPLODER_ng is
+architecture rtl of pexaria2a_top is
 
   component pow_reset is
     port (
       clk    : in     std_logic;        -- 125Mhz
       nreset : buffer std_logic
       );
+  end component;
+
+  component dmtd_clk_pll
+    port
+      (
+        inclk0 : in  std_logic := '0';
+        c0     : out std_logic
+        );
+  end component;
+
+  component sys_pll
+    port
+      (
+        inclk0 : in  std_logic := '0';
+        c0     : out std_logic;
+        c1     : out std_logic;
+        locked : out std_logic
+        );
   end component;
 
   component wr_gxb_phy_arriaii
@@ -145,34 +176,23 @@ architecture rtl of EXPLODER_ng is
       );
   end component;
 
-  component xmini_bone
-    generic (
-      g_class_mask    : std_logic_vector(7 downto 0);
-      g_our_ethertype : std_logic_vector(15 downto 0));
+  component spec_serial_dac_arb
+    generic(
+      g_invert_sclk    : boolean;
+      g_num_extra_bits : integer);        
     port (
-      clk_sys_i : in  std_logic;
-      rst_n_i   : in  std_logic;
-      src_o     : out t_wrf_source_out;
-      src_i     : in  t_wrf_source_in;
-      snk_o     : out t_wrf_sink_out;
-      snk_i     : in  t_wrf_sink_in;
-      master_o  : out t_wishbone_master_out;
-      master_i  : in  t_wishbone_master_in);
+      clk_i       : in  std_logic;
+      rst_n_i     : in  std_logic;
+      val1_i      : in  std_logic_vector(15 downto 0);
+      load1_i     : in  std_logic;
+      val2_i      : in  std_logic_vector(15 downto 0);
+      load2_i     : in  std_logic;
+      dac_cs_n_o  : out std_logic_vector(1 downto 0);
+      dac_clr_n_o : out std_logic;
+      dac_sclk_o  : out std_logic;
+      dac_din_o   : out std_logic);
   end component;
 
-  component xetherbone_core
-   
-    port (
-      clk_sys_i : in  std_logic;
-      rst_n_i   : in  std_logic;
-      snk_i     : in  t_wrf_sink_in;
-      snk_o     : out t_wrf_sink_out;
-      src_i     : in  t_wrf_source_in;
-      src_o     : out t_wrf_source_out;
-      master_i  : in  t_wishbone_master_in;
-      master_o  : out t_wishbone_master_out);
-  end component;
-  
 
   -- LCLK from GN4124 used as system clock
   signal l_clk : std_logic;
@@ -236,43 +256,31 @@ architecture rtl of EXPLODER_ng is
   signal wrc_slave_in  : t_wishbone_slave_in;
   signal wrc_slave_out : t_wishbone_slave_out;
   signal nreset        : std_logic := '0';
+  signal led_green		: std_logic;
+  signal led_red			: std_logic;
 
   signal clk_reconf : std_logic;
-  signal divctr     : unsigned(3 downto 0);
-
-  signal mb_src_out    : t_wrf_source_out;
-  signal mb_src_in     : t_wrf_source_in;
-  signal mb_snk_out    : t_wrf_sink_out;
-  signal mb_snk_in     : t_wrf_sink_in;
-  signal mb_master_out : t_wishbone_master_out;
-  signal mb_master_in  : t_wishbone_master_in;
-
-  signal dummy_gpio, gpio_out : std_logic_vector(31 downto 0);
-
-
   
 begin
-
-  process(l_clkp)
-  begin
-    if rising_edge(L_CLKp) then
-      divctr <= divctr + 1;
-    end if;
-  end process;
-
-  -- this is ugly, use PLL instead, I'm too lazy.
-  clk_reconf <= std_logic(divctr(3));
-
-
-  serial_to_cb_o   <= '0';
-  wrc_slave_in.cyc <= '0';
-  sfp_tx_disable_o <= '0';
-
+  
   reset : pow_reset
     port map (
       clk    => l_cLKp,
       nreset => nreset
       );
+
+  
+  dmtd_clk_pll_inst : dmtd_clk_pll port map (
+    inclk0 => clk_20m_vcxo_i,           -- 20Mhz 
+    c0     => pllout_clk_dmtd           -- 125Mhz
+    );
+
+  sys_pll_inst : sys_pll port map (
+    inclk0 => L_CLKp,                   -- 125Mhz 
+    c0     => pllout_clk_sys,           -- 125Mhy sys clk
+    c1     => clk_reconf,               -- 40Mhz for reconfig block
+    locked => open
+    );
 
   U_WR_CORE : xwr_core
     generic map (
@@ -285,9 +293,9 @@ begin
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE)
     port map (
-      clk_sys_i  => l_cLKp,
-      clk_dmtd_i => l_cLKp,
-      clk_ref_i  => l_cLKp,
+      clk_sys_i  =>  l_clkp,
+      clk_dmtd_i => pllout_clk_dmtd,
+      clk_ref_i  => clk_125m_pllref_p,
       clk_aux_i  => '0',
       rst_n_i    => nreset,
 
@@ -304,6 +312,9 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
+		
+		led_green_o => led_green,
+		led_red_o => led_red,
       scl_i  => '0',
       sda_i  => '0',
       btn1_i => '0',
@@ -317,20 +328,25 @@ begin
       slave_i => wrc_slave_in,
       slave_o => wrc_slave_out,
 
-      wrf_src_i => mb_snk_out,
-      wrf_src_o => mb_snk_in,
+      wrf_src_i => c_dummy_src_in,
+      wrf_snk_i => c_dummy_snk_in,
 
-      wrf_snk_i => mb_src_out,
-      wrf_snk_o => mb_src_in
+      pps_p_o => pps,
+
+      dac_hpll_load_p1_o => dac_hpll_load_p1,
+      dac_hpll_data_o    => dac_hpll_data,
+
+      dac_dpll_load_p1_o => dac_dpll_load_p1,
+      dac_dpll_data_o    => dac_dpll_data
       );
 
-  U_Altera_PHY : wr_gxb_phy_arriaii
+  wr_gxb_phy_arriaii_1 : wr_gxb_phy_arriaii
     generic map (
       g_simulation      => 0,
       g_force_disparity => 1)
     port map (
       clk_reconf_i   => clk_reconf,
-      clk_ref_i      => l_cLKp,
+      clk_ref_i      => clk_125m_pllref_p,
       tx_clk_o       => phy_tx_clk,
       tx_data_i      => phy_tx_data,
       tx_k_i         => phy_tx_k,
@@ -346,36 +362,51 @@ begin
       pad_txp_o      => sfp_txp_o,
       pad_rxp_i      => sfp_rxp_i);
 
-  
-
-  U_ebone : xetherbone_core
-   
-    port map (
-      clk_sys_i => l_cLKp,
-      rst_n_i   => nreset,
-      src_o     => mb_src_out,
-      src_i     => mb_src_in,
-      snk_o     => mb_snk_out,
-      snk_i     => mb_snk_in,
-      master_o  => mb_master_out,
-      master_i  => mb_master_in);
-
-  U_GPIO : xwb_gpio_port
+  U_DAC_ARB : spec_serial_dac_arb
     generic map (
-      g_interface_mode         => CLASSIC,
-      g_address_granularity    => BYTE,
-      g_num_pins               => 32,
-      g_with_builtin_tristates => false)
-    port map (
-      clk_sys_i  => l_cLKp,
-      rst_n_i    => nreset,
-      slave_i    => mb_master_out,
-      slave_o    => mb_master_in,
-      gpio_b     => dummy_gpio,
-      gpio_out_o => gpio_out,
-      gpio_in_i  => x"00000000");
+      g_invert_sclk    => false,
+      g_num_extra_bits => 8)            -- AD DACs with 24bit interface
 
-  leds_o <= gpio_out(3 downto 0);
+    port map (
+      clk_i   => l_clkp,
+      rst_n_i => nreset,
+
+      val1_i  => dac_dpll_data,
+      load1_i => dac_dpll_load_p1,
+
+      val2_i  => dac_hpll_data,
+      load2_i => dac_hpll_load_p1,
+
+      dac_cs_n_o(0) => ndac_cs(1),
+      dac_cs_n_o(1) => ndac_cs(2),
+      dac_clr_n_o   => open,
+      dac_sclk_o    => dac_sclk,
+      dac_din_o     => dac_din);
+
+  U_Extend_PPS : gc_extend_pulse
+    generic map (
+      g_width => 10000000)
+    port map (
+      clk_i      => l_clkp,
+      rst_n_i    => nreset,
+      pulse_i    => pps,
+      extended_o => hpv(3));
+
+	-- unused leds off	
+	hpv(2) <= '1';
+	hpv(4) <= '1';
+	hpv(5) <= '1';
+	hpv(6) <= '1';
+	hpv(7) <= '1';
+	
+	
+	hpv(1) <= not led_green;
+	hpv(0) <= not led_red;
+  wrc_slave_in.cyc <= '0';
+
+  sfp_tx_disable_o <= '0';
+
+  
 end rtl;
 
 

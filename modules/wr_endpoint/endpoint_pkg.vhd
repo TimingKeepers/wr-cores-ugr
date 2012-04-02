@@ -99,6 +99,20 @@ package endpoint_pkg is
       led_act_o            : out std_logic);
   end component;
 
+  constant c_xwr_endpoint_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000000ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01", -- big-endian, no-child, present
+    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000", -- undocumented device
+    dev_vendor    => x"0000CE42", -- CERN
+    dev_device    => x"650c2d4f",
+    dev_version   => x"00000001",
+    dev_date      => x"20120305",
+    description   => "WR-Endpoint     ");
   component xwr_endpoint
     generic (
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
