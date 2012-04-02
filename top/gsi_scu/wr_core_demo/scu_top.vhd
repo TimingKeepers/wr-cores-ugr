@@ -170,15 +170,22 @@ architecture rtl of scu_top is
       phy_rst_o          : out std_logic;
       phy_loopen_o       : out std_logic;
 
+      -----------------------------------------
+      --GPIO
+      -----------------------------------------
       led_red_o   : out std_logic;
       led_green_o : out std_logic;
       scl_o       : out std_logic;
       scl_i       : in  std_logic;
       sda_o       : out std_logic;
       sda_i       : in  std_logic;
+      sfp_scl_o   : out std_logic;
+      sfp_scl_i   : in  std_logic;
+      sfp_sda_o   : out std_logic;
+      sfp_sda_i   : in  std_logic;
+      sfp_det_i   : in  std_logic;
       btn1_i      : in  std_logic;
       btn2_i      : in  std_logic;
-
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
@@ -417,6 +424,13 @@ architecture rtl of scu_top is
   signal sda_o:	std_logic;
   signal scl_i:	std_logic;
   signal scl_o:	std_logic;
+  
+  signal sfp_sda_i:	std_logic;
+  signal sfp_sda_o:	std_logic;
+  signal sfp_scl_i:	std_logic;
+  signal sfp_scl_o:	std_logic;
+  
+  signal sfp_det_i: std_logic;
 
   
 begin
@@ -427,11 +441,11 @@ begin
 	OneWire_CB <= '0' when owr_en_o(0) = '1' else 'Z';
 	
 	-- open drain buffer for SFP i2c
-	scl_i <= sfp1_mod1;
-	sda_i <= sfp1_mod2;
+	sfp_scl_i <= sfp1_mod1;
+	sfp_sda_i <= sfp1_mod2;
 	
-	sfp1_mod1 <= '0' when scl_o = '0' else 'Z';
-	sfp1_mod2 <= '0' when sda_o = '0' else 'Z';
+	sfp1_mod1 <= '0' when sfp_scl_o = '0' else 'Z';
+	sfp1_mod2 <= '0' when sfp_sda_o = '0' else 'Z';
 
 	  Inst_flash_loader_v01 : flash_loader
     port map (
@@ -440,7 +454,7 @@ begin
   
   reset : pow_reset
     port map (
-      clk    => l_cLKp,
+      clk    => pllout_clk_sys,
       nreset => nreset
       );
 
@@ -468,7 +482,7 @@ begin
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE)
     port map (
-      clk_sys_i  =>  l_clkp,
+      clk_sys_i  =>  pllout_clk_sys,
       clk_dmtd_i => pllout_clk_dmtd,
       clk_ref_i  => clk_125m_pllref_p,
       clk_aux_i  => '0',
@@ -489,8 +503,13 @@ begin
 
       scl_i  => scl_i,
       sda_i  => sda_i,
-		sda_o  => sda_o,
-		scl_o  => scl_o,
+		  sda_o  => sda_o,
+		  scl_o  => scl_o,
+		  
+		  sfp_scl_i => sfp_scl_i,
+		  sfp_sda_i => sfp_sda_i,
+		  sfp_det_i => sfp_det_i,
+		  
       btn1_i => '0',
       btn2_i => '0',
 
@@ -549,7 +568,7 @@ begin
       g_num_extra_bits => 8)            -- AD DACs with 24bit interface
 
     port map (
-      clk_i   => l_clkp,
+      clk_i   => pllout_clk_sys,
       rst_n_i => nreset,
 
       val1_i  => dac_dpll_data,
@@ -568,7 +587,7 @@ begin
     generic map (
       g_width => 10000000)
     port map (
-      clk_i      => l_clkp,
+      clk_i      => pllout_clk_sys,
       rst_n_i    => nreset,
       pulse_i    => pps,
       extended_o => lemo_led(1));
@@ -605,7 +624,7 @@ begin
       g_slave1_granularity    => BYTE,
       g_slave2_granularity    => WORD)  
     port map(
-      clk_sys_i => l_clkp,
+      clk_sys_i => pllout_clk_sys,
       rst_n_i   => nreset,
 
       slave1_i => cbar_master_o(0),
@@ -616,7 +635,7 @@ begin
     
   U_ebone : xetherbone_core
     port map (
-      clk_sys_i => l_clkp,
+      clk_sys_i => pllout_clk_sys,
       rst_n_i   => nreset,
       src_o     => mb_src_out,
       src_i     => mb_src_in,
@@ -641,6 +660,7 @@ begin
       tm_cycles_i     => tm_cycles,
       wb_slave_i      => cbar_ref_master_o(2),
       wb_slave_o      => cbar_ref_master_i(2));
+
  
   ECA : xwr_eca
     port map(
@@ -690,7 +710,7 @@ begin
   cross_my_clocks : xwb_clock_crossing
     port map(
       rst_n_i      => nreset,
-      slave_clk_i  => l_clkp,
+      slave_clk_i  => pllout_clk_sys,
       slave_i      => cbar_master_o(1),
       slave_o      => cbar_master_i(1),
       master_clk_i => clk_125m_pllref_p,
@@ -706,7 +726,7 @@ begin
      g_layout      => c_layout,
      g_sdwb_addr   => c_sdwb_address)
    port map(
-     clk_sys_i     => l_clkp,
+     clk_sys_i     => pllout_clk_sys,
      rst_n_i       => nreset,
      -- Master connections (INTERCON is a slave)
      slave_i       => cbar_slave_i,
