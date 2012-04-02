@@ -178,6 +178,7 @@ begin
 				when "101" => lpc_adr_reg(11 downto 8) 	<= lad_i;
 				when "110" => lpc_adr_reg(7 downto 4) 	<= lad_i;
 				when "111" => lpc_adr_reg(3 downto 0) 	<= lad_i;
+				when others => null;
 			end case;
 		
 			adr_cnt <= adr_cnt + 1;
