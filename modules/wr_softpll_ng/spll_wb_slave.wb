@@ -47,31 +47,82 @@ peripheral {
          access_bus = READ_WRITE;
 				 access_dev = READ_ONLY;
       };
-      
 	 };
 
+---------------------------------------------
+-- External clock input
+---------------------------------------------
+
+   reg {
+      name = "External Clock Control Register";
+			prefix = "ECCR";
+
+      field {
+         name = "Enable External Clock BB Detector";
+         prefix = "EXT_EN";
+         type = BIT;
+         access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+      };
+
+
+      field {
+         name = "External Clock Input Available";
+         description = "1: This instance of wr_softpll_ng supports external 10MHz clock input\
+          0: no support for external 10 MHz clock input.";
+         prefix = "EXT_SUPPORTED";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+
+      field {
+         name = "Enable PPS/phase alignment";
+         description = "write 1: starts aligning the external and local oscillator clock edges to be in phase\
+         right after the pulse on SYNC (PPS) input.\
+         write 0: no effect.";
+         prefix = "ALIGN_EN";
+         type = BIT;
+         access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+      };
+
+      field {
+         name = "PPS/phase alignment done";
+         description = "1: phase alignment triggered by writing to ALIGN_EN done.\
+          0: phase alignment in progress.";
+         prefix = "ALIGN_DONE";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+   };
+  
+
+---------------------------------------------
+-- DMTD gating/undersampling configuration
+---------------------------------------------
 	 reg {
 			name = "DMTD Clock Control Register";
 			prefix = "DCCR";
 			
       field {
-         name = "DMTD Clock Gate Divider";
+         name = "DMTD Clock Undersampling Divider";
          prefix = "GATE_DIV";
          size = 6;
          type = SLV;
          access_bus = READ_WRITE;
 				 access_dev = READ_ONLY;
       };
-
-    
 	 };
 
    reg {
-      name = "Reference Channel Gating Enable Register";
+      name = "Reference Channel Undersampling Enable Register";
       prefix = "RCGER";
       
       field {
-         name = "Reference Channel Gating Enable";
+         name = "Reference Channel Undersampling Enable";
          prefix = "GATE_SEL";
          size = 32;
          type = PASS_THROUGH;
