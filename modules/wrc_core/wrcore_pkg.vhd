@@ -212,35 +212,41 @@ package wrcore_pkg is
     dev_version   => x"00000001",
     dev_date      => x"20120305",
     description   => "WR-Soft-PLL     ");
-  component xwr_softpll_ng is
-    generic(
-      g_tag_bits                 : integer;
-      g_interface_mode           : t_wishbone_interface_mode;
-      g_address_granularity      : t_wishbone_address_granularity;
-      g_num_ref_inputs           : integer;
-      g_num_outputs              : integer);
-    port(
-      clk_sys_i : in std_logic;
-      rst_n_i   : in std_logic;
-      clk_ref_i  : in std_logic_vector(g_num_ref_inputs-1 downto 0);
-      clk_fb_i   : in std_logic_vector(g_num_outputs-1 downto 0);
-      clk_dmtd_i : in std_logic;
 
+  component xwr_softpll_ng
+    generic (
+      g_tag_bits             : integer;
+      g_num_ref_inputs       : integer;
+      g_num_outputs          : integer;
+      g_with_period_detector : boolean := false;
+      g_with_debug_fifo      : boolean := false;
+      g_with_ext_clock_input : boolean := false;
+      g_with_undersampling   : boolean := false;
+      g_reverse_dmtds        : boolean := false;
+      g_bb_ref_divider       : integer := 1;
+      g_bb_feedback_divider  : integer := 1;
+      g_bb_log2_gating       : integer := 1;
+      g_interface_mode       : t_wishbone_interface_mode;
+      g_address_granularity  : t_wishbone_address_granularity);
+    port (
+      clk_sys_i       : in  std_logic;
+      rst_n_i         : in  std_logic;
+      clk_ref_i       : in  std_logic_vector(g_num_ref_inputs-1 downto 0);
+      clk_fb_i        : in  std_logic_vector(g_num_outputs-1 downto 0);
+      clk_dmtd_i      : in  std_logic;
+      clk_ext_i       : in  std_logic;
+      sync_p_i        : in  std_logic;
       dac_dmtd_data_o : out std_logic_vector(15 downto 0);
       dac_dmtd_load_o : out std_logic;
-  
-      dac_out_data_o : out std_logic_vector(15 downto 0);
-      dac_out_sel_o  : out std_logic_vector(3 downto 0);
-      dac_out_load_o : out std_logic;
-  
-      out_enable_i : in  std_logic_vector(g_num_outputs-1 downto 0);
-      out_locked_o : out std_logic_vector(g_num_outputs-1 downto 0);
-  
-      slave_i : in  t_wishbone_slave_in;
-      slave_o : out t_wishbone_slave_out;
-  
-      debug_o : out std_logic_vector(3 downto 0)
-      );
+      dac_out_data_o  : out std_logic_vector(15 downto 0);
+      dac_out_sel_o   : out std_logic_vector(3 downto 0);
+      dac_out_load_o  : out std_logic;
+      out_enable_i    : in  std_logic_vector(g_num_outputs-1 downto 0);
+      out_locked_o    : out std_logic_vector(g_num_outputs-1 downto 0);
+      slave_i         : in  t_wishbone_slave_in;
+      slave_o         : out t_wishbone_slave_out;
+      debug_o         : out std_logic_vector(3 downto 0);
+      dbg_fifo_irq_o  : out std_logic);
   end component;
 
   -----------------------------------------------------------------------------

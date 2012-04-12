@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-03-29
+-- Last update: 2012-04-12
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -59,29 +59,44 @@ entity wr_core is
   generic(
     --if set to 1, then blocks in PCS use smaller calibration counter to speed 
     --up simulation
-    g_simulation          : integer                        := 0;
-    g_phys_uart           : boolean                        := true;
-    g_virtual_uart        : boolean                        := false;
-    g_rx_buffer_size      : integer                        := 1024;
-    g_dpram_initf         : string                         := "";
-    g_dpram_initv         : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
-    g_dpram_size          : integer                        := 16384;  --in 32-bit words
-    g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
-    g_address_granularity : t_wishbone_address_granularity := WORD
+    g_simulation                : integer                        := 0;
+    g_phys_uart                 : boolean                        := true;
+    g_virtual_uart              : boolean                        := false;
+    g_with_external_clock_input : boolean                        := false;
+    g_rx_buffer_size            : integer                        := 1024;
+    g_dpram_initf               : string                         := "";
+    g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
+    g_dpram_size                : integer                        := 16384;  --in 32-bit words
+    g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
+    g_address_granularity       : t_wishbone_address_granularity := WORD
     );
   port(
+
+    ---------------------------------------------------------------------------
+    -- Clocks/resets
+    ---------------------------------------------------------------------------
+
+    -- system reference clock (any frequency <= f(clk_ref_i))
     clk_sys_i : in std_logic;
 
-    -- DDMTD offset lcock (125.x MHz)
+    -- DDMTD offset clock (125.x MHz)
     clk_dmtd_i : in std_logic;
 
     -- Timing reference (125 MHz)
     clk_ref_i : in std_logic;
 
-    -- Aux clock (i.e. the FMC clock)
+    -- Aux clock (i.e. the FMC clock), which can be disciplined by the WR Core
     clk_aux_i : in std_logic;
 
+    -- External 10 MHz reference (cesium, GPSDO, etc.), used in Grandmaster mode
+    clk_ext_i : in std_logic;
+
+    -- External PPS input (cesium, GPSDO, etc.), used in Grandmaster mode
+    pps_ext_i : in std_logic;
+
     rst_n_i : in std_logic;
+
+
 
     -----------------------------------------
     --Timing system
@@ -202,6 +217,7 @@ entity wr_core is
     -- 1PPS output
     pps_p_o              : out std_logic;
 
+
     dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic;
 
@@ -269,16 +285,16 @@ architecture struct of wr_core is
   --WB Secondary Crossbar
   -----------------------------------------------------------------------------
   constant c_secbar_layout : t_sdwb_device_array(6 downto 0) :=
-    (0 => f_sdwb_set_address(c_xwr_mini_nic_sdwb,   x"00000000"),
-     1 => f_sdwb_set_address(c_xwr_endpoint_sdwb,   x"00000100"),
+    (0 => f_sdwb_set_address(c_xwr_mini_nic_sdwb, x"00000000"),
+     1 => f_sdwb_set_address(c_xwr_endpoint_sdwb, x"00000100"),
      2 => f_sdwb_set_address(c_xwr_softpll_ng_sdwb, x"00000200"),
-     3 => f_sdwb_set_address(c_xwr_pps_gen_sdwb,    x"00000300"),
-     4 => f_sdwb_set_address(c_wrc_periph0_sdwb,    x"00000400"),  -- Syscon
-     5 => f_sdwb_set_address(c_wrc_periph1_sdwb,    x"00000500"),  -- UART
-     6 => f_sdwb_set_address(c_wrc_periph2_sdwb,    x"00000600")); -- 1-Wire
+     3 => f_sdwb_set_address(c_xwr_pps_gen_sdwb, x"00000300"),
+     4 => f_sdwb_set_address(c_wrc_periph0_sdwb, x"00000400"),   -- Syscon
+     5 => f_sdwb_set_address(c_wrc_periph1_sdwb, x"00000500"),   -- UART
+     6 => f_sdwb_set_address(c_wrc_periph2_sdwb, x"00000600"));  -- 1-Wire
   constant c_secbar_sdwb_address : t_wishbone_address := x"00000800";
-  constant c_secbar_bridge_sdwb : t_sdwb_device := 
-     f_xwb_bridge_layout_sdwb(true, c_secbar_layout, c_secbar_sdwb_address);
+  constant c_secbar_bridge_sdwb  : t_sdwb_device      :=
+    f_xwb_bridge_layout_sdwb(true, c_secbar_layout, c_secbar_sdwb_address);
 
   signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
   signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
@@ -287,8 +303,8 @@ architecture struct of wr_core is
   --WB intercon
   -----------------------------------------------------------------------------
   constant c_layout : t_sdwb_device_array(1 downto 0) :=
-   (0 => f_sdwb_set_address(f_xwb_dpram(g_dpram_size), x"00000000"),
-    1 => f_sdwb_set_address(c_secbar_bridge_sdwb,      x"00020000"));
+    (0 => f_sdwb_set_address(f_xwb_dpram(g_dpram_size), x"00000000"),
+     1 => f_sdwb_set_address(c_secbar_bridge_sdwb, x"00020000"));
   constant c_sdwb_address : t_wishbone_address := x"00030000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
@@ -425,6 +441,16 @@ begin
 
   U_SOFTPLL : xwr_softpll_ng
     generic map(
+      g_with_ext_clock_input => g_with_external_clock_input,
+      g_reverse_dmtds        => true,
+      g_with_undersampling   => false,
+      g_with_period_detector => false,
+      g_with_debug_fifo      => true,
+
+      g_bb_ref_divider      => 8,
+      g_bb_feedback_divider => 50,
+      g_bb_log2_gating      => 13,
+
       g_tag_bits            => 22,
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
@@ -434,20 +460,23 @@ begin
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_net_n,
 
-  -- Reference inputs (i.e. the RX clocks recovered by the PHYs)
+      -- Reference inputs (i.e. the RX clocks recovered by the PHYs)
       clk_ref_i(0) => phy_rx_rbclk_i,
-  -- Feedback clocks (i.e. the outputs of the main or aux oscillator)
+      -- Feedback clocks (i.e. the outputs of the main or aux oscillator)
       clk_fb_i(0)  => clk_ref_i,
-  -- DMTD Offset clock
+      -- DMTD Offset clock
       clk_dmtd_i   => clk_dmtd_i,
 
-  -- DMTD oscillator drive
+      clk_ext_i    => clk_ext_i,
+      sync_p_i     => pps_ext_i,
+
+      -- DMTD oscillator drive
       dac_dmtd_data_o => dac_hpll_data_o,
       dac_dmtd_load_o => dac_hpll_load_p1_o,
 
-  -- Output channel DAC value
+      -- Output channel DAC value
       dac_out_data_o => dac_dpll_data_o,  --: out std_logic_vector(15 downto 0);
-  -- Output channel select (0 = channel 0, etc. )
+      -- Output channel select (0 = channel 0, etc. )
       dac_out_sel_o  => open,           --for now use only one output
       dac_out_load_o => dac_dpll_load_p1_o,
 
@@ -458,7 +487,7 @@ begin
       slave_o => spll_wb_out,
 
       debug_o => dio_o
-    );
+      );
 
 
   softpll_irq <= spll_wb_out.int;

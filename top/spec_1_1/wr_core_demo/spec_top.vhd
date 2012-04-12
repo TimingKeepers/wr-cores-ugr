@@ -145,46 +145,46 @@ architecture rtl of spec_top is
     port(
       ---------------------------------------------------------
       -- Control and status
-      rst_n_a_i : in  std_logic;                      -- Asynchronous reset from GN4124
+      rst_n_a_i : in  std_logic;        -- Asynchronous reset from GN4124
       status_o  : out std_logic_vector(31 downto 0);  -- Core status output
 
       ---------------------------------------------------------
       -- P2L Direction
       --
       -- Source Sync DDR related signals
-      p2l_clk_p_i  : in  std_logic;                      -- Receiver Source Synchronous Clock+
-      p2l_clk_n_i  : in  std_logic;                      -- Receiver Source Synchronous Clock-
+      p2l_clk_p_i  : in  std_logic;     -- Receiver Source Synchronous Clock+
+      p2l_clk_n_i  : in  std_logic;     -- Receiver Source Synchronous Clock-
       p2l_data_i   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
-      p2l_dframe_i : in  std_logic;                      -- Receive Frame
-      p2l_valid_i  : in  std_logic;                      -- Receive Data Valid
+      p2l_dframe_i : in  std_logic;     -- Receive Frame
+      p2l_valid_i  : in  std_logic;     -- Receive Data Valid
       -- P2L Control
-      p2l_rdy_o    : out std_logic;                      -- Rx Buffer Full Flag
-      p_wr_req_i   : in  std_logic_vector(1 downto 0);   -- PCIe Write Request
-      p_wr_rdy_o   : out std_logic_vector(1 downto 0);   -- PCIe Write Ready
-      rx_error_o   : out std_logic;                      -- Receive Error
-      vc_rdy_i     : in  std_logic_vector(1 downto 0);   -- Virtual channel ready
+      p2l_rdy_o    : out std_logic;     -- Rx Buffer Full Flag
+      p_wr_req_i   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
+      p_wr_rdy_o   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
+      rx_error_o   : out std_logic;     -- Receive Error
+      vc_rdy_i     : in  std_logic_vector(1 downto 0);  -- Virtual channel ready
 
       ---------------------------------------------------------
       -- L2P Direction
       --
       -- Source Sync DDR related signals
-      l2p_clk_p_o  : out std_logic;                      -- Transmitter Source Synchronous Clock+
-      l2p_clk_n_o  : out std_logic;                      -- Transmitter Source Synchronous Clock-
+      l2p_clk_p_o  : out std_logic;  -- Transmitter Source Synchronous Clock+
+      l2p_clk_n_o  : out std_logic;  -- Transmitter Source Synchronous Clock-
       l2p_data_o   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
-      l2p_dframe_o : out std_logic;                      -- Transmit Data Frame
-      l2p_valid_o  : out std_logic;                      -- Transmit Data Valid
+      l2p_dframe_o : out std_logic;     -- Transmit Data Frame
+      l2p_valid_o  : out std_logic;     -- Transmit Data Valid
       -- L2P Control
-      l2p_edb_o    : out std_logic;                      -- Packet termination and discard
-      l2p_rdy_i    : in  std_logic;                      -- Tx Buffer Full Flag
-      l_wr_rdy_i   : in  std_logic_vector(1 downto 0);   -- Local-to-PCIe Write
-      p_rd_d_rdy_i : in  std_logic_vector(1 downto 0);   -- PCIe-to-Local Read Response Data Ready
-      tx_error_i   : in  std_logic;                      -- Transmit Error
+      l2p_edb_o    : out std_logic;     -- Packet termination and discard
+      l2p_rdy_i    : in  std_logic;     -- Tx Buffer Full Flag
+      l_wr_rdy_i   : in  std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
+      p_rd_d_rdy_i : in  std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
+      tx_error_i   : in  std_logic;     -- Transmit Error
 
       ---------------------------------------------------------
       -- Interrupt interface
       dma_irq_o : out std_logic_vector(1 downto 0);  -- Interrupts sources to IRQ manager
-      irq_p_i   : in  std_logic;                     -- Interrupt request pulse from IRQ manager
-      irq_p_o   : out std_logic;                     -- Interrupt request pulse to GN4124 GPIO
+      irq_p_i   : in  std_logic;  -- Interrupt request pulse from IRQ manager
+      irq_p_o   : out std_logic;  -- Interrupt request pulse to GN4124 GPIO
 
       ---------------------------------------------------------
       -- DMA registers wishbone interface (slave classic)
@@ -192,9 +192,9 @@ architecture rtl of spec_top is
       dma_reg_adr_i   : in  std_logic_vector(31 downto 0) := x"00000000";
       dma_reg_dat_i   : in  std_logic_vector(31 downto 0) := x"00000000";
       dma_reg_sel_i   : in  std_logic_vector(3 downto 0)  := x"0";
-      dma_reg_stb_i   : in  std_logic := '0';
-      dma_reg_we_i    : in  std_logic := '0';
-      dma_reg_cyc_i   : in  std_logic := '0';
+      dma_reg_stb_i   : in  std_logic                     := '0';
+      dma_reg_we_i    : in  std_logic                     := '0';
+      dma_reg_cyc_i   : in  std_logic                     := '0';
       dma_reg_dat_o   : out std_logic_vector(31 downto 0);
       dma_reg_ack_o   : out std_logic;
       dma_reg_stall_o : out std_logic;
@@ -222,90 +222,93 @@ architecture rtl of spec_top is
       dma_we_o    : out std_logic;
       dma_cyc_o   : out std_logic;
       dma_dat_i   : in  std_logic_vector(31 downto 0) := x"00000000";
-      dma_ack_i   : in  std_logic := '0';
-      dma_stall_i : in  std_logic := '0'
-    );
+      dma_ack_i   : in  std_logic                     := '0';
+      dma_stall_i : in  std_logic                     := '0'
+      );
   end component;  --  gn4124_core
 
   component xwr_core is
-  generic(
-    g_simulation          : integer                        := 0;
-    g_phys_uart           : boolean                        := true;
-    g_virtual_uart        : boolean                        := false;
-    g_ep_rxbuf_size       : integer                        := 1024;
-    g_dpram_initf         : string                         := "";
-    g_dpram_size          : integer                        := 16384;  --in 32-bit words
-    g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-    g_address_granularity : t_wishbone_address_granularity := WORD
-    );
-  port(
-    clk_sys_i  : in std_logic;
-    clk_dmtd_i : in std_logic;
-    clk_ref_i  : in std_logic;
-    clk_aux_i  : in std_logic;
-    rst_n_i    : in std_logic;
+    generic(
+      g_simulation                : integer                        := 0;
+      g_phys_uart                 : boolean                        := true;
+      g_virtual_uart              : boolean                        := false;
+      g_with_external_clock_input : boolean                        := false;
+      g_ep_rxbuf_size             : integer                        := 1024;
+      g_dpram_initf               : string                         := "";
+      g_dpram_size                : integer                        := 16384;  --in 32-bit words
+      g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
+      g_address_granularity       : t_wishbone_address_granularity := WORD
+      );
+    port(
+      clk_sys_i  : in std_logic;
+      clk_dmtd_i : in std_logic;
+      clk_ref_i  : in std_logic;
+      clk_aux_i  : in std_logic;
+      clk_ext_i  : in std_logic := '0';
+      pps_ext_i  : in std_logic := '0';
+      rst_n_i    : in std_logic;
 
-    dac_hpll_load_p1_o : out std_logic;
-    dac_hpll_data_o    : out std_logic_vector(15 downto 0);
-    dac_dpll_load_p1_o : out std_logic;
-    dac_dpll_data_o    : out std_logic_vector(15 downto 0);
+      dac_hpll_load_p1_o : out std_logic;
+      dac_hpll_data_o    : out std_logic_vector(15 downto 0);
+      dac_dpll_load_p1_o : out std_logic;
+      dac_dpll_data_o    : out std_logic_vector(15 downto 0);
 
-    phy_ref_clk_i      : in  std_logic;
-    phy_tx_data_o      : out std_logic_vector(7 downto 0);
-    phy_tx_k_o         : out std_logic;
-    phy_tx_disparity_i : in  std_logic;
-    phy_tx_enc_err_i   : in  std_logic;
-    phy_rx_data_i      : in  std_logic_vector(7 downto 0);
-    phy_rx_rbclk_i     : in  std_logic;
-    phy_rx_k_i         : in  std_logic;
-    phy_rx_enc_err_i   : in  std_logic;
-    phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
-    phy_rst_o          : out std_logic;
-    phy_loopen_o       : out std_logic;
+      phy_ref_clk_i      : in  std_logic;
+      phy_tx_data_o      : out std_logic_vector(7 downto 0);
+      phy_tx_k_o         : out std_logic;
+      phy_tx_disparity_i : in  std_logic;
+      phy_tx_enc_err_i   : in  std_logic;
+      phy_rx_data_i      : in  std_logic_vector(7 downto 0);
+      phy_rx_rbclk_i     : in  std_logic;
+      phy_rx_k_i         : in  std_logic;
+      phy_rx_enc_err_i   : in  std_logic;
+      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
+      phy_rst_o          : out std_logic;
+      phy_loopen_o       : out std_logic;
 
-    led_red_o   : out std_logic;
-    led_green_o : out std_logic;
-    scl_o       : out std_logic;
-    scl_i       : in  std_logic;
-    sda_o       : out std_logic;
-    sda_i       : in  std_logic;
-    sfp_scl_o   : out std_logic;
-    sfp_scl_i   : in  std_logic;
-    sfp_sda_o   : out std_logic;
-    sfp_sda_i   : in  std_logic;
-    sfp_det_i   : in  std_logic;
-    btn1_i      : in  std_logic;
-    btn2_i      : in  std_logic;
+      led_red_o   : out std_logic;
+      led_green_o : out std_logic;
+      scl_o       : out std_logic;
+      scl_i       : in  std_logic;
+      sda_o       : out std_logic;
+      sda_i       : in  std_logic;
+      sfp_scl_o   : out std_logic;
+      sfp_scl_i   : in  std_logic;
+      sfp_sda_o   : out std_logic;
+      sfp_sda_i   : in  std_logic;
+      sfp_det_i   : in  std_logic;
+      btn1_i      : in  std_logic;
+      btn2_i      : in  std_logic;
 
-    uart_rxd_i : in  std_logic;
-    uart_txd_o : out std_logic;
+      uart_rxd_i : in  std_logic;
+      uart_txd_o : out std_logic;
 
-    owr_en_o : out std_logic_vector(1 downto 0);
-    owr_i    : in  std_logic_vector(1 downto 0);
+      owr_en_o : out std_logic_vector(1 downto 0);
+      owr_i    : in  std_logic_vector(1 downto 0);
 
-    slave_i : in  t_wishbone_slave_in;
-    slave_o : out t_wishbone_slave_out;
+      slave_i : in  t_wishbone_slave_in;
+      slave_o : out t_wishbone_slave_out;
 
-    wrf_src_o : out t_wrf_source_out;
-    wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
-    wrf_snk_o : out t_wrf_sink_out;
-    wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
+      wrf_src_o : out t_wrf_source_out;
+      wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
+      wrf_snk_o : out t_wrf_sink_out;
+      wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
 
-    timestamps_o     : out t_txtsu_timestamp;
-    timestamps_ack_i : in  std_logic := '1';
+      timestamps_o     : out t_txtsu_timestamp;
+      timestamps_ack_i : in  std_logic := '1';
 
-    tm_dac_value_o       : out std_logic_vector(23 downto 0);
-    tm_dac_wr_o          : out std_logic;
-    tm_clk_aux_lock_en_i : in  std_logic;
-    tm_clk_aux_locked_o  : out std_logic;
-    tm_time_valid_o      : out std_logic;
-    tm_utc_o             : out std_logic_vector(39 downto 0);
-    tm_cycles_o          : out std_logic_vector(27 downto 0);
-    pps_p_o              : out std_logic;
+      tm_dac_value_o       : out std_logic_vector(23 downto 0);
+      tm_dac_wr_o          : out std_logic;
+      tm_clk_aux_lock_en_i : in  std_logic;
+      tm_clk_aux_locked_o  : out std_logic;
+      tm_time_valid_o      : out std_logic;
+      tm_utc_o             : out std_logic_vector(39 downto 0);
+      tm_cycles_o          : out std_logic_vector(27 downto 0);
+      pps_p_o              : out std_logic;
 
-    dio_o       : out std_logic_vector(3 downto 0);
-    rst_aux_n_o : out std_logic
-    );
+      dio_o       : out std_logic_vector(3 downto 0);
+      rst_aux_n_o : out std_logic
+      );
   end component;
 
 
@@ -485,7 +488,7 @@ architecture rtl of spec_top is
   signal owr_en : std_logic_vector(1 downto 0);
   signal owr_i  : std_logic_vector(1 downto 0);
 
-  signal wb_adr : std_logic_vector(31 downto 0); --c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
+  signal wb_adr : std_logic_vector(31 downto 0);  --c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 
   component xmini_bone
     generic (
@@ -596,8 +599,8 @@ begin
   --end process;
 
 
- local_reset_n <= L_RST_N;
-  
+  local_reset_n <= L_RST_N;
+
   cmp_clk_sys_buf : BUFG
     port map (
       O => clk_sys,
@@ -653,8 +656,8 @@ begin
     (
       ---------------------------------------------------------
       -- Control and status
-      rst_n_a_i      => L_RST_N,
-      status_o       => open,
+      rst_n_a_i => L_RST_N,
+      status_o  => open,
 
       ---------------------------------------------------------
       -- P2L Direction
@@ -666,11 +669,11 @@ begin
       p2l_dframe_i => P2L_DFRAME,
       p2l_valid_i  => P2L_VALID,
       -- P2L Control
-      p2l_rdy_o  => P2L_RDY,
-      p_wr_req_i => P_WR_REQ,
-      p_wr_rdy_o => P_WR_RDY,
-      rx_error_o => RX_ERROR,
-      vc_rdy_i   => VC_RDY,
+      p2l_rdy_o    => P2L_RDY,
+      p_wr_req_i   => P_WR_REQ,
+      p_wr_rdy_o   => P_WR_RDY,
+      rx_error_o   => RX_ERROR,
+      vc_rdy_i     => VC_RDY,
 
       ---------------------------------------------------------
       -- L2P Direction
@@ -713,7 +716,7 @@ begin
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
-      dma_clk_i   => clk_sys
+      dma_clk_i => clk_sys
       --dma_adr_o   => dma_adr,
       --dma_dat_o   => dma_dat_o,
       --dma_sel_o   => dma_sel,
@@ -822,7 +825,7 @@ begin
 
       dio_o       => dio_out(4 downto 1),
       rst_aux_n_o => mbone_rst_n
-    );
+      );
 
 
   -- Mini-BONE
