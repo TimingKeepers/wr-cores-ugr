@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-03-26
+-- Last update: 2012-03-30
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -66,6 +66,32 @@ entity xwr_softpll_ng is
 -- These values can be read by "spll_dbg_proxy" daemon for further analysis.
     g_with_debug_fifo : boolean := false;
 
+-- When true, an additional accumulating bang-bang phase detector is instantiated
+-- for wideband locking of the local oscillator to an external stable reference
+-- (e.g. GPSDO/Cesium 10 MHz)
+    g_with_ext_clock_input : boolean := false;
+
+-- When true, the SoftPLL can undersample measured signals by dividing the DMTD
+-- clock by a progammable ratio, so that one can perform phase shift
+-- measurements of clocks with frequencies different than the base rate of the
+-- DMTD oscillator.
+    g_with_undersampling : boolean := false;
+
+-- When true, DDMTD inputs are reverse (so that the DDMTD offset clocks is
+-- being sampled by the measured clock). This is functionally equivalent to
+-- "direct" operation, but may improve FPGA timing/routability.
+    g_reverse_dmtds : boolean := true;
+
+-- Bang Bang phase detector parameters:
+-- reference divider
+    g_bb_ref_divider : integer := 1;
+
+-- feedback divider
+    g_bb_feedback_divider : integer := 1;
+
+-- phase error measurement gating
+    g_bb_log2_gating : integer := 10;
+
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity : t_wishbone_address_granularity := BYTE
     );
@@ -81,6 +107,14 @@ entity xwr_softpll_ng is
     clk_fb_i   : in std_logic_vector(g_num_outputs-1 downto 0);
 -- DMTD Offset clock
     clk_dmtd_i : in std_logic;
+
+-- External reference clock (e.g. 10 MHz from Cesium/GPSDO). Used only if
+-- g_with_ext_clock_input == true
+    clk_ext_i : in std_logic;
+
+-- External clock sync/alignment singnal. SoftPLL will clk_ext_i/clk_fb_i(0)
+-- to match the edges immediately following the rising edge in sync_p_i.
+    sync_p_i : in std_logic;
 
 -- DMTD oscillator drive
     dac_dmtd_data_o : out std_logic_vector(15 downto 0);
@@ -106,6 +140,8 @@ end xwr_softpll_ng;
 
 architecture wrapper of xwr_softpll_ng is
 
+  
+
   component wr_softpll_ng
     generic (
       g_tag_bits             : integer;
@@ -113,6 +149,12 @@ architecture wrapper of xwr_softpll_ng is
       g_num_outputs          : integer;
       g_with_period_detector : boolean;
       g_with_debug_fifo      : boolean;
+      g_with_ext_clock_input : boolean;
+      g_with_undersampling   : boolean;
+      g_reverse_dmtds        : boolean;
+      g_bb_ref_divider       : integer;
+      g_bb_feedback_divider  : integer;
+      g_bb_log2_gating       : integer;
       g_interface_mode       : t_wishbone_interface_mode;
       g_address_granularity  : t_wishbone_address_granularity);
     port (
@@ -121,6 +163,8 @@ architecture wrapper of xwr_softpll_ng is
       clk_ref_i       : in  std_logic_vector(g_num_ref_inputs-1 downto 0);
       clk_fb_i        : in  std_logic_vector(g_num_outputs-1 downto 0);
       clk_dmtd_i      : in  std_logic;
+      clk_ext_i       : in  std_logic;
+      sync_p_i        : in  std_logic;
       dac_dmtd_data_o : out std_logic_vector(15 downto 0);
       dac_dmtd_load_o : out std_logic;
       dac_out_data_o  : out std_logic_vector(15 downto 0);
@@ -152,13 +196,22 @@ begin  -- behavioral
       g_num_ref_inputs       => g_num_ref_inputs,
       g_num_outputs          => g_num_outputs,
       g_with_debug_fifo      => g_with_debug_fifo,
-      g_with_period_detector => g_with_period_detector)
+      g_with_period_detector => g_with_period_detector,
+      g_with_undersampling   => g_with_undersampling,
+      g_with_ext_clock_input => g_with_ext_clock_input,
+      g_reverse_dmtds        => g_reverse_dmtds,
+      g_bb_ref_divider       => g_bb_ref_divider,
+      g_bb_feedback_divider  => g_bb_feedback_divider,
+      g_bb_log2_gating       => g_bb_log2_gating
+      )
     port map (
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_i,
       clk_ref_i       => clk_ref_i,
       clk_fb_i        => clk_fb_i,
       clk_dmtd_i      => clk_dmtd_i,
+      clk_ext_i       => clk_ext_i,
+      sync_p_i        => sync_p_i,
       dac_dmtd_data_o => dac_dmtd_data_o,
       dac_dmtd_load_o => dac_dmtd_load_o,
       dac_out_data_o  => dac_out_data_o,
