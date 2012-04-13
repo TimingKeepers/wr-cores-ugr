@@ -442,7 +442,7 @@ begin
   U_SOFTPLL : xwr_softpll_ng
     generic map(
       g_with_ext_clock_input => g_with_external_clock_input,
-      g_reverse_dmtds        => true,
+      g_reverse_dmtds        => false,
       g_with_undersampling   => false,
       g_with_period_detector => false,
       g_with_debug_fifo      => true,
