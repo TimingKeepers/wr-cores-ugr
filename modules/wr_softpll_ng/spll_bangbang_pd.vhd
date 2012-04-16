@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-06-14
--- Last update: 2012-04-12
+-- Last update: 2012-04-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -67,7 +67,9 @@ entity spll_bangbang_pd is
 
     err_wrap_o : out std_logic;
     err_o      : out std_logic_vector(g_error_bits-1 downto 0);
-    err_stb_o  : out std_logic
+    err_stb_o  : out std_logic;
+
+    ref_present_o : out std_logic
     );
 
   attribute rom_extract                     : string;
@@ -102,8 +104,12 @@ architecture rtl of spll_bangbang_pd is
 
   -- disable RAM extraction (XST is trying to implement the phase detector in a
   -- RAM)
-  signal sync_p_d0 : std_logic;
+  signal sync_p_d0  : std_logic;
   signal sync_en_d0 : std_logic;
+
+  signal ref_presence_counter        : unsigned(7 downto 0);
+  signal ref_present, ref_presence_p : std_logic;
+
   
 begin  -- rtl
 
@@ -113,9 +119,9 @@ begin  -- rtl
   begin  -- process
     if rising_edge(clk_ref_i) then
 
-      sync_p_d0 <= sync_p_i;
+      sync_p_d0  <= sync_p_i;
       sync_en_d0 <= sync_en_i;
-      
+
       if rst_n_refclk_i = '0'then
         div_ctr_ref <= to_unsigned(1, div_ctr_ref'length);
         pd_in_ref   <= '0';
@@ -135,7 +141,7 @@ begin  -- rtl
         -- the divider itself
         if (div_ctr_ref = g_ref_divider) then
           div_ctr_ref <= to_unsigned(1, div_ctr_ref'length);
-          pd_in_ref   <= not pd_in_ref;  
+          pd_in_ref   <= not pd_in_ref;
         else
           div_ctr_ref <= div_ctr_ref + 1;
         end if;
@@ -158,6 +164,40 @@ begin  -- rtl
           pd_in_fbck   <= not pd_in_fbck;  -- divide the clock :)
         else
           div_ctr_fbck <= div_ctr_fbck + 1;
+        end if;
+      end if;
+    end if;
+  end process;
+
+
+  U_Detect_Ref_Pulses : gc_sync_ffs
+    generic map (
+      g_sync_edge => "positive")
+    port map (
+      clk_i    => clk_sys_i,
+      rst_n_i  => rst_n_sysclk_i,
+      data_i   => pd_in_ref,
+      synced_o => open,
+      npulse_o => open,
+      ppulse_o => ref_presence_p);
+
+-- Checks for presence of the reference clock
+
+  p_check_ref_presence : process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if rst_n_sysclk_i = '0' then
+        ref_present_o        <= '0';
+        ref_presence_counter <= (others => '0');
+      else
+        if(ref_presence_p = '1') then
+          ref_presence_counter <= (others => '0');
+          ref_present_o        <= '1';
+        elsif(ref_presence_counter /= x"ff") then
+          ref_present_o        <= '1';
+          ref_presence_counter <= ref_presence_counter + 1;
+        else
+          ref_present_o <= '0';
         end if;
       end if;
     end if;
