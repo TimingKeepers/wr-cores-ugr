@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-03-16
+-- Last update: 2012-04-13
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -31,15 +31,17 @@ use work.wishbone_pkg.all;
 
 entity xwr_pps_gen is
   generic(
-    g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-    g_address_granularity : t_wishbone_address_granularity := WORD;
-    g_ref_clock_rate      : integer                        := 125000000
+    g_interface_mode       : t_wishbone_interface_mode      := CLASSIC;
+    g_address_granularity  : t_wishbone_address_granularity := WORD;
+    g_ref_clock_rate       : integer                        := 125000000;
+    g_ext_clock_rate       : integer                        := 10000000;
+    g_with_ext_clock_input : boolean                        := false
     );
   port (
     clk_ref_i : in std_logic;
     clk_sys_i : in std_logic;
-
-    rst_n_i : in std_logic;
+    clk_ext_i : in std_logic := '0';
+    rst_n_i   : in std_logic;
 
     slave_i : in  t_wishbone_slave_in;
     slave_o : out t_wishbone_slave_out;
@@ -63,13 +65,16 @@ architecture behavioral of xwr_pps_gen is
 
   component wr_pps_gen is
     generic(
-      g_interface_mode      : t_wishbone_interface_mode;
-      g_address_granularity : t_wishbone_address_granularity;
-      g_ref_clock_rate      : integer
+      g_interface_mode       : t_wishbone_interface_mode;
+      g_address_granularity  : t_wishbone_address_granularity;
+      g_ref_clock_rate       : integer;
+      g_ext_clock_rate       : integer := 10000000;
+      g_with_ext_clock_input : boolean := false
       );
     port (
       clk_ref_i       : in  std_logic;
       clk_sys_i       : in  std_logic;
+      clk_ext_i       : in  std_logic;
       rst_n_i         : in  std_logic;
       wb_adr_i        : in  std_logic_vector(4 downto 0);
       wb_dat_i        : in  std_logic_vector(31 downto 0);
@@ -95,13 +100,16 @@ begin  -- behavioral
   
   WRAPPED_PPSGEN : wr_pps_gen
     generic map(
-      g_interface_mode      => g_interface_mode,
-      g_address_granularity => g_address_granularity,
-      g_ref_clock_rate      => g_ref_clock_rate
+      g_interface_mode       => g_interface_mode,
+      g_address_granularity  => g_address_granularity,
+      g_ref_clock_rate       => g_ref_clock_rate,
+      g_ext_clock_rate       => g_ext_clock_rate,
+      g_with_ext_clock_input => g_with_ext_clock_input
       )
     port map(
       clk_ref_i       => clk_ref_i,
       clk_sys_i       => clk_sys_i,
+      clk_ext_i       => clk_ext_i,
       rst_n_i         => rst_n_i,
       wb_adr_i        => slave_i.adr(4 downto 0),
       wb_dat_i        => slave_i.dat,
