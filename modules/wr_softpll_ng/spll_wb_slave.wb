@@ -97,6 +97,17 @@ peripheral {
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+
+      field {
+         name = "External Clock Reference Present";
+         description = "1: Reference clock present on the input\
+         0: reference input dead";
+         prefix = "EXT_REF_PRESENT";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
    };
   
 

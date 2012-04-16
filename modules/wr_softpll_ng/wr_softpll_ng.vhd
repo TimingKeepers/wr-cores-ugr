@@ -188,7 +188,8 @@ architecture rtl of wr_softpll_ng is
       sync_done_o    : out std_logic;
       err_wrap_o     : out std_logic;
       err_o          : out std_logic_vector(g_error_bits-1 downto 0);
-      err_stb_o      : out std_logic);
+      err_stb_o      : out std_logic;
+	ref_present_o : out std_logic);
   end component;
 
   component dmtd_with_deglitcher
@@ -373,6 +374,7 @@ architecture rtl of wr_softpll_ng is
   signal dmtd_fb_clk_in, dmtd_fb_clk_dmtd   : std_logic_vector(g_num_outputs-1 downto 0);
 
   signal bb_sync_en, bb_sync_done : std_logic;
+  signal ext_ref_present : std_logic;
 
 begin  -- rtl
 
@@ -582,12 +584,14 @@ begin  -- rtl
         sync_done_o    => bb_sync_done,
         err_o          => bb_phase_err,
         err_wrap_o     => bb_phase_err_wrap,
-        err_stb_o      => bb_phase_err_stb_p);
+        err_stb_o      => bb_phase_err_stb_p,
+   ref_present_o => ext_ref_present);
 
     tags(g_num_ref_inputs + g_num_outputs)(c_BB_ERROR_BITS-1 downto 0) <= bb_phase_err(c_BB_ERROR_BITS-1 downto 0);
     tags(g_num_ref_inputs + g_num_outputs)(c_BB_ERROR_BITS)          <= bb_phase_err_wrap;
 
     regs_out.eccr_ext_supported_i <= '1';
+    regs_out.eccr_ext_ref_present_i <= ext_ref_present;
   end generate gen_bb_detector;
 
 
