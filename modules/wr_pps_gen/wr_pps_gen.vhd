@@ -194,17 +194,17 @@ architecture behavioral of wr_pps_gen is
 begin  -- behavioral
 
 
-  CS_ICON : chipscope_icon
-    port map (
-      CONTROL0 => CONTROL0);
-  CS_ILA : chipscope_ila
-    port map (
-      CONTROL => CONTROL0,
-      CLK     => clk_sys_i,
-      TRIG0   => TRIG0,
-      TRIG1   => TRIG1,
-      TRIG2   => TRIG2,
-      TRIG3   => TRIG3);
+  --CS_ICON : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL0);
+  --CS_ILA : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL0,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
   TRIG0(cntr_pps_ext'length-1 downto 0) <= std_logic_vector(cntr_pps_ext);
   TRIG1(0)                              <= pps_ext_retimed;
