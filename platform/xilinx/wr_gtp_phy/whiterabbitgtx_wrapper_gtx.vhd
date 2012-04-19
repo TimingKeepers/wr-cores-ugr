@@ -269,12 +269,12 @@ begin
       RX_OVERSAMPLE_MODE => (false),
       RXPLL_COM_CFG      => (x"21680a"),
       RXPLL_CP_CFG       => (x"0D"),
-      RXPLL_DIVSEL_FB    => (2),
+      RXPLL_DIVSEL_FB    => (4),
       RXPLL_DIVSEL_OUT   => (2),
       RXPLL_DIVSEL_REF   => (1),
       RXPLL_DIVSEL45_FB  => (5),
       RXPLL_LKDET_CFG    => ("111"),
-      RX_CLK25_DIVIDER   => (5),
+      RX_CLK25_DIVIDER   => (3),
 
       -------------------------RX Interface-------------------------
       GEN_RXUSRCLK  => (true),
