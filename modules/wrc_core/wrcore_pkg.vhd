@@ -45,6 +45,7 @@ package wrcore_pkg is
     port (
       clk_ref_i       : in  std_logic;
       clk_sys_i       : in  std_logic;
+      clk_ext_i       : in  std_logic := '0';
       rst_n_i         : in  std_logic;
       slave_i         : in  t_wishbone_slave_in;
       slave_o         : out t_wishbone_slave_out;

@@ -421,6 +421,7 @@ begin
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
+      clk_ext_i => clk_ext_i,
 
       rst_n_i => rst_net_n,
 
