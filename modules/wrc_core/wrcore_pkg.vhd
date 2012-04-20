@@ -10,10 +10,10 @@ use work.wr_fabric_pkg.all;
 package wrcore_pkg is
 
   type t_txtsu_timestamp is record
-    stb    : std_logic;
-    tsval    : std_logic_vector(31 downto 0);
-    port_id  : std_logic_vector(5 downto 0);
-    frame_id : std_logic_vector(15 downto 0);
+    stb       : std_logic;
+    tsval     : std_logic_vector(31 downto 0);
+    port_id   : std_logic_vector(5 downto 0);
+    frame_id  : std_logic_vector(15 downto 0);
     incorrect : std_logic;
   end record;
 
@@ -24,20 +24,23 @@ package wrcore_pkg is
     wbd_begin     => x"0000000000000000",
     wbd_end       => x"00000000000000ff",
     sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"0000CE42", -- CERN
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
     dev_device    => x"de0d8ced",
     dev_version   => x"00000001",
     dev_date      => x"20120305",
     description   => "WR-PPS-Generator");
   component xwr_pps_gen is
     generic(
-      g_interface_mode      : t_wishbone_interface_mode;
-      g_address_granularity : t_wishbone_address_granularity
+      g_interface_mode       : t_wishbone_interface_mode;
+      g_address_granularity  : t_wishbone_address_granularity;
+      g_ref_clock_rate       : integer;
+      g_ext_clock_rate       : integer;
+      g_with_ext_clock_input : boolean
       );
     port (
       clk_ref_i       : in  std_logic;
@@ -62,12 +65,12 @@ package wrcore_pkg is
     wbd_begin     => x"0000000000000000",
     wbd_end       => x"00000000000000ff",
     sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"0000CE42", -- CERN
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
     dev_device    => x"ab28633a",
     dev_version   => x"00000001",
     dev_date      => x"20120305",
@@ -122,12 +125,12 @@ package wrcore_pkg is
     wbd_begin     => x"0000000000000000",
     wbd_end       => x"00000000000000ff",
     sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"0000CE42", -- CERN
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
     dev_device    => x"ff07fc47",
     dev_version   => x"00000001",
     dev_date      => x"20120305",
@@ -136,12 +139,12 @@ package wrcore_pkg is
     wbd_begin     => x"0000000000000000",
     wbd_end       => x"00000000000000ff",
     sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"0000CE42", -- CERN
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
     dev_device    => x"e2d13d04",
     dev_version   => x"00000001",
     dev_date      => x"20120305",
@@ -150,12 +153,12 @@ package wrcore_pkg is
     wbd_begin     => x"0000000000000000",
     wbd_end       => x"00000000000000ff",
     sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"0000CE42", -- CERN
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
     dev_device    => x"779c5443",
     dev_version   => x"00000001",
     dev_date      => x"20120305",
@@ -202,12 +205,12 @@ package wrcore_pkg is
     wbd_begin     => x"0000000000000000",
     wbd_end       => x"00000000000000ff",
     sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"07", -- 8/16/32-bit port granularity
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"0000CE42", -- CERN
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
     dev_device    => x"65158dc0",
     dev_version   => x"00000001",
     dev_date      => x"20120305",
