@@ -414,7 +414,10 @@ begin
   PPS_GEN : xwr_pps_gen
     generic map(
       g_interface_mode      => PIPELINED,
-      g_address_granularity => BYTE)
+      g_address_granularity => BYTE,
+      g_ref_clock_rate      => 125000000,
+      g_ext_clock_rate      => 10000000,
+      g_with_ext_clock_input=> g_with_external_clock_input)
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
@@ -425,7 +428,7 @@ begin
       slave_o => ppsg_wb_out,
 
       -- Single-pulse PPS output for synchronizing endpoint to
-      pps_in_i    => '0',
+      pps_in_i    => pps_ext_i,
       pps_csync_o => s_pps_csync,
       pps_out_o   => pps_p_o,
       pps_valid_o => pps_valid,
