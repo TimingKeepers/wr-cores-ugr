@@ -753,19 +753,22 @@ begin
 
   U_WR_CORE : xwr_core
     generic map (
-      g_simulation          => 0,
-      g_phys_uart           => true,
-      g_virtual_uart        => false,
-      g_ep_rxbuf_size       => 1024,
-      g_dpram_initf         => "",
-      g_dpram_size          => 16384,
-      g_interface_mode      => PIPELINED,
-      g_address_granularity => WORD)
+      g_simulation                => 0,
+      g_phys_uart                 => true,
+      g_virtual_uart              => false,
+      g_with_external_clock_input => true,
+      g_ep_rxbuf_size             => 1024,
+      g_dpram_initf               => "",
+      g_dpram_size                => 16384,
+      g_interface_mode            => PIPELINED,
+      g_address_granularity       => WORD)
     port map (
       clk_sys_i  => clk_sys,
       clk_dmtd_i => clk_dmtd,
       clk_ref_i  => clk_125m_pllref,
       clk_aux_i  => '0',
+      clk_ext_i  => dio_clk,
+      pps_ext_i  => dio_in(3),
       rst_n_i    => local_reset_n,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
@@ -971,7 +974,9 @@ begin
 
   dio_out(0)             <= pps;
   dio_oe_n_o(0)          <= '0';
-  dio_oe_n_o(4 downto 1) <= (others => '0');
+  dio_oe_n_o(2 downto 1) <= (others => '0');
+  dio_oe_n_o(3)          <= '1';        -- for external 1-PPS
+  dio_oe_n_o(4)          <= '1';        -- for external 10MHz clock
 
   dio_onewire_b <= '0' when owr_en(1) = '1' else 'Z';
   owr_i(1)      <= dio_onewire_b;
