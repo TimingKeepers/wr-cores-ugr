@@ -233,6 +233,7 @@ architecture rtl of spec_top is
       g_phys_uart                 : boolean                        := true;
       g_virtual_uart              : boolean                        := false;
       g_with_external_clock_input : boolean                        := false;
+      g_aux_clks                  : integer                        := 1;
       g_ep_rxbuf_size             : integer                        := 1024;
       g_dpram_initf               : string                         := "";
       g_dpram_size                : integer                        := 16384;  --in 32-bit words
@@ -243,9 +244,9 @@ architecture rtl of spec_top is
       clk_sys_i  : in std_logic;
       clk_dmtd_i : in std_logic;
       clk_ref_i  : in std_logic;
-      clk_aux_i  : in std_logic;
-      clk_ext_i  : in std_logic := '0';
-      pps_ext_i  : in std_logic := '0';
+      clk_aux_i  : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
+      clk_ext_i  : in std_logic                               := '0';
+      pps_ext_i  : in std_logic                               := '0';
       rst_n_i    : in std_logic;
 
       dac_hpll_load_p1_o : out std_logic;
@@ -757,6 +758,7 @@ begin
       g_phys_uart                 => true,
       g_virtual_uart              => false,
       g_with_external_clock_input => true,
+      g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
       g_dpram_initf               => "",
       g_dpram_size                => 16384,
@@ -766,7 +768,7 @@ begin
       clk_sys_i  => clk_sys,
       clk_dmtd_i => clk_dmtd,
       clk_ref_i  => clk_125m_pllref,
-      clk_aux_i  => '0',
+      clk_aux_i  => (others => '0'),
       clk_ext_i  => dio_clk,
       pps_ext_i  => dio_in(3),
       rst_n_i    => local_reset_n,

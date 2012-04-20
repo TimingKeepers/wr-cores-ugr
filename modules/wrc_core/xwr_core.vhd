@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-12
+-- Last update: 2012-04-20
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -50,6 +50,7 @@ entity xwr_core is
     g_phys_uart                 : boolean                        := true;
     g_virtual_uart              : boolean                        := false;
     g_with_external_clock_input : boolean                        := false;
+    g_aux_clks                  : integer                        := 1;
     g_ep_rxbuf_size             : integer                        := 1024;
     g_dpram_initf               : string                         := "";
     g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
@@ -72,7 +73,7 @@ entity xwr_core is
     clk_ref_i : in std_logic;
 
     -- Aux clock (i.e. the FMC clock), which can be disciplined by the WR Core
-    clk_aux_i : in std_logic;
+    clk_aux_i : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
 
     -- External 10 MHz reference (cesium, GPSDO, etc.), used in Grandmaster mode
     clk_ext_i : in std_logic;
@@ -189,6 +190,7 @@ architecture struct of xwr_core is
       g_phys_uart                 : boolean                        := true;
       g_virtual_uart              : boolean                        := false;
       g_with_external_clock_input : boolean                        := false;
+      g_aux_clks                  : integer                        := 1;
       g_rx_buffer_size            : integer                        := 12;
       g_dpram_initf               : string                         := "";
       g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
@@ -199,7 +201,7 @@ architecture struct of xwr_core is
       clk_sys_i  : in std_logic;
       clk_dmtd_i : in std_logic;
       clk_ref_i  : in std_logic;
-      clk_aux_i  : in std_logic;
+      clk_aux_i  : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
       clk_ext_i  : in std_logic;
       pps_ext_i  : in std_logic;
       rst_n_i    : in std_logic;

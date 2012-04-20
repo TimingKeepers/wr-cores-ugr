@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-12
+-- Last update: 2012-04-20
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -63,6 +63,7 @@ entity wr_core is
     g_phys_uart                 : boolean                        := true;
     g_virtual_uart              : boolean                        := false;
     g_with_external_clock_input : boolean                        := false;
+    g_aux_clks                  : integer                        := 1;
     g_rx_buffer_size            : integer                        := 1024;
     g_dpram_initf               : string                         := "";
     g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
@@ -85,8 +86,8 @@ entity wr_core is
     -- Timing reference (125 MHz)
     clk_ref_i : in std_logic;
 
-    -- Aux clock (i.e. the FMC clock), which can be disciplined by the WR Core
-    clk_aux_i : in std_logic;
+    -- Aux clocks (i.e. the FMC clock), which can be disciplined by the WR Core
+    clk_aux_i : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
 
     -- External 10 MHz reference (cesium, GPSDO, etc.), used in Grandmaster mode
     clk_ext_i : in std_logic;
@@ -413,11 +414,11 @@ begin
   -----------------------------------------------------------------------------
   PPS_GEN : xwr_pps_gen
     generic map(
-      g_interface_mode      => PIPELINED,
-      g_address_granularity => BYTE,
-      g_ref_clock_rate      => 125000000,
-      g_ext_clock_rate      => 10000000,
-      g_with_ext_clock_input=> g_with_external_clock_input)
+      g_interface_mode       => PIPELINED,
+      g_address_granularity  => BYTE,
+      g_ref_clock_rate       => 125000000,
+      g_ext_clock_rate       => 10000000,
+      g_with_ext_clock_input => g_with_external_clock_input)
     port map(
       clk_ref_i => clk_ref_i,
       clk_sys_i => clk_sys_i,
@@ -471,8 +472,8 @@ begin
       -- DMTD Offset clock
       clk_dmtd_i   => clk_dmtd_i,
 
-      clk_ext_i    => clk_ext_i,
-      sync_p_i     => pps_ext_i,
+      clk_ext_i => clk_ext_i,
+      sync_p_i  => pps_ext_i,
 
       -- DMTD oscillator drive
       dac_dmtd_data_o => dac_hpll_data_o,
