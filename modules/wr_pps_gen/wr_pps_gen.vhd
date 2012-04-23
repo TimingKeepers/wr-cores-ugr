@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-04-16
+-- Last update: 2012-04-20
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -172,7 +172,9 @@ architecture behavioral of wr_pps_gen is
   signal pps_in_d0, pps_ext_d0, pps_ext_retimed : std_logic;
 
   signal retime_counter : unsigned(4 downto 0);
-
+  signal pps_valid_int : std_logic;
+  
+  
   component chipscope_icon
     port (
       CONTROL0 : inout std_logic_vector(35 downto 0));
@@ -364,7 +366,7 @@ begin  -- behavioral
         cntr_nsec               <= (others => '0');
         ns_overflow             <= '0';
         adjust_in_progress_nsec <= '0';
-        adjust_done_nsec        <= '0';
+        adjust_done_nsec        <= '1';
 
         -- counter is enabled?
       elsif(ppsg_cr_cnt_en = '1') then
@@ -380,11 +382,12 @@ begin  -- behavioral
 -- got SET TIME command - load the counter with new value
         if(ppsg_cr_cnt_set_p = '1' or ext_sync_p = '1') then
           cntr_nsec   <= adj_nsec;
+          adjust_done_nsec <= '1';
           ns_overflow <= '0';
 
 -- got counter overflow:
         elsif(cntr_nsec = to_unsigned(c_PERIOD-2, cntr_nsec'length)) then
-          ns_overflow <= '1';
+          ns_overflow <= not adjust_in_progress_nsec;
           cntr_nsec   <= cntr_nsec + 1;
         elsif(cntr_nsec = to_unsigned(c_PERIOD-1, cntr_nsec'length)) then
           ns_overflow <= '0';
@@ -412,18 +415,18 @@ begin  -- behavioral
   begin
     if rising_edge(clk_ref_i) then
       if rst_synced_refclk = '0' then
-        pps_valid_o     <= '1';
+        pps_valid_int    <= '1';
         ns_overflow_2nd <= '0';
       else
         if(sync_in_progress = '1' or adjust_in_progress_nsec = '1' or adjust_in_progress_utc = '1') then
-          pps_valid_o     <= '0';
+          pps_valid_int     <= '0';
           ns_overflow_2nd <= '0';
         elsif(adjust_in_progress_utc = '0' and adjust_in_progress_nsec = '0' and sync_in_progress = '0') then
 
           if(ns_overflow = '1') then
             ns_overflow_2nd <= '1';
             if(ns_overflow_2nd = '1') then
-              pps_valid_o <= '1';
+              pps_valid_int <= '1';
             end if;
           end if;
         end if;
@@ -436,12 +439,13 @@ begin  -- behavioral
     if rising_edge(clk_ref_i) then
       if rst_synced_refclk = '0' or ppsg_cr_cnt_rst = '1' then
         cntr_utc               <= (others => '0');
-        adjust_done_utc        <= '0';
+        adjust_done_utc        <= '1';
         adjust_in_progress_utc <= '0';
       elsif(ppsg_cr_cnt_en = '1') then
 
         if(ppsg_cr_cnt_set_p = '1') then
-          cntr_utc <= adj_utc;
+          cntr_utc        <= adj_utc;
+          adjust_done_utc <= '1';
         elsif(cntr_adjust_p = '1') then
           adjust_in_progress_utc <= '1';
           adjust_done_utc        <= '0';
@@ -530,8 +534,10 @@ begin  -- behavioral
   cntr_adjust_p <= ppsg_cr_cnt_adj_load and ppsg_cr_cnt_adj_o;
 
 -- drive the readout value of CNT_ADJ to 1 when the adjustment is over
-  ppsg_cr_cnt_adj_i <= adjust_done_utc and adjust_done_nsec;
+  ppsg_cr_cnt_adj_i <= pps_valid_int;
 
+  pps_valid_o <= pps_valid_int;
+  
   tm_utc_o        <= std_logic_vector(cntr_utc);
   tm_cycles_o     <= std_logic_vector(cntr_nsec);
   tm_time_valid_o <= ppsg_escr_tm_valid;
