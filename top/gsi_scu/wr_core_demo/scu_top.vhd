@@ -11,7 +11,7 @@ library work;
 use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 use work.xwr_eca_pkg.all;
-
+use work.pcie_wb_pkg.all;
 
 entity scu_top is
   port
@@ -29,7 +29,14 @@ entity scu_top is
       uart_txd_o : out std_logic_vector(1 downto 0);
 
       serial_to_cb_o : out std_logic;
-
+      
+      -----------------------------------------
+      -- PCI express pins
+      -----------------------------------------
+      pcie_refclk_i : in  std_logic;
+      pcie_rstn_i   : in  std_logic;
+      pcie_rx_i     : in  std_logic;
+      pcie_tx_o     : out std_logic;
       
       ------------------------------------------------------------------------
       -- WR DAC signals
@@ -314,7 +321,7 @@ architecture rtl of scu_top is
   
   -- Top crossbar layout
   constant c_slaves : natural := 3;
-  constant c_masters : natural := 1;
+  constant c_masters : natural := 2;
   constant c_test_dpram_size : natural := 2048;
   constant c_layout : t_sdwb_device_array(c_slaves-1 downto 0) :=
    (0 => f_sdwb_set_address(f_xwb_dpram(c_test_dpram_size), x"00000000"),
@@ -431,6 +438,8 @@ architecture rtl of scu_top is
   signal sfp_scl_o:	std_logic;
   
   signal sfp_det_i: std_logic;
+  
+  signal pcie_rx, pcie_tx : std_logic_vector(3 downto 0);
 
   
 begin
@@ -643,7 +652,22 @@ begin
       snk_i     => mb_snk_in,
       master_o  => cbar_slave_i(0),
       master_i  => cbar_slave_o(0));
-	
+  
+  pcie_tx_o <= pcie_tx(0);
+  pcie_rx <= "000" & pcie_rx_i;
+  PCIe : pcie_wb
+    port map(
+       clk125_i      => pllout_clk_sys,
+       cal_clk50_i   => clk_reconf,
+       rstn_i        => nreset,
+       pcie_refclk_i => pcie_refclk_i,
+       pcie_rstn_i   => pcie_rstn_i,
+       pcie_rx_i     => pcie_rx,
+       pcie_tx_o     => pcie_tx,
+       wb_clk        => pllout_clk_sys,
+       master_o      => cbar_slave_i(1),
+       master_i      => cbar_slave_o(1));
+   
 	triggers <= '0' & lemo_io2 & pio_reg(0 downto 0) & pps;
   
   TLU : wb_timestamp_latch
