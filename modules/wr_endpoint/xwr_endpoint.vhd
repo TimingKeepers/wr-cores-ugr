@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-03-16
+-- Last update: 2012-04-23
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -211,6 +211,7 @@ begin
       clk_dmtd_i           => clk_dmtd_i,
       rst_n_i              => rst_n_i,
       pps_csync_p1_i       => pps_csync_p1_i,
+      pps_valid_i          => pps_valid_i,
       phy_rst_o            => phy_rst_o,
       phy_loopen_o         => phy_loopen_o,
       phy_enable_o         => phy_enable_o,
