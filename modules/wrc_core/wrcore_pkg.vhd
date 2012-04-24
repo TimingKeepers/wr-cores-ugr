@@ -97,7 +97,7 @@ package wrcore_pkg is
       txtsu_frame_id_i    : in  std_logic_vector(16 - 1 downto 0);
       txtsu_tsval_i       : in  std_logic_vector(28 + 4 - 1 downto 0);
       txtsu_tsincorrect_i : in  std_logic;
-      txtsu_valid_i       : in  std_logic;
+      txtsu_stb_i         : in  std_logic;
       txtsu_ack_o         : out std_logic;
       wb_i                : in  t_wishbone_slave_in;
       wb_o                : out t_wishbone_slave_out);

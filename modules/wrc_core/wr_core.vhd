@@ -587,7 +587,7 @@ begin
       txtsu_frame_id_i    => ep_txtsu_frame_id,
       txtsu_tsval_i       => ep_txtsu_ts_value,
       txtsu_tsincorrect_i => ep_txtsu_ts_incorrect,
-      txtsu_valid_i       => ep_txtsu_stb,
+      txtsu_stb_i         => ep_txtsu_stb,
       txtsu_ack_o         => mnic_txtsu_ack,
 
       wb_i => minic_wb_in,

@@ -91,7 +91,7 @@ entity wr_mini_nic is
     txtsu_frame_id_i    : in  std_logic_vector(16 - 1 downto 0);
     txtsu_tsval_i       : in  std_logic_vector(28 + 4 - 1 downto 0);
     txtsu_tsincorrect_i : in  std_logic;
-    txtsu_valid_i       : in  std_logic;
+    txtsu_stb_i         : in  std_logic;
     txtsu_ack_o         : out std_logic;
 
 -------------------------------------------------------------------------------
@@ -1031,7 +1031,7 @@ begin  -- behavioral
       else
         -- Make sure the timestamp is written to the FIFO only once.
 
-        if(txtsu_valid_i = '1' and txtsu_ack_int = '0') then
+        if(txtsu_stb_i = '1' and txtsu_ack_int = '0') then
           regs_in.tsr0_valid_i <= not txtsu_tsincorrect_i;
           regs_in.tsr0_fid_i   <= txtsu_frame_id_i;
           regs_in.tsr0_pid_i   <= txtsu_port_id_i;

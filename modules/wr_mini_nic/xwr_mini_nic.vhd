@@ -45,7 +45,7 @@ entity xwr_mini_nic is
     txtsu_frame_id_i    : in  std_logic_vector(16 - 1 downto 0);
     txtsu_tsval_i       : in  std_logic_vector(28 + 4 - 1 downto 0);
     txtsu_tsincorrect_i : in  std_logic;
-    txtsu_valid_i       : in  std_logic;
+    txtsu_stb_i         : in  std_logic;
     txtsu_ack_o         : out std_logic;
 
 -------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ architecture wrapper of xwr_mini_nic is
       txtsu_frame_id_i    : in  std_logic_vector(16 - 1 downto 0);
       txtsu_tsval_i       : in  std_logic_vector(28 + 4 - 1 downto 0);
       txtsu_tsincorrect_i : in  std_logic;
-      txtsu_valid_i       : in  std_logic;
+      txtsu_stb_i         : in  std_logic;
       txtsu_ack_o         : out std_logic;
       wb_cyc_i            : in  std_logic;
       wb_stb_i            : in  std_logic;
@@ -117,45 +117,45 @@ begin  -- wrapper
       g_memsize_log2         => g_memsize_log2,
       g_buffer_little_endian => g_buffer_little_endian)
     port map (
-      clk_sys_i            => clk_sys_i,
-      rst_n_i              => rst_n_i,
-      mem_data_o           => mem_data_o,
-      mem_addr_o           => mem_addr_o,
-      mem_data_i           => mem_data_i,
-      mem_wr_o             => mem_wr_o,
-      src_dat_o            => src_o.dat,
-      src_adr_o            => src_o.adr,
-      src_sel_o            => src_o.sel,
-      src_cyc_o            => src_o.cyc,
-      src_stb_o            => src_o.stb,
-      src_we_o             => src_o.we,
-      src_stall_i          => src_i.stall,
-      src_err_i            => src_i.err,
-      src_ack_i            => src_i.ack,
-      snk_dat_i            => snk_i.dat,
-      snk_adr_i            => snk_i.adr,
-      snk_sel_i            => snk_i.sel,
-      snk_cyc_i            => snk_i.cyc,
-      snk_stb_i            => snk_i.stb,
-      snk_we_i             => snk_i.we,
-      snk_stall_o          => snk_o.stall,
-      snk_err_o            => snk_o.err,
-      snk_ack_o            => snk_o.ack,
-      txtsu_port_id_i      => txtsu_port_id_i,
-      txtsu_frame_id_i     => txtsu_frame_id_i,
-      txtsu_tsval_i        => txtsu_tsval_i,
+      clk_sys_i           => clk_sys_i,
+      rst_n_i             => rst_n_i,
+      mem_data_o          => mem_data_o,
+      mem_addr_o          => mem_addr_o,
+      mem_data_i          => mem_data_i,
+      mem_wr_o            => mem_wr_o,
+      src_dat_o           => src_o.dat,
+      src_adr_o           => src_o.adr,
+      src_sel_o           => src_o.sel,
+      src_cyc_o           => src_o.cyc,
+      src_stb_o           => src_o.stb,
+      src_we_o            => src_o.we,
+      src_stall_i         => src_i.stall,
+      src_err_i           => src_i.err,
+      src_ack_i           => src_i.ack,
+      snk_dat_i           => snk_i.dat,
+      snk_adr_i           => snk_i.adr,
+      snk_sel_i           => snk_i.sel,
+      snk_cyc_i           => snk_i.cyc,
+      snk_stb_i           => snk_i.stb,
+      snk_we_i            => snk_i.we,
+      snk_stall_o         => snk_o.stall,
+      snk_err_o           => snk_o.err,
+      snk_ack_o           => snk_o.ack,
+      txtsu_port_id_i     => txtsu_port_id_i,
+      txtsu_frame_id_i    => txtsu_frame_id_i,
+      txtsu_tsval_i       => txtsu_tsval_i,
       txtsu_tsincorrect_i => txtsu_tsincorrect_i,
-      txtsu_valid_i        => txtsu_valid_i,
-      txtsu_ack_o          => txtsu_ack_o,
-      wb_cyc_i             => wb_i.cyc,
-      wb_stb_i             => wb_i.stb,
-      wb_we_i              => wb_i.we,
-      wb_sel_i             => wb_i.sel,
-      wb_adr_i             => wb_i.adr,
-      wb_dat_i             => wb_i.dat,
-      wb_dat_o             => wb_o.dat,
-      wb_ack_o             => wb_o.ack,
-      wb_stall_o           => wb_o.stall,
-      wb_irq_o             => wb_o.int);
+      txtsu_stb_i         => txtsu_stb_i,
+      txtsu_ack_o         => txtsu_ack_o,
+      wb_cyc_i            => wb_i.cyc,
+      wb_stb_i            => wb_i.stb,
+      wb_we_i             => wb_i.we,
+      wb_sel_i            => wb_i.sel,
+      wb_adr_i            => wb_i.adr,
+      wb_dat_i            => wb_i.dat,
+      wb_dat_o            => wb_o.dat,
+      wb_ack_o            => wb_o.ack,
+      wb_stall_o          => wb_o.stall,
+      wb_irq_o            => wb_o.int);
 
 end wrapper;
