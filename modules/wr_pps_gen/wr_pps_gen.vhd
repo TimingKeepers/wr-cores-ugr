@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-04-20
+-- Last update: 2012-04-23
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -387,7 +387,7 @@ begin  -- behavioral
 
 -- got counter overflow:
         elsif(cntr_nsec = to_unsigned(c_PERIOD-2, cntr_nsec'length)) then
-          ns_overflow <= not adjust_in_progress_nsec;
+          ns_overflow <= '1';
           cntr_nsec   <= cntr_nsec + 1;
         elsif(cntr_nsec = to_unsigned(c_PERIOD-1, cntr_nsec'length)) then
           ns_overflow <= '0';
