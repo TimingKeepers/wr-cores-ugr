@@ -83,23 +83,24 @@ package wrcore_pkg is
       g_memsize_log2         : integer;
       g_buffer_little_endian : boolean);
     port (
-      clk_sys_i        : in  std_logic;
-      rst_n_i          : in  std_logic;
-      mem_data_o       : out std_logic_vector(31 downto 0);
-      mem_addr_o       : out std_logic_vector(g_memsize_log2-1 downto 0);
-      mem_data_i       : in  std_logic_vector(31 downto 0);
-      mem_wr_o         : out std_logic;
-      src_o            : out t_wrf_source_out;
-      src_i            : in  t_wrf_source_in;
-      snk_o            : out t_wrf_sink_out;
-      snk_i            : in  t_wrf_sink_in;
-      txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
-      txtsu_frame_id_i : in  std_logic_vector(16 - 1 downto 0);
-      txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
-      txtsu_valid_i    : in  std_logic;
-      txtsu_ack_o      : out std_logic;
-      wb_i             : in  t_wishbone_slave_in;
-      wb_o             : out t_wishbone_slave_out);
+      clk_sys_i           : in  std_logic;
+      rst_n_i             : in  std_logic;
+      mem_data_o          : out std_logic_vector(31 downto 0);
+      mem_addr_o          : out std_logic_vector(g_memsize_log2-1 downto 0);
+      mem_data_i          : in  std_logic_vector(31 downto 0);
+      mem_wr_o            : out std_logic;
+      src_o               : out t_wrf_source_out;
+      src_i               : in  t_wrf_source_in;
+      snk_o               : out t_wrf_sink_out;
+      snk_i               : in  t_wrf_sink_in;
+      txtsu_port_id_i     : in  std_logic_vector(4 downto 0);
+      txtsu_frame_id_i    : in  std_logic_vector(16 - 1 downto 0);
+      txtsu_tsval_i       : in  std_logic_vector(28 + 4 - 1 downto 0);
+      txtsu_tsincorrect_i : in  std_logic;
+      txtsu_valid_i       : in  std_logic;
+      txtsu_ack_o         : out std_logic;
+      wb_i                : in  t_wishbone_slave_in;
+      wb_o                : out t_wishbone_slave_out);
   end component;
 
   -----------------------------------------------------------------------------

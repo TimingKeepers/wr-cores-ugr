@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2012-01-25
+-- Last update: 2012-04-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -87,11 +87,12 @@ entity wr_mini_nic is
 -- TXTSU i/f
 -------------------------------------------------------------------------------
 
-    txtsu_port_id_i  : in  std_logic_vector(4 downto 0);
-    txtsu_frame_id_i : in  std_logic_vector(16 - 1 downto 0);
-    txtsu_tsval_i    : in  std_logic_vector(28 + 4 - 1 downto 0);
-    txtsu_valid_i    : in  std_logic;
-    txtsu_ack_o      : out std_logic;
+    txtsu_port_id_i     : in  std_logic_vector(4 downto 0);
+    txtsu_frame_id_i    : in  std_logic_vector(16 - 1 downto 0);
+    txtsu_tsval_i       : in  std_logic_vector(28 + 4 - 1 downto 0);
+    txtsu_tsincorrect_i : in  std_logic;
+    txtsu_valid_i       : in  std_logic;
+    txtsu_ack_o         : out std_logic;
 
 -------------------------------------------------------------------------------
 -- Wishbone slave
@@ -1031,7 +1032,7 @@ begin  -- behavioral
         -- Make sure the timestamp is written to the FIFO only once.
 
         if(txtsu_valid_i = '1' and txtsu_ack_int = '0') then
-          regs_in.tsr0_valid_i <= '1';
+          regs_in.tsr0_valid_i <= not txtsu_tsincorrect_i;
           regs_in.tsr0_fid_i   <= txtsu_frame_id_i;
           regs_in.tsr0_pid_i   <= txtsu_port_id_i;
           regs_in.tsr1_tsval_i <= txtsu_tsval_i;

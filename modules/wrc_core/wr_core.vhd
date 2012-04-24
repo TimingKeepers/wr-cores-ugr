@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-20
+-- Last update: 2012-04-24
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -583,11 +583,12 @@ begin
       snk_o => minic_snk_out,
       snk_i => minic_snk_in,
 
-      txtsu_port_id_i  => ep_txtsu_port_id,
-      txtsu_frame_id_i => ep_txtsu_frame_id,
-      txtsu_tsval_i    => ep_txtsu_ts_value,
-      txtsu_valid_i    => ep_txtsu_stb,
-      txtsu_ack_o      => mnic_txtsu_ack,
+      txtsu_port_id_i     => ep_txtsu_port_id,
+      txtsu_frame_id_i    => ep_txtsu_frame_id,
+      txtsu_tsval_i       => ep_txtsu_ts_value,
+      txtsu_tsincorrect_i => ep_txtsu_ts_incorrect,
+      txtsu_valid_i       => ep_txtsu_stb,
+      txtsu_ack_o         => mnic_txtsu_ack,
 
       wb_i => minic_wb_in,
       wb_o => minic_wb_out
