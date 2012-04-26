@@ -34,9 +34,8 @@ entity scu_top is
       -- PCI express pins
       -----------------------------------------
       pcie_refclk_i : in  std_logic;
-      pcie_rstn_i   : in  std_logic;
-      pcie_rx_i     : in  std_logic;
-      pcie_tx_o     : out std_logic;
+      pcie_rx_i     : in  std_logic_vector(3 downto 0);
+      pcie_tx_o     : out std_logic_vector(3 downto 0);
       
       ------------------------------------------------------------------------
       -- WR DAC signals
@@ -83,7 +82,14 @@ entity scu_top is
 		
 		sfp1_mod0			: in std_logic;			-- grounded by module
 		sfp1_mod1			: inout std_logic;		-- SCL
-		sfp1_mod2			: inout std_logic			-- SDA
+		sfp1_mod2			: inout std_logic;			-- SDA
+		
+		-----------------------------------------------------------------------
+		-- LA port
+		-----------------------------------------------------------------------
+		
+		hpla_ch:		out std_logic_vector(15 downto 0);
+		hpla_clk: 	out std_logic
 		
 		
 		
@@ -439,7 +445,8 @@ architecture rtl of scu_top is
   
   signal sfp_det_i: std_logic;
   
-  signal pcie_rx, pcie_tx : std_logic_vector(3 downto 0);
+  signal s_hpla_ch: unsigned(15 downto 0);
+
 
   
 begin
@@ -653,17 +660,15 @@ begin
       master_o  => cbar_slave_i(0),
       master_i  => cbar_slave_o(0));
   
-  pcie_tx_o <= pcie_tx(0);
-  pcie_rx <= "000" & pcie_rx_i;
   PCIe : pcie_wb
     port map(
        clk125_i      => pllout_clk_sys,
        cal_clk50_i   => clk_reconf,
        rstn_i        => nreset,
        pcie_refclk_i => pcie_refclk_i,
-       pcie_rstn_i   => pcie_rstn_i,
-       pcie_rx_i     => pcie_rx,
-       pcie_tx_o     => pcie_tx,
+       pcie_rstn_i   => nPCI_RESET,
+       pcie_rx_i     => pcie_rx_i,
+       pcie_tx_o     => pcie_tx_o,
        wb_clk        => pllout_clk_sys,
        master_o      => cbar_slave_i(1),
        master_i      => cbar_slave_o(1));
@@ -758,14 +763,27 @@ begin
      -- Slave connections (INTERCON is a master)
      master_i      => cbar_master_i,
      master_o      => cbar_master_o);
+	  
+	  
+	 la_counter: process (pllout_clk_sys, nreset)
+	 begin
+		if nreset = '0' then
+			s_hpla_ch <= (others => '0');
+		elsif rising_edge(pllout_clk_sys) then
+			s_hpla_ch <= s_hpla_ch + 1;
+		end if;	
+	 end process;
 
+  
+	hpla_ch <= std_logic_vector(s_hpla_ch);
+	hpla_clk <= pllout_clk_sys;
   
 	serial_to_cb_o   <= '0'; 				-- connects the serial ports to the carrier board
 	wrc_slave_in.cyc <= '0';
 
 	sfp_tx_disable_o <= '0';				-- enable SFP
 
-	lemo_en_in <= "10";                 -- configure lemo 1 as output, lemo 2 as input
+	lemo_en_in <= "00";                 -- configure lemo 1 as output, lemo 2 as input
 	lemo_io1 <= eca_toggle(0 downto 0);
 	
 	leds_o(0) <= eca_toggle(0);
