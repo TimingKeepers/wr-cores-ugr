@@ -207,7 +207,7 @@ begin  -- rtl
 
   U_The_PHY : arria_phy
     port map (
-      cal_blk_clk      => clk_ref_i,
+      cal_blk_clk      => clk_reconf_i,
       pll_inclk        => clk_ref_i,
       reconfig_clk     => clk_reconf_i,
       reconfig_togxb   => reconfig_togxb,
