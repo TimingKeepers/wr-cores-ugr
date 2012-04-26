@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-20
+-- Last update: 2012-04-25
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -76,10 +76,10 @@ entity xwr_core is
     clk_aux_i : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
 
     -- External 10 MHz reference (cesium, GPSDO, etc.), used in Grandmaster mode
-    clk_ext_i : in std_logic;
+    clk_ext_i : in std_logic := '0';
 
     -- External PPS input (cesium, GPSDO, etc.), used in Grandmaster mode
-    pps_ext_i : in std_logic;
+    pps_ext_i : in std_logic := '0';
 
     rst_n_i            : in  std_logic;
     -----------------------------------------
@@ -161,6 +161,7 @@ entity xwr_core is
     -- Timecode/Servo Control
     -----------------------------------------
 
+    tm_link_up_o : out std_logic;
     -- DAC Control
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
     tm_dac_wr_o          : out std_logic;
@@ -281,6 +282,7 @@ architecture struct of xwr_core is
       txtsu_stb_o          : out std_logic;
       txtsu_ack_i          : in  std_logic;
 
+      tm_link_up_o : out std_logic;
       tm_dac_value_o       : out std_logic_vector(23 downto 0);
       tm_dac_wr_o          : out std_logic;
       tm_clk_aux_lock_en_i : in  std_logic;
@@ -394,6 +396,7 @@ begin
       txtsu_stb_o          => timestamps_o.stb,
       txtsu_ack_i          => timestamps_ack_i,
 
+      tm_link_up_o => tm_link_up_o,
       tm_dac_value_o       => tm_dac_value_o,
       tm_dac_wr_o          => tm_dac_wr_o,
       tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,

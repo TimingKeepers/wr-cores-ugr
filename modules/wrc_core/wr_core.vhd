@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-24
+-- Last update: 2012-04-26
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -90,10 +90,10 @@ entity wr_core is
     clk_aux_i : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
 
     -- External 10 MHz reference (cesium, GPSDO, etc.), used in Grandmaster mode
-    clk_ext_i : in std_logic;
+    clk_ext_i : in std_logic := '0';
 
     -- External PPS input (cesium, GPSDO, etc.), used in Grandmaster mode
-    pps_ext_i : in std_logic;
+    pps_ext_i : in std_logic := '0';
 
     rst_n_i : in std_logic;
 
@@ -131,21 +131,21 @@ entity wr_core is
     led_red_o   : out std_logic;
     led_green_o : out std_logic;
     scl_o       : out std_logic;
-    scl_i       : in  std_logic;
+    scl_i       : in  std_logic := '1';
     sda_o       : out std_logic;
-    sda_i       : in  std_logic;
+    sda_i       : in  std_logic := '1';
     sfp_scl_o   : out std_logic;
-    sfp_scl_i   : in  std_logic;
+    sfp_scl_i   : in  std_logic := '1';
     sfp_sda_o   : out std_logic;
-    sfp_sda_i   : in  std_logic;
-    sfp_det_i   : in  std_logic;
-    btn1_i      : in  std_logic;
-    btn2_i      : in  std_logic;
+    sfp_sda_i   : in  std_logic := '1';
+    sfp_det_i   : in  std_logic := '1';
+    btn1_i      : in  std_logic := '1';
+    btn2_i      : in  std_logic := '1';
 
     -----------------------------------------
     --UART
     -----------------------------------------
-    uart_rxd_i : in  std_logic;
+    uart_rxd_i : in  std_logic := '0';
     uart_txd_o : out std_logic;
 
     -----------------------------------------
@@ -157,13 +157,13 @@ entity wr_core is
     -----------------------------------------
     --External WB interface
     -----------------------------------------
-    wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
-    wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+    wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0)   := (others => '0');
+    wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0)      := (others => '0');
     wb_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0);
-    wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
-    wb_we_i    : in  std_logic;
-    wb_cyc_i   : in  std_logic;
-    wb_stb_i   : in  std_logic;
+    wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0) := (others => '0');
+    wb_we_i    : in  std_logic                                               := '0';
+    wb_cyc_i   : in  std_logic                                               := '0';
+    wb_stb_i   : in  std_logic                                               := '0';
     wb_ack_o   : out std_logic;
     wb_stall_o : out std_logic;
 
@@ -198,17 +198,18 @@ entity wr_core is
     txtsu_ts_value_o     : out std_logic_vector(31 downto 0);
     txtsu_ts_incorrect_o : out std_logic;
     txtsu_stb_o          : out std_logic;
-    txtsu_ack_i          : in  std_logic;
+    txtsu_ack_i          : in  std_logic := '1';
 
     -----------------------------------------
     -- Timecode/Servo Control
     -----------------------------------------
 
+    tm_link_up_o         : out std_logic;
     -- DAC Control
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
     tm_dac_wr_o          : out std_logic;
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i : in  std_logic;
+    tm_clk_aux_lock_en_i : in  std_logic := '0';
     -- Aux clock locked flag
     tm_clk_aux_locked_o  : out std_logic;
     -- Timecode output
@@ -364,7 +365,8 @@ architecture struct of wr_core is
   signal ext_snk_in  : t_wrf_sink_in;
   signal dummy       : std_logic_vector(31 downto 0);
 
-
+signal spll_out_locked : std_logic_vector(g_aux_clks downto 0);
+  
   component xwbp_mux
     port (
       clk_sys_i    : in  std_logic;
@@ -383,6 +385,11 @@ architecture struct of wr_core is
       ext_snk_i    : in  t_wrf_sink_in;
       class_core_i : in  std_logic_vector(7 downto 0));
   end component;
+
+  signal dac_dpll_data : std_logic_vector(15 downto 0);
+  signal dac_dpll_sel : std_logic_vector(3 downto 0);
+  signal dac_dpll_load_p1 : std_logic;
+  
 
   --component chipscope_ila
   --  port (
@@ -460,7 +467,7 @@ begin
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
       g_num_ref_inputs      => 1,
-      g_num_outputs         => 1)
+      g_num_outputs         => 1 + g_aux_clks)
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_net_n,
@@ -469,6 +476,7 @@ begin
       clk_ref_i(0) => phy_rx_rbclk_i,
       -- Feedback clocks (i.e. the outputs of the main or aux oscillator)
       clk_fb_i(0)  => clk_ref_i,
+      clk_fb_i(1)  => clk_aux_i(0),
       -- DMTD Offset clock
       clk_dmtd_i   => clk_dmtd_i,
 
@@ -480,13 +488,15 @@ begin
       dac_dmtd_load_o => dac_hpll_load_p1_o,
 
       -- Output channel DAC value
-      dac_out_data_o => dac_dpll_data_o,  --: out std_logic_vector(15 downto 0);
+      dac_out_data_o => dac_dpll_data,  --: out std_logic_vector(15 downto 0);
       -- Output channel select (0 = channel 0, etc. )
-      dac_out_sel_o  => open,           --for now use only one output
-      dac_out_load_o => dac_dpll_load_p1_o,
+      dac_out_sel_o  => dac_dpll_sel,           --for now use only one output
+      dac_out_load_o => dac_dpll_load_p1,
 
       out_enable_i(0) => '1',
-      out_locked_o    => open,
+      out_enable_i(1) => tm_clk_aux_lock_en_i,
+      
+      out_locked_o => spll_out_locked,
 
       slave_i => spll_wb_in,
       slave_o => spll_wb_out,
@@ -494,6 +504,13 @@ begin
       debug_o => dio_o
       );
 
+  dac_dpll_data_o <= dac_dpll_data;
+  dac_dpll_load_p1_o <= dac_dpll_load_p1;
+  
+  tm_dac_value_o <= x"00" & dac_dpll_data;
+  tm_dac_wr_o <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel = x"1") else '0';
+  
+  tm_clk_aux_locked_o <= spll_out_locked(1);
 
   softpll_irq <= spll_wb_out.int;
 
@@ -513,8 +530,7 @@ begin
       g_with_dpi_classifier => true,
       g_with_vlans          => false,
       g_with_rtu            => false,
-      g_with_leds           => true,
-      g_with_dmtd           => true)
+      g_with_leds           => true)
     port map (
       clk_ref_i      => clk_ref_i,
       clk_sys_i      => clk_sys_i,
@@ -560,6 +576,9 @@ begin
   ep_txtsu_ack <= txtsu_ack_i or mnic_txtsu_ack;
   led_green_o  <= ep_led_link;
   link_ok_o    <= ep_led_link;
+
+  tm_link_up_o <= ep_led_link;
+
   -----------------------------------------------------------------------------
   -- Mini-NIC
   -----------------------------------------------------------------------------
@@ -601,7 +620,7 @@ begin
   -- LM32
   -----------------------------------------------------------------------------  
   LM32_CORE : xwb_lm32
-    generic map(g_profile => "medium_icache_debug")
+    generic map(g_profile => "medium_icache")
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_wrc_n,
