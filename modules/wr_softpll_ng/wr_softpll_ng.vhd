@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-04-12
+-- Last update: 2012-04-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -797,6 +797,8 @@ begin  -- rtl
   regs_out.occr_out_en_i(g_num_outputs-1 downto 0) <= out_enable_i;
   regs_out.occr_out_en_i(7 downto g_num_outputs)   <= (others => '0');
 
+  out_locked_o <= regs_in.occr_out_lock_o(g_num_outputs-1 downto 0);
+  
   irq_tag <= '1' when regs_out.per_hpll_valid_i = '1' or regs_in.trr_wr_empty_o = '0' else '0';
 
   deglitch_thr_slv <= regs_in.deglitch_thr_o;
