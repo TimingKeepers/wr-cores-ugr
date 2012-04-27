@@ -73,24 +73,88 @@ entity scu_top is
 		-----------------------------------------------------------------------
 		OneWire_CB		: inout std_logic;
 		
+		
 		-----------------------------------------------------------------------
-		-- Timing SFP 
+		-- AUX SFP 
 		-----------------------------------------------------------------------
-		sfp_tx_disable_o : out std_logic;
-      sfp_txp_o        : out std_logic;
-      sfp_rxp_i        : in  std_logic;
+		sfp1_tx_disable_o : out std_logic;
+      sfp1_txp_o        : out std_logic;
+      sfp1_rxp_i        : in  std_logic;
 		
 		sfp1_mod0			: in std_logic;			-- grounded by module
 		sfp1_mod1			: inout std_logic;		-- SCL
-		sfp1_mod2			: inout std_logic;			-- SDA
+		sfp1_mod2			: inout std_logic;		-- SDA
+		
+		-----------------------------------------------------------------------
+		-- Timing SFP 
+		-----------------------------------------------------------------------
+		sfp2_tx_disable_o : out std_logic;
+      sfp2_txp_o        : out std_logic;
+      sfp2_rxp_i        : in  std_logic;
+		
+		sfp2_mod0			: in std_logic;			-- grounded by module
+		sfp2_mod1			: inout std_logic;		-- SCL
+		sfp2_mod2			: inout std_logic;		-- SDA
 		
 		-----------------------------------------------------------------------
 		-- LA port
 		-----------------------------------------------------------------------
 		
-		hpla_ch:		out std_logic_vector(15 downto 0);
-		hpla_clk: 	out std_logic
+		hpla_ch				: out std_logic_vector(15 downto 0);
+		hpla_clk				: out std_logic;
+	
+		-----------------------------------------------------------------------
+		-- EXT CONN
+		-----------------------------------------------------------------------
 		
+		IO_2_5				: out std_logic_vector(13 downto 0);
+		A_EXT_LVDS_RX		: in std_logic_vector(3 downto 0);
+		A_EXT_LVDS_TX		: out std_logic_vector(3 downto 0);
+		A_EXT_LVDS_CLKOUT	: out std_logic;
+		A_EXT_LVDS_CLKIN	: in std_logic;
+		EIO					: out std_logic_vector(16 downto 0);
+		
+		-----------------------------------------------------------------------
+		-- SCU Bus
+		-----------------------------------------------------------------------
+		
+		A_D					: inout std_logic_vector(15 downto 0);
+		A_A					: out std_logic_vector(15 downto 0);
+		A_nTiming_Cycle	: out std_logic;
+		A_nDS					: out std_logic;
+		A_nReset				: out std_logic;
+		nSel_Ext_Data_DRV : out std_logic;
+		A_RnW					: out std_logic;
+		A_Spare				: out std_logic_vector(1 downto 0);
+		A_nSEL				: out std_logic_vector(12 downto 1);
+		A_nDtack				: in std_logic;
+		A_nSRQ				: in std_logic_vector(12 downto 1);
+		A_SysClock			: out std_logic;
+		ADR_TO_SCUB			: out std_logic;
+		nADR_EN				: out std_logic;
+		A_OneWire			: inout std_logic;
+		
+		-----------------------------------------------------------------------
+		-- ComExpress signals
+		-----------------------------------------------------------------------
+		
+		nTHRMTRIP			: in std_logic;
+		nEXCD0_PERST		: in std_logic;
+		WDT					: in std_logic;
+		
+		-----------------------------------------------------------------------
+		-- Parallel Flash
+		-----------------------------------------------------------------------
+		
+		AD						: out std_logic_vector(25 downto 1);
+		DF						: inout std_logic_vector(15 downto 0);
+		ADV_FSH				: out std_logic;
+		nCE_FSH				: out std_logic;
+		CLK_FSH				: out std_logic;
+		nWE_FSH				: out std_logic;
+		nOE_FSH				: out std_logic;
+		nRST_FSH				: out std_logic;
+		WAIT_FSH				: in std_logic
 		
 		
       );
@@ -438,12 +502,12 @@ architecture rtl of scu_top is
   signal scl_i:	std_logic;
   signal scl_o:	std_logic;
   
-  signal sfp_sda_i:	std_logic;
-  signal sfp_sda_o:	std_logic;
-  signal sfp_scl_i:	std_logic;
-  signal sfp_scl_o:	std_logic;
+  signal sfp2_sda_i:	std_logic;
+  signal sfp2_sda_o:	std_logic;
+  signal sfp2_scl_i:	std_logic;
+  signal sfp2_scl_o:	std_logic;
   
-  signal sfp_det_i: std_logic;
+  signal sfp2_det_i: std_logic;
   
   signal s_hpla_ch: unsigned(15 downto 0);
 
@@ -457,11 +521,11 @@ begin
 	OneWire_CB <= '0' when owr_en_o(0) = '1' else 'Z';
 	
 	-- open drain buffer for SFP i2c
-	sfp_scl_i <= sfp1_mod1;
-	sfp_sda_i <= sfp1_mod2;
+	sfp2_scl_i <= sfp2_mod1;
+	sfp2_sda_i <= sfp2_mod2;
 	
-	sfp1_mod1 <= '0' when sfp_scl_o = '0' else 'Z';
-	sfp1_mod2 <= '0' when sfp_sda_o = '0' else 'Z';
+	sfp2_mod1 <= '0' when sfp2_scl_o = '0' else 'Z';
+	sfp2_mod2 <= '0' when sfp2_sda_o = '0' else 'Z';
 
 	  Inst_flash_loader_v01 : flash_loader
     port map (
@@ -522,9 +586,9 @@ begin
 		  sda_o  => sda_o,
 		  scl_o  => scl_o,
 		  
-		  sfp_scl_i => sfp_scl_i,
-		  sfp_sda_i => sfp_sda_i,
-		  sfp_det_i => sfp_det_i,
+		  sfp_scl_i => sfp2_scl_i,
+		  sfp_sda_i => sfp2_sda_i,
+		  sfp_det_i => sfp2_det_i,
 		  
       btn1_i => '0',
       btn2_i => '0',
@@ -575,8 +639,8 @@ begin
       rx_bitslide_o  => phy_rx_bitslide,
       rst_i          => phy_rst,
       loopen_i       => '0',
-      pad_txp_o      => sfp_txp_o,
-      pad_rxp_i      => sfp_rxp_i);
+      pad_txp_o      => sfp2_txp_o,
+      pad_rxp_i      => sfp2_rxp_i);
 
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
@@ -781,7 +845,7 @@ begin
 	serial_to_cb_o   <= '0'; 				-- connects the serial ports to the carrier board
 	wrc_slave_in.cyc <= '0';
 
-	sfp_tx_disable_o <= '0';				-- enable SFP
+	sfp2_tx_disable_o <= '0';				-- enable SFP
 
 	lemo_en_in <= "00";                 -- configure lemo 1 as output, lemo 2 as input
 	lemo_io1 <= eca_toggle(0 downto 0);
