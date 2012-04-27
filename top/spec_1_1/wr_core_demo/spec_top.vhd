@@ -236,7 +236,7 @@ architecture rtl of spec_top is
       g_aux_clks                  : integer                        := 1;
       g_ep_rxbuf_size             : integer                        := 1024;
       g_dpram_initf               : string                         := "";
-      g_dpram_size                : integer                        := 16384;  --in 32-bit words
+      g_dpram_size                : integer                        := 20480;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity       : t_wishbone_address_granularity := WORD
       );
@@ -761,7 +761,7 @@ begin
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
       g_dpram_initf               => "",
-      g_dpram_size                => 16384,
+      g_dpram_size                => 20480, --16384,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => WORD)
     port map (

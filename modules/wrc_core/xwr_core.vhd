@@ -54,7 +54,7 @@ entity xwr_core is
     g_ep_rxbuf_size             : integer                        := 1024;
     g_dpram_initf               : string                         := "";
     g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
-    g_dpram_size                : integer                        := 16384;  --in 32-bit words
+    g_dpram_size                : integer                        := 20480;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
     g_address_granularity       : t_wishbone_address_granularity := WORD
     );
