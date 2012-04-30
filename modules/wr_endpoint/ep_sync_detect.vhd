@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-05-28
--- Last update: 2011-05-27
+-- Last update: 2012-04-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -112,10 +112,11 @@ begin  -- behavioral
             case state is
               when LOSS_OF_SYNC =>
                 synced_o <= '0';
-                rx_even  <= not rx_even;
                 if(comma = '1') then
                   rx_even <= '0';
                   state <= COMMA_DETECT_1;
+                else
+                  rx_even  <= not rx_even;
                 end if;
 
               when COMMA_DETECT_1 =>
@@ -127,12 +128,14 @@ begin  -- behavioral
                 end if;
 
               when ACQUIRE_SYNC_1 =>
-                rx_even <= not rx_even;
                 if(cgbad = '1') then
                   state <= LOSS_OF_SYNC;
+                  rx_even <= not rx_even;
                 elsif (rx_even = '1' and comma = '1') then
                   rx_even <= '0';         -- was 1
                   state <= COMMA_DETECT_2;
+                else
+                  rx_even <= not rx_even;
                 end if;
 
               when COMMA_DETECT_2 =>
@@ -144,12 +147,14 @@ begin  -- behavioral
                 end if;
 
               when ACQUIRE_SYNC_2 =>
-                rx_even <= not rx_even;
                 if(cgbad = '1') then
+                  rx_even <= not rx_even;
                   state <= LOSS_OF_SYNC;
                 elsif (rx_even = '1' and comma = '1') then
                   state <= COMMA_DETECT_3;
                   rx_even <= '0';
+                else
+                  rx_even <= not rx_even;
                 end if;
 
               when COMMA_DETECT_3 =>
