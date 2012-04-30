@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-11-05
+-- Last update: 2012-04-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -52,25 +52,22 @@ library work;
 use work.gencores_pkg.all;
 use work.disparity_gen_pkg.all;
 
-
 entity wr_gtp_phy_spartan6 is
 
   generic (
     -- set to non-zero value to speed up the simulation by reducing some delays
     g_simulation         : integer := 1;
-    g_ch0_use_refclk_out : boolean := false;
-    g_ch1_use_refclk_out : boolean := false;
-    g_ch0_refclk_input   : integer := 0;
-    g_ch1_refclk_input   : integer := 0;
     g_force_disparity    : integer := 0
     );
 
   port (
     -- Port 0
 
+    -- dedicated GTP clock input
+    gtp_clk_i: in std_logic;
+    
     -- TX path, synchronous to ch0_ref_clk_i
     ch0_ref_clk_i : in  std_logic;
-    ch0_ref_clk_o : out std_logic;
 
     -- data input (8 bits, not 8b10b-encoded)
     ch0_tx_data_i : in std_logic_vector(7 downto 0);
@@ -84,7 +81,6 @@ entity wr_gtp_phy_spartan6 is
 
     -- Encoding error indication (1 = error, 0 = no error)
     ch0_tx_enc_err_o : out std_logic;
-
 
     -- RX path, synchronous to ch0_rx_rbclk_o.
 
@@ -115,7 +111,6 @@ entity wr_gtp_phy_spartan6 is
 -- Port 1
     ch1_ref_clk_i : in std_logic;
 
-    ch1_ref_clk_o      : out std_logic;
     ch1_tx_data_i      : in  std_logic_vector(7 downto 0) := "00000000";
     ch1_tx_k_i         : in  std_logic                    := '0';
     ch1_tx_disparity_o : out std_logic;
@@ -342,11 +337,6 @@ architecture rtl of wr_gtp_phy_spartan6 is
   signal ch1_rst_d0        : std_logic;
   signal ch1_reset_counter : unsigned(9 downto 0);
 
-  signal ch0_ref_clk         : std_logic;
-  signal ch1_ref_clk         : std_logic;
-  signal ch0_ref_clk_out_buf : std_logic;
-  signal ch1_ref_clk_out_buf : std_logic;
-
   signal ch0_rx_bitslide_int : std_logic_vector(4 downto 0);
   signal ch1_rx_bitslide_int : std_logic_vector(4 downto 0);
 
@@ -389,9 +379,9 @@ begin  -- rtl
   ch0_rst_n <= not ch0_gtp_reset;
   ch1_rst_n <= not ch1_gtp_reset;
 
-  gen_disp_ch0 : process(ch0_ref_clk)
+  gen_disp_ch0 : process(ch0_ref_clk_i)
   begin
-    if rising_edge(ch0_ref_clk) then
+    if rising_edge(ch0_ref_clk_i) then
       if(ch0_tx_chardispmode = '1' or ch0_rst_n = '0') then
         if(g_force_disparity = 0) then
           ch0_cur_disp <= RD_MINUS;
@@ -407,9 +397,9 @@ begin  -- rtl
     end if;
   end process;
 
-  gen_disp_ch1 : process(ch1_ref_clk)
+  gen_disp_ch1 : process(ch1_ref_clk_i)
   begin
-    if rising_edge(ch1_ref_clk) then
+    if rising_edge(ch1_ref_clk_i) then
       if(ch1_tx_chardispmode = '1' or ch1_rst_n = '0') then
         if(g_force_disparity = 0) then
           ch1_cur_disp <= RD_MINUS;
@@ -428,9 +418,9 @@ begin  -- rtl
   ch0_tx_disparity_o <= ch0_disp_pipe(0);
   ch1_tx_disparity_o <= ch1_disp_pipe(1);
 
-  p_gen_reset_ch0 : process(ch0_ref_clk)
+  p_gen_reset_ch0 : process(ch0_ref_clk_i)
   begin
-    if rising_edge(ch0_ref_clk) then
+    if rising_edge(ch0_ref_clk_i) then
 
       ch0_rst_d0     <= ch0_rst_i;
       ch0_rst_synced <= ch0_rst_d0;
@@ -446,9 +436,9 @@ begin  -- rtl
   end process;
 
 
-  p_gen_reset_ch1 : process(ch1_ref_clk)
+  p_gen_reset_ch1 : process(ch1_ref_clk_i)
   begin
-    if rising_edge(ch1_ref_clk) then
+    if rising_edge(ch1_ref_clk_i) then
 
       ch1_rst_d0     <= ch1_rst_i;
       ch1_rst_synced <= ch1_rst_d0;
@@ -470,54 +460,11 @@ begin  -- rtl
   ch0_rx_rec_clk_pad <= ch0_gtp_clkout_int(1);
   ch1_rx_rec_clk_pad <= ch1_gtp_clkout_int(1);
 
-  gen1 : if(g_ch0_use_refclk_out) generate
+  ch0_ref_clk_in(0)   <= gtp_clk_i;
+  ch0_ref_clk_in(1) <= '0';
 
-    refbuf_ch0 : BUFIO2
-      port map (
-        DIVCLK       => ch0_ref_clk_out_buf,
-        IOCLK        => open,
-        SERDESSTROBE => open,
-        I            => ch0_gtp_clkout_int(0));
-
-    refbufg_ch0 : BUFG
-      port map (
-        I => ch0_ref_clk_out_buf,
-        O => ch0_ref_clk);
-  end generate gen1;
-
-  gen2 : if(g_ch1_use_refclk_out) generate
-
-    refbuf_ch1 : BUFIO2
-      port map (
-        DIVCLK       => ch1_ref_clk_out_buf,
-        IOCLK        => open,
-        SERDESSTROBE => open,
-        I            => ch1_gtp_clkout_int(0));
-
-    refbufg_ch1 : BUFG
-      port map (
-        I => ch1_ref_clk_out_buf,
-        O => ch1_ref_clk);
-  end generate gen2;
-
-
-
-  gen3 : if(not g_ch0_use_refclk_out) generate
-    ch0_ref_clk <= ch0_ref_clk_i;
-  end generate gen3;
-
-  gen4 : if(not g_ch1_use_refclk_out) generate
-    ch1_ref_clk <= ch1_ref_clk_i;
-  end generate gen4;
-
-
-
-  ch0_ref_clk_in(g_ch0_refclk_input)   <= ch0_ref_clk_i;
-  ch0_ref_clk_in(1-g_ch0_refclk_input) <= '0';
-
-  ch1_ref_clk_in(g_ch1_refclk_input)   <= ch1_ref_clk_i;
-  ch1_ref_clk_in(1-g_ch1_refclk_input) <= '0';
-
+  ch1_ref_clk_in(0)   <= gtp_clk_i;
+  ch1_ref_clk_in(1) <= '0';
 
   U_GTP_TILE_INST : WHITERABBITGTP_WRAPPER_TILE_SPARTAN6
     generic map
@@ -610,10 +557,10 @@ begin  -- rtl
       ------------------ Transmit Ports - TX Data Path interface -----------------
       TXDATA0_IN            => ch0_tx_data_i,
       TXDATA1_IN            => ch1_tx_data_i,
-      TXUSRCLK0_IN          => ch0_ref_clk,
-      TXUSRCLK1_IN          => ch1_ref_clk,
-      TXUSRCLK20_IN         => ch0_ref_clk,
-      TXUSRCLK21_IN         => ch1_ref_clk,
+      TXUSRCLK0_IN          => ch0_ref_clk_i,
+      TXUSRCLK1_IN          => ch1_ref_clk_i,
+      TXUSRCLK20_IN         => ch0_ref_clk_i,
+      TXUSRCLK21_IN         => ch1_ref_clk_i,
       --------------- Transmit Ports - TX Driver and OOB signalling --------------
       TXN0_OUT              => pad_txn0_o,
       TXN1_OUT              => pad_txn1_o,
@@ -660,7 +607,7 @@ begin  -- rtl
       g_simulation => g_simulation) 
     port map (
       gtp_rst_i                   => ch0_gtp_reset,
-      gtp_tx_clk_i                => ch0_ref_clk,
+      gtp_tx_clk_i                => ch0_ref_clk_i,
       gtp_tx_en_pma_phase_align_o => ch0_tx_en_pma_phase_align,
       gtp_tx_pma_set_phase_o      => ch0_tx_pma_set_phase,
       align_en_i                  => ch0_gtp_locked,
@@ -672,7 +619,7 @@ begin  -- rtl
       g_simulation => g_simulation) 
     port map (
       gtp_rst_i                   => ch1_gtp_reset,
-      gtp_tx_clk_i                => ch1_ref_clk,
+      gtp_tx_clk_i                => ch1_ref_clk_i,
       gtp_tx_en_pma_phase_align_o => ch1_tx_en_pma_phase_align,
       gtp_tx_pma_set_phase_o      => ch1_tx_pma_set_phase,
       align_en_i                  => ch1_gtp_locked,
@@ -738,13 +685,13 @@ begin  -- rtl
       ppulse_o => open);
 
   
-  p_force_proper_disparity_ch0 : process(ch0_ref_clk, ch0_gtp_reset)
+  p_force_proper_disparity_ch0 : process(ch0_ref_clk_i, ch0_gtp_reset)
   begin
     if (ch0_gtp_reset = '1') then
       ch0_disparity_set   <= '0';
       ch0_tx_chardispval  <= '0';
       ch0_tx_chardispmode <= '0';
-    elsif rising_edge(ch0_ref_clk) then
+    elsif rising_edge(ch0_ref_clk_i) then
       if(ch0_disparity_set = '0' and ch0_tx_k_i = '1' and ch0_tx_data_i = x"bc" and ch0_align_done = '1') then
         ch0_disparity_set <= '1';
         if(g_force_disparity = 0) then
@@ -760,14 +707,14 @@ begin  -- rtl
     end if;
   end process;
 
-  p_force_proper_disparity_ch1 : process(ch1_ref_clk, ch1_gtp_reset)
+  p_force_proper_disparity_ch1 : process(ch1_ref_clk_i, ch1_gtp_reset)
   begin
     if (ch1_gtp_reset = '1') then
       ch1_disparity_set   <= '0';
       ch1_tx_chardispval  <= '0';
       ch1_tx_chardispmode <= '0';
       
-    elsif rising_edge(ch1_ref_clk) then
+    elsif rising_edge(ch1_ref_clk_i) then
       if(ch1_disparity_set = '0' and ch1_tx_k_i = '1' and ch1_tx_data_i = x"bc" and ch1_align_done = '1') then
         ch1_disparity_set <= '1';
         if(g_force_disparity = 0) then
@@ -835,7 +782,4 @@ begin  -- rtl
   ch1_rx_rbclk_o <= ch1_rx_rec_clk;
 --  ch1_tx_disparity_o <= ch1_tx_rundisp_vec(0);
 
-  ch0_ref_clk_o <= ch0_ref_clk;
-  ch1_ref_clk_o <= ch1_ref_clk;
-  
 end rtl;
