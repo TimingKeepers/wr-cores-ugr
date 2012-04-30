@@ -8,6 +8,13 @@ NET "clk_125m_pllref_n_i" IOSTANDARD = "LVDS_25";
 NET "clk_125m_pllref_p_i" LOC = G9;
 NET "clk_125m_pllref_p_i" IOSTANDARD = "LVDS_25";
 
+NET "fpga_pll_ref_clk_101_n_i" LOC = D11;
+NET "fpga_pll_ref_clk_101_n_i" IOSTANDARD = "LVDS_25";
+
+NET "fpga_pll_ref_clk_101_p_i" LOC = C11;
+NET "fpga_pll_ref_clk_101_p_i" IOSTANDARD = "LVDS_25";
+
+
 NET "dac_cs1_n_o" LOC = A3;
 NET "dac_cs1_n_o" IOSTANDARD = "LVCMOS25";
 
@@ -621,6 +628,10 @@ NET "clk_125m_pllref_p_i" TNM_NET = clk_125m_pllref_p_i;
 TIMESPEC TS_clk_125m_pllref_p_i = PERIOD "clk_125m_pllref_p_i" 8 ns HIGH 50%;
 NET "clk_125m_pllref_n_i" TNM_NET = clk_125m_pllref_n_i;
 TIMESPEC TS_clk_125m_pllref_n_i = PERIOD "clk_125m_pllref_n_i" 8 ns HIGH 50%;
+NET "fpga_pll_ref_clk_101_p_i" TNM_NET = fpga_pll_ref_clk_101_p_i;
+TIMESPEC TS_fpga_pll_ref_clk_101_p_i = PERIOD "fpga_pll_ref_clk_101_p_i" 8 ns HIGH 50%;
+NET "fpga_pll_ref_clk_101_n_i" TNM_NET = fpga_pll_ref_clk_101_n_i;
+TIMESPEC TS_fpga_pll_ref_clk_101_n_i = PERIOD "fpga_pll_ref_clk_101_n_i" 8 ns HIGH 50%;
 
 PIN "clk_125m_pllref_BUFG.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 PIN "U_GTP/U_Rbclk_bufg_ch1.O" CLOCK_DEDICATED_ROUTE = FALSE;

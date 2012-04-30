@@ -28,6 +28,9 @@ entity spec_top is
       clk_125m_pllref_p_i : in std_logic;  -- 125 MHz PLL reference
       clk_125m_pllref_n_i : in std_logic;
 
+      fpga_pll_ref_clk_101_p_i : in std_logic;  -- Dedicated clock for Xilinx GTP transceiver
+      fpga_pll_ref_clk_101_n_i : in std_logic;
+
       -- From GN4124 Local bus
       L_CLKp : in std_logic;  -- Local bus clock (frequency set in GN4124 config registers)
       L_CLKn : in std_logic;  -- Local bus clock (frequency set in GN4124 config registers)
@@ -319,8 +322,8 @@ architecture rtl of spec_top is
       g_ch0_use_refclk_out : boolean := false;
       g_ch1_use_refclk_out : boolean := false);
     port (
+      gtp_clk_i          : in  std_logic;
       ch0_ref_clk_i      : in  std_logic;
-      ch0_ref_clk_o      : out std_logic;
       ch0_tx_data_i      : in  std_logic_vector(7 downto 0);
       ch0_tx_k_i         : in  std_logic;
       ch0_tx_disparity_o : out std_logic;
@@ -333,7 +336,6 @@ architecture rtl of spec_top is
       ch0_rst_i          : in  std_logic;
       ch0_loopen_i       : in  std_logic;
       ch1_ref_clk_i      : in  std_logic;
-      ch1_ref_clk_o      : out std_logic;
       ch1_tx_data_i      : in  std_logic_vector(7 downto 0) := "00000000";
       ch1_tx_k_i         : in  std_logic                    := '0';
       ch1_tx_disparity_o : out std_logic;
@@ -408,6 +410,9 @@ architecture rtl of spec_top is
 
   -- LCLK from GN4124 used as system clock
   signal l_clk : std_logic;
+
+  -- Dedicated clock for GTP transceiver
+  signal gtp_dedicated_clk : std_logic;
 
   -- P2L colck PLL status
   signal p2l_pll_locked : std_logic;
@@ -643,6 +648,20 @@ begin
       );
 
 
+  ------------------------------------------------------------------------------
+  -- Dedicated clock for GTP
+  ------------------------------------------------------------------------------
+  cmp_gtp_dedicated_clk_buf : IBUFGDS
+    generic map(
+      DIFF_TERM    => true,
+      IBUF_LOW_PWR => true,
+      IOSTANDARD   => "DEFAULT")
+    port map (
+      O  => gtp_dedicated_clk,
+      I  => fpga_pll_ref_clk_101_p_i,
+      IB => fpga_pll_ref_clk_101_n_i
+    );
+
 
   ------------------------------------------------------------------------------
   -- Active high reset
@@ -761,7 +780,7 @@ begin
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
       g_dpram_initf               => "",
-      g_dpram_size                => 20480, --16384,
+      g_dpram_size                => 20480,  --16384,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => WORD)
     port map (
@@ -875,8 +894,9 @@ begin
     generic map (
       g_simulation => 0)
     port map (
+      gtp_clk_i => gtp_dedicated_clk,
+
       ch0_ref_clk_i      => clk_125m_pllref,
-      ch0_ref_clk_o      => open,
       ch0_tx_data_i      => x"00",
       ch0_tx_k_i         => '0',
       ch0_tx_disparity_o => open,
@@ -890,7 +910,6 @@ begin
       ch0_loopen_i       => '0',
 
       ch1_ref_clk_i      => clk_125m_pllref,
-      ch1_ref_clk_o      => open,
       ch1_tx_data_i      => phy_tx_data,
       ch1_tx_k_i         => phy_tx_k,
       ch1_tx_disparity_o => phy_tx_disparity,
