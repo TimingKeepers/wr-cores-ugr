@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-26
+-- Last update: 2012-05-02
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -365,8 +365,8 @@ architecture struct of wr_core is
   signal ext_snk_in  : t_wrf_sink_in;
   signal dummy       : std_logic_vector(31 downto 0);
 
-signal spll_out_locked : std_logic_vector(g_aux_clks downto 0);
-  
+  signal spll_out_locked : std_logic_vector(g_aux_clks downto 0);
+
   component xwbp_mux
     port (
       clk_sys_i    : in  std_logic;
@@ -386,10 +386,10 @@ signal spll_out_locked : std_logic_vector(g_aux_clks downto 0);
       class_core_i : in  std_logic_vector(7 downto 0));
   end component;
 
-  signal dac_dpll_data : std_logic_vector(15 downto 0);
-  signal dac_dpll_sel : std_logic_vector(3 downto 0);
+  signal dac_dpll_data    : std_logic_vector(15 downto 0);
+  signal dac_dpll_sel     : std_logic_vector(3 downto 0);
   signal dac_dpll_load_p1 : std_logic;
-  
+
 
   --component chipscope_ila
   --  port (
@@ -455,6 +455,7 @@ begin
     generic map(
       g_with_ext_clock_input => g_with_external_clock_input,
       g_reverse_dmtds        => false,
+      g_divide_input_by_2    => true,
       g_with_undersampling   => false,
       g_with_period_detector => false,
       g_with_debug_fifo      => true,
@@ -490,12 +491,12 @@ begin
       -- Output channel DAC value
       dac_out_data_o => dac_dpll_data,  --: out std_logic_vector(15 downto 0);
       -- Output channel select (0 = channel 0, etc. )
-      dac_out_sel_o  => dac_dpll_sel,           --for now use only one output
+      dac_out_sel_o  => dac_dpll_sel,   --for now use only one output
       dac_out_load_o => dac_dpll_load_p1,
 
       out_enable_i(0) => '1',
       out_enable_i(1) => tm_clk_aux_lock_en_i,
-      
+
       out_locked_o => spll_out_locked,
 
       slave_i => spll_wb_in,
@@ -504,12 +505,12 @@ begin
       debug_o => dio_o
       );
 
-  dac_dpll_data_o <= dac_dpll_data;
-  dac_dpll_load_p1_o <= dac_dpll_load_p1;
-  
+  dac_dpll_data_o    <= dac_dpll_data;
+  dac_dpll_load_p1_o <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel= x"0") else '0';
+
   tm_dac_value_o <= x"00" & dac_dpll_data;
-  tm_dac_wr_o <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel = x"1") else '0';
-  
+  tm_dac_wr_o    <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel = x"1") else '0';
+
   tm_clk_aux_locked_o <= spll_out_locked(1);
 
   softpll_irq <= spll_wb_out.int;

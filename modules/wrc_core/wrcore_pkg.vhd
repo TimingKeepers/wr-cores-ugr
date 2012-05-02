@@ -231,6 +231,7 @@ package wrcore_pkg is
       g_bb_ref_divider       : integer := 1;
       g_bb_feedback_divider  : integer := 1;
       g_bb_log2_gating       : integer := 1;
+      g_divide_input_by_2 : boolean := false;
       g_interface_mode       : t_wishbone_interface_mode;
       g_address_granularity  : t_wishbone_address_granularity);
     port (
