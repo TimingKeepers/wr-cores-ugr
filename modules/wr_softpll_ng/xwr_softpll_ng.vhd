@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-03-30
+-- Last update: 2012-04-30
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -82,6 +82,10 @@ entity xwr_softpll_ng is
 -- "direct" operation, but may improve FPGA timing/routability.
     g_reverse_dmtds : boolean := true;
 
+-- Divides the DDMTD clock inputs by 2, removing the "CLOCK_DEDICATED_ROUTE"
+-- errors under ISE tools, at the cost of bandwidth reduction. Use with care.
+    g_divide_input_by_2 : boolean := false;
+
 -- Bang Bang phase detector parameters:
 -- reference divider
     g_bb_ref_divider : integer := 1;
@@ -152,6 +156,7 @@ architecture wrapper of xwr_softpll_ng is
       g_with_ext_clock_input : boolean;
       g_with_undersampling   : boolean;
       g_reverse_dmtds        : boolean;
+      g_divide_input_by_2    : boolean;
       g_bb_ref_divider       : integer;
       g_bb_feedback_divider  : integer;
       g_bb_log2_gating       : integer;
@@ -200,6 +205,7 @@ begin  -- behavioral
       g_with_undersampling   => g_with_undersampling,
       g_with_ext_clock_input => g_with_ext_clock_input,
       g_reverse_dmtds        => g_reverse_dmtds,
+      g_divide_input_by_2    => g_divide_input_by_2,
       g_bb_ref_divider       => g_bb_ref_divider,
       g_bb_feedback_divider  => g_bb_feedback_divider,
       g_bb_log2_gating       => g_bb_log2_gating

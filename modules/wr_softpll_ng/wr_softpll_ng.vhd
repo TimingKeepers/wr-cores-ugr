@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-04-25
+-- Last update: 2012-04-30
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -86,6 +86,10 @@ entity wr_softpll_ng is
 -- being sampled by the measured clock). This is functionally equivalent to
 -- "direct" operation, but may improve FPGA timing/routability.
     g_reverse_dmtds : boolean := true;
+
+-- Divides the DDMTD clock inputs by 2, removing the "CLOCK_DEDICATED_ROUTE"
+-- errors under ISE tools, at the cost of bandwidth reduction. Use with care.
+    g_divide_input_by_2 : boolean := false;
 
 -- Bang Bang phase detector parameters:
 -- reference divider
@@ -167,8 +171,8 @@ architecture rtl of wr_softpll_ng is
 
   constant c_DBG_FIFO_THRESHOLD : integer := 8180;
   constant c_DBG_FIFO_COALESCE  : integer := 100;
-  constant c_BB_ERROR_BITS : integer := 16;
-  
+  constant c_BB_ERROR_BITS      : integer := 16;
+
 
   component spll_bangbang_pd
     generic (
@@ -189,13 +193,14 @@ architecture rtl of wr_softpll_ng is
       err_wrap_o     : out std_logic;
       err_o          : out std_logic_vector(g_error_bits-1 downto 0);
       err_stb_o      : out std_logic;
-	ref_present_o : out std_logic);
+      ref_present_o  : out std_logic);
   end component;
 
   component dmtd_with_deglitcher
     generic (
-      g_counter_bits : natural;
-      g_chipscope    : boolean := false);
+      g_counter_bits      : natural;
+      g_chipscope         : boolean := false;
+      g_divide_input_by_2 : boolean := false);
     port (
       rst_n_dmtdclk_i      : in  std_logic;
       rst_n_sysclk_i       : in  std_logic;
@@ -374,7 +379,7 @@ architecture rtl of wr_softpll_ng is
   signal dmtd_fb_clk_in, dmtd_fb_clk_dmtd   : std_logic_vector(g_num_outputs-1 downto 0);
 
   signal bb_sync_en, bb_sync_done : std_logic;
-  signal ext_ref_present : std_logic;
+  signal ext_ref_present          : std_logic;
 
 begin  -- rtl
 
@@ -477,8 +482,9 @@ begin  -- rtl
 
     DMTD_REF : dmtd_with_deglitcher
       generic map (
-        g_counter_bits => g_tag_bits,
-        g_chipscope    => false)
+        g_counter_bits      => g_tag_bits,
+        g_chipscope         => false,
+        g_divide_input_by_2 => g_divide_input_by_2)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
         rst_n_sysclk_i  => rst_n_i,
@@ -506,7 +512,8 @@ begin  -- rtl
 
     DMTD_FB : dmtd_with_deglitcher
       generic map (
-        g_counter_bits => g_tag_bits)
+        g_counter_bits      => g_tag_bits,
+        g_divide_input_by_2 => g_divide_input_by_2)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
         rst_n_sysclk_i  => rst_n_i,
@@ -585,12 +592,12 @@ begin  -- rtl
         err_o          => bb_phase_err,
         err_wrap_o     => bb_phase_err_wrap,
         err_stb_o      => bb_phase_err_stb_p,
-   ref_present_o => ext_ref_present);
+        ref_present_o  => ext_ref_present);
 
     tags(g_num_ref_inputs + g_num_outputs)(c_BB_ERROR_BITS-1 downto 0) <= bb_phase_err(c_BB_ERROR_BITS-1 downto 0);
-    tags(g_num_ref_inputs + g_num_outputs)(c_BB_ERROR_BITS)          <= bb_phase_err_wrap;
+    tags(g_num_ref_inputs + g_num_outputs)(c_BB_ERROR_BITS)            <= bb_phase_err_wrap;
 
-    regs_out.eccr_ext_supported_i <= '1';
+    regs_out.eccr_ext_supported_i   <= '1';
     regs_out.eccr_ext_ref_present_i <= ext_ref_present;
   end generate gen_bb_detector;
 
@@ -798,7 +805,7 @@ begin  -- rtl
   regs_out.occr_out_en_i(7 downto g_num_outputs)   <= (others => '0');
 
   out_locked_o <= regs_in.occr_out_lock_o(g_num_outputs-1 downto 0);
-  
+
   irq_tag <= '1' when regs_out.per_hpll_valid_i = '1' or regs_in.trr_wr_empty_o = '0' else '0';
 
   deglitch_thr_slv <= regs_in.deglitch_thr_o;
