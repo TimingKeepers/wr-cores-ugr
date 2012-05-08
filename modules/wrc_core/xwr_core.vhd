@@ -253,6 +253,8 @@ architecture struct of xwr_core is
       wb_cyc_i   : in  std_logic;
       wb_stb_i   : in  std_logic;
       wb_ack_o   : out std_logic;
+      wb_err_o   : out std_logic;
+      wb_rty_o   : out std_logic;
       wb_stall_o : out std_logic;
 
       ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
@@ -367,6 +369,8 @@ begin
       wb_cyc_i   => slave_i.cyc,
       wb_stb_i   => slave_i.stb,
       wb_ack_o   => slave_o.ack,
+      wb_err_o   => slave_o.err,
+      wb_rty_o   => slave_o.rty,
       wb_stall_o => slave_o.stall,
 
       ext_snk_adr_i   => wrf_snk_i.adr,
@@ -414,8 +418,6 @@ begin
 
   timestamps_o.port_id(5) <= '0';
 
-  slave_o.err <= '0';
-  slave_o.rty <= '0';
   slave_o.int <= '0';
 
   wrf_snk_o.rty <= '0';

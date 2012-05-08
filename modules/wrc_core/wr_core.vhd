@@ -165,6 +165,8 @@ entity wr_core is
     wb_cyc_i   : in  std_logic                                               := '0';
     wb_stb_i   : in  std_logic                                               := '0';
     wb_ack_o   : out std_logic;
+    wb_err_o   : out std_logic;
+    wb_rty_o   : out std_logic;
     wb_stall_o : out std_logic;
 
     -----------------------------------------
@@ -724,6 +726,8 @@ begin
       sl_we_i    => wb_we_i,
       sl_dat_o   => wb_dat_o,
       sl_ack_o   => wb_ack_o,
+      sl_err_o   => wb_err_o,
+      sl_rty_o   => wb_rty_o,
       sl_stall_o => wb_stall_o);
 
   -----------------------------------------------------------------------------
