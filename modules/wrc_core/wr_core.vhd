@@ -27,7 +27,7 @@
 -- Date        Version  Author          Description
 -- 2011-02-02  1.0      greg.d          Created
 -- 2011-10-25  2.0      greg.d          Redesigned and wishbonized
--- 2012-03-05  3.0      wterpstra       Added SDWB descriptors
+-- 2012-03-05  3.0      wterpstra       Added SDB descriptors
 -------------------------------------------------------------------------------
 
 
@@ -288,17 +288,17 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  constant c_secbar_layout : t_sdwb_device_array(6 downto 0) :=
-    (0 => f_sdwb_set_address(c_xwr_mini_nic_sdwb, x"00000000"),
-     1 => f_sdwb_set_address(c_xwr_endpoint_sdwb, x"00000100"),
-     2 => f_sdwb_set_address(c_xwr_softpll_ng_sdwb, x"00000200"),
-     3 => f_sdwb_set_address(c_xwr_pps_gen_sdwb, x"00000300"),
-     4 => f_sdwb_set_address(c_wrc_periph0_sdwb, x"00000400"),   -- Syscon
-     5 => f_sdwb_set_address(c_wrc_periph1_sdwb, x"00000500"),   -- UART
-     6 => f_sdwb_set_address(c_wrc_periph2_sdwb, x"00000600"));  -- 1-Wire
-  constant c_secbar_sdwb_address : t_wishbone_address := x"00000800";
-  constant c_secbar_bridge_sdwb  : t_sdwb_device      :=
-    f_xwb_bridge_layout_sdwb(true, c_secbar_layout, c_secbar_sdwb_address);
+  constant c_secbar_layout : t_sdb_record_array(6 downto 0) :=
+    (0 => f_sdb_embed_device(c_xwr_mini_nic_sdb,   x"00000000"),
+     1 => f_sdb_embed_device(c_xwr_endpoint_sdb,   x"00000100"),
+     2 => f_sdb_embed_device(c_xwr_softpll_ng_sdb, x"00000200"),
+     3 => f_sdb_embed_device(c_xwr_pps_gen_sdb,    x"00000300"),
+     4 => f_sdb_embed_device(c_wrc_periph0_sdb,    x"00000400"),  -- Syscon
+     5 => f_sdb_embed_device(c_wrc_periph1_sdb,    x"00000500"),  -- UART
+     6 => f_sdb_embed_device(c_wrc_periph2_sdb,    x"00000600")); -- 1-Wire
+  constant c_secbar_sdb_address : t_wishbone_address := x"00000800";
+  constant c_secbar_bridge_sdb : t_sdb_bridge := 
+     f_xwb_bridge_layout_sdb(true, c_secbar_layout, c_secbar_sdb_address);
 
   signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
   signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
@@ -306,10 +306,10 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --WB intercon
   -----------------------------------------------------------------------------
-  constant c_layout : t_sdwb_device_array(1 downto 0) :=
-    (0 => f_sdwb_set_address(f_xwb_dpram(g_dpram_size), x"00000000"),
-     1 => f_sdwb_set_address(c_secbar_bridge_sdwb, x"00020000"));
-  constant c_sdwb_address : t_wishbone_address := x"00030000";
+  constant c_layout : t_sdb_record_array(1 downto 0) :=
+   (0 => f_sdb_embed_device(f_xwb_dpram(g_dpram_size), x"00000000"),
+    1 => f_sdb_embed_bridge(c_secbar_bridge_sdb,       x"00020000"));
+  constant c_sdb_address : t_wishbone_address := x"00030000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
   signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
@@ -733,14 +733,14 @@ begin
   -----------------------------------------------------------------------------
   -- WB intercon
   -----------------------------------------------------------------------------
-  WB_CON : xwb_sdwb_crossbar
+  WB_CON : xwb_sdb_crossbar
     generic map(
       g_num_masters => 3,
       g_num_slaves  => 2,
       g_registered  => true,
       g_wraparound  => true,
       g_layout      => c_layout,
-      g_sdwb_addr   => c_sdwb_address
+      g_sdb_addr    => c_sdb_address
       )  
     port map(
       clk_sys_i => clk_sys_i,
@@ -802,14 +802,14 @@ begin
   -----------------------------------------------------------------------------
   -- WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  WB_SECONDARY_CON : xwb_sdwb_crossbar
+  WB_SECONDARY_CON : xwb_sdb_crossbar
     generic map(
       g_num_masters => 1,
       g_num_slaves  => 7,
       g_registered  => true,
       g_wraparound  => true,
       g_layout      => c_secbar_layout,
-      g_sdwb_addr   => c_secbar_sdwb_address
+      g_sdb_addr    => c_secbar_sdb_address
       )
     port map(
       clk_sys_i  => clk_sys_i,

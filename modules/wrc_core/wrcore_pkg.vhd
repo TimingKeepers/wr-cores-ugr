@@ -20,20 +20,21 @@ package wrcore_pkg is
   ----------------------------------------------------------------------------- 
   --PPS generator
   -----------------------------------------------------------------------------
-  constant c_xwr_pps_gen_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000000ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+  constant c_xwr_pps_gen_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"de0d8ced",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "WR-PPS-Generator");
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"de0d8ced",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "WR-PPS-Generator   ")));
   component xwr_pps_gen is
     generic(
       g_interface_mode       : t_wishbone_interface_mode;
@@ -62,20 +63,21 @@ package wrcore_pkg is
   -----------------------------------------------------------------------------
   --Mini NIC
   -----------------------------------------------------------------------------
-  constant c_xwr_mini_nic_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000000ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+  constant c_xwr_mini_nic_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"ab28633a",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "WR-Mini-NIC     ");
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"ab28633a",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "WR-Mini-NIC        ")));
   component xwr_mini_nic
     generic (
       g_interface_mode       : t_wishbone_interface_mode;
@@ -123,48 +125,51 @@ package wrcore_pkg is
       );
   end component;
 
-  constant c_wrc_periph0_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000000ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+  constant c_wrc_periph0_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"ff07fc47",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "WR-Periph-Syscon");
-  constant c_wrc_periph1_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000000ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"ff07fc47",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "WR-Periph-Syscon   ")));
+  constant c_wrc_periph1_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"e2d13d04",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "WR-Periph-UART  ");
-  constant c_wrc_periph2_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000000ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"e2d13d04",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "WR-Periph-UART     ")));
+  constant c_wrc_periph2_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"779c5443",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "WR-Periph-1Wire ");
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"779c5443",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "WR-Periph-1Wire    ")));
   component wrc_periph is
     generic(
       g_phys_uart    : boolean := true;
@@ -203,21 +208,21 @@ package wrcore_pkg is
   -----------------------------------------------------------------------------
   -- Soft-PLL
   -----------------------------------------------------------------------------
-  constant c_xwr_softpll_ng_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000000ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+  constant c_xwr_softpll_ng_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"65158dc0",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "WR-Soft-PLL     ");
-
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"65158dc0",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "WR-Soft-PLL        ")));
   component xwr_softpll_ng
     generic (
       g_tag_bits             : integer;

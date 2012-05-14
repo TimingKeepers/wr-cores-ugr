@@ -6,20 +6,21 @@ use work.wishbone_pkg.all;
 use work.gencores_pkg.all;
 
 package xwr_eca_pkg is
- constant c_xwr_eca_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"000000000000001f",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"04", -- 32-bit port granularity
+ constant c_xwr_eca_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"00",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"00000651", -- GSI
-    dev_device    => x"8752bf44",
-    dev_version   => x"00000001",
-    dev_date      => x"20120319",
-    description   => "GSI_ECA_UNIT    ");
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"4", -- 32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"000000000000001f",
+    product => (
+    vendor_id     => x"0000000000000651",
+    device_id     => x"8752bf44",
+    version       => x"00000001",
+    date          => x"20120319",
+    name          => "GSI_ECA_UNIT       ")));
 
   component xwr_eca is
     generic(

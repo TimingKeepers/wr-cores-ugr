@@ -108,6 +108,8 @@ set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
 set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_40MHZ
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_sdb_crossbar.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/sdb_rom.vhd"
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/wr_softpll_ng.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_wbgen2_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_wb_slave.vhd
@@ -123,8 +125,6 @@ set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/w
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_dma/xwb_dma.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_wfifo.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_dual_clock_ram.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/sdwb_rom.vhd"
-set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_crossbar/xwb_sdwb_crossbar.vhd"
 set_global_assignment -name SDC_FILE ../../../top/gsi_exploder/wr_core_demo/exploder_top.sdc
 set_global_assignment -name VHDL_FILE ../../../top/gsi_exploder/wr_core_demo/spec_serial_dac_arb.vhd
 set_global_assignment -name VHDL_FILE ../../../top/gsi_exploder/wr_core_demo/spec_serial_dac.vhd

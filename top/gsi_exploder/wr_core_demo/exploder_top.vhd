@@ -212,20 +212,21 @@ architecture rtl of exploder_top is
       dac_din_o   : out std_logic);
   end component;
   
-  constant c_xwr_gpio_32_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"000000000000001f",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01", -- big-endian, no-child, present
-    wbd_width     => x"04", -- 8/16/32-bit port granularity
+  constant c_xwr_gpio_32_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
     abi_ver_minor => x"01",
-    abi_class     => x"00000000", -- undocumented device
-    dev_vendor    => x"00000651", -- GSI
-    dev_device    => x"35aa6b95",
-    dev_version   => x"00000001",
-    dev_date      => x"20120305",
-    description   => "GSI_GPIO_32     ");
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"4", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"000000000000001f",
+    product => (
+    vendor_id     => x"0000000000000651", -- GSI
+    device_id     => x"35aa6b95",
+    version       => x"00000001",
+    date          => x"20120305",
+    name          => "GSI_GPIO_32        ")));
     
   component flash_loader
      port (
@@ -234,18 +235,18 @@ architecture rtl of exploder_top is
   end component;
 
   -- WR core layout
-  constant c_wrcore_bridge_sdwb : t_sdwb_device := f_xwb_bridge_manual_sdwb(x"0003ffff", x"00030000");
+  constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
   
   -- Ref clock crossbar
   constant c_ref_slaves  : natural := 3;
   constant c_ref_masters : natural := 1;
-  constant c_ref_layout : t_sdwb_device_array(c_ref_slaves-1 downto 0) :=
-   (0 => f_sdwb_set_address(c_xwr_gpio_32_sdwb,            x"00000000"),
-    1 => f_sdwb_set_address(c_xwr_eca_sdwb,                x"00040000"),
-    2 => f_sdwb_set_address(c_xwr_wb_timestamp_latch_sdwb, x"00080000"));
-  constant c_ref_sdwb_address : t_wishbone_address := x"000C0000";
-  constant c_ref_bridge : t_sdwb_device := 
-    f_xwb_bridge_layout_sdwb(true, c_ref_layout, c_ref_sdwb_address);
+  constant c_ref_layout : t_sdb_record_array(c_ref_slaves-1 downto 0) :=
+   (0 => f_sdb_embed_device(c_xwr_gpio_32_sdb,            x"00000000"),
+    1 => f_sdb_embed_device(c_xwr_eca_sdb,                x"00040000"),
+    2 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00080000"));
+  constant c_ref_sdb_address : t_wishbone_address := x"000C0000";
+  constant c_ref_bridge : t_sdb_bridge := 
+    f_xwb_bridge_layout_sdb(true, c_ref_layout, c_ref_sdb_address);
   
   signal cbar_ref_slave_i  : t_wishbone_slave_in_array (c_ref_masters-1 downto 0);
   signal cbar_ref_slave_o  : t_wishbone_slave_out_array(c_ref_masters-1 downto 0);
@@ -256,11 +257,11 @@ architecture rtl of exploder_top is
   constant c_slaves : natural := 3;
   constant c_masters : natural := 1;
   constant c_test_dpram_size : natural := 2048;
-  constant c_layout : t_sdwb_device_array(c_slaves-1 downto 0) :=
-   (0 => f_sdwb_set_address(f_xwb_dpram(c_test_dpram_size), x"00000000"),
-    1 => f_sdwb_set_address(c_ref_bridge,                   x"00100000"),
-    2 => f_sdwb_set_address(c_wrcore_bridge_sdwb,           x"00200000"));
-  constant c_sdwb_address : t_wishbone_address := x"00300000";
+  constant c_layout : t_sdb_record_array(c_slaves-1 downto 0) :=
+   (0 => f_sdb_embed_device(f_xwb_dpram(c_test_dpram_size), x"00000000"),
+    1 => f_sdb_embed_bridge(c_ref_bridge,                   x"00100000"),
+    2 => f_sdb_embed_bridge(c_wrcore_bridge_sdb ,           x"00200000"));
+  constant c_sdb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
   signal cbar_slave_o  : t_wishbone_slave_out_array(c_masters-1 downto 0);
@@ -581,14 +582,14 @@ begin
   mb_master_in.stall <= '0';
   mb_master_in.dat <= std_logic_vector(to_unsigned(0,mb_master_in.dat'length-pio_reg'length)) & pio_reg;
 	
-  GSI_REF_CON : xwb_sdwb_crossbar
+  GSI_REF_CON : xwb_sdb_crossbar
    generic map(
      g_num_masters => c_ref_masters,
      g_num_slaves  => c_ref_slaves,
      g_registered  => true,
      g_wraparound  => true,
      g_layout      => c_ref_layout,
-     g_sdwb_addr   => c_ref_sdwb_address)
+     g_sdb_addr    => c_ref_sdb_address)
    port map(
      clk_sys_i     => clk_125m_pllref_p,
      rst_n_i       => nreset,
@@ -609,14 +610,14 @@ begin
       master_i     => cbar_ref_slave_o(0),
       master_o     => cbar_ref_slave_i(0));
    
-  GSI_CON : xwb_sdwb_crossbar
+  GSI_CON : xwb_sdb_crossbar
    generic map(
      g_num_masters => c_masters,
      g_num_slaves  => c_slaves,
      g_registered  => true,
      g_wraparound  => true,
      g_layout      => c_layout,
-     g_sdwb_addr   => c_sdwb_address)
+     g_sdb_addr    => c_sdb_address)
    port map(
      clk_sys_i     => l_clkp,
      rst_n_i       => nreset,
