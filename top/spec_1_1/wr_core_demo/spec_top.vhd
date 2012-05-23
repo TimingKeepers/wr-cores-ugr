@@ -562,10 +562,10 @@ begin
       DIVCLK_DIVIDE      => 1,
       CLKFBOUT_MULT      => 50,
       CLKFBOUT_PHASE     => 0.000,
-      CLKOUT0_DIVIDE     => 8,          -- 62.5 MHz
+      CLKOUT0_DIVIDE     => 16,          -- 62.5 MHz
       CLKOUT0_PHASE      => 0.000,
       CLKOUT0_DUTY_CYCLE => 0.500,
-      CLKOUT1_DIVIDE     => 8,          -- 125 MHz
+      CLKOUT1_DIVIDE     => 16,          -- 62.5 MHz
       CLKOUT1_PHASE      => 0.000,
       CLKOUT1_DUTY_CYCLE => 0.500,
       CLKOUT2_DIVIDE     => 8,
