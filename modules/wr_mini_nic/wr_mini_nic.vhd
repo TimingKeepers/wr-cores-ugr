@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2012-04-24
+-- Last update: 2012-05-31
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -117,7 +117,7 @@ architecture behavioral of wr_mini_nic is
     port (
       rst_n_i          : in  std_logic;
       wb_clk_i         : in  std_logic;
-      wb_addr_i        : in  std_logic_vector(3 downto 0);
+      wb_addr_i        : in  std_logic_vector(4 downto 0);
       wb_data_i        : in  std_logic_vector(31 downto 0);
       wb_data_o        : out std_logic_vector(31 downto 0);
       wb_cyc_i         : in  std_logic;
@@ -224,10 +224,12 @@ architecture behavioral of wr_mini_nic is
 
   type t_rx_fsm_state is (RX_WAIT_SOF, RX_MEM_RESYNC, RX_MEM_FLUSH, RX_ALLOCATE_DESCRIPTOR, RX_DATA, RX_UPDATE_DESC);
 
-  signal nrx_state   : t_rx_fsm_state;
-  signal nrx_avail   : unsigned(g_memsize_log2-1 downto 0);
-  signal nrx_toggle  : std_logic;
-  signal nrx_oob_reg : std_logic_vector(15 downto 0);
+  signal nrx_state    : t_rx_fsm_state;
+  signal nrx_avail    : unsigned(g_memsize_log2-1 downto 0);
+  signal nrx_bufstart : unsigned(g_memsize_log2-1 downto 0);
+  signal nrx_bufsize  : unsigned(g_memsize_log2-1 downto 0);
+  signal nrx_toggle   : std_logic;
+  signal nrx_oob_reg  : std_logic_vector(15 downto 0);
 
   --STATUS Reg for RX path
   signal nrx_status_reg : t_wrf_status_reg;
@@ -297,6 +299,7 @@ architecture behavioral of wr_mini_nic is
   signal TRIG2   : std_logic_vector(31 downto 0);
   signal TRIG3   : std_logic_vector(31 downto 0);
 
+  signal s_nrx_state : std_logic_vector(2 downto 0);
   
 begin  -- behavioral
 
@@ -312,6 +315,18 @@ begin  -- behavioral
 --  chipscope_icon_1 : chipscope_icon
 --    port map (
 --      CONTROL0 => CONTROL);
+--
+--  TRIG0(0) <= snk_cyc_i;
+--  TRIG0(1) <= snk_stb_i;
+--  TRIG0(2) <= snk_stall_int;
+--  TRIG0(4 downto 3) <= snk_adr_i;
+--  TRIG0(7 downto 5) <= s_nrx_state;
+--  TRIG0(8) <= nrx_error;
+--  TRIG0(23 downto 9) <= std_logic_vector(nrx_avail);
+--  TRIG1 <= nrx_mem_d;
+--  TRIG2(14 downto 0) <= std_logic_vector(nrx_mem_a);
+--  TRIG2(29 downto 15) <= std_logic_vector(nrx_bufstart);
+--  TRIG3(14 downto 0) <= std_logic_vector(nrx_bufsize);
 
 
 -------------------------------------------------------------------------------
@@ -689,9 +704,12 @@ begin  -- behavioral
     if rising_edge(clk_sys_i) then
       if rst_n_i = '0' then
         nrx_state      <= RX_WAIT_SOF;
+        s_nrx_state    <= "000";
         nrx_mem_a      <= (others => '0');
         nrx_mem_wr     <= '0';
         nrx_avail      <= (others => '0');
+        nrx_bufstart   <= (others => '0');
+        nrx_bufsize    <= (others => '0');
         nrx_rdreg      <= (others => '0');
         nrx_toggle     <= '0';
         nrx_stall_mask <= '0';
@@ -729,16 +747,23 @@ begin  -- behavioral
           -- handle writes to RX_ADDR and RX_AVAIL
           if(regs_out.rx_addr_load_o = '1') then
             nrx_mem_a_saved   <= unsigned(regs_out.rx_addr_o(g_memsize_log2+1 downto 2));
+            nrx_bufstart      <= unsigned(regs_out.rx_addr_o(g_memsize_log2+1 downto 2));
             regs_in.rx_addr_i <= (others => '0');
           --      nrx_mem_a <= unsigned(minic_rx_addr_new(g_memsize_log2+1 downto 2));
           end if;
 
+          if(regs_out.rx_size_load_o = '1') then
+            nrx_buf_full          <= '0';
+            regs_in.mcr_rx_full_i <= '0';
+            nrx_avail             <= unsigned(regs_out.rx_size_o(nrx_avail'high downto 0));
+            nrx_bufsize           <= unsigned(regs_out.rx_size_o(nrx_bufsize'high downto 0));
+          end if;
+        else
           if(regs_out.rx_avail_load_o = '1') then
             nrx_buf_full          <= '0';
             regs_in.mcr_rx_full_i <= '0';
-            nrx_avail             <= unsigned(regs_out.rx_avail_o(nrx_avail'high downto 0));
+            nrx_avail             <= nrx_avail + unsigned(regs_out.rx_avail_o(nrx_avail'high downto 0));
           end if;
-        else
 
           -- main RX FSM
           case nrx_state is
@@ -749,6 +774,7 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
             when RX_WAIT_SOF =>
 --            TRIG0(2 downto 0) <= "000";
+              s_nrx_state <= "000";
 
               nrx_newpacket <= '0';
               nrx_done      <= '0';
@@ -776,6 +802,7 @@ begin  -- behavioral
               
             when RX_ALLOCATE_DESCRIPTOR =>
 --            TRIG0(2 downto 0) <= "001";
+              s_nrx_state <= "001";
 
 -- wait until we have memory access
               if(mem_arb_rx = '0') then
@@ -801,6 +828,7 @@ begin  -- behavioral
               
             when RX_DATA =>
 --            TRIG0(2 downto 0) <= "010";
+              s_nrx_state <= "010";
 
               nrx_mem_wr <= '0';
 
@@ -836,7 +864,11 @@ begin  -- behavioral
                   nrx_state <= RX_MEM_FLUSH;
 
                   if(nrx_valid = '1' or nrx_toggle = '1') then
-                    nrx_mem_a <= nrx_mem_a + 1;
+                    if nrx_mem_a + 1 >= nrx_bufstart + nrx_bufsize then
+                      nrx_mem_a <= nrx_bufstart;
+                    else
+                      nrx_mem_a <= nrx_mem_a + 1;
+                    end if;
                   end if;
 
                   -- disable the RX fabric reception, so we won't get another
@@ -882,7 +914,11 @@ begin  -- behavioral
               -- we've got the second valid word of the payload, write it to the
               -- memory
               if(nrx_toggle = '1' and nrx_valid = '1' and snk_cyc_i = '1' and nrx_stat_error = '0') then
-                nrx_mem_a  <= nrx_mem_a + 1;
+                if nrx_mem_a + 1 >= nrx_bufstart + nrx_bufsize then
+                  nrx_mem_a <= nrx_bufstart;
+                else
+                  nrx_mem_a <= nrx_mem_a + 1;
+                end if;
                 nrx_mem_wr <= '1';
                 nrx_avail  <= nrx_avail - 1;
 
@@ -902,14 +938,19 @@ begin  -- behavioral
               
             when RX_MEM_RESYNC =>
 --            TRIG0(2 downto 0) <= "011";
+              s_nrx_state <= "011";
 
               -- check for error/abort conditions, they may appear even when
               -- the fabric is not accepting the data (tx_dreq_o = 0)
               if(nrx_stat_error = '1') then
-                nrx_error      <= '1';
-                nrx_done       <= '1';
-                nrx_state      <= RX_MEM_FLUSH;
-                nrx_mem_a      <= nrx_mem_a + 1;
+                nrx_error <= '1';
+                nrx_done  <= '1';
+                nrx_state <= RX_MEM_FLUSH;
+                if nrx_mem_a + 1 >= nrx_bufstart + nrx_bufsize then
+                  nrx_mem_a <= nrx_bufstart;
+                else
+                  nrx_mem_a <= nrx_mem_a + 1;
+                end if;
                 nrx_stall_mask <= '1';
                 nrx_size       <= nrx_size + 2;
               else
@@ -923,6 +964,7 @@ begin  -- behavioral
               
             when RX_MEM_FLUSH =>
 --            TRIG0(2 downto 0) <= "100";
+              s_nrx_state    <= "100";
               nrx_stall_mask <= '1';
 
               if(nrx_buf_full = '0') then
@@ -946,6 +988,7 @@ begin  -- behavioral
               
             when RX_UPDATE_DESC =>
 --            TRIG0(2 downto 0) <= "101";
+              s_nrx_state    <= "101";
               nrx_stall_mask <= '1';
 
               if(mem_arb_rx = '0') then
@@ -956,8 +999,12 @@ begin  -- behavioral
                 regs_in.rx_addr_i(g_memsize_log2+1 downto 0)                      <= std_logic_vector(nrx_mem_a_saved) & "00";
                 regs_in.rx_addr_i(regs_in.rx_addr_i'high downto g_memsize_log2+2) <= (others => '0');
 
-                nrx_mem_a       <= nrx_mem_a_saved;
-                nrx_mem_a_saved <= nrx_mem_a + 1;
+                nrx_mem_a <= nrx_mem_a_saved;
+                if nrx_mem_a + 1 >= nrx_bufstart + nrx_bufsize then
+                  nrx_mem_a_saved <= nrx_bufstart;
+                else
+                  nrx_mem_a_saved <= nrx_mem_a + 1;
+                end if;
 
 -- compose the RX descriptor
                 nrx_mem_d(31)                      <= '1';
@@ -1095,7 +1142,7 @@ begin  -- behavioral
     port map (
       rst_n_i          => rst_n_i,
       wb_clk_i         => clk_sys_i,
-      wb_addr_i        => wb_out.adr(3 downto 0),
+      wb_addr_i        => wb_out.adr(4 downto 0),
       wb_data_i        => wb_out.dat,
       wb_data_o        => wb_in.dat,
       wb_cyc_i         => wb_out.cyc,
@@ -1117,5 +1164,7 @@ begin  -- behavioral
 
   regs_in.rx_avail_i(nrx_avail'high downto 0)                         <= std_logic_vector(nrx_avail);
   regs_in.rx_avail_i(regs_in.rx_avail_i'high downto nrx_avail'high+1) <= (others => '0');
+  regs_in.rx_size_i(nrx_size'high downto 0)                           <= std_logic_vector(nrx_bufsize);
+  regs_in.rx_size_i(regs_in.rx_size_i'high downto nrx_size'high+1)    <= (others => '0');
 
 end behavioral;

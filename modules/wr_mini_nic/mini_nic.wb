@@ -113,7 +113,25 @@ peripheral {
 
 	 reg {
 			name = "RX buffer size register";
-			description = "Number of available 32-bit words in the RX buffer";
+			description = "Size of RX buffer in 32-bit words";
+			
+			prefix = "RX_SIZE";
+			field {
+				 name = "RX available words";
+				 size = 24;
+				 align = 2;
+				 type = SLV;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+			};
+	 };
+
+	 reg {
+			name = "RX buffer available words register";
+			description = "Number of available 32-bit words in the RX buffer\
+      read: available words in RX buffer\
+      write: increment available words in RX buffer";
 			
 			prefix = "RX_AVAIL";
 			field {
