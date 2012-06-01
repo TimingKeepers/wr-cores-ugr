@@ -12,6 +12,7 @@ use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 use work.xwr_eca_pkg.all;
 use work.pcie_wb_pkg.all;
+use work.ddr3_mem_pkg.all;
 
 entity scu_top is
   port
@@ -78,8 +79,8 @@ entity scu_top is
 		-- AUX SFP 
 		-----------------------------------------------------------------------
 		sfp1_tx_disable_o : out std_logic;
-      sfp1_txp_o        : out std_logic;
-      sfp1_rxp_i        : in  std_logic;
+      --sfp1_txp_o        : out std_logic;
+      --sfp1_rxp_i        : in  std_logic;
 		
 		sfp1_mod0			: in std_logic;			-- grounded by module
 		sfp1_mod1			: inout std_logic;		-- SCL
@@ -154,8 +155,27 @@ entity scu_top is
 		nWE_FSH				: out std_logic;
 		nOE_FSH				: out std_logic;
 		nRST_FSH				: out std_logic;
-		WAIT_FSH				: in std_logic
+		WAIT_FSH				: in std_logic;
 		
+		-----------------------------------------------------------------------
+		-- DDR3
+		-----------------------------------------------------------------------
+		
+		DDR3_DQ				: inout std_logic_vector(15 downto 0);
+		DDR3_DM				: out std_logic_vector(1 downto 0);
+		DDR3_BA				: out std_logic_vector(2 downto 0);
+		DDR3_ADDR			: out std_logic_vector(12 downto 0);
+		DDR3_CS_n			: out std_logic_vector(0 downto 0);
+		DDR3_DQS				: inout std_logic_vector(1 downto 0);
+		DDR3_DQSn			: inout std_logic_vector(1 downto 0);
+		DDR3_RES_n			: out std_logic;
+		DDR3_CKE				: out std_logic_vector(0 downto 0);
+		DDR3_ODT				: out std_logic_vector(0 downto 0);
+		DDR3_CAS_n			: out std_logic;
+		DDR3_RAS_n			: out std_logic;
+		DDR3_CLK				: inout std_logic_vector(0 downto 0);
+		DDR3_CLK_n			: inout std_logic_vector(0 downto 0);
+		DDR3_WE_n			: out std_logic	
 		
       );
 
@@ -511,7 +531,7 @@ architecture rtl of scu_top is
   signal sfp2_det_i: std_logic;
   
   signal s_hpla_ch: unsigned(15 downto 0);
-
+  signal ddr3_test_status: std_logic_vector(7 downto 0);
 
   
 begin
@@ -830,7 +850,32 @@ begin
      -- Slave connections (INTERCON is a master)
      master_i      => cbar_master_i,
      master_o      => cbar_master_o);
-	  
+
+	ddr3_stub: ddr3_mem_example_top 	
+	port map (
+		clock_source 			=> L_CLKp,
+		global_reset_n 		=> nreset,
+		
+		mem_addr					=> DDR3_ADDR,
+		mem_ba					=> DDR3_BA,
+		mem_cas_n				=> DDR3_CAS_n,
+		mem_cke					=> DDR3_CKE,
+		mem_clk					=> DDR3_CLK,
+		mem_clk_n				=> DDR3_CLK_n,
+		mem_cs_n					=> DDR3_CS_n,
+		mem_dm					=> DDR3_DM,
+		mem_dq					=> DDR3_DQ,
+		mem_dqs					=> DDR3_DQS,
+		mem_dqsn					=> DDR3_DQSn,
+		mem_odt					=> DDR3_ODT,
+		mem_ras_n				=> DDR3_RAS_n,
+		mem_reset_n				=> DDR3_RES_n,
+		mem_we_n					=> DDR3_WE_n,
+		pnf						=> open,
+		pnf_per_byte			=> open,
+		test_complete			=> lemo_led(2),
+		test_status				=> ddr3_test_status
+		);
 	  
 	 la_counter: process (pllout_clk_sys, nreset)
 	 begin
@@ -853,9 +898,9 @@ begin
 	lemo_en_in <= "00";                 -- configure lemo 1 as output, lemo 2 as input
 	lemo_io1 <= eca_toggle(0 downto 0);
 	
-	leds_o(0) <= eca_toggle(0);
-	leds_o(1) <= pio_reg(0);
-	
+	--leds_o(0) <= eca_toggle(0);
+	--leds_o(1) <= pio_reg(0);
+	leds_o <= ddr3_test_status(3 downto 0);	
   
 end rtl;
 
