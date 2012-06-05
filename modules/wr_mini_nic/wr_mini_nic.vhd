@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2012-05-31
+-- Last update: 2012-06-05
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -274,59 +274,46 @@ architecture behavioral of wr_mini_nic is
   signal bad_addr      : std_logic;
 
 
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
+  --component chipscope_ila
+  --  port (
+  --    CONTROL : inout std_logic_vector(35 downto 0);
+  --    CLK     : in    std_logic;
+  --    TRIG0   : in    std_logic_vector(31 downto 0);
+  --    TRIG1   : in    std_logic_vector(31 downto 0);
+  --    TRIG2   : in    std_logic_vector(31 downto 0);
+  --    TRIG3   : in    std_logic_vector(31 downto 0));
+  --end component;
 
 
 
 
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
+  --component chipscope_icon
+  --  port (
+  --    CONTROL0 : inout std_logic_vector (35 downto 0));
+  --end component;
 
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
+  --signal CONTROL : std_logic_vector(35 downto 0);
+  --signal CLK     : std_logic;
+  --signal TRIG0   : std_logic_vector(31 downto 0);
+  --signal TRIG1   : std_logic_vector(31 downto 0);
+  --signal TRIG2   : std_logic_vector(31 downto 0);
+  --signal TRIG3   : std_logic_vector(31 downto 0);
 
-  signal s_nrx_state : std_logic_vector(2 downto 0);
   
 begin  -- behavioral
 
---  chipscope_ila_1 : chipscope_ila
---    port map (
---      CONTROL => CONTROL,
---      CLK     => clk_sys_i,
---      TRIG0   => TRIG0,
---      TRIG1   => TRIG1,
---      TRIG2   => TRIG2,
---      TRIG3   => TRIG3);
+  --chipscope_ila_1 : chipscope_ila
+  --  port map (
+  --    CONTROL => CONTROL,
+  --    CLK     => clk_sys_i,
+  --    TRIG0   => TRIG0,
+  --    TRIG1   => TRIG1,
+  --    TRIG2   => TRIG2,
+  --    TRIG3   => TRIG3);
 
---  chipscope_icon_1 : chipscope_icon
---    port map (
---      CONTROL0 => CONTROL);
---
---  TRIG0(0) <= snk_cyc_i;
---  TRIG0(1) <= snk_stb_i;
---  TRIG0(2) <= snk_stall_int;
---  TRIG0(4 downto 3) <= snk_adr_i;
---  TRIG0(7 downto 5) <= s_nrx_state;
---  TRIG0(8) <= nrx_error;
---  TRIG0(23 downto 9) <= std_logic_vector(nrx_avail);
---  TRIG1 <= nrx_mem_d;
---  TRIG2(14 downto 0) <= std_logic_vector(nrx_mem_a);
---  TRIG2(29 downto 15) <= std_logic_vector(nrx_bufstart);
---  TRIG3(14 downto 0) <= std_logic_vector(nrx_bufsize);
+  --chipscope_icon_1 : chipscope_icon
+  --  port map (
+  --    CONTROL0 => CONTROL);
 
 
 -------------------------------------------------------------------------------
@@ -704,7 +691,6 @@ begin  -- behavioral
     if rising_edge(clk_sys_i) then
       if rst_n_i = '0' then
         nrx_state      <= RX_WAIT_SOF;
-        s_nrx_state    <= "000";
         nrx_mem_a      <= (others => '0');
         nrx_mem_wr     <= '0';
         nrx_avail      <= (others => '0');
@@ -774,7 +760,6 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
             when RX_WAIT_SOF =>
 --            TRIG0(2 downto 0) <= "000";
-              s_nrx_state <= "000";
 
               nrx_newpacket <= '0';
               nrx_done      <= '0';
@@ -802,7 +787,6 @@ begin  -- behavioral
               
             when RX_ALLOCATE_DESCRIPTOR =>
 --            TRIG0(2 downto 0) <= "001";
-              s_nrx_state <= "001";
 
 -- wait until we have memory access
               if(mem_arb_rx = '0') then
@@ -828,7 +812,6 @@ begin  -- behavioral
               
             when RX_DATA =>
 --            TRIG0(2 downto 0) <= "010";
-              s_nrx_state <= "010";
 
               nrx_mem_wr <= '0';
 
@@ -938,7 +921,6 @@ begin  -- behavioral
               
             when RX_MEM_RESYNC =>
 --            TRIG0(2 downto 0) <= "011";
-              s_nrx_state <= "011";
 
               -- check for error/abort conditions, they may appear even when
               -- the fabric is not accepting the data (tx_dreq_o = 0)
@@ -964,7 +946,6 @@ begin  -- behavioral
               
             when RX_MEM_FLUSH =>
 --            TRIG0(2 downto 0) <= "100";
-              s_nrx_state    <= "100";
               nrx_stall_mask <= '1';
 
               if(nrx_buf_full = '0') then
@@ -988,7 +969,6 @@ begin  -- behavioral
               
             when RX_UPDATE_DESC =>
 --            TRIG0(2 downto 0) <= "101";
-              s_nrx_state    <= "101";
               nrx_stall_mask <= '1';
 
               if(mem_arb_rx = '0') then
