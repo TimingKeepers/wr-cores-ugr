@@ -155,6 +155,7 @@ package wrcore_pkg is
     version       => x"00000001",
     date          => x"20120305",
     name          => "WR-Periph-UART     ")));
+
   constant c_wrc_periph2_sdb : t_sdb_device := (
     abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
@@ -170,6 +171,24 @@ package wrcore_pkg is
     version       => x"00000001",
     date          => x"20120305",
     name          => "WR-Periph-1Wire    ")));
+
+
+constant c_wrc_periph3_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"779c5445",
+    version       => x"00000001",
+    date          => x"20120615",
+    name          => "WR-Periph-AuxWB    ")));
+  
   component wrc_periph is
     generic(
       g_phys_uart    : boolean := true;

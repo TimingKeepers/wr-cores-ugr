@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-04-25
+-- Last update: 2012-06-15
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -140,8 +140,11 @@ entity xwr_core is
     -----------------------------------------
     --External WB interface
     -----------------------------------------
-    slave_i : in  t_wishbone_slave_in;
+    slave_i : in  t_wishbone_slave_in := cc_dummy_slave_in;
     slave_o : out t_wishbone_slave_out;
+
+    aux_master_o : out  t_wishbone_master_out;
+    aux_master_i : in t_wishbone_master_in := cc_dummy_master_in;
 
     -----------------------------------------
     -- External Fabric I/F
@@ -161,7 +164,7 @@ entity xwr_core is
     -- Timecode/Servo Control
     -----------------------------------------
 
-    tm_link_up_o : out std_logic;
+    tm_link_up_o         : out std_logic;
     -- DAC Control
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
     tm_dac_wr_o          : out std_logic;
@@ -257,6 +260,17 @@ architecture struct of xwr_core is
       wb_rty_o   : out std_logic;
       wb_stall_o : out std_logic;
 
+      aux_adr_o   : out std_logic_vector(c_wishbone_address_width-1 downto 0)   := (others => '0');
+      aux_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0)      := (others => '0');
+      aux_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+      aux_sel_o   : out std_logic_vector(c_wishbone_address_width/8-1 downto 0) := (others => '0');
+      aux_we_o    : out std_logic                                               := '0';
+      aux_cyc_o   : out std_logic                                               := '0';
+      aux_stb_o   : out std_logic                                               := '0';
+      aux_ack_i   : in  std_logic;
+      aux_stall_i : in  std_logic;
+
+
       ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
       ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
       ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
@@ -284,7 +298,7 @@ architecture struct of xwr_core is
       txtsu_stb_o          : out std_logic;
       txtsu_ack_i          : in  std_logic;
 
-      tm_link_up_o : out std_logic;
+      tm_link_up_o         : out std_logic;
       tm_dac_value_o       : out std_logic_vector(23 downto 0);
       tm_dac_wr_o          : out std_logic;
       tm_clk_aux_lock_en_i : in  std_logic;
@@ -373,6 +387,16 @@ begin
       wb_rty_o   => slave_o.rty,
       wb_stall_o => slave_o.stall,
 
+      aux_adr_o   => aux_master_o.adr,
+      aux_dat_o   => aux_master_o.dat,
+      aux_sel_o   => aux_master_o.sel,
+      aux_cyc_o   => aux_master_o.cyc,
+      aux_stb_o   => aux_master_o.stb,
+      aux_we_o    => aux_master_o.we,
+      aux_stall_i => aux_master_i.stall,
+      aux_ack_i   => aux_master_i.ack,
+      aux_dat_i   => aux_master_i.dat,
+
       ext_snk_adr_i   => wrf_snk_i.adr,
       ext_snk_dat_i   => wrf_snk_i.dat,
       ext_snk_sel_i   => wrf_snk_i.sel,
@@ -400,7 +424,7 @@ begin
       txtsu_stb_o          => timestamps_o.stb,
       txtsu_ack_i          => timestamps_ack_i,
 
-      tm_link_up_o => tm_link_up_o,
+      tm_link_up_o         => tm_link_up_o,
       tm_dac_value_o       => tm_dac_value_o,
       tm_dac_wr_o          => tm_dac_wr_o,
       tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,

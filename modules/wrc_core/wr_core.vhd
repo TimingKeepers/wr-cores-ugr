@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-05-02
+-- Last update: 2012-06-15
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -43,6 +43,8 @@
 --      +0x400: Syscon
 --      +0x500: UART
 --      +0x600: OneWire
+--      +0x700: Auxillary space (Etherbone config, etc)
+
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -170,6 +172,19 @@ entity wr_core is
     wb_stall_o : out std_logic;
 
     -----------------------------------------
+    -- Auxillary WB master
+    -----------------------------------------
+    aux_adr_o   : out  std_logic_vector(c_wishbone_address_width-1 downto 0);
+    aux_dat_o   : out  std_logic_vector(c_wishbone_data_width-1 downto 0);
+    aux_dat_i   : in std_logic_vector(c_wishbone_data_width-1 downto 0);
+    aux_sel_o   : out  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
+    aux_we_o    : out  std_logic;                                              
+    aux_cyc_o   : out  std_logic;                                             
+    aux_stb_o   : out  std_logic;
+    aux_ack_i   : in std_logic := '1';
+    aux_stall_i : in std_logic := '0';
+    
+    -----------------------------------------
     -- External Fabric I/F
     -----------------------------------------
     ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
@@ -288,20 +303,23 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --WB Secondary Crossbar
   -----------------------------------------------------------------------------
-  constant c_secbar_layout : t_sdb_record_array(6 downto 0) :=
+  constant c_secbar_layout : t_sdb_record_array(7 downto 0) :=
     (0 => f_sdb_embed_device(c_xwr_mini_nic_sdb,   x"00000000"),
      1 => f_sdb_embed_device(c_xwr_endpoint_sdb,   x"00000100"),
      2 => f_sdb_embed_device(c_xwr_softpll_ng_sdb, x"00000200"),
      3 => f_sdb_embed_device(c_xwr_pps_gen_sdb,    x"00000300"),
      4 => f_sdb_embed_device(c_wrc_periph0_sdb,    x"00000400"),  -- Syscon
      5 => f_sdb_embed_device(c_wrc_periph1_sdb,    x"00000500"),  -- UART
-     6 => f_sdb_embed_device(c_wrc_periph2_sdb,    x"00000600")); -- 1-Wire
+     6 => f_sdb_embed_device(c_wrc_periph2_sdb,    x"00000600"),  -- 1-Wire
+     7 => f_sdb_embed_device(c_wrc_periph2_sdb,    x"00000700")  -- aux WB bus
+     );
+
   constant c_secbar_sdb_address : t_wishbone_address := x"00000800";
   constant c_secbar_bridge_sdb : t_sdb_bridge := 
      f_xwb_bridge_layout_sdb(true, c_secbar_layout, c_secbar_sdb_address);
 
-  signal secbar_master_i : t_wishbone_master_in_array(6 downto 0);
-  signal secbar_master_o : t_wishbone_master_out_array(6 downto 0);
+  signal secbar_master_i : t_wishbone_master_in_array(7 downto 0);
+  signal secbar_master_o : t_wishbone_master_out_array(7 downto 0);
 
   -----------------------------------------------------------------------------
   --WB intercon
@@ -805,7 +823,7 @@ begin
   WB_SECONDARY_CON : xwb_sdb_crossbar
     generic map(
       g_num_masters => 1,
-      g_num_slaves  => 7,
+      g_num_slaves  => 8,
       g_registered  => true,
       g_wraparound  => true,
       g_layout      => c_secbar_layout,
@@ -837,6 +855,20 @@ begin
   periph_slave_i(0)  <= secbar_master_o(4);
   periph_slave_i(1)  <= secbar_master_o(5);
   periph_slave_i(2)  <= secbar_master_o(6);
+
+
+  aux_adr_o <= secbar_master_o(7).adr;
+  aux_dat_o <= secbar_master_o(7).dat;
+  aux_sel_o <= secbar_master_o(7).sel;
+  aux_cyc_o <= secbar_master_o(7).cyc;
+  aux_stb_o <= secbar_master_o(7).stb;
+  aux_we_o <= secbar_master_o(7).we;
+
+  secbar_master_i(7).dat <= aux_dat_i;
+  secbar_master_i(7).ack <= aux_ack_i;
+  secbar_master_i(7).stall <= aux_stall_i;
+  secbar_master_i(7).err <= '0';
+  secbar_master_i(7).rty <= '0';
 
   -----------------------------------------------------------------------------
   -- WBP MUX
