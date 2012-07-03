@@ -7,6 +7,7 @@ use work.gn4124_core_pkg.all;
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
+use work.wr_xilinx_pkg.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
