@@ -375,6 +375,9 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       slave_i : in  t_wishbone_slave_in;
       slave_o : out t_wishbone_slave_out;
 
+      aux_master_o : out  t_wishbone_master_out;
+      aux_master_i : in t_wishbone_master_in := cc_dummy_master_in;
+
       wrf_src_o : out t_wrf_source_out;
       wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
       wrf_snk_o : out t_wrf_sink_out;
