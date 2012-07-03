@@ -610,6 +610,119 @@ set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRAT
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to DDR3_DQS
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to DDR3_DQSn
 set_instance_assignment -name OUTPUT_TERMINATION "SERIES 50 OHM WITHOUT CALIBRATION" -to DDR3_DM
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_DQ
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_DQ
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.7047 -to DDR3_DQ[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4371 -to DDR3_DQ[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6417 -to DDR3_DQ[2]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6496 -to DDR3_DQ[3]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4921 -to DDR3_DQ[4]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6457 -to DDR3_DQ[5]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.5984 -to DDR3_DQ[6]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.5984 -to DDR3_DQ[7]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6024 -to DDR3_DQ[8]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6063 -to DDR3_DQ[9]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6103 -to DDR3_DQ[10]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6378 -to DDR3_DQ[11]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6181 -to DDR3_DQ[12]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6772 -to DDR3_DQ[13]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6496 -to DDR3_DQ[14]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.7008 -to DDR3_DQ[15]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQ
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQ
+set_instance_assignment -name BOARD_MODEL_FAR_DIFFERENTIAL_R 100 -to DDR3_CLK
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R OPEN -to DDR3_CLK
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_CLK
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.2677 -to DDR3_CLK
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_CLK
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_CLK
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_ADDR
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_ADDR
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3307 -to DDR3_ADDR[12]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3032 -to DDR3_ADDR[11]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4134 -to DDR3_ADDR[10]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4213 -to DDR3_ADDR[9]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3662 -to DDR3_ADDR[8]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4134 -to DDR3_ADDR[7]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4685 -to DDR3_ADDR[6]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4685 -to DDR3_ADDR[5]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.2559 -to DDR3_ADDR[4]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3858 -to DDR3_ADDR[3]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3504 -to DDR3_ADDR[2]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3307 -to DDR3_ADDR[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3583 -to DDR3_ADDR[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ADDR
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ADDR
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_BA
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_BA
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_BA
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_BA
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.0945 -to DDR3_BA[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.1417 -to DDR3_BA[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.9213 -to DDR3_BA[2]
+set_instance_assignment -name BOARD_MODEL_FAR_DIFFERENTIAL_R OPEN -to DDR3_DQS
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_DQS
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_DQS
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.315 -to DDR3_DQS[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQS[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQS[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQS[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQS[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.7638 -to DDR3_DQS[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_WE_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_WE_n
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_WE_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.4606 -to DDR3_WE_n
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_ODT[0]
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_ODT[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ODT[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.8307 -to DDR3_ODT[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_RAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_RAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_RAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.0354 -to DDR3_RAS_n
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_RAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_CAS_n
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_CAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_CAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_CAS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.9213 -to DDR3_CAS_n
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_CS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_CS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_CS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_CS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.9449 -to DDR3_CS_n
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DM
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DM
+set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_DM
+set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_DM
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.0433 -to DDR3_DM[0]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.8031 -to DDR3_DM[1]
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQS
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQS
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ODT
+set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to DDR3_WE_n
+set_global_assignment -name VHDL_FILE ../../../modules/wr_dacs/spec_serial_dac.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_dacs/spec_serial_dac_arb.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_receiver.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_interrupt.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_baudgen.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_16750.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_mv_filter.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_input_sync.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_input_filter.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_edge_detect.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_counter.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/slib_clock_div.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_transmitter.vhd
+set_global_assignment -name VERILOG_FILE ../../../modules/lpc_uart/serirq_defines.v
+set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/postcode.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_uart.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_peripheral.vhd
+set_global_assignment -name VERILOG_FILE ../../../modules/lpc_uart/serirq_slave.v
 set_global_assignment -name VERILOG_FILE ../../../platform/altera/ddr3/alt_jtagavalon.v
 set_global_assignment -name TCL_SCRIPT_FILE ../../../platform/altera/ddr3/ddr3_mem_pin_assignments.tcl
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_pcie/altera_reconfig.vhd"
@@ -629,18 +742,6 @@ set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/w
 set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/flash_loader.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_timestamp_latch.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_cores_pkg_gsi.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/postcode.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_transmitter.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_receiver.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_interrupt.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_baudgen.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/uart_16750.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_mv_filter.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_input_sync.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_fifo.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_edge_detect.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_counter.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_clock_div.vhd
 set_global_assignment -name SDC_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.sdc
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/pow_reset.vhd
@@ -801,18 +902,9 @@ set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_S
 set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/EB_CORE.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/eb_config_new.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/xetherbone_core.vhd"
-set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/sys_pll/sys_pll.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/dmtd_clk_pll/dmtd_clk_pll.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/spec_serial_dac_arb.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/spec_serial_dac.vhd
-set_global_assignment -name SIGNALTAP_FILE lpc.stp
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_peripheral.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/lpc_uart.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/uart/slib_input_filter.vhd
-set_global_assignment -name VERILOG_FILE ../../../top/gsi_scu/wr_core_demo/serirq_slave.v
-set_global_assignment -name VERILOG_FILE ../../../top/gsi_scu/wr_core_demo/serirq_defines.v
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_pcie/pcie_altera.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_pcie/pcie_tlp.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_pcie/pcie_wb.vhd"
@@ -822,99 +914,5 @@ set_global_assignment -name QIP_FILE ../../../platform/altera/sys_pll/sys_pll.qi
 set_global_assignment -name QIP_FILE ddr3.qip
 set_global_assignment -name QIP_FILE ../../../platform/altera/ddr3/ddr3_mem.qip
 set_global_assignment -name VHDL_FILE ../../../platform/altera/ddr3/ddr3_mem_pkg.vhd
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_DQ
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_DQ
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.7047 -to DDR3_DQ[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4371 -to DDR3_DQ[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6417 -to DDR3_DQ[2]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6496 -to DDR3_DQ[3]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4921 -to DDR3_DQ[4]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6457 -to DDR3_DQ[5]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.5984 -to DDR3_DQ[6]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.5984 -to DDR3_DQ[7]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6024 -to DDR3_DQ[8]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6063 -to DDR3_DQ[9]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6103 -to DDR3_DQ[10]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6378 -to DDR3_DQ[11]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6181 -to DDR3_DQ[12]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6772 -to DDR3_DQ[13]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.6496 -to DDR3_DQ[14]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.7008 -to DDR3_DQ[15]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQ
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQ
-set_instance_assignment -name BOARD_MODEL_FAR_DIFFERENTIAL_R 100 -to DDR3_CLK
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R OPEN -to DDR3_CLK
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_CLK
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.2677 -to DDR3_CLK
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_CLK
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_CLK
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_ADDR
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_ADDR
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3307 -to DDR3_ADDR[12]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3032 -to DDR3_ADDR[11]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4134 -to DDR3_ADDR[10]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4213 -to DDR3_ADDR[9]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3662 -to DDR3_ADDR[8]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4134 -to DDR3_ADDR[7]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4685 -to DDR3_ADDR[6]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.4685 -to DDR3_ADDR[5]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.2559 -to DDR3_ADDR[4]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3858 -to DDR3_ADDR[3]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3504 -to DDR3_ADDR[2]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3307 -to DDR3_ADDR[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.3583 -to DDR3_ADDR[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ADDR
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ADDR
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_BA
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_BA
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_BA
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_BA
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.0945 -to DDR3_BA[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.1417 -to DDR3_BA[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.9213 -to DDR3_BA[2]
-set_instance_assignment -name BOARD_MODEL_FAR_DIFFERENTIAL_R OPEN -to DDR3_DQS
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_DQS
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_DQS
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.315 -to DDR3_DQS[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQS[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQS[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQS[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQS[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.7638 -to DDR3_DQS[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_WE_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_WE_n
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_WE_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.4606 -to DDR3_WE_n
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_ODT[0]
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_ODT[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ODT[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.8307 -to DDR3_ODT[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_RAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_RAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_RAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.0354 -to DDR3_RAS_n
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_RAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_CAS_n
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_CAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_CAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_CAS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.9213 -to DDR3_CAS_n
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_CS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_CS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_CS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_CS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.9449 -to DDR3_CS_n
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DM
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DM
-set_instance_assignment -name BOARD_MODEL_FAR_PULLUP_R 51 -to DDR3_DM
-set_instance_assignment -name BOARD_MODEL_NEAR_SERIES_R SHORT -to DDR3_DM
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 2.0433 -to DDR3_DM[0]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_LENGTH 1.8031 -to DDR3_DM[1]
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_DQS
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_DQS
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ODT
-set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT
 set_global_assignment -name VHDL_FILE ../../../platform/altera/ddr3/ddr3_mem_example_top_save.vhd
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to DDR3_WE_n
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
