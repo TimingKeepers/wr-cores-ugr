@@ -704,6 +704,9 @@ set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3
 set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ODT
 set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to DDR3_WE_n
+set_global_assignment -name VHDL_FILE ../../../platform/altera/pow_reset.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/flash_loader.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/altera_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_dacs/spec_serial_dac.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_dacs/spec_serial_dac_arb.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_receiver.vhd
@@ -721,6 +724,7 @@ set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_transmitter.vhd
 set_global_assignment -name VERILOG_FILE ../../../modules/lpc_uart/serirq_defines.v
 set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/postcode.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_uart.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_uart_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_peripheral.vhd
 set_global_assignment -name VERILOG_FILE ../../../modules/lpc_uart/serirq_slave.v
 set_global_assignment -name VERILOG_FILE ../../../platform/altera/ddr3/alt_jtagavalon.v
@@ -739,12 +743,10 @@ set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/xwr_eca.vhd
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_dual_clock_ram.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_wfifo.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wb_clock_crossing/xwb_clock_crossing.vhd"
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/flash_loader.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_timestamp_latch.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_cores_pkg_gsi.vhd
 set_global_assignment -name SDC_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.sdc
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/pow_reset.vhd
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/genrams/genram_pkg.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/wishbone/wishbone_pkg.vhd"
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_source.vhd

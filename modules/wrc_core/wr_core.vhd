@@ -153,9 +153,9 @@ entity wr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_pwren_o: out std_logic_vector(1 downto 0);
-    owr_en_o : out std_logic_vector(1 downto 0);
-    owr_i    : in  std_logic_vector(1 downto 0);
+    owr_pwren_o : out std_logic_vector(1 downto 0);
+    owr_en_o    : out std_logic_vector(1 downto 0);
+    owr_i       : in  std_logic_vector(1 downto 0);
 
     -----------------------------------------
     --External WB interface
@@ -410,7 +410,9 @@ architecture struct of wr_core is
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
   signal dac_dpll_sel     : std_logic_vector(3 downto 0);
   signal dac_dpll_load_p1 : std_logic;
-
+  
+  signal clk_fb : std_logic_vector(g_aux_clks downto 0);
+  signal out_enable : std_logic_vector(g_aux_clks downto 0);
 
   --component chipscope_ila
   --  port (
@@ -497,8 +499,7 @@ begin
       -- Reference inputs (i.e. the RX clocks recovered by the PHYs)
       clk_ref_i(0) => phy_rx_rbclk_i,
       -- Feedback clocks (i.e. the outputs of the main or aux oscillator)
-      clk_fb_i(0)  => clk_ref_i,
-      clk_fb_i(1)  => clk_aux_i(0),
+      clk_fb_i     => clk_fb,
       -- DMTD Offset clock
       clk_dmtd_i   => clk_dmtd_i,
 
@@ -515,8 +516,7 @@ begin
       dac_out_sel_o  => dac_dpll_sel,   --for now use only one output
       dac_out_load_o => dac_dpll_load_p1,
 
-      out_enable_i(0) => '1',
-      out_enable_i(1) => tm_clk_aux_lock_en_i,
+      out_enable_i   => out_enable,
 
       out_locked_o => spll_out_locked,
 
@@ -526,13 +526,20 @@ begin
       debug_o => dio_o
       );
 
+  clk_fb(0) <= clk_ref_i;
+  clk_fb(g_aux_clks downto 1) <= clk_aux_i;
+  out_enable(0) <= '1';
+  out_enable(g_aux_clks downto 1) <= (others => tm_clk_aux_lock_en_i);
+		
   dac_dpll_data_o    <= dac_dpll_data;
   dac_dpll_load_p1_o <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel= x"0") else '0';
 
   tm_dac_value_o <= x"00" & dac_dpll_data;
   tm_dac_wr_o    <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel = x"1") else '0';
 
-  tm_clk_aux_locked_o <= spll_out_locked(1);
+  locked_spll : if g_aux_clks > 0 generate
+    tm_clk_aux_locked_o <= spll_out_locked(1); -- !!! what if more than one clock?! FIXME
+  end generate;
 
   softpll_irq <= spll_wb_out.int;
 

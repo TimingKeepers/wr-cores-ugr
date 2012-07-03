@@ -307,4 +307,114 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       );
   end component;
 
+  -----------------------------------------------------------------------------
+  -- Public WR component definitions
+  -----------------------------------------------------------------------------
+  component xwr_core is
+    generic(
+      g_simulation                : integer                        := 0;
+      g_phys_uart                 : boolean                        := true;
+      g_virtual_uart              : boolean                        := false;
+      g_with_external_clock_input : boolean                        := false;
+      g_aux_clks                  : integer                        := 1;
+      g_ep_rxbuf_size             : integer                        := 1024;
+      g_dpram_initf               : string                         := "";
+      g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
+      g_dpram_size                : integer                        := 20480;  --in 32-bit words
+      g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
+      g_address_granularity       : t_wishbone_address_granularity := WORD
+      );
+    port(
+      clk_sys_i  : in std_logic;
+      clk_dmtd_i : in std_logic;
+      clk_ref_i  : in std_logic;
+      clk_aux_i  : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
+      clk_ext_i  : in std_logic                               := '0';
+      pps_ext_i  : in std_logic                               := '0';
+      rst_n_i    : in std_logic;
+
+      dac_hpll_load_p1_o : out std_logic;
+      dac_hpll_data_o    : out std_logic_vector(15 downto 0);
+      dac_dpll_load_p1_o : out std_logic;
+      dac_dpll_data_o    : out std_logic_vector(15 downto 0);
+
+      phy_ref_clk_i      : in  std_logic;
+      phy_tx_data_o      : out std_logic_vector(7 downto 0);
+      phy_tx_k_o         : out std_logic;
+      phy_tx_disparity_i : in  std_logic;
+      phy_tx_enc_err_i   : in  std_logic;
+      phy_rx_data_i      : in  std_logic_vector(7 downto 0);
+      phy_rx_rbclk_i     : in  std_logic;
+      phy_rx_k_i         : in  std_logic;
+      phy_rx_enc_err_i   : in  std_logic;
+      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
+      phy_rst_o          : out std_logic;
+      phy_loopen_o       : out std_logic;
+
+      led_red_o   : out std_logic;
+      led_green_o : out std_logic;
+      scl_o       : out std_logic;
+      scl_i       : in  std_logic;
+      sda_o       : out std_logic;
+      sda_i       : in  std_logic;
+      sfp_scl_o   : out std_logic;
+      sfp_scl_i   : in  std_logic;
+      sfp_sda_o   : out std_logic;
+      sfp_sda_i   : in  std_logic;
+      sfp_det_i   : in  std_logic;
+      btn1_i      : in  std_logic;
+      btn2_i      : in  std_logic;
+
+      uart_rxd_i : in  std_logic;
+      uart_txd_o : out std_logic;
+
+      owr_pwren_o : out std_logic_vector(1 downto 0);
+      owr_en_o    : out std_logic_vector(1 downto 0);
+      owr_i       : in  std_logic_vector(1 downto 0);
+
+      slave_i : in  t_wishbone_slave_in;
+      slave_o : out t_wishbone_slave_out;
+
+      wrf_src_o : out t_wrf_source_out;
+      wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
+      wrf_snk_o : out t_wrf_sink_out;
+      wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
+
+      timestamps_o     : out t_txtsu_timestamp;
+      timestamps_ack_i : in  std_logic := '1';
+
+      tm_link_up_o         : out std_logic;
+      tm_dac_value_o       : out std_logic_vector(23 downto 0);
+      tm_dac_wr_o          : out std_logic;
+      tm_clk_aux_lock_en_i : in  std_logic;
+      tm_clk_aux_locked_o  : out std_logic;
+      tm_time_valid_o      : out std_logic;
+      tm_utc_o             : out std_logic_vector(39 downto 0);
+      tm_cycles_o          : out std_logic_vector(27 downto 0);
+      pps_p_o              : out std_logic;
+
+      dio_o       : out std_logic_vector(3 downto 0);
+      rst_aux_n_o : out std_logic;
+      
+      link_ok_o : out std_logic
+      );
+  end component;
+
+  component spec_serial_dac_arb
+    generic(
+      g_invert_sclk    : boolean;
+      g_num_extra_bits : integer);        
+    port (
+      clk_i       : in  std_logic;
+      rst_n_i     : in  std_logic;
+      val1_i      : in  std_logic_vector(15 downto 0);
+      load1_i     : in  std_logic;
+      val2_i      : in  std_logic_vector(15 downto 0);
+      load2_i     : in  std_logic;
+      dac_cs_n_o  : out std_logic_vector(1 downto 0);
+      dac_clr_n_o : out std_logic;
+      dac_sclk_o  : out std_logic;
+      dac_din_o   : out std_logic);
+  end component;
+
 end wrcore_pkg;

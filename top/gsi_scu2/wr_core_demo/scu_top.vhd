@@ -13,6 +13,8 @@ use work.wb_cores_pkg_gsi.all;
 use work.xwr_eca_pkg.all;
 use work.pcie_wb_pkg.all;
 use work.ddr3_mem_pkg.all;
+use work.wr_altera_pkg.all;
+use work.lpc_uart_pkg.all;
 
 entity scu_top is
   port
@@ -191,138 +193,6 @@ end scu_top;
 
 architecture rtl of scu_top is
 
-  component pow_reset is
-    port (
-      clk    : in     std_logic;        -- 125Mhz
-      nreset : buffer std_logic
-      );
-  end component;
-
-  component dmtd_clk_pll
-    port
-      (
-        inclk0 : in  std_logic := '0';
-        c0     : out std_logic
-        );
-  end component;
-
-  component sys_pll
-    port
-      (
-        inclk0 : in  std_logic := '0';
-        c0     : out std_logic;
-        c1     : out std_logic;
-        locked : out std_logic
-        );
-  end component;
-
-  component wr_gxb_phy_arriaii
-    generic (
-      g_simulation      : integer;
-      g_force_disparity : integer);
-    port (
-      clk_reconf_i   : in  std_logic;
-      clk_ref_i      : in  std_logic;
-      tx_clk_o       : out std_logic;
-      tx_data_i      : in  std_logic_vector(7 downto 0);
-      tx_k_i         : in  std_logic;
-      tx_disparity_o : out std_logic;
-      tx_enc_err_o   : out std_logic;
-      rx_rbclk_o     : out std_logic;
-      rx_data_o      : out std_logic_vector(7 downto 0);
-      rx_k_o         : out std_logic;
-      rx_enc_err_o   : out std_logic;
-      rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      rst_i          : in  std_logic;
-      loopen_i       : in  std_logic;
-      pad_txp_o      : out std_logic;
-      pad_rxp_i      : in  std_logic := '0');
-  end component;
-
-  component xwr_core is
-    generic(
-      g_simulation          : integer                        := 0;
-      g_phys_uart           : boolean                        := true;
-      g_virtual_uart        : boolean                        := false;
-      g_ep_rxbuf_size       : integer                        := 12;
-      g_dpram_initf         : string                         := "";
-      g_dpram_size          : integer                        := 16384;  --in 32-bit words
-      g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
-      g_address_granularity : t_wishbone_address_granularity := WORD
-      );
-    port(
-      clk_sys_i  : in std_logic;
-      clk_dmtd_i : in std_logic;
-      clk_ref_i  : in std_logic;
-      clk_aux_i  : in std_logic;
-      rst_n_i    : in std_logic;
-
-      dac_hpll_load_p1_o : out std_logic;
-      dac_hpll_data_o    : out std_logic_vector(15 downto 0);
-      dac_dpll_load_p1_o : out std_logic;
-      dac_dpll_data_o    : out std_logic_vector(15 downto 0);
-
-      phy_ref_clk_i      : in  std_logic;
-      phy_tx_data_o      : out std_logic_vector(7 downto 0);
-      phy_tx_k_o         : out std_logic;
-      phy_tx_disparity_i : in  std_logic;
-      phy_tx_enc_err_i   : in  std_logic;
-      phy_rx_data_i      : in  std_logic_vector(7 downto 0);
-      phy_rx_rbclk_i     : in  std_logic;
-      phy_rx_k_i         : in  std_logic;
-      phy_rx_enc_err_i   : in  std_logic;
-      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
-      phy_rst_o          : out std_logic;
-      phy_loopen_o       : out std_logic;
-
-      -----------------------------------------
-      --GPIO
-      -----------------------------------------
-      led_red_o   : out std_logic;
-      led_green_o : out std_logic;
-      scl_o       : out std_logic;
-      scl_i       : in  std_logic;
-      sda_o       : out std_logic;
-      sda_i       : in  std_logic;
-      sfp_scl_o   : out std_logic;
-      sfp_scl_i   : in  std_logic;
-      sfp_sda_o   : out std_logic;
-      sfp_sda_i   : in  std_logic;
-      sfp_det_i   : in  std_logic;
-      btn1_i      : in  std_logic;
-      btn2_i      : in  std_logic;
-      uart_rxd_i : in  std_logic;
-      uart_txd_o : out std_logic;
-
-		owr_pwren_o : out std_logic_vector(1 downto 0);
-      owr_en_o : out std_logic_vector(1 downto 0);
-      owr_i    : in  std_logic_vector(1 downto 0);
-
-      slave_i : in  t_wishbone_slave_in;
-      slave_o : out t_wishbone_slave_out;
-
-      wrf_src_o : out t_wrf_source_out;
-      wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
-      wrf_snk_o : out t_wrf_sink_out;
-      wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
-
-      timestamps_o     : out t_txtsu_timestamp;
-      timestamps_ack_i : in  std_logic := '1';
-
-      tm_dac_value_o       : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o          : out std_logic;
-      tm_clk_aux_lock_en_i : in  std_logic := '0';
-      tm_clk_aux_locked_o  : out std_logic;
-      tm_time_valid_o      : out std_logic;
-      tm_utc_o             : out std_logic_vector(39 downto 0);
-      tm_cycles_o          : out std_logic_vector(27 downto 0);
-      pps_p_o              : out std_logic;
-
-      dio_o       : out std_logic_vector(3 downto 0);
-      rst_aux_n_o : out std_logic
-      );
-  end component;
-  
   component xetherbone_core
    
     port (
@@ -351,54 +221,6 @@ architecture rtl of scu_top is
     version       => x"00000001",
     date          => x"20120305",
     name          => "GSI_GPIO_32        ")));
-    
-  component flash_loader
-     port (
-        noe_in      : in std_logic
-     );
-  end component;
-
-  component spec_serial_dac_arb
-    generic(
-      g_invert_sclk    : boolean;
-      g_num_extra_bits : integer);        
-    port (
-      clk_i       : in  std_logic;
-      rst_n_i     : in  std_logic;
-      val1_i      : in  std_logic_vector(15 downto 0);
-      load1_i     : in  std_logic;
-      val2_i      : in  std_logic_vector(15 downto 0);
-      load2_i     : in  std_logic;
-      dac_cs_n_o  : out std_logic_vector(1 downto 0);
-      dac_clr_n_o : out std_logic;
-      dac_sclk_o  : out std_logic;
-      dac_din_o   : out std_logic);
-  end component;
-  
-	component lpc_uart is
-	port (
-
-		lpc_clk:			in std_logic;
-		lpc_serirq:		inout std_logic;
-		lpc_ad:			inout std_logic_vector(3 downto 0);
-		lpc_frame_n:	in std_logic;
-		lpc_reset_n:	in std_logic;
-		
-		serial_rxd:		in std_logic;
-		serial_txd:		out std_logic;
-		serial_dtr:		out std_logic;
-		serial_dcd:		in std_logic;
-		serial_dsr:		in std_logic;
-		serial_ri:		in std_logic;
-		serial_cts:		in std_logic;
-		serial_rts:		out std_logic;
-		
-		      
-		seven_seg_L:	out std_logic_vector(7 downto 0);    -- SSeg Data output
-		seven_seg_H:	out std_logic_vector(7 downto 0)    -- SSeg Data output  
-	
-	);
-	end component lpc_uart;
 	
   -- WR core layout
   constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
@@ -461,12 +283,6 @@ architecture rtl of scu_top is
   signal dac_rst_n        : std_logic;
   signal led_divider      : unsigned(23 downto 0);
 
-  signal wrc_scl_o : std_logic;
-  signal wrc_scl_i : std_logic;
-  signal wrc_sda_o : std_logic;
-  signal wrc_sda_i : std_logic;
-  signal dio       : std_logic_vector(3 downto 0);
-
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
@@ -486,10 +302,6 @@ architecture rtl of scu_top is
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
   signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
-
-  signal dio_in  : std_logic_vector(4 downto 0);
-  signal dio_out : std_logic_vector(4 downto 0);
-  signal dio_clk : std_logic;
 
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
@@ -524,7 +336,7 @@ architecture rtl of scu_top is
   
   signal eca_toggle: std_logic_vector(31 downto 0);
   
-  signal owr_pwren_o: std_logic_vector(1 downto 0);
+  signal owr_pwren_o : std_logic_vector(1 downto 0);
   signal owr_en_o: std_logic_vector(1 downto 0);
   signal owr_i:	std_logic_vector(1 downto 0);
   
@@ -533,11 +345,10 @@ architecture rtl of scu_top is
   signal scl_i:	std_logic;
   signal scl_o:	std_logic;
   
-  signal sfp2_sda_i:	std_logic;
-  signal sfp2_sda_o:	std_logic;
-  signal sfp2_scl_i:	std_logic;
   signal sfp2_scl_o:	std_logic;
-  
+  signal sfp2_scl_i:	std_logic;
+  signal sfp2_sda_o:	std_logic;
+  signal sfp2_sda_i:	std_logic;
   signal sfp2_det_i: std_logic;
   
   signal s_hpla_ch: unsigned(15 downto 0);
@@ -546,21 +357,20 @@ architecture rtl of scu_top is
   
 begin
 
-	 -- open drain buffer for one wire
+	-- open drain buffer for one wire
 	owr_i(0) <= OneWire_CB;
 	
-	-- without power enable
-	--OneWire_CB <= '0' when owr_en_o(0) = '1' else 'Z';
 	OneWire_CB <= owr_pwren_o(0) when (owr_pwren_o(0) = '1' or owr_en_o(0) = '1') else 'Z';
 	
 	-- open drain buffer for SFP i2c
 	sfp2_scl_i <= sfp2_mod1;
 	sfp2_sda_i <= sfp2_mod2;
 	
+	sfp2_det_i <= sfp2_mod0;
 	sfp2_mod1 <= '0' when sfp2_scl_o = '0' else 'Z';
 	sfp2_mod2 <= '0' when sfp2_sda_o = '0' else 'Z';
-
-	  Inst_flash_loader_v01 : flash_loader
+	
+	Inst_flash_loader_v01 : flash_loader
     port map (
       noe_in   => '0'
     );
@@ -586,21 +396,30 @@ begin
 
   U_WR_CORE : xwr_core
     generic map (
-      g_simulation          => 0,
-      g_phys_uart           => true,
-      g_virtual_uart        => false,
-      g_ep_rxbuf_size       => 4096,
-      g_dpram_initf         => "",
-      g_dpram_size          => 24576,
-      g_interface_mode      => PIPELINED,
-      g_address_granularity => BYTE)
+      g_simulation                => 0,
+      g_phys_uart                 => true,
+      g_virtual_uart              => false,
+		g_with_external_clock_input => false,
+		g_aux_clks                  => 0,
+      g_ep_rxbuf_size             => 1024,
+		g_dpram_initf               => "",
+      g_dpram_size                => 20480,
+      g_interface_mode            => PIPELINED,
+      g_address_granularity       => BYTE)
     port map (
-      clk_sys_i  =>  pllout_clk_sys,
+      clk_sys_i  => pllout_clk_sys,
       clk_dmtd_i => pllout_clk_dmtd,
       clk_ref_i  => clk_125m_pllref_p,
-      clk_aux_i  => '0',
+      clk_aux_i  => (others => '0'),
+		clk_ext_i  => '0', -- g_with_external_clock_input controls usage
+		pps_ext_i  => '0',
       rst_n_i    => nreset,
 
+      dac_hpll_load_p1_o => dac_hpll_load_p1,
+      dac_hpll_data_o    => dac_hpll_data,
+      dac_dpll_load_p1_o => dac_dpll_load_p1,
+      dac_dpll_data_o    => dac_dpll_data,
+		
       phy_ref_clk_i      => phy_tx_clk,
       phy_tx_data_o      => phy_tx_data,
       phy_tx_k_o         => phy_tx_k,
@@ -613,45 +432,48 @@ begin
       phy_rx_bitslide_i  => phy_rx_bitslide,
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
-
-      scl_i  => scl_i,
-      sda_i  => sda_i,
-		  sda_o  => sda_o,
-		  scl_o  => scl_o,
-		  
-		  sfp_scl_i => sfp2_scl_i,
-		  sfp_sda_i => sfp2_sda_i,
-		  sfp_det_i => sfp2_det_i,
-		  
-      btn1_i => '0',
-      btn2_i => '0',
+		
+		led_red_o   => open,
+		led_green_o => open,
+		scl_o       => scl_o,
+      scl_i       => scl_i,
+      sda_i       => sda_i,
+		sda_o       => sda_o,
+		sfp_scl_i   => sfp2_scl_i,
+		sfp_sda_i   => sfp2_sda_i,
+		sfp_det_i   => sfp2_det_i,
+      btn1_i      => '0',
+      btn2_i      => '0',
 
       uart_rxd_i => uart_rxd_i(0),
       uart_txd_o => uart_txd_o(0),
 
 		owr_pwren_o => owr_pwren_o,
-		owr_en_o => owr_en_o,
-      owr_i => owr_i,
+		owr_en_o    => owr_en_o,
+      owr_i       => owr_i,
 		
 		slave_i => cbar_master_o(2),
       slave_o => cbar_master_i(2),
 
-      wrf_src_i => mb_snk_out,
       wrf_src_o => mb_snk_in,
-
-      wrf_snk_i => mb_src_out,
+      wrf_src_i => mb_snk_out,
       wrf_snk_o => mb_src_in,
+      wrf_snk_i => mb_src_out,
 
-      pps_p_o => pps,
-
-      dac_hpll_load_p1_o => dac_hpll_load_p1,
-      dac_hpll_data_o    => dac_hpll_data,
-
-      dac_dpll_load_p1_o => dac_dpll_load_p1,
-      dac_dpll_data_o    => dac_dpll_data,
+      tm_link_up_o         => open,
+		tm_dac_value_o       => open,
+		tm_dac_wr_o          => open,
+		tm_clk_aux_lock_en_i => '0',
+		tm_clk_aux_locked_o  => open,
+		tm_time_valid_o      => open,
+		tm_utc_o             => tm_utc,
+		tm_cycles_o          => tm_cycles,
+		pps_p_o              => pps,
 		
-		tm_utc_o    => tm_utc,
-      tm_cycles_o => tm_cycles
+		dio_o                => open,
+		rst_aux_n_o          => open,
+		
+		link_ok_o            => open
       );
 
   wr_gxb_phy_arriaii_1 : wr_gxb_phy_arriaii

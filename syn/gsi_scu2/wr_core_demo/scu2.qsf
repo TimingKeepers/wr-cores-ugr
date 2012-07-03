@@ -1101,6 +1101,9 @@ set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_IN_ENABLE
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_ADVANCED_TRIGGER_ENTITY=basic,1," -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_LEVEL_PIPELINE=1" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_ENABLE_ADVANCED_TRIGGER=0" -section_id auto_signaltap_0
+set_global_assignment -name VHDL_FILE ../../../platform/altera/pow_reset.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/flash_loader.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/altera_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_dacs/spec_serial_dac.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_dacs/spec_serial_dac_arb.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/uart/uart_transmitter.vhd
@@ -1119,6 +1122,7 @@ set_global_assignment -name VERILOG_FILE ../../../modules/lpc_uart/serirq_slave.
 set_global_assignment -name VERILOG_FILE ../../../modules/lpc_uart/serirq_defines.v
 set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/postcode.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_uart.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_uart_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/lpc_uart/lpc_peripheral.vhd
 set_global_assignment -name VERILOG_FILE ../../../platform/altera/ddr3/alt_jtagavalon.v
 set_global_assignment -name TCL_SCRIPT_FILE ../../../platform/altera/ddr3/ddr3_mem_pin_assignments.tcl

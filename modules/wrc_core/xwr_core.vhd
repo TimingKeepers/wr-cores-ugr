@@ -326,6 +326,7 @@ begin
       g_virtual_uart              => g_virtual_uart,
       g_rx_buffer_size            => g_ep_rxbuf_size,
       g_with_external_clock_input => g_with_external_clock_input,
+      g_aux_clks                  => g_aux_clks,
       g_dpram_initf               => g_dpram_initf,
       g_dpram_initv               => g_dpram_initv,
       g_dpram_size                => g_dpram_size,
