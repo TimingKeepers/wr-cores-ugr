@@ -153,6 +153,7 @@ entity wr_core is
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
+    owr_pwren_o: out std_logic_vector(1 downto 0);
     owr_en_o : out std_logic_vector(1 downto 0);
     owr_i    : in  std_logic_vector(1 downto 0);
 
@@ -719,6 +720,7 @@ begin
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
 
+      owr_pwren_o => owr_pwren_o,
       owr_en_o => owr_en_o,
       owr_i    => owr_i
       );
