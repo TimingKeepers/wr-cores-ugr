@@ -433,6 +433,8 @@ begin
 		sda_o       => sda_o,
 		sfp_scl_i   => sfp2_scl_i,
 		sfp_sda_i   => sfp2_sda_i,
+		sfp_scl_o   => sfp2_scl_o,
+		sfp_sda_o   => sfp2_sda_o,
 		sfp_det_i   => sfp2_det_i,
       btn1_i      => '0',
       btn2_i      => '0',
