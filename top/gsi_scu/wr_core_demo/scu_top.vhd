@@ -375,14 +375,14 @@ begin
 
   
   dmtd_clk_pll_inst : dmtd_clk_pll port map (
-    inclk0 => clk_20m_vcxo_i,           -- 20Mhz 
-    c0     => pllout_clk_dmtd           -- 125Mhz
+    inclk0 => clk_20m_vcxo_i,           -- 20MHz 
+    c0     => pllout_clk_dmtd           -- 62.5Mhz
     );
 
   sys_pll_inst : sys_pll port map (
-    inclk0 => L_CLKp,                   -- 125Mhz 
-    c0     => pllout_clk_sys,           -- 125Mhy sys clk
-    c1     => clk_reconf,               -- 40Mhz for reconfig block
+    inclk0 => L_CLKp,                   -- 125MHz 
+    c0     => pllout_clk_sys,           -- 62.5MHz sys clk
+    c1     => clk_reconf,               -- 50MHz for reconfig block
     locked => open
     );
 
