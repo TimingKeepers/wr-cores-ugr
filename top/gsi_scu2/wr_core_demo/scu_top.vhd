@@ -178,18 +178,21 @@ end scu_top;
 
 architecture rtl of scu_top is
 
-  component xetherbone_core
-    port (
-      clk_sys_i : in  std_logic;
-      rst_n_i   : in  std_logic;
-      snk_i     : in  t_wrf_sink_in;
-      snk_o     : out t_wrf_sink_out;
-      src_i     : in  t_wrf_source_in;
-      src_o     : out t_wrf_source_out;
-      master_i  : in  t_wishbone_master_in;
-      master_o  : out t_wishbone_master_out);
+  component EB_CORE is 
+    generic(g_master_slave : STRING := "SLAVE");
+    port(  
+      clk_i       : in  std_logic;   --! clock input
+      nRst_i      : in  std_logic;
+      snk_i       : in  t_wrf_sink_in;
+      snk_o       : out t_wrf_sink_out;
+      src_o       : out t_wrf_source_out;
+      src_i       : in  t_wrf_source_in;
+      cfg_slave_o : out t_wishbone_slave_out;
+      cfg_slave_i : in  t_wishbone_slave_in;
+      master_o    : out t_wishbone_master_out;
+      master_i    : in  t_wishbone_master_in);
   end component;
-  
+
   constant c_xwr_gpio_32_sdb : t_sdb_device := (
     abi_class     => x"0000", -- undocumented device
     abi_ver_major => x"01",
@@ -290,8 +293,8 @@ architecture rtl of scu_top is
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
 
-  signal wrc_slave_in  : t_wishbone_slave_in;
-  signal wrc_slave_out : t_wishbone_slave_out;
+  signal wrc_master_i  : t_wishbone_master_in;
+  signal wrc_master_o  : t_wishbone_master_out;
   signal nreset        : std_logic := '0';
 
   signal clk_reconf : std_logic;
@@ -430,8 +433,11 @@ begin
       owr_pwren_o => owr_pwren_o,
       owr_en_o    => owr_en_o,
       owr_i       => owr_i,
+      
       slave_i => cbar_master_o(2),
       slave_o => cbar_master_i(2),
+      aux_master_o => wrc_master_o,
+      aux_master_i => wrc_master_i,
 
       wrf_src_o => mb_snk_in,
       wrf_src_i => mb_snk_out,
@@ -541,16 +547,18 @@ begin
       slave2_i => cc_dummy_slave_in,
       slave2_o => open);
     
-  U_ebone : xetherbone_core
-    port map (
-      clk_sys_i => pllout_clk_sys,
-      rst_n_i   => nreset,
-      src_o     => mb_src_out,
-      src_i     => mb_src_in,
-      snk_o     => mb_snk_out,
-      snk_i     => mb_snk_in,
-      master_o  => cbar_slave_i(0),
-      master_i  => cbar_slave_o(0));
+  U_ebone : EB_CORE
+    port map(
+      clk_i       => pllout_clk_sys,
+      nRst_i      => nreset,
+      snk_i       => mb_snk_in,
+      snk_o       => mb_snk_out,
+      src_o       => mb_src_out,
+      src_i       => mb_src_in,
+      cfg_slave_o => wrc_master_i,
+      cfg_slave_i => wrc_master_o,
+      master_o    => cbar_slave_i(0),
+      master_i    => cbar_slave_o(0));
   
   PCIe : pcie_wb
     generic map(
@@ -695,7 +703,6 @@ begin
   hpla_clk <= pllout_clk_sys;
   
   serial_to_cb_o   <= '0'; 				-- connects the serial ports to the carrier board
-  wrc_slave_in.cyc <= '0';
   
   sfp2_tx_disable_o <= '0';				-- enable SFP
   
