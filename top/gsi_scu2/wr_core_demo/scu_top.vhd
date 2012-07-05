@@ -76,8 +76,8 @@ entity scu_top is
     -- AUX SFP 
     -----------------------------------------------------------------------
     sfp1_tx_disable_o : out std_logic;
-    sfp1_txp_o        : out std_logic;
-    sfp1_rxp_i        : in  std_logic;
+    --sfp1_txp_o        : out std_logic;
+    --sfp1_rxp_i        : in  std_logic;
     
     sfp1_mod0         : in    std_logic; -- grounded by module
     sfp1_mod1         : inout std_logic; -- SCL
