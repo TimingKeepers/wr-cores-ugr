@@ -1,7 +1,6 @@
-
-library IEEE;
-use IEEE.STD_LOGIC_1164.all;
-use IEEE.NUMERIC_STD.all;
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
@@ -17,184 +16,169 @@ use work.wr_altera_pkg.all;
 use work.lpc_uart_pkg.all;
 
 entity scu_top is
-  port
-    (
-      clk_20m_vcxo_i    : in std_logic;  -- 20MHz VCXO clock
-      clk_125m_pllref_p : in std_logic;  -- 125 MHz PLL reference
+  port(
+    clk_20m_vcxo_i    : in std_logic;  -- 20MHz VCXO clock
+    clk_125m_pllref_p : in std_logic;  -- 125 MHz PLL reference
 
-      L_CLKp : in std_logic;            -- local clk from 125Mhz oszillator
-      nres   : in std_logic;            -- powerup reset
+    L_CLKp : in std_logic;            -- local clk from 125Mhz oszillator
+    nres   : in std_logic;            -- powerup reset
 
-      -----------------------------------------
-      -- UART on front panel
-      -----------------------------------------
-      uart_rxd_i : in  std_logic_vector(1 downto 0);
-      uart_txd_o : out std_logic_vector(1 downto 0);
+    -----------------------------------------
+    -- UART on front panel
+    -----------------------------------------
+    uart_rxd_i     : in  std_logic_vector(1 downto 0);
+    uart_txd_o     : out std_logic_vector(1 downto 0);
+    serial_to_cb_o : out std_logic;
+    
+    -----------------------------------------
+    -- PCI express pins
+    -----------------------------------------
+    pcie_refclk_i  : in  std_logic;
+    pcie_rx_i      : in  std_logic_vector(3 downto 0);
+    pcie_tx_o      : out std_logic_vector(3 downto 0);
+    
+    ------------------------------------------------------------------------
+    -- WR DAC signals
+    ------------------------------------------------------------------------
+    dac_sclk       : out std_logic;
+    dac_din        : out std_logic;
+    ndac_cs        : out std_logic_vector(2 downto 1);
 
-      serial_to_cb_o : out std_logic;
-      
-      -----------------------------------------
-      -- PCI express pins
-      -----------------------------------------
-      pcie_refclk_i : in  std_logic;
-      pcie_rx_i     : in  std_logic_vector(3 downto 0);
-      pcie_tx_o     : out std_logic_vector(3 downto 0);
-      
-      ------------------------------------------------------------------------
-      -- WR DAC signals
-      ------------------------------------------------------------------------
-      dac_sclk         : out std_logic;
-      dac_din          : out std_logic;
-      ndac_cs          : out std_logic_vector(2 downto 1);
+    -----------------------------------------
+    -- LEMO on front panel
+    -----------------------------------------
+    lemo_io1       : out std_logic_vector(0 downto 0);
+    lemo_io2       : in  std_logic_vector(0 downto 0);
+    lemo_en_in     : out std_logic_vector(2 downto 1);
+    lemo_led       : out std_logic_vector(2 downto 1);
+    
+    -----------------------------------------------------------------------
+    -- LPC interface from ComExpress
+    -----------------------------------------------------------------------
+    LPC_AD         : inout std_logic_vector(3 downto 0);
+    LPC_FPGA_CLK   : in std_logic;
+    LPC_SERIRQ     : inout std_logic;
+    nLPC_DRQ0      : in std_logic;
+    nLPC_FRAME     : in std_logic;
+    nPCI_RESET     : in std_logic;
 
-      -----------------------------------------
-      -- LEMO on front panel
-      -----------------------------------------
-      lemo_io1    : out std_logic_vector(0 downto 0);
-		lemo_io2		: in std_logic_vector(0 downto 0);
-      lemo_en_in : out std_logic_vector(2 downto 1);
-      lemo_led   : out std_logic_vector(2 downto 1);
-		
-		
-		-----------------------------------------------------------------------
-		-- LPC interface from ComExpress
-		-----------------------------------------------------------------------
-		LPC_AD			: inout std_logic_vector(3 downto 0);
-		LPC_FPGA_CLK	: in std_logic;
-		LPC_SERIRQ		: inout std_logic;
-		nLPC_DRQ0		: in std_logic;
-		nLPC_FRAME		: in std_logic;
-		nPCI_RESET		: in std_logic;
-		
-		-----------------------------------------------------------------------
-		-- User LEDs
-		-----------------------------------------------------------------------
-		leds_o			: out std_logic_vector(3 downto 0);
-		
-		-----------------------------------------------------------------------
-		-- OneWire
-		-----------------------------------------------------------------------
-		OneWire_CB		: inout std_logic;
-		
-		
-		-----------------------------------------------------------------------
-		-- AUX SFP 
-		-----------------------------------------------------------------------
-		sfp1_tx_disable_o : out std_logic;
-      --sfp1_txp_o        : out std_logic;
-      --sfp1_rxp_i        : in  std_logic;
-		
-		sfp1_mod0			: in std_logic;			-- grounded by module
-		sfp1_mod1			: inout std_logic;		-- SCL
-		sfp1_mod2			: inout std_logic;		-- SDA
-		
-		-----------------------------------------------------------------------
-		-- Timing SFP 
-		-----------------------------------------------------------------------
-		sfp2_tx_disable_o : out std_logic;
-      sfp2_txp_o        : out std_logic;
-      sfp2_rxp_i        : in  std_logic;
-		
-		sfp2_mod0			: in std_logic;			-- grounded by module
-		sfp2_mod1			: inout std_logic;		-- SCL
-		sfp2_mod2			: inout std_logic;		-- SDA
-		
-		-----------------------------------------------------------------------
-		-- LA port
-		-----------------------------------------------------------------------
-		
-		hpla_ch				: out std_logic_vector(15 downto 0);
-		hpla_clk				: out std_logic;
-	
-		-----------------------------------------------------------------------
-		-- EXT CONN
-		-----------------------------------------------------------------------
-		
-		IO_2_5				: out std_logic_vector(13 downto 0);
-		A_EXT_LVDS_RX		: in std_logic_vector(3 downto 0);
-		A_EXT_LVDS_TX		: out std_logic_vector(3 downto 0);
-		A_EXT_LVDS_CLKOUT	: out std_logic;
-		A_EXT_LVDS_CLKIN	: in std_logic;
-		EIO					: out std_logic_vector(16 downto 0);
-		
-		-----------------------------------------------------------------------
-		-- SCU Bus
-		-----------------------------------------------------------------------
-		
-		A_D					: inout std_logic_vector(15 downto 0);
-		A_A					: out std_logic_vector(15 downto 0);
-		A_nTiming_Cycle	: out std_logic;
-		A_nDS					: out std_logic;
-		A_nReset				: out std_logic;
-		nSel_Ext_Data_DRV : out std_logic;
-		A_RnW					: out std_logic;
-		A_Spare				: out std_logic_vector(1 downto 0);
-		A_nSEL				: out std_logic_vector(12 downto 1);
-		A_nDtack				: in std_logic;
-		A_nSRQ				: in std_logic_vector(12 downto 1);
-		A_SysClock			: out std_logic;
-		ADR_TO_SCUB			: out std_logic;
-		nADR_EN				: out std_logic;
-		A_OneWire			: inout std_logic;
-		
-		-----------------------------------------------------------------------
-		-- ComExpress signals
-		-----------------------------------------------------------------------
-		
-		nTHRMTRIP			: in std_logic;
-		nEXCD0_PERST		: in std_logic;
-		WDT					: in std_logic;
-		
-		-----------------------------------------------------------------------
-		-- Parallel Flash
-		-----------------------------------------------------------------------
-		
-		AD						: out std_logic_vector(25 downto 1);
-		DF						: inout std_logic_vector(15 downto 0);
-		ADV_FSH				: out std_logic;
-		nCE_FSH				: out std_logic;
-		CLK_FSH				: out std_logic;
-		nWE_FSH				: out std_logic;
-		nOE_FSH				: out std_logic;
-		nRST_FSH				: out std_logic;
-		WAIT_FSH				: in std_logic;
-		
-		-----------------------------------------------------------------------
-		-- DDR3
-		-----------------------------------------------------------------------
-		
-		DDR3_DQ				: inout std_logic_vector(15 downto 0);
-		DDR3_DM				: out std_logic_vector(1 downto 0);
-		DDR3_BA				: out std_logic_vector(2 downto 0);
-		DDR3_ADDR			: out std_logic_vector(12 downto 0);
-		DDR3_CS_n			: out std_logic_vector(0 downto 0);
-		DDR3_DQS				: inout std_logic_vector(1 downto 0);
-		DDR3_DQSn			: inout std_logic_vector(1 downto 0);
-		DDR3_RES_n			: out std_logic;
-		DDR3_CKE				: out std_logic_vector(0 downto 0);
-		DDR3_ODT				: out std_logic_vector(0 downto 0);
-		DDR3_CAS_n			: out std_logic;
-		DDR3_RAS_n			: out std_logic;
-		DDR3_CLK				: inout std_logic_vector(0 downto 0);
-		DDR3_CLK_n			: inout std_logic_vector(0 downto 0);
-		DDR3_WE_n			: out std_logic;
-		
-		-----------------------------------------------------------------------
-		-- Board configuration
-		-----------------------------------------------------------------------
-	
-		A_nCONFIG			: out std_logic;					-- triggers reconfig
-		nPWRBTN				: out std_logic;					-- Powerbutton for ComExpress
-		nFPGA_Res_Out		: out std_logic := '1'			-- drives sys_reset
-		
-      );
-
+    -----------------------------------------------------------------------
+    -- User LEDs
+    -----------------------------------------------------------------------
+    leds_o         : out std_logic_vector(3 downto 0);
+    
+    -----------------------------------------------------------------------
+    -- OneWire
+    -----------------------------------------------------------------------
+    OneWire_CB     : inout std_logic;
+    
+    -----------------------------------------------------------------------
+    -- AUX SFP 
+    -----------------------------------------------------------------------
+    sfp1_tx_disable_o : out std_logic;
+    sfp1_txp_o        : out std_logic;
+    sfp1_rxp_i        : in  std_logic;
+    
+    sfp1_mod0         : in    std_logic; -- grounded by module
+    sfp1_mod1         : inout std_logic; -- SCL
+    sfp1_mod2         : inout std_logic; -- SDA
+    
+    -----------------------------------------------------------------------
+    -- Timing SFP 
+    -----------------------------------------------------------------------
+    sfp2_tx_disable_o : out std_logic;
+    sfp2_txp_o        : out std_logic;
+    sfp2_rxp_i        : in  std_logic;
+    
+    sfp2_mod0         : in    std_logic; -- grounded by module
+    sfp2_mod1         : inout std_logic; -- SCL
+    sfp2_mod2         : inout std_logic; -- SDA
+    
+    -----------------------------------------------------------------------
+    -- LA port
+    -----------------------------------------------------------------------
+    hpla_ch           : out std_logic_vector(15 downto 0);
+    hpla_clk          : out std_logic;
+    
+    -----------------------------------------------------------------------
+    -- EXT CONN
+    -----------------------------------------------------------------------
+    IO_2_5            : out std_logic_vector(13 downto 0);
+    A_EXT_LVDS_RX     : in  std_logic_vector(3 downto 0);
+    A_EXT_LVDS_TX     : out std_logic_vector(3 downto 0);
+    A_EXT_LVDS_CLKOUT : out std_logic;
+    A_EXT_LVDS_CLKIN  : in std_logic;
+    EIO               : out std_logic_vector(16 downto 0);
+    
+    -----------------------------------------------------------------------
+    -- SCU Bus
+    -----------------------------------------------------------------------
+    A_D               : inout std_logic_vector(15 downto 0);
+    A_A               : out   std_logic_vector(15 downto 0);
+    A_nTiming_Cycle   : out   std_logic;
+    A_nDS             : out   std_logic;
+    A_nReset          : out   std_logic;
+    nSel_Ext_Data_DRV : out   std_logic;
+    A_RnW             : out   std_logic;
+    A_Spare           : out   std_logic_vector(1 downto 0);
+    A_nSEL            : out   std_logic_vector(12 downto 1);
+    A_nDtack          : in    std_logic;
+    A_nSRQ            : in    std_logic_vector(12 downto 1);
+    A_SysClock        : out   std_logic;
+    ADR_TO_SCUB       : out   std_logic;
+    nADR_EN           : out   std_logic;
+    A_OneWire         : inout std_logic;
+    
+    -----------------------------------------------------------------------
+    -- ComExpress signals
+    -----------------------------------------------------------------------
+    nTHRMTRIP         : in std_logic;
+    nEXCD0_PERST      : in std_logic;
+    WDT               : in std_logic;
+    
+    -----------------------------------------------------------------------
+    -- Parallel Flash
+    -----------------------------------------------------------------------
+    AD                : out   std_logic_vector(25 downto 1);
+    DF                : inout std_logic_vector(15 downto 0);
+    ADV_FSH           : out   std_logic;
+    nCE_FSH           : out   std_logic;
+    CLK_FSH           : out   std_logic;
+    nWE_FSH           : out   std_logic;
+    nOE_FSH           : out   std_logic;
+    nRST_FSH          : out   std_logic;
+    WAIT_FSH          : in    std_logic;
+    
+    -----------------------------------------------------------------------
+    -- DDR3
+    -----------------------------------------------------------------------
+    DDR3_DQ           : inout std_logic_vector(15 downto 0);
+    DDR3_DM           : out   std_logic_vector(1 downto 0);
+    DDR3_BA           : out   std_logic_vector(2 downto 0);
+    DDR3_ADDR         : out   std_logic_vector(12 downto 0);
+    DDR3_CS_n         : out   std_logic_vector(0 downto 0);
+    DDR3_DQS          : inout std_logic_vector(1 downto 0);
+    DDR3_DQSn         : inout std_logic_vector(1 downto 0);
+    DDR3_RES_n        : out   std_logic;
+    DDR3_CKE          : out   std_logic_vector(0 downto 0);
+    DDR3_ODT          : out   std_logic_vector(0 downto 0);
+    DDR3_CAS_n        : out   std_logic;
+    DDR3_RAS_n        : out   std_logic;
+    DDR3_CLK          : inout std_logic_vector(0 downto 0);
+    DDR3_CLK_n        : inout std_logic_vector(0 downto 0);
+    DDR3_WE_n         : out   std_logic;
+    
+    -----------------------------------------------------------------------
+    -- Board configuration
+    -----------------------------------------------------------------------
+    A_nCONFIG         : out   std_logic;          -- triggers reconfig
+    nPWRBTN           : out   std_logic;          -- Powerbutton for ComExpress
+    nFPGA_Res_Out     : out   std_logic := '1');  -- drives sys_reset
 end scu_top;
 
 architecture rtl of scu_top is
 
   component xetherbone_core
-   
     port (
       clk_sys_i : in  std_logic;
       rst_n_i   : in  std_logic;
@@ -353,56 +337,49 @@ architecture rtl of scu_top is
   
   signal s_hpla_ch: unsigned(15 downto 0);
   signal ddr3_test_status: std_logic_vector(7 downto 0);
-
   
 begin
 
-	-- open drain buffer for one wire
-	owr_i(0) <= OneWire_CB;
-	
-	OneWire_CB <= owr_pwren_o(0) when (owr_pwren_o(0) = '1' or owr_en_o(0) = '1') else 'Z';
-	
-	-- open drain buffer for SFP i2c
-	sfp2_scl_i <= sfp2_mod1;
-	sfp2_sda_i <= sfp2_mod2;
-	
-	sfp2_det_i <= sfp2_mod0;
-	sfp2_mod1 <= '0' when sfp2_scl_o = '0' else 'Z';
-	sfp2_mod2 <= '0' when sfp2_sda_o = '0' else 'Z';
-	
-	Inst_flash_loader_v01 : flash_loader
-    port map (
-      noe_in   => '0'
-    );
+  -- open drain buffer for one wire
+  owr_i(0) <= OneWire_CB;
+  OneWire_CB <= owr_pwren_o(0) when (owr_pwren_o(0) = '1' or owr_en_o(0) = '1') else 'Z';
+  
+  -- open drain buffer for SFP i2c
+  sfp2_scl_i <= sfp2_mod1;
+  sfp2_sda_i <= sfp2_mod2;
+  
+  sfp2_det_i <= sfp2_mod0;
+  sfp2_mod1 <= '0' when sfp2_scl_o = '0' else 'Z';
+  sfp2_mod2 <= '0' when sfp2_sda_o = '0' else 'Z';
+  
+  Inst_flash_loader_v01 : flash_loader
+    port map(
+      noe_in   => '0');
   
   reset : pow_reset
     port map (
       clk    => pllout_clk_sys,
-      nreset => nreset
-      );
-
+      nreset => nreset);
   
   dmtd_clk_pll_inst : dmtd_clk_pll port map (
     inclk0 => clk_20m_vcxo_i,           -- 20Mhz 
-    c0     => pllout_clk_dmtd           -- 62.5Mhz
-    );
+    c0     => pllout_clk_dmtd);         -- 62.5Mhz
 
   sys_pll_inst : sys_pll port map (
     inclk0 => L_CLKp,                   -- 125Mhz 
     c0     => pllout_clk_sys,           -- 62.5Mhy sys clk
     c1     => clk_reconf,               -- 50Mhz for reconfig block
-    locked => open
-    );
+    locked => open);
 
   U_WR_CORE : xwr_core
     generic map (
       g_simulation                => 0,
       g_phys_uart                 => true,
       g_virtual_uart              => false,
-		g_with_external_clock_input => false,
-		g_aux_clks                  => 0,
+      g_with_external_clock_input => false,
+      g_aux_clks                  => 0,
       g_ep_rxbuf_size             => 1024,
-		g_dpram_initf               => "",
+      g_dpram_initf               => "",
       g_dpram_size                => 20480,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE)
@@ -411,8 +388,8 @@ begin
       clk_dmtd_i => pllout_clk_dmtd,
       clk_ref_i  => clk_125m_pllref_p,
       clk_aux_i  => (others => '0'),
-		clk_ext_i  => '0', -- g_with_external_clock_input controls usage
-		pps_ext_i  => '0',
+      clk_ext_i  => '0', -- g_with_external_clock_input controls usage
+      pps_ext_i  => '0',
       rst_n_i    => nreset,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
@@ -432,29 +409,28 @@ begin
       phy_rx_bitslide_i  => phy_rx_bitslide,
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
-		
-		led_red_o   => open,
-		led_green_o => open,
-		scl_o       => scl_o,
+      
+      led_red_o   => open,
+      led_green_o => open,
+      scl_o       => scl_o,
       scl_i       => scl_i,
       sda_i       => sda_i,
-		sda_o       => sda_o,
-		sfp_scl_i   => sfp2_scl_i,
-		sfp_sda_i   => sfp2_sda_i,
-		sfp_scl_o   => sfp2_scl_o,
-		sfp_sda_o   => sfp2_sda_o,
-		sfp_det_i   => sfp2_det_i,
+      sda_o       => sda_o,
+      sfp_scl_i   => sfp2_scl_i,
+      sfp_sda_i   => sfp2_sda_i,
+      sfp_scl_o   => sfp2_scl_o,
+      sfp_sda_o   => sfp2_sda_o,
+      sfp_det_i   => sfp2_det_i,
       btn1_i      => '0',
       btn2_i      => '0',
 
       uart_rxd_i => uart_rxd_i(0),
       uart_txd_o => uart_txd_o(0),
-
-		owr_pwren_o => owr_pwren_o,
-		owr_en_o    => owr_en_o,
+      
+      owr_pwren_o => owr_pwren_o,
+      owr_en_o    => owr_en_o,
       owr_i       => owr_i,
-		
-		slave_i => cbar_master_o(2),
+      slave_i => cbar_master_o(2),
       slave_o => cbar_master_i(2),
 
       wrf_src_o => mb_snk_in,
@@ -463,20 +439,18 @@ begin
       wrf_snk_i => mb_src_out,
 
       tm_link_up_o         => open,
-		tm_dac_value_o       => open,
-		tm_dac_wr_o          => open,
-		tm_clk_aux_lock_en_i => '0',
-		tm_clk_aux_locked_o  => open,
-		tm_time_valid_o      => open,
-		tm_utc_o             => tm_utc,
-		tm_cycles_o          => tm_cycles,
-		pps_p_o              => pps,
-		
-		dio_o                => open,
-		rst_aux_n_o          => open,
-		
-		link_ok_o            => open
-      );
+      tm_dac_value_o       => open,
+      tm_dac_wr_o          => open,
+      tm_clk_aux_lock_en_i => '0',
+      tm_clk_aux_locked_o  => open,
+      tm_time_valid_o      => open,
+      tm_utc_o             => tm_utc,
+      tm_cycles_o          => tm_cycles,
+      pps_p_o              => pps,
+      
+      dio_o                => open,
+      rst_aux_n_o          => open,
+      link_ok_o            => open);
 
   wr_gxb_phy_arriaii_1 : wr_gxb_phy_arriaii
     generic map (
@@ -529,30 +503,27 @@ begin
       rst_n_i    => nreset,
       pulse_i    => pps,
       extended_o => lemo_led(1));
-		
-		
-	lpc_slave: lpc_uart
-		port map (
-						lpc_clk => LPC_FPGA_CLK,
-						lpc_serirq => LPC_SERIRQ,
-						lpc_ad => LPC_AD,
-						lpc_frame_n => nLPC_FRAME,
-						lpc_reset_n => nPCI_RESET,
-
-						serial_rxd => uart_rxd_i(1),
-						serial_txd => uart_txd_o(1),
-						serial_dtr => open,
-						serial_dcd => '0',
-						serial_dsr => '0',
-						serial_ri => '0',
-						serial_cts => '0',
-						serial_rts => open,
-
-						seven_seg_L => open,
-						seven_seg_H => open
-						);
-						
-	 test_ram : xwb_dpram
+  
+  lpc_slave: lpc_uart
+    port map(
+      lpc_clk => LPC_FPGA_CLK,
+      lpc_serirq => LPC_SERIRQ,
+      lpc_ad => LPC_AD,
+      lpc_frame_n => nLPC_FRAME,
+      lpc_reset_n => nPCI_RESET,
+      
+      serial_rxd => uart_rxd_i(1),
+      serial_txd => uart_txd_o(1),
+      serial_dtr => open,
+      serial_dcd => '0',
+      serial_dsr => '0',
+      serial_ri => '0',
+      serial_cts => '0',
+      serial_rts => open,
+      seven_seg_L => open,
+      seven_seg_H => open);
+      
+  test_ram : xwb_dpram
     generic map(
       g_size                  => c_test_dpram_size,
       g_init_file             => "",
@@ -568,8 +539,7 @@ begin
       slave1_i => cbar_master_o(0),
       slave1_o => cbar_master_i(0),
       slave2_i => cc_dummy_slave_in,
-      slave2_o => open
-    );
+      slave2_o => open);
     
   U_ebone : xetherbone_core
     port map (
@@ -596,8 +566,8 @@ begin
        wb_clk        => pllout_clk_sys,
        master_o      => cbar_slave_i(1),
        master_i      => cbar_slave_o(1));
-   
-	triggers <= '0' & lemo_io2 & pio_reg(0 downto 0) & pps;
+  
+  triggers <= '0' & lemo_io2 & pio_reg(0 downto 0) & pps;
   
   TLU : wb_timestamp_latch
     generic map (
@@ -614,7 +584,6 @@ begin
       wb_slave_i      => cbar_ref_master_o(2),
       wb_slave_o      => cbar_ref_master_i(2));
 
- 
   ECA : xwr_eca
     port map(
       clk_i      => clk_125m_pllref_p,
@@ -687,66 +656,60 @@ begin
      -- Slave connections (INTERCON is a master)
      master_i      => cbar_master_i,
      master_o      => cbar_master_o);
-
-	ddr3_stub: ddr3_mem_example_top 	
-	port map (
-		clock_source 			=> L_CLKp,
-		global_reset_n 		=> nreset,
-		
-		mem_addr					=> DDR3_ADDR,
-		mem_ba					=> DDR3_BA,
-		mem_cas_n				=> DDR3_CAS_n,
-		mem_cke					=> DDR3_CKE,
-		mem_clk					=> DDR3_CLK,
-		mem_clk_n				=> DDR3_CLK_n,
-		mem_cs_n					=> DDR3_CS_n,
-		mem_dm					=> DDR3_DM,
-		mem_dq					=> DDR3_DQ,
-		mem_dqs					=> DDR3_DQS,
-		mem_dqsn					=> DDR3_DQSn,
-		mem_odt					=> DDR3_ODT,
-		mem_ras_n				=> DDR3_RAS_n,
-		mem_reset_n				=> DDR3_RES_n,
-		mem_we_n					=> DDR3_WE_n,
-		pnf						=> open,
-		pnf_per_byte			=> open,
-		test_complete			=> lemo_led(2),
-		test_status				=> ddr3_test_status
-		);
-	  
-	 la_counter: process (pllout_clk_sys, nreset)
-	 begin
-		if nreset = '0' then
-			s_hpla_ch <= (others => '0');
-		elsif rising_edge(pllout_clk_sys) then
-			s_hpla_ch <= s_hpla_ch + 1;
-		end if;	
-	 end process;
-
   
-	hpla_ch <= std_logic_vector(s_hpla_ch);
-	hpla_clk <= pllout_clk_sys;
+  ddr3_stub: ddr3_mem_example_top 	
+    port map(
+      clock_source   => L_CLKp,
+      global_reset_n => nreset,
+      
+      mem_addr       => DDR3_ADDR,
+      mem_ba         => DDR3_BA,
+      mem_cas_n      => DDR3_CAS_n,
+      mem_cke        => DDR3_CKE,
+      mem_clk        => DDR3_CLK,
+      mem_clk_n      => DDR3_CLK_n,
+      mem_cs_n       => DDR3_CS_n,
+      mem_dm         => DDR3_DM,
+      mem_dq         => DDR3_DQ,
+      mem_dqs        => DDR3_DQS,
+      mem_dqsn       => DDR3_DQSn,
+      mem_odt        => DDR3_ODT,
+      mem_ras_n      => DDR3_RAS_n,
+      mem_reset_n    => DDR3_RES_n,
+      mem_we_n       => DDR3_WE_n,
+      pnf            => open,
+      pnf_per_byte   => open,
+      test_complete  => lemo_led(2),
+      test_status    => ddr3_test_status);
   
-	serial_to_cb_o   <= '0'; 				-- connects the serial ports to the carrier board
-	wrc_slave_in.cyc <= '0';
-
-	sfp2_tx_disable_o <= '0';				-- enable SFP
-
-	lemo_en_in <= "00";                 -- configure lemo 1 as output, lemo 2 as input
-	lemo_io1 <= eca_toggle(0 downto 0);
-	
-	--leds_o(0) <= eca_toggle(0);
-	--leds_o(1) <= pio_reg(0);
-	leds_o <= ddr3_test_status(3 downto 0);	
-	
-	A_nCONFIG <= '1';
-	nPWRBTN <= '1';
-	
-	ADR_TO_SCUB <= '1';
-	nADR_EN <= '1';
-	nSel_Ext_Data_DRV <= '1';
-	
+  la_counter: process (pllout_clk_sys, nreset)
+  begin
+    if nreset = '0' then
+      s_hpla_ch <= (others => '0');
+    elsif rising_edge(pllout_clk_sys) then
+      s_hpla_ch <= s_hpla_ch + 1;
+    end if;	
+  end process;
+  
+  hpla_ch <= std_logic_vector(s_hpla_ch);
+  hpla_clk <= pllout_clk_sys;
+  
+  serial_to_cb_o   <= '0'; 				-- connects the serial ports to the carrier board
+  wrc_slave_in.cyc <= '0';
+  
+  sfp2_tx_disable_o <= '0';				-- enable SFP
+  
+  lemo_en_in <= "00";                 -- configure lemo 1 as output, lemo 2 as input
+  lemo_io1 <= eca_toggle(0 downto 0);
+  
+  --leds_o(0) <= eca_toggle(0);
+  --leds_o(1) <= pio_reg(0);
+  leds_o <= ddr3_test_status(3 downto 0);	
+  
+  A_nCONFIG <= '1';
+  nPWRBTN <= '1';
+  ADR_TO_SCUB <= '1';
+  nADR_EN <= '1';
+  nSel_Ext_Data_DRV <= '1';
   
 end rtl;
-
-
