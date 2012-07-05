@@ -353,7 +353,7 @@ begin  -- behavioral
       full_o           => open,
       empty_o          => open,
       almostfull_o     => pcs_fifo_almostfull_o,
-      pass_threshold_i => std_logic_vector(to_unsigned(24, 6)));  -- fixme: add
+      pass_threshold_i => std_logic_vector(to_unsigned(32, 6)));  -- fixme: add
                                                                   -- register
 
   U_Insert_OOB : ep_rx_oob_insert
