@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2011-10-18
+-- Last update: 2012-07-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,12 +50,12 @@ entity ep_clock_alignment_fifo is
 
   port(
     rst_n_rd_i : in std_logic;
-    clk_wr_i : in std_logic;
-    clk_rd_i : in std_logic;
+    clk_wr_i   : in std_logic;
+    clk_rd_i   : in std_logic;
 
-    dreq_i : in std_logic;
-    fab_i : in  t_ep_internal_fabric;
-    fab_o : out t_ep_internal_fabric;
+    dreq_i : in  std_logic;
+    fab_i  : in  t_ep_internal_fabric;
+    fab_o  : out t_ep_internal_fabric;
 
     full_o       : out std_logic;
     empty_o      : out std_logic;
@@ -78,11 +78,12 @@ architecture structural of ep_clock_alignment_fifo is
 
   type t_state is (OUTSIDE_FRAME, INSIDE_FRAME);
 
-  signal state : t_stATE;
+  signal state : t_state;
 
-  signal fab_int : t_ep_internal_fabric;
-  signal fifo_we : std_logic;
-  signal s_dummy : std_logic;
+  signal fab_int      : t_ep_internal_fabric;
+  signal fifo_we      : std_logic;
+  signal s_dummy      : std_logic;
+  signal almost_empty : std_logic;
 begin
 
   f_pack_fifo_contents (fab_i, fifo_in, fifo_we, false);
@@ -90,11 +91,13 @@ begin
 -- Clock adjustment FIFO
   U_FIFO : generic_async_fifo
     generic map (
-      g_data_width            => 18,
-      g_size                  => g_size,
-      g_with_wr_almost_full   => true,
-      g_almost_full_threshold => g_almostfull_threshold,
-      g_with_rd_count         => true)
+      g_data_width             => 18,
+      g_size                   => g_size,
+      g_with_wr_almost_full    => true,
+      g_with_rd_almost_empty   => true,
+      g_almost_full_threshold  => g_almostfull_threshold,
+      g_almost_empty_threshold => 24)
+    --g_with_rd_count         => true)
 
     port map (
       rst_n_i           => rst_n_rd_i,
@@ -111,7 +114,7 @@ begin
       rd_i              => rx_rdreq,
       rd_empty_o        => empty_int,
       rd_full_o         => open,
-      rd_almost_empty_o => open,
+      rd_almost_empty_o => almost_empty,
       rd_almost_full_o  => open,
       rd_count_o        => count);
 
@@ -130,7 +133,7 @@ begin
 
         case state is
           when OUTSIDE_FRAME =>
-            if(unsigned(count) >= unsigned(pass_threshold_i)) then
+            if(almost_empty = '0') then  -- unsigned(count) >= unsigned(pass_threshold_i)) then
               dreq_mask <= '1';
             else
               dreq_mask <= '0';
