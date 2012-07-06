@@ -377,9 +377,7 @@ peripheral {
           size = 12;
           name = "Microcode Memory Data (12 LSBs)";
           prefix = "MM_DATA_LSB";
-          type = SLV;
-          access_bus = READ_WRITE;
-          access_dev = READ_ONLY;
+          type = PASS_THROUGH;
        };
     };
 
@@ -395,7 +393,8 @@ peripheral {
           size = 24;
           type = SLV;
           access_bus = READ_WRITE;
-          access_dev = READ_ONLY;
+          access_dev = READ_WRITE;
+          load = LOAD_EXT;
        };
 
     };
@@ -411,8 +410,9 @@ peripheral {
                        0: disable reception of pause frames";
 				prefix = "RXPAUSE";
 				access_bus = READ_WRITE;
-				access_dev = READ_ONLY;
+				access_dev = READ_WRITE;
 				type = BIT;
+        load = LOAD_EXT;
 		 };
 
 		 field {
@@ -421,8 +421,9 @@ peripheral {
                        0: disable transmission of pause frames";
 				prefix = "TXPAUSE";
 				access_bus = READ_WRITE;
-				access_dev = READ_ONLY;
+				access_dev = READ_WRITE;
 				type = BIT;
+        load = LOAD_EXT;
 		 };
 
 
@@ -431,10 +432,11 @@ peripheral {
 				description = "Defines the percentage of space occupied in the RX buffer which triggers the transmission of a PAUSE frame. 0 = empty buffer, 255 = full buffer";
 				prefix = "TX_THR";
 				access_bus = READ_WRITE;
-				access_dev = READ_ONLY;
+				access_dev = READ_WRITE;
 				type = SLV;
 				size = 8;
 				align = 8;
+        load = LOAD_EXT;
 		 };
 
 		 field {
@@ -442,10 +444,11 @@ peripheral {
 				description = "Defines the quanta value carried bypause frames sent by the Endpoint";
 				prefix = "TX_QUANTA";
 				access_bus = READ_WRITE;
-				access_dev = READ_ONLY;
+				access_dev = READ_WRITE;
 				type = SLV;
 				size = 16;
 				align = 16;
+        load = LOAD_EXT;
 		 };
 	};
 
@@ -594,8 +597,9 @@ peripheral {
 				 description = "1: enables DMTD phase measurement";
 				 type = BIT;
 				 prefix = "EN";
-				 access_dev = READ_ONLY;
+				 access_dev = READ_WRITE;
 				 access_bus = READ_WRITE;
+         load = LOAD_EXT;
 			};
 
 			field {
@@ -605,8 +609,9 @@ peripheral {
 				 type = SLV;
 				 size = 12;
 				 align = 16;
-				 access_dev = READ_ONLY;
+				 access_dev = READ_WRITE;
 				 access_bus = READ_WRITE;
+         load = LOAD_EXT;
 			};
 	 };
 

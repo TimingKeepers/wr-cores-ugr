@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-03-21
+-- Last update: 2012-06-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -68,10 +68,10 @@ entity wr_endpoint is
     clk_ref_i : in std_logic;
 
 -- reference clock / 2 (62.5 MHz, in-phase with refclk)
-    clk_sys_i  : in std_logic;
+    clk_sys_i : in std_logic;
 
 -- DMTD offset clock for phase tracking - used only if g_with_dmtd == true
-   clk_dmtd_i : in std_logic;
+    clk_dmtd_i : in std_logic;
 
 -- sync reset (clk_sys_i domain), active LO
     rst_n_i : in std_logic;
@@ -148,9 +148,9 @@ entity wr_endpoint is
 -------------------------------------------------------------------------------  
 
 -- Port ID value
-    txtsu_port_id_o : out std_logic_vector(4 downto 0);
+    txtsu_port_id_o  : out std_logic_vector(4 downto 0);
 -- Frame ID value
-    txtsu_frame_id_o     : out std_logic_vector(16 -1 downto 0);
+    txtsu_frame_id_o : out std_logic_vector(16 -1 downto 0);
 
 -- TX Timestamp and correctness info
     txtsu_ts_value_o     : out std_logic_vector(28 + 4 - 1 downto 0);
@@ -306,6 +306,7 @@ architecture syn of wr_endpoint is
       fc_buffer_occupation_o : out   std_logic_vector(7 downto 0);
       rmon_o                 : inout t_rmon_triggers;
       regs_i                 : in    t_ep_out_registers;
+      regs_o                 : out   t_ep_in_registers;
       rtu_rq_o               : out   t_ep_internal_rtu_request;
       rtu_full_i             : in    std_logic;
       rtu_rq_valid_o         : out   std_logic);
@@ -442,6 +443,7 @@ architecture syn of wr_endpoint is
   signal regs_towb     : t_ep_in_registers;
   signal regs_towb_ep  : t_ep_in_registers;
   signal regs_towb_tsu : t_ep_in_registers;
+  signal regs_towb_rpath: t_ep_in_registers;
 
 
 -------------------------------------------------------------------------------
@@ -497,6 +499,9 @@ architecture syn of wr_endpoint is
   signal phase_meas    : std_logic_vector(31 downto 0);
   signal phase_meas_p  : std_logic;
   signal validity_cntr : unsigned(1 downto 0);
+  signal r_dmcr_en     : std_logic;
+  signal r_dmcr_n_avg  : std_logic_vector(11 downto 0);
+
 
   signal rtu_rq               : t_ep_internal_rtu_request;
   signal dvalid_tx, dvalid_rx : std_logic;
@@ -663,6 +668,7 @@ begin
 
       rmon_o => rmon,
       regs_i => regs_fromwb,
+      regs_o =>regs_towb_rpath,
 
       rtu_full_i     => rtu_full_i,
       rtu_rq_o       => rtu_rq,
@@ -755,14 +761,14 @@ begin
       rst_n_sys_i    => rst_n_sys,
       rst_n_ref_i    => rst_n_ref,
       pps_csync_p1_i => pps_csync_p1_i,
-      pps_valid_i => pps_valid_i,
+      pps_valid_i    => pps_valid_i,
 
       tx_timestamp_trigger_p_a_i => txpcs_timestamp_trigger_p_a,
       rx_timestamp_trigger_p_a_i => rxpcs_timestamp_trigger_p_a,
 
       rxts_timestamp_o       => rxpcs_timestamp_value,
       rxts_timestamp_valid_o => rxpcs_timestamp_valid,
-      rxts_timestamp_stb_o => rxpcs_timestamp_stb,
+      rxts_timestamp_stb_o   => rxpcs_timestamp_stb,
 
       txts_timestamp_o       => txts_timestamp_value,
       txts_timestamp_valid_o => txts_timestamp_valid,
@@ -802,16 +808,17 @@ begin
 
   U_WB_SLAVE : ep_wishbone_controller
     port map (
-      rst_n_i   => rst_n_sys,
-      wb_clk_i  => clk_sys_i,
-      wb_addr_i => wb_in.adr(5 downto 0),
-      wb_data_i => wb_in.dat,
-      wb_data_o => wb_out.dat,
-      wb_cyc_i  => wb_in.cyc,
-      wb_sel_i  => wb_in.sel,
-      wb_stb_i  => wb_in.stb,
-      wb_we_i   => wb_in.we,
-      wb_ack_o  => wb_out.ack,
+      rst_n_i    => rst_n_sys,
+      clk_sys_i  => clk_sys_i,
+      wb_adr_i   => wb_in.adr(5 downto 0),
+      wb_dat_i   => wb_in.dat,
+      wb_dat_o   => wb_out.dat,
+      wb_cyc_i   => wb_in.cyc,
+      wb_sel_i   => wb_in.sel,
+      wb_stb_i   => wb_in.stb,
+      wb_we_i    => wb_in.we,
+      wb_ack_o   => wb_out.ack,
+      wb_stall_o => open,
 
       tx_clk_i => clk_ref_i,
 
@@ -830,7 +837,7 @@ begin
   wb_out.err   <= '0';
   wb_out.int   <= '0';
 
-  regs_towb <= regs_towb_ep or regs_towb_tsu;
+  regs_towb <= regs_towb_ep or regs_towb_tsu or regs_towb_rpath;
 
 
   p_link_activity : process(clk_sys_i)
@@ -867,10 +874,15 @@ begin
         clk_dmtd_i => clk_dmtd_i,
         rst_n_i    => rst_n_i,
 
-        en_i           => regs_fromwb.dmcr_en_o,
-        navg_i         => regs_fromwb.dmcr_n_avg_o,
+        en_i           => r_dmcr_en,
+        navg_i         => r_dmcr_n_avg,
         phase_meas_o   => phase_meas,
         phase_meas_p_o => phase_meas_p);
+
+
+
+    regs_towb.dmcr_en_i    <= r_dmcr_en;
+    regs_towb.dmcr_n_avg_i <= r_dmcr_n_avg;
 
     p_dmtd_update : process(clk_sys_i)
     begin
@@ -880,7 +892,12 @@ begin
           regs_towb_ep.dmsr_ps_rdy_i <= '0';
         else
 
-          if(regs_fromwb.dmcr_en_o = '0') then
+          if(regs_fromwb.dmcr_en_load_o = '1') then
+            r_dmcr_en    <= regs_fromwb.dmcr_en_o;
+            r_dmcr_n_avg <= regs_fromwb.dmcr_n_avg_o;
+          end if;
+
+          if(r_dmcr_en = '0') then
             validity_cntr              <= (others => '0');
             regs_towb_ep.dmsr_ps_rdy_i <= '0';
           elsif(regs_fromwb.dmsr_ps_rdy_o = '1' and regs_fromwb.dmsr_ps_rdy_load_o = '1') then

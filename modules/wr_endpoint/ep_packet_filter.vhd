@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-02-09
+-- Last update: 2012-06-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -158,13 +158,23 @@ architecture behavioral of ep_packet_filter is
 
   type t_state is (WAIT_FRAME, PROCESS_FRAME, GEN_OUTPUT);
 
-  signal stage1, stage2 : std_logic;
-
+  signal stage1, stage2      : std_logic;
+  signal r_pfcr1_mm_data_lsb : std_logic_vector(11 downto 0);
+  
 begin  -- behavioral
 
-  
+  process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if(regs_i.pfcr1_mm_data_lsb_wr_o = '1') then
+        r_pfcr1_mm_data_lsb <= regs_i.pfcr1_mm_data_lsb_o;
+      end if;
+    end if;
+  end process;
+
+
   mm_write <= not regs_i.pfcr0_enable_o and regs_i.pfcr0_mm_write_o and regs_i.pfcr0_mm_write_wr_o;
-  mm_wdata <= regs_i.pfcr0_mm_data_msb_o & regs_i.pfcr1_mm_data_lsb_o;
+  mm_wdata <= regs_i.pfcr0_mm_data_msb_o & r_pfcr1_mm_data_lsb;
 
   U_microcode_ram : generic_dpram
     generic map (
@@ -231,7 +241,7 @@ begin  -- behavioral
     if rising_edge(clk_rx_i) then
       if rst_n_rx_i = '0' or done_int = '1' then
         stage2 <= '0';
-        ir <= (others => '0');
+        ir     <= (others => '0');
       else
         stage2 <= stage1;
         ir     <= mm_rdata;

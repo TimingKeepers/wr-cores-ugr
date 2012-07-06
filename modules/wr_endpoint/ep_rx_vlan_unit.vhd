@@ -25,7 +25,8 @@ entity ep_rx_vlan_unit is
        tag_done_o : out std_logic;
 
        rmon_o : inout t_rmon_triggers;
-       regs_i : in    t_ep_out_registers
+       regs_i : in    t_ep_out_registers;
+       regs_o : out   t_ep_in_registers
        );
 
 end ep_rx_vlan_unit;
@@ -54,6 +55,7 @@ architecture behavioral of ep_rx_vlan_unit is
   signal prio_int     : std_logic_vector(2 downto 0);
   signal force_dvalid : std_logic;
 
+  signal r_tcar_pcp_map : std_logic_vector(23 downto 0);
 
   procedure f_vlan_decision
     (tag_type       :     t_tag_type;
@@ -85,9 +87,9 @@ architecture behavioral of ep_rx_vlan_unit is
         case tag_type is
           when NONE =>
             admit := '0';
-          when PRIO=>
+          when PRIO =>
             admit := '0';
-          when VLAN=>
+          when VLAN =>
             admit          := '1';
             use_pvid       := '0';
             use_fixed_prio := '0';
@@ -101,10 +103,10 @@ architecture behavioral of ep_rx_vlan_unit is
           when NONE =>
             admit    := '1';
             use_pvid := '1'; use_fixed_prio := '1';
-          when PRIO=>
+          when PRIO =>
             admit    := '1';
             use_pvid := '1'; use_fixed_prio := '0';
-          when VLAN=>
+          when VLAN =>
             admit    := '1';
             use_pvid := '0'; use_fixed_prio := '0';
           when NULL_VLAN =>
@@ -117,11 +119,11 @@ architecture behavioral of ep_rx_vlan_unit is
             admit          := '1';
             use_pvid       := '0';
             use_fixed_prio := '1';
-          when PRIO=>
+          when PRIO =>
             admit          := '1';
             use_pvid       := '0';
             use_fixed_prio := '0';
-          when VLAN=>
+          when VLAN =>
             admit          := '1';
             use_pvid       := '0';
             use_fixed_prio := '0';
@@ -354,9 +356,17 @@ begin  -- behavioral
 -- Process: p_map_prio_to_tc
 -- Maps the PCP value from the 802.1q header into a traffic class for further
 -- processing. The mapping table is stored in TCAR register.
+
+  regs_o.tcar_pcp_map_i <= r_tcar_pcp_map;
+
   p_map_prio_to_tc : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
+
+      if(regs_i.tcar_pcp_map_load_o = '1') then
+        r_tcar_pcp_map <= regs_i.tcar_pcp_map_o;
+      end if;
+
       if(rst_n_i = '0' or regs_i.ecr_rx_en_o = '0' or snk_fab_i.sof = '1')then
         tag_done_o <= '0';
       elsif(hdr_offset(9) = '1') then
@@ -364,14 +374,14 @@ begin  -- behavioral
         -- certainly valid
         tag_done_o <= '1';
         case prio_int is
-          when "000"  => tclass_o <= regs_i.tcar_pcp_map_o(2 downto 0);
-          when "001"  => tclass_o <= regs_i.tcar_pcp_map_o(5 downto 3);
-          when "010"  => tclass_o <= regs_i.tcar_pcp_map_o(8 downto 6);
-          when "011"  => tclass_o <= regs_i.tcar_pcp_map_o(11 downto 9);
-          when "100"  => tclass_o <= regs_i.tcar_pcp_map_o(14 downto 12);
-          when "101"  => tclass_o <= regs_i.tcar_pcp_map_o(17 downto 15);
-          when "110"  => tclass_o <= regs_i.tcar_pcp_map_o(20 downto 18);
-          when "111"  => tclass_o <= regs_i.tcar_pcp_map_o(23 downto 21);
+          when "000"  => tclass_o <= r_tcar_pcp_map(2 downto 0);
+          when "001"  => tclass_o <= r_tcar_pcp_map(5 downto 3);
+          when "010"  => tclass_o <= r_tcar_pcp_map(8 downto 6);
+          when "011"  => tclass_o <= r_tcar_pcp_map(11 downto 9);
+          when "100"  => tclass_o <= r_tcar_pcp_map(14 downto 12);
+          when "101"  => tclass_o <= r_tcar_pcp_map(17 downto 15);
+          when "110"  => tclass_o <= r_tcar_pcp_map(20 downto 18);
+          when "111"  => tclass_o <= r_tcar_pcp_map(23 downto 21);
           when others => tclass_o <= "XXX";  -- packet probably contains porn
         end case;
       end if;

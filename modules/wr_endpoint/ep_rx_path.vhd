@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-01-23
+-- Last update: 2012-06-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ entity ep_rx_path is
 -- RMON/statistic counters signals
     rmon_o : inout t_rmon_triggers;
     regs_i : in    t_ep_out_registers;
---    regs_o : out   t_ep_in_registers;
+    regs_o : out   t_ep_in_registers;
 
 -------------------------------------------------------------------------------
 -- RTU interface
@@ -115,7 +115,7 @@ architecture behavioral of ep_rx_path is
       rtu_full_i     : in  std_logic;
       rtu_rq_valid_o : out std_logic);
   end component;
-  
+
   component ep_rx_early_address_match
     port (
       clk_sys_i            : in  std_logic;
@@ -174,7 +174,8 @@ architecture behavioral of ep_rx_path is
       vid_o      : out   std_logic_vector(11 downto 0);
       tag_done_o : out   std_logic;
       rmon_o     : inout t_rmon_triggers;
-      regs_i     : in    t_ep_out_registers);
+      regs_i     : in    t_ep_out_registers;
+      regs_o     : out   t_ep_in_registers);
   end component;
 
   component ep_rx_oob_insert
@@ -228,7 +229,7 @@ architecture behavioral of ep_rx_path is
       ematch_is_pause_i : in  std_logic;
       rmon_o            : out t_rmon_triggers);
   end component;
-  
+
   component ep_rx_buffer
     generic (
       g_size : integer);
@@ -241,7 +242,7 @@ architecture behavioral of ep_rx_path is
       src_dreq_i : in  std_logic;
       level_o    : out std_logic_vector(7 downto 0);
       regs_i     : in  t_ep_out_registers;
-      rmon_o     : out    t_rmon_triggers);
+      rmon_o     : out t_rmon_triggers);
   end component;
 
   type t_rx_deframer_state is (RXF_IDLE, RXF_DATA, RXF_FLUSH_STALL, RXF_FINISH_CYCLE, RXF_THROW_ERROR);
@@ -331,10 +332,10 @@ begin  -- behavioral
   end generate gen_with_packet_filter;
 
   gen_without_packet_filter : if(not g_with_dpi_classifier) generate
-    fab_pipe(2) <= fab_pipe(1);
-    pfilter_drop <= '0';
-    pfilter_done <= '1';
-    pfilter_pclass <=(others => '0');
+    fab_pipe(2)    <= fab_pipe(1);
+    pfilter_drop   <= '0';
+    pfilter_done   <= '1';
+    pfilter_pclass <= (others => '0');
   end generate gen_without_packet_filter;
 
 
@@ -389,16 +390,17 @@ begin  -- behavioral
         vid_o      => vlan_vid,
         tag_done_o => vlan_tag_done,
         rmon_o     => rmon_o,
-        regs_i     => regs_i);
+        regs_i     => regs_i,
+        regs_o     => regs_o);
   end generate gen_with_vlan_unit;
 
 
-  gen_without_vlan_unit:  if(not g_with_vlans) generate
-    fab_pipe(6) <= fab_pipe(5);
+  gen_without_vlan_unit : if(not g_with_vlans) generate
+    fab_pipe(6)  <= fab_pipe(5);
     dreq_pipe(5) <= dreq_pipe(6);
   end generate gen_without_vlan_unit;
 
-  U_RTU_Header_Extract: ep_rtu_header_extract
+  U_RTU_Header_Extract : ep_rtu_header_extract
     generic map (
       g_with_rtu => g_with_rtu)
     port map (
@@ -411,7 +413,7 @@ begin  -- behavioral
       rtu_rq_o       => rtu_rq_o,
       rtu_full_i     => rtu_full_i,
       rtu_rq_valid_o => rtu_rq_valid_o);
-  
+
   U_Gen_Status : ep_rx_status_reg_insert
     port map (
       clk_sys_i         => clk_sys_i,
@@ -428,8 +430,8 @@ begin  -- behavioral
       ematch_is_pause_i => ematch_is_pause,
       rmon_o            => open);
 
-  gen_with_rx_buffer: if g_with_rx_buffer generate
-    U_Rx_Buffer: ep_rx_buffer
+  gen_with_rx_buffer : if g_with_rx_buffer generate
+    U_Rx_Buffer : ep_rx_buffer
       generic map (
         g_size => g_rx_buffer_size)
       port map (
@@ -444,11 +446,11 @@ begin  -- behavioral
         rmon_o     => open);
   end generate gen_with_rx_buffer;
 
-  gen_without_rx_buffer: if (not g_with_rx_buffer) generate
-    fab_pipe(9) <= fab_pipe(8);
+  gen_without_rx_buffer : if (not g_with_rx_buffer) generate
+    fab_pipe(9)  <= fab_pipe(8);
     dreq_pipe(8) <= dreq_pipe(9);
   end generate gen_without_rx_buffer;
-  
+
   U_RX_Wishbone_Master : ep_rx_wb_master
     generic map (
       g_ignore_ack => true)

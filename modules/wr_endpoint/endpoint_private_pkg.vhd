@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-03-16
+-- Last update: 2012-06-27
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -251,15 +251,16 @@ package endpoint_private_pkg is
   component ep_wishbone_controller
     port (
       rst_n_i            : in  std_logic;
-      wb_clk_i           : in  std_logic;
-      wb_addr_i          : in  std_logic_vector(5 downto 0);
-      wb_data_i          : in  std_logic_vector(31 downto 0);
-      wb_data_o          : out std_logic_vector(31 downto 0);
+      clk_sys_i          : in  std_logic;
+      wb_adr_i          : in  std_logic_vector(5 downto 0);
+      wb_dat_i          : in  std_logic_vector(31 downto 0);
+      wb_dat_o          : out std_logic_vector(31 downto 0);
       wb_cyc_i           : in  std_logic;
       wb_sel_i           : in  std_logic_vector(3 downto 0);
       wb_stb_i           : in  std_logic;
       wb_we_i            : in  std_logic;
       wb_ack_o           : out std_logic;
+      wb_stall_o : out std_logic;
       tx_clk_i           : in  std_logic;
       ep_rmon_ram_addr_i : in  std_logic_vector(4 downto 0);
       ep_rmon_ram_data_o : out std_logic_vector(31 downto 0);
