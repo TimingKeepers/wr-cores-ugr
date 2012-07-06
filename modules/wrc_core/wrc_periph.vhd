@@ -67,6 +67,7 @@ entity wrc_periph is
     uart_txd_o : out std_logic;
 
     -- 1-Wire
+    owr_pwren_o: out std_logic_vector(1 downto 0);
     owr_en_o : out std_logic_vector(1 downto 0);
     owr_i    : in  std_logic_vector(1 downto 0)
     );
@@ -322,6 +323,7 @@ begin
       slave_o => slave_o(2),
       desc_o  => open,
 
+      owr_pwren_o => owr_pwren_o,
       owr_en_o => owr_en_o,
       owr_i    => owr_i
       );

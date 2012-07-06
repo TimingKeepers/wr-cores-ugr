@@ -1,4 +1,4 @@
-files = ["spec_top.vhd", "spec_top.ucf", "spec_serial_dac.vhd", "spec_serial_dac_arb.vhd", "wb_gpio_port_notristates.vhd"]
+files = ["spec_top.vhd", "spec_top.ucf", "wb_gpio_port_notristates.vhd"]
 
 fetchto = "../../../ip_cores"
 

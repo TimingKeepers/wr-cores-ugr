@@ -48,7 +48,8 @@ entity exploder_top is
       hpv   : out std_logic_vector(7 downto 0);
 		
 		la_port_o : out std_logic_vector(3 downto 0);
-		la_port_i : in std_logic_vector(1 downto 0)
+		la_port_i : in std_logic_vector(1 downto 0);
+		usb_reset : out std_logic
 
 
       );
@@ -633,7 +634,7 @@ begin
 	hpv(3) <= not ext_pps;
 		
 	-- unused leds off	
-	hpv(2) <= '1';
+	hpv(2) <=  not '1';
 	
 	
 	
@@ -647,7 +648,8 @@ begin
 	hpv(1) <= not led_green;
 	hpv(0) <= not led_red;
 
-  sfp_tx_disable_o <= '0';
+	sfp_tx_disable_o <= '0';
+  	usb_reset <= '0';
 
   
 end rtl;
