@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-03-21
+-- Last update: 2012-07-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ architecture behavioral of ep_tx_pcs_16bit is
   signal fifo_almost_full                : std_logic;
   signal fifo_enough_data                : std_logic;
   signal fifo_wr                         : std_logic;
-  signal fifo_rd                         : std_logic;
+  signal fifo_rd                         : std_logic := '0';
   signal fifo_ready                      : std_logic;
   signal fifo_clear_n                    : std_logic;
   signal fifo_read_int                   : std_logic;
@@ -214,7 +214,6 @@ begin
       g_size                   => 64,
       g_with_rd_empty          => true,
       g_with_rd_almost_empty   => true,
-      g_with_rd_count          => true,
       g_with_wr_almost_full    => true,
       g_almost_empty_threshold => 20,
       g_almost_full_threshold  => 58)  -- fixme: make this a generic (or WB register)

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-16
--- Last update: 2012-03-16
+-- Last update: 2012-07-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ architecture behavioral of ep_rx_pcs_16bit is
 
 
   signal pcs_valid_int     : std_logic;
-  signal timestamp_pending : std_logic_vector(2 downto 0);
+  signal timestamp_pending : std_logic_vector(2 downto 0) := "000";
   
 begin
 -------------------------------------------------------------------------------
