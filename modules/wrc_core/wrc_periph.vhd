@@ -95,41 +95,17 @@ architecture struct of wrc_periph is
 
 begin
 
-  -------------------------------------
-  -- reset wrc
-  -------------------------------------
-  --process(clk_sys_i)
-  --begin
-  --  if rising_edge(clk_sys_i) then
-  --    if(rst_n_i = '0') then
-  --      rst_wrc_n_o <= '0';
-  --      rst_net_n_o <= '0';
-  --      rst_wrc_n_o_reg <= '1'; -- Resume CPU 1 cycle after reset
-  --    else
-
-  --      if(sysc_regs_o.rstr_trig_wr_o = '1' and sysc_regs_o.rstr_trig_o = x"deadbee") then
-  --        rst_wrc_n_o_reg <= not sysc_regs_o.rstr_rst_o;
-  --      --else
-  --        --rst_wrc_n_o <= '1';
-  --      end if;
-        
-  --      rst_wrc_n_o <= rst_wrc_n_o_reg;
-  --      rst_net_n_o <= not sysc_regs_o.gpsr_net_rst_o;
-  --    end if;
-  --  end if;
-  --end process;
-
+  rst_wrc_n_o <= rst_n_i and rst_wrc_n_o_reg;
   process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_i = '0') then
-        rst_wrc_n_o <= '0';
         rst_net_n_o <= '0';
-        rst_wrc_n_o_reg <= '1'; -- Resume CPU 1 cycle after reset
+        rst_wrc_n_o_reg <= '1';
       else
 
         if(sysc_regs_o.rstr_trig_wr_o = '1' and sysc_regs_o.rstr_trig_o = x"deadbee") then
-          rst_wrc_n_o <= not sysc_regs_o.rstr_rst_o;
+          rst_wrc_n_o_reg <= not sysc_regs_o.rstr_rst_o;
         end if; 
             
         rst_net_n_o <= not sysc_regs_o.gpsr_net_rst_o;
