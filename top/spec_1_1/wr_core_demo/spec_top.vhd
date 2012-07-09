@@ -588,7 +588,7 @@ begin
       csr_we_o    => wrc_slave_i.we,
       csr_cyc_o   => wrc_slave_i.cyc,
       csr_dat_i   => wrc_slave_o.dat,
-      csr_ack_i   => wrc_slave_o.ack,
+      csr_ack_i   => wrc_slave_o.ack or wrc_slave_o.err,
       csr_stall_i => wrc_slave_o.stall,
 
       ---------------------------------------------------------
