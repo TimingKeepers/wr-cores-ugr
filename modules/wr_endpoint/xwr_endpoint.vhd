@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-04-23
+-- Last update: 2012-07-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -280,6 +280,10 @@ begin
       led_link_o           => led_link_o,
       led_act_o            => led_act_o);
 
+  wb_o.err <= '0';
+  wb_o.rty <= '0';
+  wb_o.int <= '0';
+  
 end syn;
 
 

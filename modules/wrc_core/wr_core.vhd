@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-06-15
+-- Last update: 2012-07-09
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -879,6 +879,24 @@ begin
   secbar_master_i(7).err <= '0';
   secbar_master_i(7).rty <= '0';
 
+  --secbar_master_i(6).err <= '0';
+  --secbar_master_i(5).err <= '0';
+  --secbar_master_i(4).err <= '0';
+  --secbar_master_i(3).err <= '0';
+  --secbar_master_i(2).err <= '0';
+  --secbar_master_i(1).err <= '0';
+  --secbar_master_i(0).err <= '0';
+
+  --secbar_master_i(6).rty <= '0';
+  --secbar_master_i(5).rty <= '0';
+  --secbar_master_i(4).rty <= '0';
+  --secbar_master_i(3).rty <= '0';
+  --secbar_master_i(2).rty <= '0';
+  --secbar_master_i(1).rty <= '0';
+  --secbar_master_i(0).rty <= '0';
+  
+
+  
   -----------------------------------------------------------------------------
   -- WBP MUX
   -----------------------------------------------------------------------------

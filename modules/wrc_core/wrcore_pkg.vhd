@@ -307,6 +307,10 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       );
   end component;
 
+  constant cc_unused_master_in : t_wishbone_master_in :=
+    ('1', '0', '0', '0', '0', cc_dummy_data);
+
+  
   -----------------------------------------------------------------------------
   -- Public WR component definitions
   -----------------------------------------------------------------------------
@@ -376,7 +380,7 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       slave_o : out t_wishbone_slave_out;
 
       aux_master_o : out  t_wishbone_master_out;
-      aux_master_i : in t_wishbone_master_in := cc_dummy_master_in;
+      aux_master_i : in t_wishbone_master_in := cc_unused_master_in;
 
       wrf_src_o : out t_wrf_source_out;
       wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;

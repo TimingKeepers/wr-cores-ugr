@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-04-30
+-- Last update: 2012-07-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -238,4 +238,8 @@ begin  -- behavioral
       debug_o         => debug_o,
       dbg_fifo_irq_o  => dbg_fifo_irq_o);
 
+  slave_o.err <= '0';
+  slave_o.rty <= '0';
+  slave_o.int <= '0';
+  
 end wrapper;

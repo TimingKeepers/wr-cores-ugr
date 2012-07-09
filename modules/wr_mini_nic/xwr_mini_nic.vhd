@@ -158,4 +158,8 @@ begin  -- wrapper
       wb_stall_o          => wb_o.stall,
       wb_irq_o            => wb_o.int);
 
+
+  wb_o.err <= '0';
+  wb_o.rty <= '0';
+  
 end wrapper;
