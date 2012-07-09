@@ -11,9 +11,7 @@ package wr_xilinx_pkg is
 
   component wr_gtp_phy_spartan6
     generic (
-      g_simulation         : integer;
-      g_ch0_use_refclk_out : boolean := false;
-      g_ch1_use_refclk_out : boolean := false);
+      g_simulation         : integer);
     port (
       gtp_clk_i          : in  std_logic;
       ch0_ref_clk_i      : in  std_logic;
