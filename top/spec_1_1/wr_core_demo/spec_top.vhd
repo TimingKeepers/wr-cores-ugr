@@ -8,6 +8,7 @@ use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.wr_xilinx_pkg.all;
+use work.etherbone_pkg.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -345,6 +346,9 @@ architecture rtl of spec_top is
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
 
+  signal genum_wb_out : t_wishbone_master_out;
+  signal genum_wb_in  : t_wishbone_master_in;
+  
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
 
@@ -353,29 +357,15 @@ architecture rtl of spec_top is
 
   signal wb_adr : std_logic_vector(31 downto 0);  --c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 
-  component xmini_bone
-    generic (
-      g_class_mask    : std_logic_vector(7 downto 0);
-      g_our_ethertype : std_logic_vector(15 downto 0));
-    port (
-      clk_sys_i : in  std_logic;
-      rst_n_i   : in  std_logic;
-      src_o     : out t_wrf_source_out;
-      src_i     : in  t_wrf_source_in;
-      snk_o     : out t_wrf_sink_out;
-      snk_i     : in  t_wrf_sink_in;
-      master_o  : out t_wishbone_master_out;
-      master_i  : in  t_wishbone_master_in);
-  end component;
-
-  signal mbone_rst_n     : std_logic;
-  signal mbone_src_out   : t_wrf_source_out;
-  signal mbone_src_in    : t_wrf_source_in;
-  signal mbone_snk_out   : t_wrf_sink_out;
-  signal mbone_snk_in    : t_wrf_sink_in;
-  signal mbone_wb_out    : t_wishbone_master_out;
-  signal mbone_wb_in     : t_wishbone_master_in;
-  signal dpram_slave2_in : t_wishbone_master_out;
+  signal etherbone_rst_n     : std_logic;
+  signal etherbone_src_out   : t_wrf_source_out;
+  signal etherbone_src_in    : t_wrf_source_in;
+  signal etherbone_snk_out   : t_wrf_sink_out;
+  signal etherbone_snk_in    : t_wrf_sink_in;
+  signal etherbone_wb_out    : t_wishbone_master_out;
+  signal etherbone_wb_in     : t_wishbone_master_in;
+  signal etherbone_cfg_in    : t_wishbone_slave_in;
+  signal etherbone_cfg_out   : t_wishbone_slave_out;
 
 begin
 
@@ -582,14 +572,14 @@ begin
       -- CSR wishbone interface (master pipelined)
       csr_clk_i   => clk_sys,
       csr_adr_o   => wb_adr,
-      csr_dat_o   => wrc_slave_i.dat,
-      csr_sel_o   => wrc_slave_i.sel,
-      csr_stb_o   => wrc_slave_i.stb,
-      csr_we_o    => wrc_slave_i.we,
-      csr_cyc_o   => wrc_slave_i.cyc,
-      csr_dat_i   => wrc_slave_o.dat,
-      csr_ack_i   => wrc_slave_o.ack or wrc_slave_o.err,
-      csr_stall_i => wrc_slave_o.stall,
+      csr_dat_o   => genum_wb_out.dat,
+      csr_sel_o   => genum_wb_out.sel,
+      csr_stb_o   => genum_wb_out.stb,
+      csr_we_o    => genum_wb_out.we,
+      csr_cyc_o   => genum_wb_out.cyc,
+      csr_dat_i   => genum_wb_in.dat,
+      csr_ack_i   => genum_wb_in.ack or genum_wb_in.err,
+      csr_stall_i => genum_wb_in.stall,
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
@@ -605,8 +595,8 @@ begin
       --dma_stall_i => dma_stall
       );
 
-  wrc_slave_i.adr(16 downto 0)  <= wb_adr(16 downto 0);
-  wrc_slave_i.adr(31 downto 17) <= (others => '0');
+  genum_wb_out.adr(16 downto 0)  <= wb_adr(16 downto 0);
+  genum_wb_out.adr(31 downto 17) <= (others => '0');
 
   process(clk_sys, rst)
   begin
@@ -689,11 +679,14 @@ begin
 
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
+      
+      aux_master_o => etherbone_cfg_in,
+      aux_master_i => etherbone_cfg_out,
 
-      wrf_src_o => mbone_snk_in,
-      wrf_src_i => mbone_snk_out,
-      wrf_snk_o => mbone_src_in,
-      wrf_snk_i => mbone_src_out,
+      wrf_src_o => etherbone_snk_in,
+      wrf_src_i => etherbone_snk_out,
+      wrf_snk_o => etherbone_src_in,
+      wrf_snk_i => etherbone_src_out,
 
       tm_dac_value_o       => open,
       tm_dac_wr_o          => open,
@@ -705,46 +698,40 @@ begin
       pps_p_o              => pps,
 
       dio_o       => dio_out(4 downto 1),
-      rst_aux_n_o => mbone_rst_n
+      rst_aux_n_o => etherbone_rst_n
       );
 
-
-  -- Mini-BONE
-  U_MiniBone : xmini_bone
-    generic map (
-      g_class_mask    => x"f0",
-      g_our_ethertype => x"a0a0")
+  Etherbone : EB_CORE
     port map (
-      clk_sys_i => clk_sys,
-      rst_n_i   => mbone_rst_n,
-      src_o     => mbone_src_out,
-      src_i     => mbone_src_in,
-      snk_o     => mbone_snk_out,
-      snk_i     => mbone_snk_in,
-      master_o  => mbone_wb_out,
-      master_i  => mbone_wb_in);
-
-  U_DPRAM : xwb_dpram
-    generic map (
-      g_size                  => 2048,
-      g_init_file             => "",
-      g_must_have_init_file   => false,
-      g_slave1_interface_mode => CLASSIC,
-      g_slave2_interface_mode => CLASSIC,
-      g_slave1_granularity    => WORD,
-      g_slave2_granularity    => WORD)
-    port map (
-      clk_sys_i => clk_sys,
-      rst_n_i   => mbone_rst_n,
-      slave1_i  => mbone_wb_out,
-      slave1_o  => mbone_wb_in,
-      slave2_i  => dpram_slave2_in,
-      slave2_o  => open);
-
-  dpram_slave2_in.cyc <= '0';
-  dpram_slave2_in.stb <= '0';
+      clk_i       => clk_sys,
+      nRst_i      => etherbone_rst_n,
+      src_o       => etherbone_src_out,
+      src_i       => etherbone_src_in,
+      snk_o       => etherbone_snk_out,
+      snk_i       => etherbone_snk_in,
+      cfg_slave_o => etherbone_cfg_out,
+      cfg_slave_i => etherbone_cfg_in,
+      master_o    => etherbone_wb_out,
+      master_i    => etherbone_wb_in);
 
   ---------------------
+  masterbar : xwb_crossbar
+    generic map (
+      g_num_masters => 2,
+      g_num_slaves  => 1,
+      g_registered  => false,
+      g_address     => (0 => x"00000000"),
+      g_mask        => (0 => x"00000000"))
+    port map (
+      clk_sys_i   => clk_sys,
+      rst_n_i     => local_reset_n,
+      slave_i(0)  => genum_wb_out,
+      slave_i(1)  => etherbone_wb_out,
+      slave_o(0)  => genum_wb_in,
+      slave_o(1)  => etherbone_wb_in,
+      master_i(0) => wrc_slave_o,
+      master_o(0) => wrc_slave_i);
+      
   ---------------------
 
   U_GTP : wr_gtp_phy_spartan6
