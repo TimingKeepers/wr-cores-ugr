@@ -7,22 +7,27 @@ use work.gencores_pkg.all;              -- for gc_crc_gen
 use work.endpoint_private_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.ep_wbgen2_pkg.all;
+use work.ep_crc32_pkg.all;
 
 -- 1st deframing pipeline stage - CRC/PCS error/Size checker
 
 entity ep_rx_crc_size_check is
-  port(clk_sys_i : in std_logic;
-       rst_n_i   : in std_logic;
+  generic
+    (
+      g_use_new_crc : boolean := true);
+  port(
+    clk_sys_i : in std_logic;
+    rst_n_i   : in std_logic;
 
-       snk_fab_i  : in  t_ep_internal_fabric;
-       snk_dreq_o : out std_logic;
+    snk_fab_i  : in  t_ep_internal_fabric;
+    snk_dreq_o : out std_logic;
 
-       src_fab_o  : out t_ep_internal_fabric;
-       src_dreq_i : in  std_logic;
+    src_fab_o  : out t_ep_internal_fabric;
+    src_dreq_i : in  std_logic;
 
-       rmon_o : inout t_rmon_triggers;
-       regs_i : in    t_ep_out_registers
-       );
+    rmon_o : inout t_rmon_triggers;
+    regs_i : in    t_ep_out_registers
+    );
 
 end ep_rx_crc_size_check;
 
@@ -50,9 +55,13 @@ architecture behavioral of ep_rx_crc_size_check is
 
   type t_state is (ST_WAIT_FRAME, ST_DATA, ST_OOB);
 
-  signal crc_gen_enable : std_logic;
-  signal crc_gen_reset  : std_logic;
-  signal crc_match      : std_logic;
+  signal crc_gen_enable        : std_logic;
+  signal crc_gen_reset         : std_logic;
+  signal crc_match, crc_match2 : std_logic;
+
+  signal crc_cur         : std_logic_vector(31 downto 0);
+  signal crc_in_data     : std_logic_vector(15 downto 0);
+  signal crc_last_is_odd : std_logic;
 
   signal byte_cntr     : unsigned(13 downto 0);
   signal is_runt       : std_logic;
@@ -68,31 +77,57 @@ architecture behavioral of ep_rx_crc_size_check is
   signal q_bytesel        : std_logic;
   signal q_dvalid_in      : std_logic;
   signal q_dvalid_out     : std_logic;
-signal q_dreq_out: std_logic;
-  signal dvalid_mask : std_logic_vector(1 downto 0);
+  signal q_dreq_out       : std_logic;
+  signal dvalid_mask      : std_logic_vector(1 downto 0);
+
   
 begin  -- behavioral
 
   crc_gen_reset  <= snk_fab_i.sof or (not rst_n_i);
   crc_gen_enable <= '1' when (snk_fab_i.addr = c_WRF_DATA and snk_fab_i.dvalid = '1') else '0';
-  U_rx_crc_generator : gc_crc_gen
-    generic map (
-      g_polynomial              => x"04C11DB7",
-      g_init_value              => x"ffffffff",
-      g_residue                 => x"1cdf4421",
-      g_data_width              => 16,
-      g_half_width              => 8,
-      g_sync_reset              => 1,
-      g_dual_width              => 1,
-      g_registered_match_output => false)
-    port map (
-      clk_i   => clk_sys_i,
-      rst_i   => crc_gen_reset,
-      en_i    => crc_gen_enable,
-      half_i  => snk_fab_i.bytesel,
-      data_i  => snk_fab_i.data(15 downto 0),
-      match_o => crc_match,
-      crc_o   => open);
+
+  gen_old_crc : if(g_use_new_crc = false) generate
+    U_rx_crc_generator : gc_crc_gen
+      generic map (
+        g_polynomial              => x"04C11DB7",
+        g_init_value              => x"ffffffff",
+        g_residue                 => x"1cdf4421",
+        g_data_width              => 16,
+        g_half_width              => 8,
+        g_sync_reset              => 1,
+        g_dual_width              => 1,
+        g_registered_match_output => false)
+      port map (
+        clk_i   => clk_sys_i,
+        rst_i   => crc_gen_reset,
+        en_i    => crc_gen_enable,
+        half_i  => snk_fab_i.bytesel,
+        data_i  => snk_fab_i.data(15 downto 0),
+        match_o => crc_match,
+        crc_o   => open);
+  end generate gen_old_crc;
+
+  gen_new_crc : if(g_use_new_crc = true) generate
+
+    crc_in_data(15 downto 8) <= snk_fab_i.data(15 downto 8);
+    crc_in_data(7 downto 0)  <= x"00" when snk_fab_i.bytesel = '1' else snk_fab_i.data(7 downto 0);
+
+    p_check_crc : process(clk_sys_i)
+    begin
+      if rising_edge(clk_sys_i) then
+        if crc_gen_reset = '1' then
+          crc_cur <= c_CRC32_INIT_VALUE;
+        elsif(crc_gen_enable = '1') then
+          crc_cur         <= f_update_crc32_d16(crc_cur, crc_in_data);
+          crc_last_is_odd <= snk_fab_i.bytesel;
+        end if;
+      end if;
+    end process;
+
+    crc_match <= '1' when (crc_last_is_odd = '0' and crc_cur = c_CRC32_RESIDUE_FULL)
+                 or (crc_last_is_odd = '1' and crc_cur = c_CRC32_RESIDUE_HALF) else '0';
+
+  end generate gen_new_crc;
 
   q_in(15 downto 0)  <= snk_fab_i.data;
   q_in(17 downto 16) <= snk_fab_i.addr;
@@ -116,8 +151,8 @@ begin  -- behavioral
       empty_o => q_empty);
 
   snk_dreq_o <= q_dreq_out and not (snk_fab_i.eof or snk_fab_i.error);
-  
-  
+
+
   p_count_bytes : process (clk_sys_i, rst_n_i)
   begin  -- process
     if rising_edge(clk_sys_i) then
@@ -128,7 +163,7 @@ begin  -- behavioral
       else
         if(snk_fab_i.sof = '1') then
           byte_cntr <= (others => '0');
-          is_runt <= '1';
+          is_runt   <= '1';
         end if;
 
         if(snk_fab_i.dvalid = '1') then
@@ -139,7 +174,7 @@ begin  -- behavioral
           end if;
         end if;
 
-        if(byte_cntr = to_unsigned(c_MIN_FRAME_SIZE - 2, byte_cntr'length) and snk_fab_i.dvalid= '1' and snk_fab_i.bytesel = '0') then
+        if(byte_cntr = to_unsigned(c_MIN_FRAME_SIZE - 2, byte_cntr'length) and snk_fab_i.dvalid = '1' and snk_fab_i.bytesel = '0') then
           is_runt <= '0';
         end if;
 
