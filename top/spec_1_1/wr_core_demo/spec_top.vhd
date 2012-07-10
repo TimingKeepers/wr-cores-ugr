@@ -595,8 +595,9 @@ begin
       --dma_stall_i => dma_stall
       );
 
-  genum_wb_out.adr(16 downto 0)  <= wb_adr(16 downto 0);
-  genum_wb_out.adr(31 downto 17) <= (others => '0');
+  genum_wb_out.adr( 1 downto  0) <= (others => '0');
+  genum_wb_out.adr(18 downto  2) <= wb_adr(16 downto 0);
+  genum_wb_out.adr(31 downto 19) <= (others => '0');
 
   process(clk_sys, rst)
   begin
@@ -629,7 +630,7 @@ begin
       g_dpram_initf               => "",
       g_dpram_size                => 90112/4,  --16384,
       g_interface_mode            => PIPELINED,
-      g_address_granularity       => WORD)
+      g_address_granularity       => BYTE)
     port map (
       clk_sys_i  => clk_sys,
       clk_dmtd_i => clk_dmtd,
@@ -702,6 +703,8 @@ begin
       );
 
   Etherbone : EB_CORE
+    generic map (
+	   g_sdb_address => x"0000000000030000")
     port map (
       clk_i       => clk_sys,
       nRst_i      => etherbone_rst_n,
