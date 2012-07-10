@@ -373,7 +373,7 @@ begin
       g_aux_clks                  => 0,
       g_ep_rxbuf_size             => 1024,
       g_dpram_initf               => "",
-      g_dpram_size                => 32768,
+      g_dpram_size                => 90112/4,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE)
     port map (
