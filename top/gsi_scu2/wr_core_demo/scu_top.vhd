@@ -76,7 +76,7 @@ entity scu_top is
     -----------------------------------------------------------------------
     -- AUX SFP 
     -----------------------------------------------------------------------
-    sfp1_tx_disable_o : out std_logic;
+    --sfp1_tx_disable_o : out std_logic;
     --sfp1_txp_o        : out std_logic;
     --sfp1_rxp_i        : in  std_logic;
     
@@ -355,7 +355,7 @@ begin
     c0     => pllout_clk_dmtd);         -- 62.5Mhz
 
   sys_pll_inst : sys_pll port map (
-    inclk0 => L_CLKp,                   -- 125Mhz 
+    inclk0 => clk_125m_pllref_p,        -- 125Mhz 
     c0     => pllout_clk_sys,           -- 62.5Mhy sys clk
     c1     => clk_reconf,               -- 50Mhz for reconfig block
     locked => open);
