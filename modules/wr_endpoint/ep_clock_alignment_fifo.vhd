@@ -96,7 +96,7 @@ begin
       g_with_wr_almost_full    => true,
       g_with_rd_almost_empty   => true,
       g_almost_full_threshold  => g_almostfull_threshold,
-      g_almost_empty_threshold => 24)
+      g_almost_empty_threshold => 32)
     --g_with_rd_count         => true)
 
     port map (
