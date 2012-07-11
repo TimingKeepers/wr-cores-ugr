@@ -14,6 +14,7 @@ use work.pcie_wb_pkg.all;
 use work.ddr3_mem_pkg.all;
 use work.wr_altera_pkg.all;
 use work.lpc_uart_pkg.all;
+use work.etherbone_pkg.all;
 
 entity scu_top is
   port(
@@ -177,21 +178,6 @@ entity scu_top is
 end scu_top;
 
 architecture rtl of scu_top is
-
-  component EB_CORE is 
-    generic(g_master_slave : STRING := "SLAVE");
-    port(  
-      clk_i       : in  std_logic;   --! clock input
-      nRst_i      : in  std_logic;
-      snk_i       : in  t_wrf_sink_in;
-      snk_o       : out t_wrf_sink_out;
-      src_o       : out t_wrf_source_out;
-      src_i       : in  t_wrf_source_in;
-      cfg_slave_o : out t_wishbone_slave_out;
-      cfg_slave_i : in  t_wishbone_slave_in;
-      master_o    : out t_wishbone_master_out;
-      master_i    : in  t_wishbone_master_in);
-  end component;
 
   constant c_xwr_gpio_32_sdb : t_sdb_device := (
     abi_class     => x"0000", -- undocumented device
@@ -548,6 +534,8 @@ begin
       slave2_o => open);
     
   U_ebone : EB_CORE
+    generic map(
+       g_sdb_address => x"00000000" & c_sdb_address)
     port map(
       clk_i       => pllout_clk_sys,
       nRst_i      => nreset,

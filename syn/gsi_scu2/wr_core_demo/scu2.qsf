@@ -27,7 +27,7 @@ set_global_assignment -name FAMILY "Arria II GX"
 set_global_assignment -name DEVICE EP2AGX125EF29C5
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "11.1 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "11:31:14  JULY 03, 2012"
-set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP2"
+set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP1"
 set_global_assignment -name SEARCH_PATH ./
 set_global_assignment -name SEARCH_PATH "pci_express_compiler-library/"
 set_global_assignment -name SEARCH_PATH "pci_megacore-library/"
@@ -54,7 +54,7 @@ set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
 set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_40MHZ
-set_global_assignment -name ENABLE_SIGNALTAP ON
+set_global_assignment -name ENABLE_SIGNALTAP OFF
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "2.5 V"
 set_location_assignment PIN_Y10 -to nres
 set_global_assignment -name SMART_RECOMPILE ON
@@ -713,6 +713,7 @@ set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
 set_location_assignment PIN_AF3 -to nFPGA_Res_Out
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nFPGA_Res_Out
 set_global_assignment -name MISC_FILE "/home/terpstra/white-rabbit/wr-cores/syn/gsi_scu2/wr_core_demo/scu2.dpf"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/etherbone_pkg.vhd"
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_bangbang_pd.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_crc32_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/pow_reset.vhd
