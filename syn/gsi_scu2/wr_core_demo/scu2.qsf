@@ -27,7 +27,7 @@ set_global_assignment -name FAMILY "Arria II GX"
 set_global_assignment -name DEVICE EP2AGX125EF29C5
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "11.1 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "11:31:14  JULY 03, 2012"
-set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP2"
 set_global_assignment -name SEARCH_PATH ./
 set_global_assignment -name SEARCH_PATH "pci_express_compiler-library/"
 set_global_assignment -name SEARCH_PATH "pci_megacore-library/"
@@ -710,6 +710,11 @@ set_location_assignment PIN_AC7 -to A_nCONFIG
 set_location_assignment PIN_R1 -to nPWRBTN
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nPWRBTN
 set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
+set_location_assignment PIN_AF3 -to nFPGA_Res_Out
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nFPGA_Res_Out
+set_global_assignment -name MISC_FILE "/home/terpstra/white-rabbit/wr-cores/syn/gsi_scu2/wr_core_demo/scu2.dpf"
+set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_bangbang_pd.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_crc32_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/pow_reset.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/flash_loader.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/altera_pkg.vhd
@@ -925,7 +930,4 @@ set_global_assignment -name QIP_FILE ddr3.qip
 set_global_assignment -name QIP_FILE ../../../platform/altera/ddr3/ddr3_mem.qip
 set_global_assignment -name VHDL_FILE ../../../platform/altera/ddr3/ddr3_mem_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/ddr3/ddr3_mem_example_top_save.vhd
-set_location_assignment PIN_AF3 -to nFPGA_Res_Out
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nFPGA_Res_Out
-set_global_assignment -name MISC_FILE "/home/terpstra/white-rabbit/wr-cores/syn/gsi_scu2/wr_core_demo/scu2.dpf"
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
