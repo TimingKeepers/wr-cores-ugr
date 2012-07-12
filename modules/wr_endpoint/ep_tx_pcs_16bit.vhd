@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT section
 -- Created    : 2009-06-16
--- Last update: 2012-07-03
+-- Last update: 2012-07-12
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -443,6 +443,7 @@ begin
 -- State EXTEND: send the carrier extension
 -------------------------------------------------------------------------------
           when TX_EXTEND =>
+            timestamp_trigger_p_a_o <= '0';
             tx_is_k            <= "11";
             tx_odata_reg       <= c_k23_7 & c_k23_7;
             tx_catch_disparity <= '1';
