@@ -41,61 +41,61 @@ entity wbp_mux is
     rst_n_i        : in  std_logic; 
 
     --ENDPOINT
-    ep_wbs_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-    ep_wbs_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-    ep_wbs_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-    ep_wbs_cyc_i   : in  std_logic;
-    ep_wbs_stb_i   : in  std_logic;
-    ep_wbs_ack_o   : out std_logic;
-    ep_wbs_err_o   : out std_logic;
-    ep_wbs_stall_o : out std_logic;
+    ep_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
+    ep_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
+    ep_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
+    ep_snk_cyc_i   : in  std_logic;
+    ep_snk_stb_i   : in  std_logic;
+    ep_snk_ack_o   : out std_logic;
+    ep_snk_err_o   : out std_logic;
+    ep_snk_stall_o : out std_logic;
     
-    ep_wbm_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-    ep_wbm_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-    ep_wbm_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-    ep_wbm_cyc_o  : out std_logic;
-    ep_wbm_stb_o  : out std_logic;
-    ep_wbm_ack_i  : in  std_logic;
-    ep_wbm_err_i  : in  std_logic;
-    ep_wbm_stall_i: in  std_logic;
+    ep_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
+    ep_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
+    ep_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
+    ep_src_cyc_o  : out std_logic;
+    ep_src_stb_o  : out std_logic;
+    ep_src_ack_i  : in  std_logic;
+    ep_src_err_i  : in  std_logic;
+    ep_src_stall_i: in  std_logic;
 
     --PTP packets eg. for Mini-NIC
-    ptp_wbs_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-    ptp_wbs_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-    ptp_wbs_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-    ptp_wbs_cyc_i   : in  std_logic;
-    ptp_wbs_stb_i   : in  std_logic;
-    ptp_wbs_ack_o   : out std_logic;
-    ptp_wbs_err_o   : out std_logic;
-    ptp_wbs_stall_o : out std_logic;
+    ptp_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
+    ptp_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
+    ptp_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
+    ptp_snk_cyc_i   : in  std_logic;
+    ptp_snk_stb_i   : in  std_logic;
+    ptp_snk_ack_o   : out std_logic;
+    ptp_snk_err_o   : out std_logic;
+    ptp_snk_stall_o : out std_logic;
 
-    ptp_wbm_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-    ptp_wbm_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-    ptp_wbm_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-    ptp_wbm_cyc_o  : out std_logic;
-    ptp_wbm_stb_o  : out std_logic;
-    ptp_wbm_ack_i  : in  std_logic;
-    ptp_wbm_err_i  : in  std_logic;
-    ptp_wbm_stall_i: in  std_logic;
+    ptp_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
+    ptp_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
+    ptp_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
+    ptp_src_cyc_o  : out std_logic;
+    ptp_src_stb_o  : out std_logic;
+    ptp_src_ack_i  : in  std_logic;
+    ptp_src_err_i  : in  std_logic;
+    ptp_src_stall_i: in  std_logic;
 
     --External WBP port
-    ext_wbs_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-    ext_wbs_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-    ext_wbs_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-    ext_wbs_cyc_i   : in  std_logic;
-    ext_wbs_stb_i   : in  std_logic;
-    ext_wbs_ack_o   : out std_logic;
-    ext_wbs_err_o   : out std_logic;
-    ext_wbs_stall_o : out std_logic;
+    ext_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
+    ext_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
+    ext_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
+    ext_snk_cyc_i   : in  std_logic;
+    ext_snk_stb_i   : in  std_logic;
+    ext_snk_ack_o   : out std_logic;
+    ext_snk_err_o   : out std_logic;
+    ext_snk_stall_o : out std_logic;
     
-    ext_wbm_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-    ext_wbm_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-    ext_wbm_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-    ext_wbm_cyc_o  : out std_logic;
-    ext_wbm_stb_o  : out std_logic;
-    ext_wbm_ack_i  : in  std_logic;
-    ext_wbm_err_i  : in  std_logic;
-    ext_wbm_stall_i: in  std_logic;
+    ext_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
+    ext_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
+    ext_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
+    ext_src_cyc_o  : out std_logic;
+    ext_src_stb_o  : out std_logic;
+    ext_src_ack_i  : in  std_logic;
+    ext_src_err_i  : in  std_logic;
+    ext_src_stall_i: in  std_logic;
 
     class_core_i: in std_logic_vector(7 downto 0)
   );
@@ -133,7 +133,7 @@ architecture behaviour of wbp_mux is
   signal mux_pend_ext        : std_logic;
   signal mux_pend_ptp        : std_logic;
   signal force_stall         : std_logic;
-  signal ep_wbs_stall_out : std_logic;
+  signal ep_snk_stall_out : std_logic;
   
 
   --==================================--
@@ -147,7 +147,7 @@ architecture behaviour of wbp_mux is
   signal ep_stall_mask         : std_logic;
   signal ptp_select,ext_select : std_logic;
   signal ptp_send_status, ext_send_status : std_logic;
-  signal ep_wbm_stall_d0 : std_logic;
+  signal ep_src_stall_d0 : std_logic;
 
 begin
 
@@ -167,30 +167,30 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
         mux_last     <= '1';
 
         mux    <= MUX_SEL;
-        ep_wbm_stall_d0 <= '0';
+        ep_src_stall_d0 <= '0';
       else
-        ep_wbm_stall_d0<=ep_wbm_stall_i;
+        ep_src_stall_d0<=ep_src_stall_i;
         case(mux) is
           when MUX_SEL =>
-            if( ext_wbs_cyc_i='1' and ptp_wbs_cyc_i='0' ) then 
+            if( ext_snk_cyc_i='1' and ptp_snk_cyc_i='0' ) then 
               mux <= MUX_EXT;
-            elsif( ext_wbs_cyc_i='0' and ptp_wbs_cyc_i='1' ) then 
+            elsif( ext_snk_cyc_i='0' and ptp_snk_cyc_i='1' ) then 
               mux <= MUX_PTP;
             --little Round Robin here
-            elsif( ext_wbs_cyc_i='1' and ptp_wbs_cyc_i='1' and mux_last=c_LAST_PTP ) then 
+            elsif( ext_snk_cyc_i='1' and ptp_snk_cyc_i='1' and mux_last=c_LAST_PTP ) then 
               mux <= MUX_EXT;
-            elsif( ext_wbs_cyc_i='1' and ptp_wbs_cyc_i='1' and mux_last=c_LAST_EXT ) then 
+            elsif( ext_snk_cyc_i='1' and ptp_snk_cyc_i='1' and mux_last=c_LAST_EXT ) then 
               mux <= MUX_PTP;
             end if;
 
-            if( ext_wbs_cyc_i='1' and ext_wbs_stb_i='1' ) then
+            if( ext_snk_cyc_i='1' and ext_snk_stb_i='1' ) then
               mux_pend_ext <= '1';
-            elsif( ext_wbs_cyc_i='0' ) then
+            elsif( ext_snk_cyc_i='0' ) then
               mux_pend_ext <= '0';
             end if;
-            if( ptp_wbs_cyc_i='1' and ptp_wbs_stb_i='1' ) then
+            if( ptp_snk_cyc_i='1' and ptp_snk_stb_i='1' ) then
               mux_pend_ptp <= '1';
-            elsif( ptp_wbs_cyc_i='0' ) then
+            elsif( ptp_snk_cyc_i='0' ) then
               mux_pend_ptp <= '0';
             end if;
 
@@ -198,13 +198,13 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
           when MUX_EXT =>
             mux_last     <= c_LAST_EXT;
             mux_pend_ext <= '0';
-            if( ptp_wbs_cyc_i='1' and ptp_wbs_stb_i='1' ) then
+            if( ptp_snk_cyc_i='1' and ptp_snk_stb_i='1' ) then
               mux_pend_ptp <= '1';
-            elsif( ptp_wbs_cyc_i='0' ) then
+            elsif( ptp_snk_cyc_i='0' ) then
               mux_pend_ptp <= '0';
             end if;
 
-            if( ext_wbs_cyc_i = '0' and ep_wbm_stall_i = '0' and ep_wbm_stall_d0 ='0') then 
+            if( ext_snk_cyc_i = '0' and ep_src_stall_i = '0' and ep_src_stall_d0 ='0') then 
               mux <= MUX_SEL;
             end if;
 
@@ -212,13 +212,13 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
           when MUX_PTP =>
             mux_last <= c_LAST_PTP;
             mux_pend_ptp <= '0';
-            if( ext_wbs_cyc_i='1' and ext_wbs_stb_i='1' ) then
+            if( ext_snk_cyc_i='1' and ext_snk_stb_i='1' ) then
               mux_pend_ext <= '1';
-            elsif( ext_wbs_cyc_i='0' ) then
+            elsif( ext_snk_cyc_i='0' ) then
               mux_pend_ext <= '0';
             end if;
 
-        if( ptp_wbs_cyc_i='0' and ep_wbm_stall_i = '0' and ep_wbm_stall_d0= '0') then 
+        if( ptp_snk_cyc_i='0' and ep_src_stall_i = '0' and ep_src_stall_d0= '0') then 
               mux <= MUX_SEL;
             end if;
 
@@ -232,7 +232,7 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
     end if;
   end process;
 
-  force_stall <= '1' when( mux=MUX_SEL and ext_wbs_cyc_i='1' and ptp_wbs_cyc_i='1' ) else
+  force_stall <= '1' when( mux=MUX_SEL and ext_snk_cyc_i='1' and ptp_snk_cyc_i='1' ) else
                  '0';
 
   --buffers
@@ -251,54 +251,54 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
         mux_extstb_reg <= '0';
         mux_ptpstb_reg <= '0';
       else
-        if(ep_wbm_stall_i='0') then
-          mux_extdat_reg <= ext_wbs_dat_i;
-          mux_ptpdat_reg <= ptp_wbs_dat_i;
-          mux_extadr_reg <= ext_wbs_adr_i;
-          mux_ptpadr_reg <= ptp_wbs_adr_i;
-          mux_extsel_reg <= ext_wbs_sel_i;
-          mux_ptpsel_reg <= ptp_wbs_sel_i;
-          mux_extcyc_reg <= ext_wbs_cyc_i;
-          mux_ptpcyc_reg <= ptp_wbs_cyc_i;
-          mux_extstb_reg <= ext_wbs_stb_i;
-          mux_ptpstb_reg <= ptp_wbs_stb_i;
+        if(ep_src_stall_i='0') then
+          mux_extdat_reg <= ext_snk_dat_i;
+          mux_ptpdat_reg <= ptp_snk_dat_i;
+          mux_extadr_reg <= ext_snk_adr_i;
+          mux_ptpadr_reg <= ptp_snk_adr_i;
+          mux_extsel_reg <= ext_snk_sel_i;
+          mux_ptpsel_reg <= ptp_snk_sel_i;
+          mux_extcyc_reg <= ext_snk_cyc_i;
+          mux_ptpcyc_reg <= ptp_snk_cyc_i;
+          mux_extstb_reg <= ext_snk_stb_i;
+          mux_ptpstb_reg <= ptp_snk_stb_i;
         end if;
       end if;
     end if;
   end process;
 
-  ep_wbm_adr_o    <= mux_extadr_reg  when(mux=MUX_EXT) else
+  ep_src_adr_o    <= mux_extadr_reg  when(mux=MUX_EXT) else
                      mux_ptpadr_reg  when(mux=MUX_PTP) else
                      (others=>'0');
-  ep_wbm_dat_o    <= mux_extdat_reg  when(mux=MUX_EXT) else
+  ep_src_dat_o    <= mux_extdat_reg  when(mux=MUX_EXT) else
                      mux_ptpdat_reg  when(mux=MUX_PTP) else
                      (others=>'0');
-  ep_wbm_sel_o    <= mux_extsel_reg  when(mux=MUX_EXT) else
+  ep_src_sel_o    <= mux_extsel_reg  when(mux=MUX_EXT) else
                      mux_ptpsel_reg  when(mux=MUX_PTP) else
                      (others=>'0');
-  ep_wbm_cyc_o    <= mux_extcyc_reg  when(mux=MUX_EXT) else
+  ep_src_cyc_o    <= mux_extcyc_reg  when(mux=MUX_EXT) else
                      mux_ptpcyc_reg  when(mux=MUX_PTP) else
                      '0';
-  ep_wbm_stb_o    <= mux_extstb_reg or mux_pend_ext  when(mux=MUX_EXT) else
+  ep_src_stb_o    <= mux_extstb_reg or mux_pend_ext  when(mux=MUX_EXT) else
                      mux_ptpstb_reg or mux_pend_ptp  when(mux=MUX_PTP) else
                      '0';
 
-  ext_wbs_ack_o   <= ep_wbm_ack_i   when(mux=MUX_EXT) else
+  ext_snk_ack_o   <= ep_src_ack_i   when(mux=MUX_EXT) else
                      '0';
-  ptp_wbs_ack_o   <= ep_wbm_ack_i   when(mux=MUX_PTP) else
-                     '0';
-
-  ext_wbs_err_o   <= ep_wbm_err_i   when(mux=MUX_EXT) else
-                     '0';
-  ptp_wbs_err_o   <= ep_wbm_err_i   when(mux=MUX_PTP) else
+  ptp_snk_ack_o   <= ep_src_ack_i   when(mux=MUX_PTP) else
                      '0';
 
-  ext_wbs_stall_o <= ep_wbm_stall_i when(mux=MUX_EXT) else
+  ext_snk_err_o   <= ep_src_err_i   when(mux=MUX_EXT) else
+                     '0';
+  ptp_snk_err_o   <= ep_src_err_i   when(mux=MUX_PTP) else
+                     '0';
+
+  ext_snk_stall_o <= ep_src_stall_i when(mux=MUX_EXT) else
                      '1'            when(mux=MUX_PTP) else
                      '1'            when(force_stall='1') else
                      '0';
 
-  ptp_wbs_stall_o <= ep_wbm_stall_i when(mux=MUX_PTP) else
+  ptp_snk_stall_o <= ep_src_stall_i when(mux=MUX_PTP) else
                      '1'            when(mux=MUX_EXT) else
                      '1'            when(force_stall='1') else
                      '0';
@@ -332,9 +332,9 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
             ptp_send_status <= '0';
             ext_select      <= '0';
             ext_send_status <= '0';
-            if( ep_wbs_cyc_i='1' and ep_wbs_stb_i='1' and ep_wbs_adr_i=c_WRF_STATUS ) then
+            if( ep_snk_cyc_i='1' and ep_snk_stb_i='1' and ep_snk_adr_i=c_WRF_STATUS ) then
               ep_stall_mask   <= '1';
-              dmux_status_reg <= ep_wbs_dat_i;
+              dmux_status_reg <= ep_snk_dat_i;
               demux <= DMUX_STATUS;
             else
               dmux_status_reg<=(others => '0');
@@ -351,13 +351,13 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
             if(( dmux_status_class = x"00") or ((dmux_status_class and class_core_i) /= "00000000")) then
               ptp_select      <= '1';
               ptp_send_status <= '1';
-              if( ptp_wbm_stall_i='0' ) then
+              if( ptp_src_stall_i='0' ) then
                 demux <= DMUX_PAYLOAD;
               end if;
             else 
               ext_select      <= '1';
               ext_send_status <= '1';
-              if( ext_wbm_stall_i='0' ) then
+              if( ext_src_stall_i='0' ) then
                 demux <= DMUX_PAYLOAD;
               end if;
             end if;
@@ -371,7 +371,7 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
             ext_send_status <= '0';
             ep_stall_mask   <= '0';
 
-            if(ep_wbs_cyc_i = '0') then
+            if(ep_snk_cyc_i = '0') then
               demux <= DMUX_WAIT;
             end if;
 
@@ -383,51 +383,51 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
   end process;
 
 
-  ptp_wbm_cyc_o  <= ep_wbs_cyc_i when(ptp_select = '1') else 
+  ptp_src_cyc_o  <= ep_snk_cyc_i when(ptp_select = '1') else 
                     '0';
-  ptp_wbm_stb_o  <= '1'          when(ptp_send_status = '1') else
-                    ep_wbs_stb_i when(ptp_select = '1') else 
+  ptp_src_stb_o  <= '1'          when(ptp_send_status = '1') else
+                    ep_snk_stb_i when(ptp_select = '1') else 
                     '0';
-  ptp_wbm_adr_o  <= c_WRF_STATUS when(ptp_send_status = '1') else
-                    ep_wbs_adr_i when(ptp_select = '1') else 
+  ptp_src_adr_o  <= c_WRF_STATUS when(ptp_send_status = '1') else
+                    ep_snk_adr_i when(ptp_select = '1') else 
                     (others=>'0');
-  ptp_wbm_dat_o  <= dmux_status_reg when(ptp_send_status = '1') else
-                    ep_wbs_dat_i    when(ptp_select = '1') else 
+  ptp_src_dat_o  <= dmux_status_reg when(ptp_send_status = '1') else
+                    ep_snk_dat_i    when(ptp_select = '1') else 
                     (others=>'0');
-  ptp_wbm_sel_o  <= (others=>'1') when(ptp_send_status = '1') else 
-                    ep_wbs_sel_i  when(ptp_select = '1') else 
+  ptp_src_sel_o  <= (others=>'1') when(ptp_send_status = '1') else 
+                    ep_snk_sel_i  when(ptp_select = '1') else 
                     (others=>'1');
 
 
-  ep_wbs_ack_o   <= ptp_wbm_ack_i when(ptp_select = '1') else
-                    ext_wbm_ack_i when(ext_select = '1') else
-                    (ep_wbs_cyc_i and ep_wbs_stb_i and not ep_wbs_stall_out);
+  ep_snk_ack_o   <= ptp_src_ack_i when(ptp_select = '1') else
+                    ext_src_ack_i when(ext_select = '1') else
+                    (ep_snk_cyc_i and ep_snk_stb_i and not ep_snk_stall_out);
 
-  ep_wbs_err_o   <= ptp_wbm_err_i when(ptp_select = '1') else
-                    ext_wbm_err_i when(ext_select = '1') else
+  ep_snk_err_o   <= ptp_src_err_i when(ptp_select = '1') else
+                    ext_src_err_i when(ext_select = '1') else
                     '0';
 
-  ep_wbs_stall_out <= '1'             when(ep_stall_mask = '1') else
-                    ptp_wbm_stall_i when(ptp_select = '1') else
-                    ext_wbm_stall_i when(ext_select = '1') else
+  ep_snk_stall_out <= '1'             when(ep_stall_mask = '1') else
+                    ptp_src_stall_i when(ptp_select = '1') else
+                    ext_src_stall_i when(ext_select = '1') else
                     '0';
 
-ep_wbs_stall_o <= ep_wbs_stall_out;
+ep_snk_stall_o <= ep_snk_stall_out;
 
 
-  ext_wbm_cyc_o  <= ep_wbs_cyc_i when(ext_select = '1') else 
+  ext_src_cyc_o  <= ep_snk_cyc_i when(ext_select = '1') else 
                     '0';
-  ext_wbm_stb_o  <= '1'          when(ext_send_status = '1') else
-                    ep_wbs_stb_i when(ext_select = '1') else 
+  ext_src_stb_o  <= '1'          when(ext_send_status = '1') else
+                    ep_snk_stb_i when(ext_select = '1') else 
                     '0';
-  ext_wbm_adr_o  <= c_WRF_STATUS when(ext_send_status = '1') else
-                    ep_wbs_adr_i when(ext_select = '1') else 
+  ext_src_adr_o  <= c_WRF_STATUS when(ext_send_status = '1') else
+                    ep_snk_adr_i when(ext_select = '1') else 
                     (others=>'0');
-  ext_wbm_dat_o  <= dmux_status_reg when(ext_send_status = '1') else
-                    ep_wbs_dat_i    when(ext_select = '1') else 
+  ext_src_dat_o  <= dmux_status_reg when(ext_send_status = '1') else
+                    ep_snk_dat_i    when(ext_select = '1') else 
                     (others=>'0');
-  ext_wbm_sel_o  <= (others=>'1') when(ext_send_status = '1') else 
-                    ep_wbs_sel_i  when(ext_select = '1') else 
+  ext_src_sel_o  <= (others=>'1') when(ext_send_status = '1') else 
+                    ep_snk_sel_i  when(ext_select = '1') else 
                     (others=>'1');
 
 end behaviour;
@@ -480,61 +480,61 @@ architecture behaviour of xwbp_mux is
       rst_n_i        : in  std_logic; 
   
       --ENDPOINT
-      ep_wbs_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-      ep_wbs_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-      ep_wbs_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-      ep_wbs_cyc_i   : in  std_logic;
-      ep_wbs_stb_i   : in  std_logic;
-      ep_wbs_ack_o   : out std_logic;
-      ep_wbs_err_o   : out std_logic;
-      ep_wbs_stall_o : out std_logic;
+      ep_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
+      ep_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
+      ep_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
+      ep_snk_cyc_i   : in  std_logic;
+      ep_snk_stb_i   : in  std_logic;
+      ep_snk_ack_o   : out std_logic;
+      ep_snk_err_o   : out std_logic;
+      ep_snk_stall_o : out std_logic;
       
-      ep_wbm_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-      ep_wbm_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-      ep_wbm_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-      ep_wbm_cyc_o  : out std_logic;
-      ep_wbm_stb_o  : out std_logic;
-      ep_wbm_ack_i  : in  std_logic;
-      ep_wbm_err_i  : in  std_logic;
-      ep_wbm_stall_i: in  std_logic;
+      ep_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
+      ep_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
+      ep_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
+      ep_src_cyc_o  : out std_logic;
+      ep_src_stb_o  : out std_logic;
+      ep_src_ack_i  : in  std_logic;
+      ep_src_err_i  : in  std_logic;
+      ep_src_stall_i: in  std_logic;
   
       --PTP packets eg. for Mini-NIC
-      ptp_wbs_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-      ptp_wbs_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-      ptp_wbs_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-      ptp_wbs_cyc_i   : in  std_logic;
-      ptp_wbs_stb_i   : in  std_logic;
-      ptp_wbs_ack_o   : out std_logic;
-      ptp_wbs_err_o   : out std_logic;
-      ptp_wbs_stall_o : out std_logic;
+      ptp_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
+      ptp_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
+      ptp_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
+      ptp_snk_cyc_i   : in  std_logic;
+      ptp_snk_stb_i   : in  std_logic;
+      ptp_snk_ack_o   : out std_logic;
+      ptp_snk_err_o   : out std_logic;
+      ptp_snk_stall_o : out std_logic;
   
-      ptp_wbm_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-      ptp_wbm_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-      ptp_wbm_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-      ptp_wbm_cyc_o  : out std_logic;
-      ptp_wbm_stb_o  : out std_logic;
-      ptp_wbm_ack_i  : in  std_logic;
-      ptp_wbm_err_i  : in  std_logic;
-      ptp_wbm_stall_i: in  std_logic;
+      ptp_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
+      ptp_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
+      ptp_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
+      ptp_src_cyc_o  : out std_logic;
+      ptp_src_stb_o  : out std_logic;
+      ptp_src_ack_i  : in  std_logic;
+      ptp_src_err_i  : in  std_logic;
+      ptp_src_stall_i: in  std_logic;
   
       --External WBP port
-      ext_wbs_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-      ext_wbs_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-      ext_wbs_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-      ext_wbs_cyc_i   : in  std_logic;
-      ext_wbs_stb_i   : in  std_logic;
-      ext_wbs_ack_o   : out std_logic;
-      ext_wbs_err_o   : out std_logic;
-      ext_wbs_stall_o : out std_logic;
+      ext_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
+      ext_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
+      ext_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
+      ext_snk_cyc_i   : in  std_logic;
+      ext_snk_stb_i   : in  std_logic;
+      ext_snk_ack_o   : out std_logic;
+      ext_snk_err_o   : out std_logic;
+      ext_snk_stall_o : out std_logic;
       
-      ext_wbm_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-      ext_wbm_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-      ext_wbm_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-      ext_wbm_cyc_o  : out std_logic;
-      ext_wbm_stb_o  : out std_logic;
-      ext_wbm_ack_i  : in  std_logic;
-      ext_wbm_err_i  : in  std_logic;
-      ext_wbm_stall_i: in  std_logic;
+      ext_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
+      ext_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
+      ext_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
+      ext_src_cyc_o  : out std_logic;
+      ext_src_stb_o  : out std_logic;
+      ext_src_ack_i  : in  std_logic;
+      ext_src_err_i  : in  std_logic;
+      ext_src_stall_i: in  std_logic;
       class_core_i : in std_logic_vector(7 downto 0)
     );
   end component;
@@ -551,59 +551,59 @@ begin
         clk_sys_i       => clk_sys_i,
         rst_n_i         => rst_n_i,
                        
-        ep_wbs_adr_i    => ep_snk_i.adr,
-        ep_wbs_dat_i    => ep_snk_i.dat,
-        ep_wbs_sel_i    => ep_snk_i.sel,
-        ep_wbs_cyc_i    => ep_snk_i.cyc,
-        ep_wbs_stb_i    => ep_snk_i.stb,
-        ep_wbs_ack_o    => ep_snk_o.ack,
-        ep_wbs_err_o    => ep_snk_o.err,
-        ep_wbs_stall_o  => ep_snk_o.stall,
+        ep_snk_adr_i    => ep_snk_i.adr,
+        ep_snk_dat_i    => ep_snk_i.dat,
+        ep_snk_sel_i    => ep_snk_i.sel,
+        ep_snk_cyc_i    => ep_snk_i.cyc,
+        ep_snk_stb_i    => ep_snk_i.stb,
+        ep_snk_ack_o    => ep_snk_o.ack,
+        ep_snk_err_o    => ep_snk_o.err,
+        ep_snk_stall_o  => ep_snk_o.stall,
         
-        ep_wbm_adr_o    => ep_src_o.adr,
-        ep_wbm_dat_o    => ep_src_o.dat,
-        ep_wbm_sel_o    => ep_src_o.sel,
-        ep_wbm_cyc_o    => ep_src_o.cyc,
-        ep_wbm_stb_o    => ep_src_o.stb,
-        ep_wbm_ack_i    => ep_src_i.ack,
-        ep_wbm_err_i    => ep_src_i.err,
-        ep_wbm_stall_i  => ep_src_i.stall,
+        ep_src_adr_o    => ep_src_o.adr,
+        ep_src_dat_o    => ep_src_o.dat,
+        ep_src_sel_o    => ep_src_o.sel,
+        ep_src_cyc_o    => ep_src_o.cyc,
+        ep_src_stb_o    => ep_src_o.stb,
+        ep_src_ack_i    => ep_src_i.ack,
+        ep_src_err_i    => ep_src_i.err,
+        ep_src_stall_i  => ep_src_i.stall,
                        
-        ptp_wbs_adr_i   => ptp_snk_i.adr,
-        ptp_wbs_dat_i   => ptp_snk_i.dat,
-        ptp_wbs_sel_i   => ptp_snk_i.sel,
-        ptp_wbs_cyc_i   => ptp_snk_i.cyc,
-        ptp_wbs_stb_i   => ptp_snk_i.stb,
-        ptp_wbs_ack_o   => ptp_snk_o.ack,
-        ptp_wbs_err_o   => ptp_snk_o.err,
-        ptp_wbs_stall_o => ptp_snk_o.stall,
+        ptp_snk_adr_i   => ptp_snk_i.adr,
+        ptp_snk_dat_i   => ptp_snk_i.dat,
+        ptp_snk_sel_i   => ptp_snk_i.sel,
+        ptp_snk_cyc_i   => ptp_snk_i.cyc,
+        ptp_snk_stb_i   => ptp_snk_i.stb,
+        ptp_snk_ack_o   => ptp_snk_o.ack,
+        ptp_snk_err_o   => ptp_snk_o.err,
+        ptp_snk_stall_o => ptp_snk_o.stall,
                        
-        ptp_wbm_adr_o   => ptp_src_o.adr, 
-        ptp_wbm_dat_o   => ptp_src_o.dat,
-        ptp_wbm_sel_o   => ptp_src_o.sel,
-        ptp_wbm_cyc_o   => ptp_src_o.cyc,
-        ptp_wbm_stb_o   => ptp_src_o.stb,
-        ptp_wbm_ack_i   => ptp_src_i.ack,
-        ptp_wbm_err_i   => ptp_src_i.err,
-        ptp_wbm_stall_i => ptp_src_i.stall,
+        ptp_src_adr_o   => ptp_src_o.adr, 
+        ptp_src_dat_o   => ptp_src_o.dat,
+        ptp_src_sel_o   => ptp_src_o.sel,
+        ptp_src_cyc_o   => ptp_src_o.cyc,
+        ptp_src_stb_o   => ptp_src_o.stb,
+        ptp_src_ack_i   => ptp_src_i.ack,
+        ptp_src_err_i   => ptp_src_i.err,
+        ptp_src_stall_i => ptp_src_i.stall,
                        
-        ext_wbs_adr_i   => ext_snk_i.adr, 
-        ext_wbs_dat_i   => ext_snk_i.dat,
-        ext_wbs_sel_i   => ext_snk_i.sel,
-        ext_wbs_cyc_i   => ext_snk_i.cyc,
-        ext_wbs_stb_i   => ext_snk_i.stb,
-        ext_wbs_ack_o   => ext_snk_o.ack,
-        ext_wbs_err_o   => ext_snk_o.err,
-        ext_wbs_stall_o => ext_snk_o.stall,
+        ext_snk_adr_i   => ext_snk_i.adr, 
+        ext_snk_dat_i   => ext_snk_i.dat,
+        ext_snk_sel_i   => ext_snk_i.sel,
+        ext_snk_cyc_i   => ext_snk_i.cyc,
+        ext_snk_stb_i   => ext_snk_i.stb,
+        ext_snk_ack_o   => ext_snk_o.ack,
+        ext_snk_err_o   => ext_snk_o.err,
+        ext_snk_stall_o => ext_snk_o.stall,
         
-        ext_wbm_adr_o   => ext_src_o.adr, 
-        ext_wbm_dat_o   => ext_src_o.dat,
-        ext_wbm_sel_o   => ext_src_o.sel,
-        ext_wbm_cyc_o   => ext_src_o.cyc,
-        ext_wbm_stb_o   => ext_src_o.stb,
-        ext_wbm_ack_i   => ext_src_i.ack,
-        ext_wbm_err_i   => ext_src_i.err,
-        ext_wbm_stall_i => ext_src_i.stall,
+        ext_src_adr_o   => ext_src_o.adr, 
+        ext_src_dat_o   => ext_src_o.dat,
+        ext_src_sel_o   => ext_src_o.sel,
+        ext_src_cyc_o   => ext_src_o.cyc,
+        ext_src_stb_o   => ext_src_o.stb,
+        ext_src_ack_i   => ext_src_i.ack,
+        ext_src_err_i   => ext_src_i.err,
+        ext_src_stall_i => ext_src_i.stall,
         class_core_i=> class_core_i
       );
 
