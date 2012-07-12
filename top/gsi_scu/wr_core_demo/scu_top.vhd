@@ -222,38 +222,19 @@ architecture rtl of scu_top is
   signal cbar_master_i : t_wishbone_master_in_array(c_slaves-1 downto 0);
   signal cbar_master_o : t_wishbone_master_out_array(c_slaves-1 downto 0);
 
-
-  -- LCLK from GN4124 used as system clock
-  signal l_clk : std_logic;
-
-  -- P2L colck PLL status
-  signal p2l_pll_locked : std_logic;
-
-  -- Reset
-  signal rst_a : std_logic;
-  signal rst   : std_logic;
-
-  -- SPI
-  signal spi_slave_select : std_logic_vector(7 downto 0);
-
-
-  signal pllout_clk_sys       : std_logic;
-  signal pllout_clk_dmtd      : std_logic;
-  signal pllout_clk_fb_pllref : std_logic;
-  signal pllout_clk_fb_dmtd   : std_logic;
-
-  signal clk_20m_vcxo_buf : std_logic;
-  signal clk_125m_pllref  : std_logic;
+  signal pllout_clk_sys   : std_logic;
+  signal pllout_clk_dmtd  : std_logic;
   signal clk_sys          : std_logic;
   signal clk_dmtd         : std_logic;
-  signal dac_rst_n        : std_logic;
-  signal led_divider      : unsigned(23 downto 0);
+  signal clk_reconf       : std_logic;
 
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
 
+  signal pio_reg : std_logic_vector(7 downto 0);
+  signal ext_pps : std_logic;
   signal pps : std_logic;
 
   signal phy_tx_clk       : std_logic;
@@ -269,16 +250,11 @@ architecture rtl of scu_top is
   signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
 
-  signal local_reset_n  : std_logic;
-  signal button1_synced : std_logic_vector(2 downto 0);
-
   signal wrc_master_i  : t_wishbone_master_in;
   signal wrc_master_o  : t_wishbone_master_out;
 
   signal nreset        : std_logic := '0';
 
-  signal clk_reconf : std_logic;
-  
   signal mb_src_out    : t_wrf_source_out;
   signal mb_src_in     : t_wrf_source_in;
   signal mb_snk_out    : t_wrf_sink_out;
@@ -286,21 +262,10 @@ architecture rtl of scu_top is
   signal mb_master_out : t_wishbone_master_out;
   signal mb_master_in  : t_wishbone_master_in;
   
-  signal dummy_gpio, gpio_out : std_logic_vector(31 downto 0);
-  signal pio_reg:	std_logic_vector(7 downto 0);
-  signal ext_pps: std_logic;
-  
   signal tm_utc    : std_logic_vector(39 downto 0);
   signal tm_cycles : std_logic_vector(27 downto 0);
 
-  signal fake_tm_utc    : std_logic_vector(39 downto 0);
-  signal fake_tm_cycles : std_logic_vector(27 downto 0);
-  
   signal triggers : std_logic_vector(3 downto 0);
-  
-  signal lpc_oe : std_logic;
-  signal lad_o : std_logic_vector(3 downto 0);
-  
   signal eca_toggle: std_logic_vector(31 downto 0);
   
   signal owr_pwren_o : std_logic_vector(1 downto 0);
