@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-04-24
+-- Last update: 2012-07-13
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -315,7 +315,7 @@ begin  -- behavioral
     p_retime_counter : process(clk_ref_i)
     begin
       if falling_edge(clk_ref_i) then
-        if rst_n_i = '0' or sync_in_progress = '0' or pps_ext_retimed = '0' then
+        if rst_synced_refclk = '0' or sync_in_progress = '0' or pps_ext_retimed = '0' then
           retime_counter <= (others => '0');
         else
           retime_counter <= retime_counter + 1;
