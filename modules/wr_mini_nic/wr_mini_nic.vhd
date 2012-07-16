@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2012-06-05
+-- Last update: 2012-07-13
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ architecture behavioral of wr_mini_nic is
 -- RX FSM stuff
 -------------------------------------------------------------------------------  
 
-  type t_rx_fsm_state is (RX_WAIT_SOF, RX_MEM_RESYNC, RX_MEM_FLUSH, RX_ALLOCATE_DESCRIPTOR, RX_DATA, RX_UPDATE_DESC);
+  type t_rx_fsm_state is (RX_WAIT_SOF, RX_MEM_RESYNC, RX_MEM_FLUSH, RX_ALLOCATE_DESCRIPTOR, RX_DATA, RX_UPDATE_DESC, RX_IGNORE, RX_BUF_FULL);
 
   signal nrx_state    : t_rx_fsm_state;
   signal nrx_avail    : unsigned(g_memsize_log2-1 downto 0);
@@ -525,7 +525,7 @@ begin  -- behavioral
                 if(ntx_cntr_is_zero = '1') then
                   src_stb_int <= '0';
                   ntx_state   <= TX_OOB1;
-                --  ntx_mem_a <= ntx_mem_a + 1;
+                  --  ntx_mem_a <= ntx_mem_a + 1;
                 else
                   ntx_cntr  <= ntx_cntr - 1;
                   ntx_state <= TX_LWORD;
@@ -712,9 +712,7 @@ begin  -- behavioral
         regs_in.mcr_rx_full_i  <= '0';
         nrx_newpacket          <= '0';
         snk_err_o              <= '0';
-        snk_cyc_d0             <= '0';
       else
-        snk_cyc_d0 <= snk_cyc_i;
 
 -- Host can modify the RX DMA registers only when the DMA engine is disabled
 -- (MCR_RX_EN = 0)
@@ -735,7 +733,7 @@ begin  -- behavioral
             nrx_mem_a_saved   <= unsigned(regs_out.rx_addr_o(g_memsize_log2+1 downto 2));
             nrx_bufstart      <= unsigned(regs_out.rx_addr_o(g_memsize_log2+1 downto 2));
             regs_in.rx_addr_i <= (others => '0');
-          --      nrx_mem_a <= unsigned(minic_rx_addr_new(g_memsize_log2+1 downto 2));
+            --      nrx_mem_a <= unsigned(minic_rx_addr_new(g_memsize_log2+1 downto 2));
           end if;
 
           if(regs_out.rx_size_load_o = '1') then
@@ -758,6 +756,15 @@ begin  -- behavioral
 -- State "Wait for start of frame". We wait until there's a start-of-frame condition
 -- on the RX fabric and then we commence reception of the packet.
 -------------------------------------------------------------------------------
+
+            --when RX_BUFFER_FULL =>
+            --  if(nrx_buf_full = '0') then
+            --    nrx_stall_mask <= '0';
+            --    nrx_state <= RX_WAIT_SOF;
+            --  else
+            --    nrx_stall_mask <= '1';
+            --  end if;
+            
             when RX_WAIT_SOF =>
 --            TRIG0(2 downto 0) <= "000";
 
@@ -774,7 +781,7 @@ begin  -- behavioral
               regs_in.mcr_rx_full_i <= nrx_buf_full;
               snk_err_o             <= nrx_buf_full;
 
-              if(snk_cyc_i = '1' and snk_cyc_d0 = '0' and nrx_buf_full = '0') then  -- got start-of-frame?
+              if(snk_cyc_i = '1' and nrx_buf_full = '0') then  -- got start-of-frame?
                 nrx_stall_mask <= '1';
                 nrx_state      <= RX_ALLOCATE_DESCRIPTOR;
               else
@@ -1003,12 +1010,37 @@ begin  -- behavioral
                 regs_in.mcr_rx_ready_i <= '1';
 
                 -- wait for another packet
-                nrx_state <= RX_WAIT_SOF;
+                if(snk_cyc_i = '1') then
+                  nrx_state <= RX_IGNORE;
+                elsif(nrx_buf_full = '1') then
+                  nrx_state <= RX_BUF_FULL;
+                  nrx_stall_mask <= '1';
+                else
+                  nrx_state <= RX_WAIT_SOF;
+                end if;
               else
                 nrx_mem_wr <= '0';
               end if;
               
-            when others => null;
+            when RX_IGNORE =>
+              nrx_stall_mask <= '0';
+              if(snk_cyc_i = '0') then
+                if(nrx_buf_full = '1') then
+                  nrx_stall_mask <= '1';
+                  nrx_state <= RX_BUF_FULL;
+                else
+                  nrx_state <= RX_WAIT_SOF;
+                end if;
+              end if;
+
+            when RX_BUF_FULL =>
+              if(nrx_buf_full = '0') then
+                nrx_stall_mask <= '0';
+                nrx_state <= RX_WAIT_SOF;
+              else
+                nrx_stall_mask <= '1';
+              end if;                  
+              
           end case;
         end if;
       end if;
@@ -1028,11 +1060,11 @@ begin  -- behavioral
       snk_stall_int <= '1';
     elsif(regs_out.mcr_rx_en_o = '0' or nrx_state = RX_ALLOCATE_DESCRIPTOR or nrx_state = RX_UPDATE_DESC or nrx_state = RX_MEM_FLUSH) then
       snk_stall_int <= '1';
-    -- the condition below forces the RX FSM to go into RX_MEM_RESYNC state. Don't
-    -- receive anything during this time
+      -- the condition below forces the RX FSM to go into RX_MEM_RESYNC state. Don't
+      -- receive anything during this time
     elsif(nrx_toggle = '1' and mem_arb_rx = '1') then
       snk_stall_int <= '1';
-    elsif(nrx_stall_mask = '1' or (snk_cyc_d0 = '1' and snk_cyc_i = '0')) then
+    elsif(nrx_stall_mask = '1') then
       snk_stall_int <= '1';
     else
       snk_stall_int <= '0';
