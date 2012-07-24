@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2012-04-30
+-- Last update: 2012-07-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -77,13 +77,26 @@ entity dmtd_with_deglitcher is
     -- system clock
     clk_sys_i : in std_logic;
 
+    -- async counter resync input: resets only the DDMTD state machine and free
+    -- running counter, synchronized to clk_dmtd_i
+    resync_p_a_i : in std_logic := '0';
+
+    -- [clk_dmtd_i] counter resync output, pulses when free_cntr == 0
+    resync_p_o : out std_logic;
+
+    -- [clk_sys_i] starts resynchronization
+    resync_start_p_i : in std_logic := '0';
+
+    -- [clk_sys_i] 1: resynchonization done
+    resync_done_o : out std_logic;
+
     -- [clk_dmtd_i] phase shifter enable, HI level shifts the internal counter
     -- forward/backward by 1 clk_dmtd_i cycle, effectively shifting the tag
     -- value by +-1.
-    shift_en_i : in std_logic;
+    shift_en_i : in std_logic := '0';
 
     -- [clk_dmtd_i] phase shift direction: 1 - forward, 0 - backward
-    shift_dir_i : in std_logic;
+    shift_dir_i : in std_logic := '0';
 
     -- DMTD clock enable, active high. Can be used to reduce the DMTD sampling
     -- frequency - for example, two 10 MHz signals cannot be sampled directly
@@ -119,24 +132,57 @@ architecture rtl of dmtd_with_deglitcher is
   signal in_d0, in_d1 : std_logic;
   signal s_one        : std_logic;
 
-  --attribute keep : string;
-  --attribute keep of clk_i_d0: signal is “true”;
-  --attribute keep of clk_i_d1: signal is “true”;
-  --attribute keep of clk_i_d2: signal is “true”;
-  --attribute keep of clk_i_d3: signal is “true”;
-
+  signal clk_in                                 : std_logic;
   signal clk_i_d0, clk_i_d1, clk_i_d2, clk_i_d3 : std_logic;
+
+  attribute keep             : string;
+  attribute keep of clk_in   : signal is "true";
+  attribute keep of clk_i_d0 : signal is "true";
+  attribute keep of clk_i_d1 : signal is "true";
+  attribute keep of clk_i_d2 : signal is "true";
+  attribute keep of clk_i_d3 : signal is "true";
 
   signal new_edge_sreg : std_logic_vector(5 downto 0);
   signal new_edge_p    : std_logic;
 
-  signal tag_int : unsigned(g_counter_bits-1 downto 0);
+  signal tag_int       : unsigned(g_counter_bits-1 downto 0);
+  signal resync_p_dmtd : std_logic;
 
-  signal clk_in : std_logic;
+  signal resync_start_p_dmtd, resync_done_dmtd, resync_p_int : std_logic;
+  
 begin  -- rtl
 
-  gen_input_div2: if(g_divide_input_by_2 = true) generate
-    p_divide_input_clock: process(clk_in_i, rst_n_sysclk_i)
+  U_Sync_Resync_Pulse : gc_sync_ffs
+    generic map (
+      g_sync_edge => "positive")
+    port map (
+      clk_i    => clk_dmtd_i,
+      rst_n_i  => rst_n_dmtdclk_i,
+      data_i   => resync_p_a_i,
+      synced_o => resync_p_dmtd);
+
+  U_Sync_Start_Pulse : gc_pulse_synchronizer
+    port map (
+      clk_in_i  => clk_sys_i,
+      clk_out_i => clk_dmtd_i,
+      rst_n_i   => rst_n_dmtdclk_i,
+      d_ready_o => open,
+      d_p_i     => resync_start_p_i,
+      q_p_o     => resync_start_p_dmtd);
+
+  U_Sync_Resync_Done : gc_sync_ffs
+    generic map (
+      g_sync_edge => "positive")
+    port map (
+      clk_i    => clk_sys_i,
+      rst_n_i  => rst_n_sysclk_i,
+      data_i   => resync_done_dmtd,
+      synced_o => resync_done_o);
+
+  
+  
+  gen_input_div2 : if(g_divide_input_by_2 = true) generate
+    p_divide_input_clock : process(clk_in_i, rst_n_sysclk_i)
     begin
       if rst_n_sysclk_i = '0' then
         clk_in <= '0';
@@ -146,10 +192,10 @@ begin  -- rtl
     end process;
   end generate gen_input_div2;
 
-  gen_input_straight: if(g_divide_input_by_2 = false) generate
+  gen_input_straight : if(g_divide_input_by_2 = false) generate
     clk_in <= clk_in_i;
   end generate gen_input_straight;
-  
+
   p_the_dmtd_itself : process(clk_dmtd_i)
   begin
     if rising_edge(clk_dmtd_i) then
@@ -166,7 +212,7 @@ begin  -- rtl
 
     if rising_edge(clk_dmtd_i) then     -- rising clock edge
 
-      if (rst_n_dmtdclk_i = '0') then   -- synchronous reset (active low)
+      if (rst_n_dmtdclk_i = '0' or (resync_p_dmtd = '1' and resync_done_dmtd = '0')) then  -- synchronous reset (active low)
         stab_cntr     <= (others => '0');
         state         <= WAIT_STABLE_0;
         free_cntr     <= (others => '0');
@@ -223,6 +269,32 @@ begin  -- rtl
     end if;
   end process p_deglitch;
 
+  p_resync_pulse_output : process(clk_dmtd_i)
+  begin
+    if rising_edge(clk_dmtd_i) then
+      if(unsigned(free_cntr(free_cntr'length-1 downto 3)) = 0) then
+        resync_p_o <= '1';
+      else
+        resync_p_o <= '0';
+      end if;
+    end if;
+  end process;
+
+  p_resync_pulse_trigger : process(clk_dmtd_i)
+  begin
+    if rising_edge(clk_dmtd_i) then
+      if rst_n_dmtdclk_i = '0' then
+        resync_done_dmtd <= '1';
+      else
+        if(resync_start_p_dmtd = '1') then
+          resync_done_dmtd <= '0';
+        elsif(resync_p_dmtd = '1') then
+          resync_done_dmtd <= '1';
+        end if;
+      end if;
+    end if;
+  end process;
+
   U_sync_tag_strobe : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
@@ -236,7 +308,7 @@ begin  -- rtl
 
   tag_stb_p1_o <= new_edge_p;
 
-  gc_extend_pulse_1 : gc_extend_pulse
+  U_Extend_Debug_Pulses : gc_extend_pulse
     generic map (
       g_width => 3000)
     port map (
@@ -245,6 +317,6 @@ begin  -- rtl
       pulse_i    => new_edge_p,
       extended_o => dbg_dmtdout_o);
 
-  
-  
+
+
 end rtl;
