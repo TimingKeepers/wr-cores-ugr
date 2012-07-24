@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-04-30
+-- Last update: 2012-07-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ entity wr_softpll_ng is
     g_bb_log2_gating : integer := 10;
 
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
-    g_address_granularity : t_wishbone_address_granularity := BYTE
+    g_address_granularity : t_wishbone_address_granularity := WORD
     );
 
   port(
@@ -125,7 +125,7 @@ entity wr_softpll_ng is
 -- g_with_ext_clock_input == true
     clk_ext_i : in std_logic;
 
--- External clock sync/alignment singnal. SoftPLL will clk_ext_i/clk_fb_i(0)
+-- External clock sync/alignment singnal. SoftPLL will align clk_ext_i/clk_fb_i(0)
 -- to match the edges immediately following the rising edge in sync_p_i.
     sync_p_i : in std_logic;
 
@@ -199,17 +199,20 @@ architecture rtl of wr_softpll_ng is
   component dmtd_with_deglitcher
     generic (
       g_counter_bits      : natural;
-      g_chipscope         : boolean := false;
-      g_divide_input_by_2 : boolean := false);
+      g_divide_input_by_2 : boolean);
     port (
       rst_n_dmtdclk_i      : in  std_logic;
       rst_n_sysclk_i       : in  std_logic;
       clk_in_i             : in  std_logic;
       clk_dmtd_i           : in  std_logic;
-      clk_dmtd_en_i        : in  std_logic;
       clk_sys_i            : in  std_logic;
+      resync_p_a_i         : in  std_logic := '0';
+      resync_p_o           : out std_logic;
+      resync_start_p_i     : in  std_logic;
+      resync_done_o        : out std_logic;
       shift_en_i           : in  std_logic;
       shift_dir_i          : in  std_logic;
+      clk_dmtd_en_i        : in  std_logic := '1';
       deglitch_threshold_i : in  std_logic_vector(15 downto 0);
       dbg_dmtdout_o        : out std_logic;
       tag_o                : out std_logic_vector(g_counter_bits-1 downto 0);
@@ -380,7 +383,11 @@ architecture rtl of wr_softpll_ng is
 
   signal bb_sync_en, bb_sync_done : std_logic;
   signal ext_ref_present          : std_logic;
+  signal fb_resync_out            : std_logic_vector(g_num_outputs-1 downto 0);
 
+  signal ref_resync_start_p       : std_logic_vector(31 downto 0);
+  signal fb_resync_start_p        : std_logic_vector(15 downto 0);
+  
 begin  -- rtl
 
 
@@ -483,7 +490,6 @@ begin  -- rtl
     DMTD_REF : dmtd_with_deglitcher
       generic map (
         g_counter_bits      => g_tag_bits,
-        g_chipscope         => false,
         g_divide_input_by_2 => g_divide_input_by_2)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
@@ -494,6 +500,11 @@ begin  -- rtl
 
         clk_sys_i => clk_sys_i,
         clk_in_i  => dmtd_ref_clk_in(i),
+
+        resync_done_o    => regs_out.crr_in_i(i),
+        resync_start_p_i => ref_resync_start_p(i),
+        resync_p_a_i     => fb_resync_out(0),
+        resync_p_o       => open,
 
         tag_o                => tags(i),
         tag_stb_p1_o         => tags_p(i),
@@ -523,6 +534,11 @@ begin  -- rtl
         clk_sys_i => clk_sys_i,
         clk_in_i  => dmtd_fb_clk_in(i),
 
+        resync_done_o    => regs_out.crr_out_i(i),
+        resync_start_p_i => fb_resync_start_p(i),
+        resync_p_a_i     => fb_resync_out(0),
+        resync_p_o       => fb_resync_out(i),
+
         tag_o        => tags(i+g_num_ref_inputs),
         tag_stb_p1_o => tags_p(i+g_num_ref_inputs),
         shift_en_i   => '0',
@@ -532,6 +548,7 @@ begin  -- rtl
         dbg_dmtdout_o        => open);
 
   end generate gen_feedback_dmtds;
+
 
   gen_bb_detector : if(g_with_ext_clock_input) generate
 
@@ -632,8 +649,18 @@ begin  -- rtl
 
       irq_tag_i => irq_tag);
 
+  -- Counter resync logic
+  process(regs_in)
+  begin
+    for i in 0 to g_num_outputs-1 loop
+      fb_resync_start_p(i) <= regs_in.crr_out_load_o and regs_in.crr_out_o(i);
+    end loop;
+    for i in 0 to g_num_ref_inputs-1 loop
+      ref_resync_start_p(i) <= regs_in.crr_in_load_o and regs_in.crr_in_o(i);
+    end loop;  -- i
+  end process;
+  
   wb_irq_o <= wb_irq_out;
-
 
   gen_with_period_detector : if(g_with_period_detector) generate
     
@@ -654,6 +681,7 @@ begin  -- rtl
         freq_err_stb_p_o => dmtd_freq_err_stb_p,
         in_sel_i         => regs_in.csr_per_sel_o(4 downto 0));
 
+    
     p_collect_tags_hpll : process(clk_sys_i)
     begin
       if rising_edge(clk_sys_i) then
@@ -683,13 +711,6 @@ begin  -- rtl
     regs_out.per_hpll_valid_i <= '0';
   end generate gen_without_period_detector;
 
-
-  dac_dmtd_load_o <= regs_in.dac_hpll_wr_o;
-  dac_dmtd_data_o <= regs_in.dac_hpll_o;
-
-  dac_out_data_o <= regs_in.dac_main_value_o;
-  dac_out_sel_o  <= regs_in.dac_main_dac_sel_o;
-  dac_out_load_o <= regs_in.dac_main_value_wr_o;
 
 
   p_ocer_rcer_regs : process(clk_sys_i)
@@ -880,5 +901,11 @@ begin  -- rtl
   regs_out.csr_n_ref_i <= std_logic_vector(to_unsigned(g_num_ref_inputs, regs_out.csr_n_ref_i'length));
   regs_out.csr_n_out_i <= std_logic_vector(to_unsigned(g_num_outputs, regs_out.csr_n_out_i'length));
   
-  
+  dac_dmtd_load_o <= regs_in.dac_hpll_wr_o;
+  dac_dmtd_data_o <= regs_in.dac_hpll_o;
+
+  dac_out_data_o <= regs_in.dac_main_value_o;
+  dac_out_sel_o  <= regs_in.dac_main_dac_sel_o;
+  dac_out_load_o <= regs_in.dac_main_value_wr_o;
+
 end rtl;

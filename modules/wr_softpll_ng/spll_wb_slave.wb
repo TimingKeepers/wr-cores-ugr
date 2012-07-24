@@ -284,6 +284,40 @@ peripheral {
       };
    };
 
+   reg {
+      name = "Counter Resync Register - input channels";
+      prefix = "CRR_IN";
+      
+      field {
+         name = "Counter Resync";
+         description = "write 1: triggers resynchronization of this channel's DDMTD free-running counter with Out Clock 0\
+         write 0: no effect\
+         read 1: resync in progress\
+         read 0: resync done";
+         size = 32;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+      };
+   };
+
+   reg {
+      name = "Counter Resync Register - output channels";
+      prefix = "CRR_OUT";
+      
+      field {
+         name = "Counter Resync";
+         description = "write 1: triggers resynchronization of this channel's DDMTD free-running counter with Out Clock 0\
+         write 0: no effect";
+         size = 16;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+      };
+   };
+
 	 fifo_reg {
 			name = "Debug FIFO Register - Host side";		
 			prefix = "DFR_HOST";
