@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-03-29
+-- Last update: 2012-07-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -56,7 +56,8 @@ entity wr_gtx_phy_virtex6 is
   generic (
     -- set to non-zero value to speed up the simulation by reducing some delays
     g_simulation         : integer := 0;
-    g_use_slave_tx_clock : integer := 0
+    g_use_slave_tx_clock : integer := 0;
+    g_use_bufr           : boolean := false
     );
 
   port (
@@ -65,11 +66,11 @@ entity wr_gtx_phy_virtex6 is
     clk_ref_i : in std_logic;
     -- Reference 62.5 MHz clock for the GTX transceiver
     clk_gtx_i : in std_logic;
-    
+
     -- TX path, clk_ref_i - synchronous:
 
     -- data input (8 bits, not 8b10b-encoded)
-    tx_data_i : in  std_logic_vector(15 downto 0);
+    tx_data_i : in std_logic_vector(15 downto 0);
 
     -- 1 when tx_data_i contains a control code, 0 when it's a data byte
     tx_k_i : in std_logic_vector(1 downto 0);
@@ -297,10 +298,23 @@ begin  -- rtl
       txpll_lockdet_i => txpll_lockdet,
       gtx_test_o      => gtx_test);
 
-  U_BUF_RxRecClk : BUFG
-    port map (
-      I => rx_rec_clk_bufin,
-      O => rx_rec_clk);
+  gen_rx_bufg : if(g_use_bufr = false) generate
+    
+    U_BUF_RxRecClk : BUFG
+      port map (
+        I => rx_rec_clk_bufin,
+        O => rx_rec_clk);
+
+  end generate gen_rx_bufg;
+
+  gen_rx_bufr : if(g_use_bufr = true) generate
+    U_BUF_RxRecClk : BUFR
+      port map (
+        I => rx_rec_clk_bufin,
+        O => rx_rec_clk);
+
+  end generate gen_rx_bufr;
+
 
   rx_rbclk_o <= rx_rec_clk;
 
