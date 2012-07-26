@@ -14,7 +14,7 @@ use work.ep_crc32_pkg.all;
 entity ep_rx_crc_size_check is
   generic
     (
-      g_use_new_crc : boolean := true);
+      g_use_new_crc : boolean := false);
   port(
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
