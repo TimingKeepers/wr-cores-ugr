@@ -11,5 +11,5 @@ syn_project = "spec_top_wrc.xise"
 
 modules = { "local" : 
 						[ "../../../top/spec_1_1/wr_core_demo", 
-								"../../../platform/xilinx/chipscope" ] 
+							"../../../platform" ] 
 					}

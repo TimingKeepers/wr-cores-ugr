@@ -1,8 +1,7 @@
 fetchto = "ip_cores"
 
 modules =  {"local" : 
-											[ "platform",
-												"modules/fabric",
+											[ "modules/fabric",
 												"modules/wr_tbi_phy",
 												"modules/timing",
 												"modules/wr_mini_nic",
