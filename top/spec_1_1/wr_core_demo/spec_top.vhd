@@ -348,6 +348,7 @@ architecture rtl of spec_top is
 
   signal genum_wb_out : t_wishbone_master_out;
   signal genum_wb_in  : t_wishbone_master_in;
+  signal genum_csr_ack_i : std_logic;
   
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
@@ -578,7 +579,7 @@ begin
       csr_we_o    => genum_wb_out.we,
       csr_cyc_o   => genum_wb_out.cyc,
       csr_dat_i   => genum_wb_in.dat,
-      csr_ack_i   => genum_wb_in.ack or genum_wb_in.err,
+      csr_ack_i   => genum_csr_ack_i,
       csr_stall_i => genum_wb_in.stall,
 
       ---------------------------------------------------------
@@ -595,6 +596,7 @@ begin
       --dma_stall_i => dma_stall
       );
 
+  genum_csr_ack_i <= genum_wb_in.ack or genum_wb_in.err;
   genum_wb_out.adr( 1 downto  0) <= (others => '0');
   genum_wb_out.adr(18 downto  2) <= wb_adr(16 downto 0);
   genum_wb_out.adr(31 downto 19) <= (others => '0');
