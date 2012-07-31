@@ -7,6 +7,16 @@ use work.wr_fabric_pkg.all;
 
 package endpoint_pkg is
 
+  type t_txtsu_timestamp is record
+    stb       : std_logic;
+    tsval     : std_logic_vector(31 downto 0);
+    port_id   : std_logic_vector(5 downto 0);
+    frame_id  : std_logic_vector(15 downto 0);
+    incorrect : std_logic;
+  end record;
+
+  type t_txtsu_timestamp_array is array(integer range <>) of t_txtsu_timestamp;
+
   component wr_endpoint
     generic (
       g_interface_mode      : t_wishbone_interface_mode      := CLASSIC;
