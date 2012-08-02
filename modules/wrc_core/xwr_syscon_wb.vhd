@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-11-07
--- Last update: 2012-07-09
+-- Last update: 2012-08-02
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -49,15 +49,16 @@ architecture syn of xwr_syscon_wb is
   component wrc_syscon_wb
     port (
       rst_n_i                                  : in     std_logic;
-      wb_clk_i                                 : in     std_logic;
-      wb_addr_i                                : in     std_logic_vector(2 downto 0);
-      wb_data_i                                : in     std_logic_vector(31 downto 0);
-      wb_data_o                                : out    std_logic_vector(31 downto 0);
+      clk_sys_i                                : in     std_logic;
+      wb_adr_i                                 : in     std_logic_vector(2 downto 0);
+      wb_dat_i                                 : in     std_logic_vector(31 downto 0);
+      wb_dat_o                                 : out    std_logic_vector(31 downto 0);
       wb_cyc_i                                 : in     std_logic;
       wb_sel_i                                 : in     std_logic_vector(3 downto 0);
       wb_stb_i                                 : in     std_logic;
       wb_we_i                                  : in     std_logic;
       wb_ack_o                                 : out    std_logic;
+      wb_stall_o                               : out    std_logic;
       regs_i                                   : in     t_sysc_in_registers;
       regs_o                                   : out    t_sysc_out_registers
     );
@@ -94,15 +95,16 @@ begin
   WRAPPED_SYSCON: wrc_syscon_wb
     port map(
       rst_n_i    => rst_n_i,
-      wb_clk_i   => clk_sys_i,
-      wb_addr_i  => wb_in.adr(2 downto 0),
-      wb_data_i  => wb_in.dat,
-      wb_data_o  => wb_out.dat,
+      clk_sys_i  => clk_sys_i,
+      wb_adr_i   => wb_in.adr(2 downto 0),
+      wb_dat_i   => wb_in.dat,
+      wb_dat_o   => wb_out.dat,
       wb_cyc_i   => wb_in.cyc,
       wb_sel_i   => wb_in.sel,
       wb_stb_i   => wb_in.stb,
       wb_we_i    => wb_in.we,
       wb_ack_o   => wb_out.ack,
+      wb_stall_o => wb_out.stall,
       regs_i     => regs_i,
       regs_o     => regs_o);
 
