@@ -107,7 +107,7 @@ entity wr_mini_nic is
     wb_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0);
     wb_ack_o   : out std_logic;
     wb_stall_o : out std_logic;
-    wb_irq_o   : out std_logic
+    wb_int_o   : out std_logic
     );
 end wr_mini_nic;
 
@@ -116,16 +116,17 @@ architecture behavioral of wr_mini_nic is
   component minic_wb_slave
     port (
       rst_n_i          : in  std_logic;
-      wb_clk_i         : in  std_logic;
-      wb_addr_i        : in  std_logic_vector(4 downto 0);
-      wb_data_i        : in  std_logic_vector(31 downto 0);
-      wb_data_o        : out std_logic_vector(31 downto 0);
+      clk_sys_i        : in  std_logic;
+      wb_adr_i         : in  std_logic_vector(4 downto 0);
+      wb_dat_i         : in  std_logic_vector(31 downto 0);
+      wb_dat_o         : out std_logic_vector(31 downto 0);
       wb_cyc_i         : in  std_logic;
       wb_sel_i         : in  std_logic_vector(3 downto 0);
       wb_stb_i         : in  std_logic;
       wb_we_i          : in  std_logic;
       wb_ack_o         : out std_logic;
-      wb_irq_o         : out std_logic;
+      wb_stall_o       : out std_logic;
+      wb_int_o         : out std_logic;
       tx_ts_read_ack_o : out std_logic;
       irq_tx_i         : in  std_logic;
       irq_tx_ack_o     : out std_logic;
@@ -134,7 +135,8 @@ architecture behavioral of wr_mini_nic is
       irq_rx_ack_o     : out std_logic;
       irq_txts_i       : in  std_logic;
       regs_i           : in  t_minic_in_registers;
-      regs_o           : out t_minic_out_registers);
+      regs_o           : out t_minic_out_registers
+    );
   end component;
 
   --type t_wrf_status_reg is record
@@ -1153,16 +1155,17 @@ begin  -- behavioral
   U_WB_Slave : minic_wb_slave
     port map (
       rst_n_i          => rst_n_i,
-      wb_clk_i         => clk_sys_i,
-      wb_addr_i        => wb_out.adr(4 downto 0),
-      wb_data_i        => wb_out.dat,
-      wb_data_o        => wb_in.dat,
+      clk_sys_i        => clk_sys_i,
+      wb_adr_i         => wb_out.adr(4 downto 0),
+      wb_dat_i         => wb_out.dat,
+      wb_dat_o         => wb_in.dat,
       wb_cyc_i         => wb_out.cyc,
       wb_sel_i         => wb_out.sel,
       wb_stb_i         => wb_out.stb,
       wb_we_i          => wb_out.we,
       wb_ack_o         => wb_in.ack,
-      wb_irq_o         => wb_irq_o,
+      wb_stall_o       => wb_in.stall,
+      wb_int_o         => wb_int_o,
       regs_i           => regs_in,
       regs_o           => regs_out,
       tx_ts_read_ack_o => open,

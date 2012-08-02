@@ -105,7 +105,7 @@ architecture wrapper of xwr_mini_nic is
       wb_dat_o            : out std_logic_vector(c_wishbone_data_width-1 downto 0);
       wb_ack_o            : out std_logic;
       wb_stall_o          : out std_logic;
-      wb_irq_o            : out std_logic);
+      wb_int_o            : out std_logic);
   end component;
   
 begin  -- wrapper
@@ -156,7 +156,7 @@ begin  -- wrapper
       wb_dat_o            => wb_o.dat,
       wb_ack_o            => wb_o.ack,
       wb_stall_o          => wb_o.stall,
-      wb_irq_o            => wb_o.int);
+      wb_int_o            => wb_o.int);
 
 
   wb_o.err <= '0';
