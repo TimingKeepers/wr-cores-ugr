@@ -11,7 +11,6 @@ use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 use work.xwr_eca_pkg.all;
 use work.pcie_wb_pkg.all;
-use work.ddr3_mem_pkg.all;
 use work.wr_altera_pkg.all;
 use work.lpc_uart_pkg.all;
 use work.etherbone_pkg.all;
@@ -153,21 +152,21 @@ entity scu_top is
     -----------------------------------------------------------------------
     -- DDR3
     -----------------------------------------------------------------------
-    DDR3_DQ           : inout std_logic_vector(15 downto 0);
-    DDR3_DM           : out   std_logic_vector(1 downto 0);
-    DDR3_BA           : out   std_logic_vector(2 downto 0);
-    DDR3_ADDR         : out   std_logic_vector(12 downto 0);
-    DDR3_CS_n         : out   std_logic_vector(0 downto 0);
-    DDR3_DQS          : inout std_logic_vector(1 downto 0);
-    DDR3_DQSn         : inout std_logic_vector(1 downto 0);
-    DDR3_RES_n        : out   std_logic;
-    DDR3_CKE          : out   std_logic_vector(0 downto 0);
-    DDR3_ODT          : out   std_logic_vector(0 downto 0);
-    DDR3_CAS_n        : out   std_logic;
-    DDR3_RAS_n        : out   std_logic;
-    DDR3_CLK          : inout std_logic_vector(0 downto 0);
-    DDR3_CLK_n        : inout std_logic_vector(0 downto 0);
-    DDR3_WE_n         : out   std_logic;
+--    DDR3_DQ           : inout std_logic_vector(15 downto 0);
+--    DDR3_DM           : out   std_logic_vector(1 downto 0);
+--    DDR3_BA           : out   std_logic_vector(2 downto 0);
+--    DDR3_ADDR         : out   std_logic_vector(12 downto 0);
+--    DDR3_CS_n         : out   std_logic_vector(0 downto 0);
+--    DDR3_DQS          : inout std_logic_vector(1 downto 0);
+--    DDR3_DQSn         : inout std_logic_vector(1 downto 0);
+--    DDR3_RES_n        : out   std_logic;
+--    DDR3_CKE          : out   std_logic_vector(0 downto 0);
+--    DDR3_ODT          : out   std_logic_vector(0 downto 0);
+--    DDR3_CAS_n        : out   std_logic;
+--    DDR3_RAS_n        : out   std_logic;
+--    DDR3_CLK          : inout std_logic_vector(0 downto 0);
+--    DDR3_CLK_n        : inout std_logic_vector(0 downto 0);
+--    DDR3_WE_n         : out   std_logic;
     
     -----------------------------------------------------------------------
     -- Board configuration
@@ -231,9 +230,14 @@ architecture rtl of scu_top is
 
   signal pllout_clk_sys   : std_logic;
   signal pllout_clk_dmtd  : std_logic;
+  signal locked           : std_logic;
   signal clk_sys          : std_logic;
   signal clk_dmtd         : std_logic;
   signal clk_reconf       : std_logic;
+  
+  signal pllout_clk_sys_rstn    : std_logic;
+  signal clk_125m_pllref_p_rstn : std_logic;
+  signal reset_clks, reset_rstn : std_logic_vector(1 downto 0);
 
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
@@ -259,7 +263,6 @@ architecture rtl of scu_top is
 
   signal wrc_master_i  : t_wishbone_master_in;
   signal wrc_master_o  : t_wishbone_master_out;
-  signal nreset        : std_logic := '0';
 
   signal mb_src_out    : t_wrf_source_out;
   signal mb_src_in     : t_wrf_source_in;
@@ -310,11 +313,6 @@ begin
     port map(
       noe_in   => '0');
   
-  reset : pow_reset
-    port map (
-      clk    => pllout_clk_sys,
-      nreset => nreset);
-  
   dmtd_clk_pll_inst : dmtd_clk_pll port map (
     inclk0 => clk_20m_vcxo_i,           -- 20Mhz 
     c0     => pllout_clk_dmtd);         -- 62.5Mhz
@@ -323,7 +321,20 @@ begin
     inclk0 => clk_125m_pllref_p,        -- 125Mhz 
     c0     => pllout_clk_sys,           -- 62.5Mhy sys clk
     c1     => clk_reconf,               -- 50Mhz for reconfig block
-    locked => open);
+    locked => locked);
+  
+  reset : gc_reset
+    generic map(
+      g_clocks   => 2)
+    port map(
+      free_clk_i => clk_20m_vcxo_i,
+      locked_i   => locked,
+      clks_i     => reset_clks,
+      rstn_o     => reset_rstn);
+  reset_clks(0) <= pllout_clk_sys;
+  reset_clks(1) <= clk_125m_pllref_p;
+  pllout_clk_sys_rstn <= reset_rstn(0);
+  clk_125m_pllref_p_rstn <= reset_rstn(1);
 
   U_WR_CORE : xwr_core
     generic map (
@@ -344,7 +355,7 @@ begin
       clk_aux_i  => (others => '0'),
       clk_ext_i  => '0', -- g_with_external_clock_input controls usage
       pps_ext_i  => '0',
-      rst_n_i    => nreset,
+      rst_n_i    => pllout_clk_sys_rstn,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
       dac_hpll_data_o    => dac_hpll_data,
@@ -438,7 +449,7 @@ begin
 
     port map (
       clk_i   => pllout_clk_sys,
-      rst_n_i => nreset,
+      rst_n_i => pllout_clk_sys_rstn,
 
       val1_i  => dac_dpll_data,
       load1_i => dac_dpll_load_p1,
@@ -457,7 +468,7 @@ begin
       g_width => 10000000)
     port map (
       clk_i      => pllout_clk_sys,
-      rst_n_i    => nreset,
+      rst_n_i    => pllout_clk_sys_rstn,
       pulse_i    => pps,
       extended_o => lemo_led(1));
   
@@ -491,7 +502,7 @@ begin
       g_slave2_granularity    => WORD)  
     port map(
       clk_sys_i => pllout_clk_sys,
-      rst_n_i   => nreset,
+      rst_n_i   => pllout_clk_sys_rstn,
 
       slave1_i => cbar_master_o(0),
       slave1_o => cbar_master_i(0),
@@ -503,7 +514,7 @@ begin
        g_sdb_address => x"00000000" & c_sdb_address)
     port map(
       clk_i       => pllout_clk_sys,
-      nRst_i      => nreset,
+      nRst_i      => pllout_clk_sys_rstn,
       snk_i       => mb_snk_in,
       snk_o       => mb_snk_out,
       src_o       => mb_src_out,
@@ -519,12 +530,12 @@ begin
     port map(
        clk125_i      => pllout_clk_sys,
        cal_clk50_i   => clk_reconf,
-       rstn_i        => nreset,
        pcie_refclk_i => pcie_refclk_i,
        pcie_rstn_i   => nPCI_RESET,
        pcie_rx_i     => pcie_rx_i,
        pcie_tx_o     => pcie_tx_o,
        wb_clk        => pllout_clk_sys,
+       wb_rstn_i     => pllout_clk_sys_rstn,
        master_o      => cbar_slave_i(1),
        master_i      => cbar_slave_o(1));
   
@@ -537,7 +548,7 @@ begin
     port map (
       ref_clk_i       => clk_125m_pllref_p,
       sys_clk_i       => clk_125m_pllref_p,
-      nRSt_i          => nreset,
+      nRSt_i          => clk_125m_pllref_p_rstn,
       triggers_i      => triggers,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_utc,
@@ -548,7 +559,7 @@ begin
   ECA : xwr_eca
     port map(
       clk_i      => clk_125m_pllref_p,
-      rst_n_i    => nreset,
+      rst_n_i    => clk_125m_pllref_p_rstn,
       slave_i    => cbar_ref_master_o(1),
       slave_o    => cbar_ref_master_i(1),
       tm_utc_i   => tm_utc,
@@ -582,7 +593,7 @@ begin
      g_sdb_addr    => c_ref_sdb_address)
    port map(
      clk_sys_i     => clk_125m_pllref_p,
-     rst_n_i       => nreset,
+     rst_n_i       => clk_125m_pllref_p_rstn,
      -- Master connections (INTERCON is a slave)
      slave_i       => cbar_ref_slave_i,
      slave_o       => cbar_ref_slave_o,
@@ -592,13 +603,14 @@ begin
   
   cross_my_clocks : xwb_clock_crossing
     port map(
-      rst_n_i      => nreset,
-      slave_clk_i  => pllout_clk_sys,
-      slave_i      => cbar_master_o(1),
-      slave_o      => cbar_master_i(1),
-      master_clk_i => clk_125m_pllref_p,
-      master_i     => cbar_ref_slave_o(0),
-      master_o     => cbar_ref_slave_i(0));
+      slave_clk_i    => pllout_clk_sys,
+      slave_rst_n_i  => pllout_clk_sys_rstn,
+      slave_i        => cbar_master_o(1),
+      slave_o        => cbar_master_i(1),
+      master_clk_i   => clk_125m_pllref_p,
+      master_rst_n_i => clk_125m_pllref_p_rstn,
+      master_i       => cbar_ref_slave_o(0),
+      master_o       => cbar_ref_slave_i(0));
    
   GSI_CON : xwb_sdb_crossbar
    generic map(
@@ -610,7 +622,7 @@ begin
      g_sdb_addr    => c_sdb_address)
    port map(
      clk_sys_i     => pllout_clk_sys,
-     rst_n_i       => nreset,
+     rst_n_i       => pllout_clk_sys_rstn,
      -- Master connections (INTERCON is a slave)
      slave_i       => cbar_slave_i,
      slave_o       => cbar_slave_o,
@@ -618,37 +630,14 @@ begin
      master_i      => cbar_master_i,
      master_o      => cbar_master_o);
   
-  ddr3_stub: ddr3_mem_example_top 	
-    port map(
-      clock_source   => L_CLKp,
-      global_reset_n => nreset,
-      
-      mem_addr       => DDR3_ADDR,
-      mem_ba         => DDR3_BA,
-      mem_cas_n      => DDR3_CAS_n,
-      mem_cke        => DDR3_CKE,
-      mem_clk        => DDR3_CLK,
-      mem_clk_n      => DDR3_CLK_n,
-      mem_cs_n       => DDR3_CS_n,
-      mem_dm         => DDR3_DM,
-      mem_dq         => DDR3_DQ,
-      mem_dqs        => DDR3_DQS,
-      mem_dqsn       => DDR3_DQSn,
-      mem_odt        => DDR3_ODT,
-      mem_ras_n      => DDR3_RAS_n,
-      mem_reset_n    => DDR3_RES_n,
-      mem_we_n       => DDR3_WE_n,
-      pnf            => open,
-      pnf_per_byte   => open,
-      test_complete  => lemo_led(2),
-      test_status    => ddr3_test_status);
-  
-  la_counter: process (pllout_clk_sys, nreset)
+  la_counter: process (pllout_clk_sys)
   begin
-    if nreset = '0' then
-      s_hpla_ch <= (others => '0');
-    elsif rising_edge(pllout_clk_sys) then
-      s_hpla_ch <= s_hpla_ch + 1;
+    if rising_edge(pllout_clk_sys) then
+      if pllout_clk_sys_rstn = '0' then
+        s_hpla_ch <= (others => '0');
+      else
+        s_hpla_ch <= s_hpla_ch + 1;
+      end if;
     end if;	
   end process;
   
@@ -671,5 +660,5 @@ begin
   ADR_TO_SCUB <= '1';
   nADR_EN <= '1';
   nSel_Ext_Data_DRV <= '1';
-  
+  --nFPGA_Res_Out <= clk_125m_pllref_p_rstn; -- Reset the CPU when the FPGA is configured
 end rtl;
