@@ -20,13 +20,7 @@ entity exploder_top is
     
     L_CLKp : in std_logic;            -- local clk from 125Mhz oszillator
     nres   : in std_logic;            -- powerup reset
-    
-    -----------------------------------------
-    -- UART on front panel
-    -----------------------------------------
-    uart_rxd_i : in  std_logic;
-    uart_txd_o : out std_logic;
-    
+        
     -----------------------------------------------------------------------
     -- OneWire
     -----------------------------------------------------------------------
@@ -50,6 +44,11 @@ entity exploder_top is
     dac_din          : out std_logic;
     ndac_cs          : out std_logic_vector(2 downto 1);
     
+    -- HPLA1 pins
+    uart_pwr : out std_logic;
+    uart_tx  : out std_logic;
+    uart_rx  : in  std_logic;
+    
     -----------------------------------------
     -- LED on baseboard
     -- hpv0: red
@@ -58,8 +57,6 @@ entity exploder_top is
     -- hpv3: blue
     -----------------------------------------
     hpv       : out std_logic_vector(7 downto 0);
-    la_port_o : out std_logic_vector(3 downto 0);
-    la_port_i : in  std_logic_vector(1 downto 0);
     usb_reset : out std_logic);
 end exploder_top;
 
@@ -276,8 +273,8 @@ begin
       btn1_i      => '0',
       btn2_i      => '0',
 
-      uart_rxd_i => uart_rxd_i,
-      uart_txd_o => uart_txd_o,
+      uart_rxd_i => uart_rx,
+      uart_txd_o => uart_tx,
       
       owr_pwren_o => owr_pwren_o,
       owr_en_o    => owr_en_o,
@@ -491,4 +488,5 @@ begin
   
   sfp_tx_disable_o <= '0';
   usb_reset <= '0';
+  uart_pwr <= '1';
 end rtl;
