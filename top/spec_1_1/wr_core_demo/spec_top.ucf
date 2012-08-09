@@ -43,7 +43,6 @@ NET "thermo_id" IOSTANDARD = "LVCMOS25";
 #NET "TMS_TO_FMC" IOSTANDARD = "LVCMOS25";
 #NET "PRSNT_M2C_L" LOC = A2;
 #NET "PRSNT_M2C_L" IOSTANDARD = "LVCMOS25";
-
 NET "SFP_MOD_DEF1_b" LOC = C17;
 NET "SFP_MOD_DEF1_b" IOSTANDARD = "LVCMOS25";
 NET "SFP_MOD_DEF0_b" LOC = G15;
@@ -267,8 +266,6 @@ NET "GPIO[0]" IOSTANDARD = "LVCMOS25";
 #NET "LA07_N" IOSTANDARD = "LVCMOS25";
 #NET "LA07_P" LOC = U9;
 #NET "LA07_P" IOSTANDARD = "LVCMOS25";
-
-
 #NET "LA08_N" LOC = R8;
 #NET "LA08_N" IOSTANDARD = "LVCMOS25";
 #NET "LA08_P" LOC = R9;
@@ -503,7 +500,6 @@ TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_i
 ##  Pin definitions for FmcDio5chttl + SPEC v1.1/2.0  ##
 ########################################################
 # DIO outputs
-
 NET "dio_p_o[4]" LOC= T8; 
 NET "dio_n_o[4]" LOC= U8; 
 NET "dio_p_o[4]" IOSTANDARD=LVDS_25;
@@ -537,7 +533,6 @@ NET "dio_sdn_ck_n_o" LOC=  Y5;
 NET "dio_sdn_ck_n_o" IOSTANDARD=LVCMOS25;
 
 # DIO output enable/termination enable
-
 NET "dio_oe_n_o[4]" LOC=  AA6;
 NET "dio_oe_n_o[3]" LOC=  W10;
 NET "dio_oe_n_o[2]" LOC=  W11;
@@ -566,7 +561,6 @@ NET "dio_onewire_b" LOC=AB16;
 NET "dio_onewire_b" IOSTANDARD=LVCMOS25;
 
 # DIO inputs
-
 NET "dio_clk_p_i" LOC=L20;
 NET "dio_clk_p_i" IOSTANDARD=LVDS_25;
 
@@ -641,3 +635,11 @@ TIMESPEC TS_U_GTP_ch0_gtp_clkout_int_1_ = PERIOD "U_GTP/ch0_gtp_clkout_int<1>" 8
 NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
  PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
+##Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/07
+INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds[0].DMTD_FB/clk_in" TNM = skew_limit;
+INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds[1].DMTD_FB/clk_in" TNM = skew_limit;
+INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds[0].DMTD_REF/clk_in" TNM = skew_limit;
+TIMESPEC TS_ = FROM "skew_limit" TO "FFS" 1 ns DATAPATHONLY;
+#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/08
+INST "U_WR_CORE/WRPC/U_Endpoint/U_Wrapped_Endpoint/U_PCS_1000BASEX/gen_8bit.U_RX_PCS/timestamp_trigger_p_a_o" TNM = rx_ts_trig;
+TIMESPEC TS_RXTS = FROM "rx_ts_trig" TO "FFS" 1 ns DATAPATHONLY;

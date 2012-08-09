@@ -810,7 +810,7 @@ begin
     port map (
       clk_i      => clk_125m_pllref,
       rst_n_i    => local_reset_n,
-      pulse_i    => pps,
+      pulse_i    => '0', --pps,
       extended_o => dio_led_top_o);
 
 

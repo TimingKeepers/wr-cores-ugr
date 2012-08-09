@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-07-13
+-- Last update: 2012-08-08
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -145,8 +145,9 @@ architecture behavioral of wr_pps_gen is
   signal cntr_utc     : unsigned (39 downto 0);
   signal cntr_pps_ext : unsigned (24 downto 0);
 
-  signal ns_overflow   : std_logic;
-  signal cntr_adjust_p : std_logic;
+  signal ns_overflow     : std_logic;
+  signal ns_overflow_adv : std_logic;
+  signal cntr_adjust_p   : std_logic;
 
   signal adj_nsec : unsigned(27 downto 0);
   signal adj_utc  : unsigned(39 downto 0);
@@ -172,7 +173,9 @@ architecture behavioral of wr_pps_gen is
   signal pps_in_d0, pps_ext_d0, pps_ext_retimed : std_logic;
 
   signal retime_counter : unsigned(4 downto 0);
-  signal pps_valid_int : std_logic;
+  signal pps_valid_int  : std_logic;
+
+        signal pps_out_int : std_logic;
   
   
   component chipscope_icon
@@ -365,6 +368,7 @@ begin  -- behavioral
       if rst_synced_refclk = '0' or ppsg_cr_cnt_rst = '1' then
         cntr_nsec               <= (others => '0');
         ns_overflow             <= '0';
+        ns_overflow_adv         <= '0';
         adjust_in_progress_nsec <= '0';
         adjust_done_nsec        <= '1';
 
@@ -381,16 +385,23 @@ begin  -- behavioral
 
 -- got SET TIME command - load the counter with new value
         if(ppsg_cr_cnt_set_p = '1' or ext_sync_p = '1') then
-          cntr_nsec   <= adj_nsec;
+          cntr_nsec        <= adj_nsec;
           adjust_done_nsec <= '1';
-          ns_overflow <= '0';
+          ns_overflow      <= '0';
+          ns_overflow_adv  <= '0';
 
 -- got counter overflow:
+        elsif(cntr_nsec = to_unsigned(c_PERIOD-3, cntr_nsec'length)) then
+          ns_overflow     <= '0';
+          ns_overflow_adv <= '1';
+          cntr_nsec       <= cntr_nsec + 1;
         elsif(cntr_nsec = to_unsigned(c_PERIOD-2, cntr_nsec'length)) then
-          ns_overflow <= '1';
-          cntr_nsec   <= cntr_nsec + 1;
+          ns_overflow     <= '1';
+          ns_overflow_adv <= '0';
+          cntr_nsec       <= cntr_nsec + 1;
         elsif(cntr_nsec = to_unsigned(c_PERIOD-1, cntr_nsec'length)) then
-          ns_overflow <= '0';
+          ns_overflow     <= '0';
+          ns_overflow_adv <= '0';
           -- we're in the middle of offset adjustment - load the counter with
           -- offset value instead of resetting it. This equals to subtracting the offset
           -- but takes less logic. 
@@ -403,8 +414,9 @@ begin  -- behavioral
             cntr_nsec <= (others => '0');
           end if;
         else
-          ns_overflow <= '0';
-          cntr_nsec   <= cntr_nsec + 1;
+          ns_overflow     <= '0';
+          ns_overflow_adv <= '0';
+          cntr_nsec       <= cntr_nsec + 1;
         end if;
       end if;
     end if;
@@ -415,11 +427,11 @@ begin  -- behavioral
   begin
     if rising_edge(clk_ref_i) then
       if rst_synced_refclk = '0' then
-        pps_valid_int    <= '1';
+        pps_valid_int   <= '1';
         ns_overflow_2nd <= '0';
       else
         if(sync_in_progress = '1' or adjust_in_progress_nsec = '1' or adjust_in_progress_utc = '1') then
-          pps_valid_int     <= '0';
+          pps_valid_int   <= '0';
           ns_overflow_2nd <= '0';
         elsif(adjust_in_progress_utc = '0' and adjust_in_progress_nsec = '0' and sync_in_progress = '0') then
 
@@ -473,16 +485,16 @@ begin  -- behavioral
   begin
     if rising_edge(clk_ref_i) then
       if rst_synced_refclk = '0' then
-        pps_out_o  <= '0';
-        width_cntr <= (others => '0');
+        pps_out_int <= '0';
+        width_cntr  <= (others => '0');
       else
 
-        if(ns_overflow = '1') then
-          pps_out_o  <= ppsg_escr_pps_valid;
-          width_cntr <= unsigned(ppsg_cr_pwidth);
+        if(ns_overflow_adv = '1') then
+          pps_out_int <= ppsg_escr_pps_valid;
+          width_cntr  <= unsigned(ppsg_cr_pwidth);
         else
           if(width_cntr = to_unsigned(0, width_cntr'length)) then
-            pps_out_o <= '0';
+            pps_out_int <= '0';
           else
             width_cntr <= width_cntr -1;
           end if;
@@ -492,6 +504,16 @@ begin  -- behavioral
 
   end process;
 
+  process(clk_ref_i, rst_synced_refclk)
+  begin
+		if rising_edge(clk_ref_i) then
+   		if rst_synced_refclk = '0' then
+     		pps_out_o <= '0';
+      else
+      	pps_out_o <= pps_out_int;
+      end if;
+    end if;
+  end process;
 
 --  pps_out_o <=pps_ext_retimed;
 
@@ -537,7 +559,7 @@ begin  -- behavioral
   ppsg_cr_cnt_adj_i <= pps_valid_int;
 
   pps_valid_o <= pps_valid_int;
-  
+
   tm_utc_o        <= std_logic_vector(cntr_utc);
   tm_cycles_o     <= std_logic_vector(cntr_nsec);
   tm_time_valid_o <= ppsg_escr_tm_valid;
