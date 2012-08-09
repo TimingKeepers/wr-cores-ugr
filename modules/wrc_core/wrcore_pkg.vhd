@@ -47,6 +47,7 @@ package wrcore_pkg is
       pps_in_i        : in  std_logic;
       pps_csync_o     : out std_logic;
       pps_out_o       : out std_logic;
+			pps_led_o				: out std_logic;
       pps_valid_o     : out std_logic;
       tm_utc_o        : out std_logic_vector(39 downto 0);
       tm_cycles_o     : out std_logic_vector(27 downto 0);
@@ -393,6 +394,7 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       tm_utc_o             : out std_logic_vector(39 downto 0);
       tm_cycles_o          : out std_logic_vector(27 downto 0);
       pps_p_o              : out std_logic;
+			pps_led_o						 : out std_logic;
 
       dio_o       : out std_logic_vector(3 downto 0);
       rst_aux_n_o : out std_logic;

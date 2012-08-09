@@ -236,6 +236,7 @@ entity wr_core is
     tm_cycles_o          : out std_logic_vector(27 downto 0);
     -- 1PPS output
     pps_p_o              : out std_logic;
+		pps_led_o						 : out std_logic;
 
 
     dio_o       : out std_logic_vector(3 downto 0);
@@ -463,6 +464,7 @@ begin
       pps_in_i    => pps_ext_i,
       pps_csync_o => s_pps_csync,
       pps_out_o   => pps_p_o,
+			pps_led_o		=> pps_led_o,
       pps_valid_o => pps_valid,
 
       tm_utc_o        => tm_utc_o,

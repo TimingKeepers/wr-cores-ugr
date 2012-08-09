@@ -325,7 +325,8 @@ architecture rtl of spec_top is
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
 
-  signal pps : std_logic;
+  signal pps 		 : std_logic;
+	signal pps_led : std_logic;
 
   signal phy_tx_data      : std_logic_vector(7 downto 0);
   signal phy_tx_k         : std_logic;
@@ -699,6 +700,7 @@ begin
       tm_utc_o             => open,
       tm_cycles_o          => open,
       pps_p_o              => pps,
+			pps_led_o						 => pps_led,
 
       dio_o       => dio_out(4 downto 1),
       rst_aux_n_o => etherbone_rst_n
@@ -810,7 +812,7 @@ begin
     port map (
       clk_i      => clk_125m_pllref,
       rst_n_i    => local_reset_n,
-      pulse_i    => '0', --pps,
+      pulse_i    => pps_led,
       extended_o => dio_led_top_o);
 
 

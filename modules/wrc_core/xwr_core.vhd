@@ -179,6 +179,7 @@ entity xwr_core is
     tm_cycles_o          : out std_logic_vector(27 downto 0);
     -- 1PPS output
     pps_p_o              : out std_logic;
+    pps_led_o            : out std_logic;
 
     dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic;
@@ -309,6 +310,7 @@ architecture struct of xwr_core is
       tm_utc_o             : out std_logic_vector(39 downto 0);
       tm_cycles_o          : out std_logic_vector(27 downto 0);
       pps_p_o              : out std_logic;
+		  pps_led_o						 : out std_logic;
 
       dio_o       : out std_logic_vector(3 downto 0);
       rst_aux_n_o : out std_logic;
@@ -437,6 +439,7 @@ begin
       tm_utc_o             => tm_utc_o,
       tm_cycles_o          => tm_cycles_o,
       pps_p_o              => pps_p_o,
+			pps_led_o						 => pps_led_o,
 
       dio_o       => dio_o,
       rst_aux_n_o => rst_aux_n_o,

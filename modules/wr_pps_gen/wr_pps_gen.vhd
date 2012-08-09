@@ -63,6 +63,7 @@ entity wr_pps_gen is
     -- Single-pulse PPS output for synchronizing endpoints to
     pps_csync_o : out std_logic;
     pps_out_o   : out std_logic;
+		pps_led_o		: out std_logic;
 
     pps_valid_o : out std_logic;
 
@@ -175,7 +176,7 @@ architecture behavioral of wr_pps_gen is
   signal retime_counter : unsigned(4 downto 0);
   signal pps_valid_int  : std_logic;
 
-        signal pps_out_int : std_logic;
+  signal pps_out_int : std_logic;
   
   
   component chipscope_icon
@@ -486,15 +487,19 @@ begin  -- behavioral
     if rising_edge(clk_ref_i) then
       if rst_synced_refclk = '0' then
         pps_out_int <= '0';
+				pps_led_o	  <= '0';
         width_cntr  <= (others => '0');
       else
 
         if(ns_overflow_adv = '1') then
           pps_out_int <= ppsg_escr_pps_valid;
           width_cntr  <= unsigned(ppsg_cr_pwidth);
+				elsif(ns_overflow = '1') then
+					pps_led_o   <= ppsg_escr_pps_valid;
         else
           if(width_cntr = to_unsigned(0, width_cntr'length)) then
             pps_out_int <= '0';
+						pps_led_o   <= '0';
           else
             width_cntr <= width_cntr -1;
           end if;
