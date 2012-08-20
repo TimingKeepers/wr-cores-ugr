@@ -631,7 +631,7 @@ PIN "clk_125m_pllref_BUFG.O" CLOCK_DEDICATED_ROUTE = FALSE;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/06/09
 NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
- PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
+# PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 ##Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/07
 INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds[0].DMTD_FB/clk_in" TNM = skew_limit;
 INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds[1].DMTD_FB/clk_in" TNM = skew_limit;

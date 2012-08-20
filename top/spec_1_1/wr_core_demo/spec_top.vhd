@@ -84,8 +84,8 @@ entity spec_top is
       fpga_scl_b : inout std_logic;
       fpga_sda_b : inout std_logic;
 
-      button1_i : in std_logic;
-      button2_i : in std_logic;
+      button1_i : in std_logic := 'H';
+      button2_i : in std_logic := 'H';
 
       thermo_id : inout std_logic;      -- 1-Wire interface to DS18B20
 
@@ -232,6 +232,14 @@ architecture rtl of spec_top is
       );
   end component;  --  gn4124_core
 
+  component spec_reset_gen
+    port (
+      clk_sys_i        : in  std_logic;
+      rst_pcie_n_a_i   : in  std_logic;
+      rst_button_n_a_i : in  std_logic;
+      rst_n_o          : out std_logic);
+  end component;
+
   --component chipscope_ila
   --  port (
   --    CONTROL : inout std_logic_vector(35 downto 0);
@@ -325,8 +333,8 @@ architecture rtl of spec_top is
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
 
-  signal pps 		 : std_logic;
-	signal pps_led : std_logic;
+  signal pps     : std_logic;
+  signal pps_led : std_logic;
 
   signal phy_tx_data      : std_logic_vector(7 downto 0);
   signal phy_tx_k         : std_logic;
@@ -347,10 +355,10 @@ architecture rtl of spec_top is
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
 
-  signal genum_wb_out : t_wishbone_master_out;
-  signal genum_wb_in  : t_wishbone_master_in;
+  signal genum_wb_out    : t_wishbone_master_out;
+  signal genum_wb_in     : t_wishbone_master_in;
   signal genum_csr_ack_i : std_logic;
-  
+
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
 
@@ -359,16 +367,16 @@ architecture rtl of spec_top is
 
   signal wb_adr : std_logic_vector(31 downto 0);  --c_BAR0_APERTURE-priv_log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
 
-  signal etherbone_rst_n     : std_logic;
-  signal etherbone_src_out   : t_wrf_source_out;
-  signal etherbone_src_in    : t_wrf_source_in;
-  signal etherbone_snk_out   : t_wrf_sink_out;
-  signal etherbone_snk_in    : t_wrf_sink_in;
-  signal etherbone_wb_out    : t_wishbone_master_out;
-  signal etherbone_wb_in     : t_wishbone_master_in;
-  signal etherbone_cfg_in    : t_wishbone_slave_in;
-  signal etherbone_cfg_out   : t_wishbone_slave_out;
-
+  signal etherbone_rst_n   : std_logic;
+  signal etherbone_src_out : t_wrf_source_out;
+  signal etherbone_src_in  : t_wrf_source_in;
+  signal etherbone_snk_out : t_wrf_sink_out;
+  signal etherbone_snk_in  : t_wrf_sink_in;
+  signal etherbone_wb_out  : t_wishbone_master_out;
+  signal etherbone_wb_in   : t_wishbone_master_in;
+  signal etherbone_cfg_in  : t_wishbone_slave_in;
+  signal etherbone_cfg_out : t_wishbone_slave_out;
+  
 begin
 
   cmp_sys_clk_pll : PLL_BASE
@@ -411,10 +419,10 @@ begin
       DIVCLK_DIVIDE      => 1,
       CLKFBOUT_MULT      => 50,
       CLKFBOUT_PHASE     => 0.000,
-      CLKOUT0_DIVIDE     => 16,          -- 62.5 MHz
+      CLKOUT0_DIVIDE     => 16,         -- 62.5 MHz
       CLKOUT0_PHASE      => 0.000,
       CLKOUT0_DUTY_CYCLE => 0.500,
-      CLKOUT1_DIVIDE     => 16,          -- 62.5 MHz
+      CLKOUT1_DIVIDE     => 16,         -- 62.5 MHz
       CLKOUT1_PHASE      => 0.000,
       CLKOUT1_DUTY_CYCLE => 0.500,
       CLKOUT2_DIVIDE     => 8,
@@ -435,26 +443,12 @@ begin
       CLKFBIN  => pllout_clk_fb_dmtd,
       CLKIN    => clk_20m_vcxo_buf);
 
-
-  --p_gen_reset : process(clk_sys)
-  --begin
-  --  if rising_edge(clk_sys) then
-  --    button1_synced(0) <= button1_i;
-  --    button1_synced(1) <= button1_synced(0);
-  --    button1_synced(2) <= button1_synced(1);
-
-  --    if(L_RST_N = '0') then
-  --      local_reset_n <= '0';
-  --    elsif (button1_synced(2) = '0') then
-  --      local_reset_n <= '0';
-  --    else
-  --      local_reset_n <= '1';
-  --    end if;
-  --  end if;
-  --end process;
-
-
-  local_reset_n <= L_RST_N;
+  U_Reset_Gen : spec_reset_gen
+    port map (
+      clk_sys_i        => clk_sys,
+      rst_pcie_n_a_i   => L_RST_N,
+      rst_button_n_a_i => button1_i,
+      rst_n_o          => local_reset_n);
 
   cmp_clk_sys_buf : BUFG
     port map (
@@ -509,7 +503,7 @@ begin
       O  => gtp_dedicated_clk,
       I  => fpga_pll_ref_clk_101_p_i,
       IB => fpga_pll_ref_clk_101_n_i
-    );
+      );
 
 
   ------------------------------------------------------------------------------
@@ -597,9 +591,9 @@ begin
       --dma_stall_i => dma_stall
       );
 
-  genum_csr_ack_i <= genum_wb_in.ack or genum_wb_in.err;
-  genum_wb_out.adr( 1 downto  0) <= (others => '0');
-  genum_wb_out.adr(18 downto  2) <= wb_adr(16 downto 0);
+  genum_csr_ack_i                <= genum_wb_in.ack or genum_wb_in.err;
+  genum_wb_out.adr(1 downto 0)   <= (others => '0');
+  genum_wb_out.adr(18 downto 2)  <= wb_adr(16 downto 0);
   genum_wb_out.adr(31 downto 19) <= (others => '0');
 
   process(clk_sys, rst)
@@ -683,7 +677,7 @@ begin
 
       slave_i => wrc_slave_i,
       slave_o => wrc_slave_o,
-      
+
       aux_master_o => etherbone_cfg_in,
       aux_master_i => etherbone_cfg_out,
 
@@ -700,7 +694,7 @@ begin
       tm_utc_o             => open,
       tm_cycles_o          => open,
       pps_p_o              => pps,
-			pps_led_o						 => pps_led,
+      pps_led_o            => pps_led,
 
       dio_o       => dio_out(4 downto 1),
       rst_aux_n_o => etherbone_rst_n
@@ -708,7 +702,7 @@ begin
 
   Etherbone : EB_CORE
     generic map (
-	   g_sdb_address => x"0000000000030000")
+      g_sdb_address => x"0000000000030000")
     port map (
       clk_i       => clk_sys,
       nRst_i      => etherbone_rst_n,
@@ -738,7 +732,7 @@ begin
       slave_o(1)  => etherbone_wb_in,
       master_i(0) => wrc_slave_o,
       master_o(0) => wrc_slave_i);
-      
+
   ---------------------
 
   U_GTP : wr_gtp_phy_spartan6
@@ -862,25 +856,6 @@ begin
 
   sfp_tx_disable_o <= '0';
 
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_125m_pllref,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL
-  --    );
-
-  --TRIG0(7 downto 0)<=phy_tx_data;
-  --TRIG0(8) <= phy_tx_k;
-  --TRIG0(9) <= phy_tx_disparity;
-  --TRIG0(10) <= phy_tx_enc_err;
-  
 end rtl;
 
 
