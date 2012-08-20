@@ -624,7 +624,7 @@ begin
       g_with_external_clock_input => true,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "",
+      g_dpram_initf               => "wrc.ram",
       g_dpram_size                => 90112/4,  --16384,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE)
@@ -737,8 +737,8 @@ begin
 
   U_GTP : wr_gtp_phy_spartan6
     generic map (
-			g_enable_ch0 => 0,
-			g_enable_ch1 => 1,
+      g_enable_ch0 => 0,
+      g_enable_ch1 => 1,
       g_simulation => 0)
     port map (
       gtp_clk_i => gtp_dedicated_clk,

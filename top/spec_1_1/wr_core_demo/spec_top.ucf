@@ -629,6 +629,7 @@ TIMESPEC TS_fpga_pll_ref_clk_101_n_i = PERIOD "fpga_pll_ref_clk_101_n_i" 8 ns HI
 
 PIN "clk_125m_pllref_BUFG.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/06/09
+iles
 NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
 # PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
