@@ -56,19 +56,22 @@ class CSimDrv_Minic;
       tx_head = tx_base;
       tx_avail = (tx_size - MINIC_MTU) >> 2;
       minic_writel(`ADDR_MINIC_TX_ADDR, tx_base);
-   endtask // new_tx_buffer
+   endtask // new_tx_buffers
 
    task new_rx_buffer();
       rx_head = rx_base;
 
       minic_writel(`ADDR_MINIC_MCR, 0);
       minic_writel(`ADDR_MINIC_RX_ADDR, rx_base);
-      minic_writel(`ADDR_MINIC_RX_AVAIL, (rx_size - MINIC_MTU) >> 2);
+      minic_writel(`ADDR_MINIC_RX_SIZE, rx_size >> 2);
+      minic_writel(`ADDR_MINIC_EIC_ISR, `MINIC_EIC_ISR_RX);
       minic_writel(`ADDR_MINIC_MCR, `MINIC_MCR_RX_EN);
    endtask // new_rx_buffer
    
 
    task init();
+      uint32_t lo, hi;
+      
       minic_writel(`ADDR_MINIC_EIC_IDR, `MINIC_EIC_IDR_RX);
       minic_writel(`ADDR_MINIC_EIC_ISR, `MINIC_EIC_ISR_RX);
 
@@ -78,6 +81,12 @@ class CSimDrv_Minic;
       tx_size     = pmem_size / 4;
       tx_oob_val  = 12345;
 
+
+      lo = rx_base >> 2;
+      hi = (rx_base >> 2) + (rx_size >> 2) - 1;
+
+      minic_writel(`ADDR_MINIC_MPROT, (lo << `MINIC_MPROT_LO_OFFSET) | (hi << `MINIC_MPROT_HI_OFFSET));
+      
       tx_count    = 0;
       rx_count    = 0;
       
@@ -117,7 +126,7 @@ class CSimDrv_Minic;
       uint32_t payload_size, num_words;
       uint64_t desc_hdr;
       uint32_t raw_ts;
-      uint32_t rx_addr_cur, mcr;
+      uint32_t rx_addr_cur, mcr, cur_avail;
       u64_array_t pbuff;
       
       int i;
@@ -125,28 +134,23 @@ class CSimDrv_Minic;
       uint32_t isr;
       
       minic_readl(`ADDR_MINIC_EIC_ISR, isr);
-
-    //  $display("RXFrame");
-      
       
       if(! (isr & `MINIC_EIC_ISR_RX))
         return;
 
       acc_pmem.read(rx_head, desc_hdr);
-
-      
       
       if(!`RX_DESC_VALID(desc_hdr))
         begin
            $error("SimDRV_Minic::rx_frame: weird, invalid RX desc header");
            $stop;
-           end
+        end
 
       payload_size    = `RX_DESC_SIZE(desc_hdr);
       num_words       = (payload_size + 3) >> 2;
       pbuff           = new [num_words];
 
-   //   $display("NWords %d hdr %x", num_words, desc_hdr);
+      //   $display("NWords %d hdr %x", num_words, desc_hdr);
       
       
 
@@ -157,26 +161,30 @@ class CSimDrv_Minic;
       if(!`RX_DESC_ERROR(desc_hdr))
         begin
            for(i=0; i<num_words;i++)
-             acc_pmem.read(rx_head + 4 + i * 4, pbuff[i]);
+             acc_pmem.read((rx_head + 4 + i * 4) % rx_size, pbuff[i]);
 
            payload  = SimUtils.unpack(pbuff, 4, payload_size);
         end
       size          = payload_size;
       
 
-      rx_head = rx_head + 4 + num_words * 4;
-      minic_readl(`ADDR_MINIC_RX_ADDR, rx_addr_cur);
+      rx_head = (rx_head + 4 + num_words * 4) % rx_size;
+      minic_writel(`ADDR_MINIC_RX_AVAIL, (num_words + 1));
 
-    //  $display("RxAddrCur: %x head %x\n", rx_addr_cur, rx_head);
-      
-      if((rx_addr_cur & 'hffff) < rx_head)
+      minic_readl(`ADDR_MINIC_RX_AVAIL, cur_avail);
+
+      acc_pmem.read(rx_head, desc_hdr);
+
+      if( cur_avail == (rx_size>>2) || !(`RX_DESC_VALID(desc_hdr)))
         begin
            minic_readl(`ADDR_MINIC_MCR, mcr);
+           
            if(mcr & `MINIC_MCR_RX_FULL)
              new_rx_buffer();
 
            minic_writel(`ADDR_MINIC_EIC_ISR, `MINIC_EIC_ISR_RX);
         end
+
       
    endtask // rx_frame
    

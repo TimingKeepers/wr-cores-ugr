@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-04-27
+-- Last update: 2012-08-13
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -56,18 +56,20 @@ entity wr_gtp_phy_spartan6 is
 
   generic (
     -- set to non-zero value to speed up the simulation by reducing some delays
-    g_simulation         : integer := 1;
-    g_force_disparity    : integer := 0
+    g_simulation      : integer := 1;
+    g_force_disparity : integer := 0;
+    g_enable_ch0      : integer := 1;
+    g_enable_ch1      : integer := 1
     );
 
   port (
     -- Port 0
 
     -- dedicated GTP clock input
-    gtp_clk_i: in std_logic;
-    
+    gtp_clk_i : in std_logic;
+
     -- TX path, synchronous to ch0_ref_clk_i
-    ch0_ref_clk_i : in  std_logic;
+    ch0_ref_clk_i : in std_logic;
 
     -- data input (8 bits, not 8b10b-encoded)
     ch0_tx_data_i : in std_logic_vector(7 downto 0);
@@ -375,96 +377,313 @@ architecture rtl of wr_gtp_phy_spartan6 is
   signal ch1_disp_pipe : std_logic_vector(1 downto 0);
   
 begin  -- rtl
+  -------------------------------------------------------------------------------
+  -- Channel 0 logic
+  -------------------------------------------------------------------------------
 
-  ch0_rst_n <= not ch0_gtp_reset;
-  ch1_rst_n <= not ch1_gtp_reset;
+  gen_with_channel0 : if(g_enable_ch0 /= 0) generate
+    ch0_rst_n          <= not ch0_gtp_reset;
+    ch0_tx_disparity_o <= ch0_disp_pipe(0);
 
-  gen_disp_ch0 : process(ch0_ref_clk_i)
-  begin
-    if rising_edge(ch0_ref_clk_i) then
-      if(ch0_tx_chardispmode = '1' or ch0_rst_n = '0') then
-        if(g_force_disparity = 0) then
-          ch0_cur_disp <= RD_MINUS;
+    ch0_gtp_reset      <= ch0_rst_synced or std_logic(not ch0_reset_counter(ch0_reset_counter'left));
+    ch0_rx_rec_clk_pad <= ch0_gtp_clkout_int(1);
+    ch0_ref_clk_in(0)  <= gtp_clk_i;
+    ch0_ref_clk_in(1)  <= '0';
+
+    gen_disp_ch0 : process(ch0_ref_clk_i)
+    begin
+      if rising_edge(ch0_ref_clk_i) then
+        if(ch0_tx_chardispmode = '1' or ch0_rst_n = '0') then
+          if(g_force_disparity = 0) then
+            ch0_cur_disp <= RD_MINUS;
+          else
+            ch0_cur_disp <= RD_PLUS;
+          end if;
+          ch0_disp_pipe <= (others => '0');
         else
-          ch0_cur_disp <= RD_PLUS;
+          ch0_cur_disp     <= f_next_8b10b_disparity8(ch0_cur_disp, ch0_tx_k_i, ch0_tx_data_i);
+          ch0_disp_pipe(0) <= to_std_logic(ch0_cur_disp);
+          ch0_disp_pipe(1) <= ch0_disp_pipe(0);
         end if;
-        ch0_disp_pipe <= (others => '0');
-      else
-        ch0_cur_disp     <= f_next_8b10b_disparity8(ch0_cur_disp, ch0_tx_k_i, ch0_tx_data_i);
-        ch0_disp_pipe(0) <= to_std_logic(ch0_cur_disp);
-        ch0_disp_pipe(1) <= ch0_disp_pipe(0);
       end if;
-    end if;
-  end process;
+    end process;
 
-  gen_disp_ch1 : process(ch1_ref_clk_i)
-  begin
-    if rising_edge(ch1_ref_clk_i) then
-      if(ch1_tx_chardispmode = '1' or ch1_rst_n = '0') then
-        if(g_force_disparity = 0) then
-          ch1_cur_disp <= RD_MINUS;
+
+    p_gen_reset_ch0 : process(ch0_ref_clk_i)
+    begin
+      if rising_edge(ch0_ref_clk_i) then
+
+        ch0_rst_d0     <= ch0_rst_i;
+        ch0_rst_synced <= ch0_rst_d0;
+
+        if(ch0_rst_synced = '1') then
+          ch0_reset_counter <= (others => '0');
         else
-          ch1_cur_disp <= RD_PLUS;
-        end if;
-        ch1_disp_pipe <= (others => '0');
-      else
-        ch1_cur_disp     <= f_next_8b10b_disparity8(ch1_cur_disp, ch1_tx_k_i, ch1_tx_data_i);
-        ch1_disp_pipe(0) <= to_std_logic(ch1_cur_disp);
-        ch1_disp_pipe(1) <= ch1_disp_pipe(0);
-      end if;
-    end if;
-  end process;
-
-  ch0_tx_disparity_o <= ch0_disp_pipe(0);
-  ch1_tx_disparity_o <= ch1_disp_pipe(1);
-
-  p_gen_reset_ch0 : process(ch0_ref_clk_i)
-  begin
-    if rising_edge(ch0_ref_clk_i) then
-
-      ch0_rst_d0     <= ch0_rst_i;
-      ch0_rst_synced <= ch0_rst_d0;
-
-      if(ch0_rst_synced = '1') then
-        ch0_reset_counter <= (others => '0');
-      else
-        if(ch0_reset_counter(ch0_reset_counter'left) = '0') then
-          ch0_reset_counter <= ch0_reset_counter + 1;
+          if(ch0_reset_counter(ch0_reset_counter'left) = '0') then
+            ch0_reset_counter <= ch0_reset_counter + 1;
+          end if;
         end if;
       end if;
-    end if;
-  end process;
+    end process;
 
 
-  p_gen_reset_ch1 : process(ch1_ref_clk_i)
-  begin
-    if rising_edge(ch1_ref_clk_i) then
+    U_Rbclk_buf_ch0 : BUFIO2
+      port map (
+        DIVCLK       => ch0_rx_divclk,
+        IOCLK        => open,
+        SERDESSTROBE => open,
+        I            => ch0_rx_rec_clk_pad);
 
-      ch1_rst_d0     <= ch1_rst_i;
-      ch1_rst_synced <= ch1_rst_d0;
+    U_Rbclk_bufg_ch0 : BUFG
+      port map (
+        I => ch0_rx_divclk,
+        O => ch0_rx_rec_clk
+        );
 
-      if(ch1_rst_synced = '1') then
-        ch1_reset_counter <= (others => '0');
-      else
-        if(ch1_reset_counter(ch1_reset_counter'left) = '0') then
-          ch1_reset_counter <= ch1_reset_counter + 1;
+    ch0_gtp_locked   <= ch0_gtp_pll_lockdet and ch0_gtp_reset_done;
+    ch0_tx_enc_err_o <= '0';
+
+    U_align_ch0 : gtp_phase_align
+      generic map (
+        g_simulation => g_simulation) 
+      port map (
+        gtp_rst_i                   => ch0_gtp_reset,
+        gtp_tx_clk_i                => ch0_ref_clk_i,
+        gtp_tx_en_pma_phase_align_o => ch0_tx_en_pma_phase_align,
+        gtp_tx_pma_set_phase_o      => ch0_tx_pma_set_phase,
+        align_en_i                  => ch0_gtp_locked,
+        align_done_o                => ch0_align_done);
+
+    U_bitslide_ch0 : gtp_bitslide
+      generic map (
+        g_simulation => g_simulation)
+      port map (
+        gtp_rst_i                => ch0_gtp_reset,
+        gtp_rx_clk_i             => ch0_rx_rec_clk,
+        gtp_rx_comma_det_i       => ch0_rx_comma_det,
+        gtp_rx_byte_is_aligned_i => ch0_rx_byte_is_aligned,
+        serdes_ready_i           => ch0_gtp_locked,
+        gtp_rx_slide_o           => ch0_rx_slide,
+        gtp_rx_cdr_rst_o         => ch0_rx_cdr_rst,
+        bitslide_o               => ch0_rx_bitslide_int,
+        synced_o                 => ch0_rx_synced);
+
+    ch0_rx_bitslide_o    <= ch0_rx_bitslide_int(3 downto 0);
+    ch0_rx_enable_output <= ch0_rx_synced and ch0_align_done;
+
+    U_sync_oen_ch0 : gc_sync_ffs
+      generic map (
+        g_sync_edge => "positive")
+      port map (
+        clk_i    => ch0_rx_rec_clk,
+        rst_n_i  => '1',
+        data_i   => ch0_rx_enable_output,
+        synced_o => ch0_rx_enable_output_synced,
+        npulse_o => open,
+        ppulse_o => open);
+
+    p_force_proper_disparity_ch0 : process(ch0_ref_clk_i, ch0_gtp_reset)
+    begin
+      if (ch0_gtp_reset = '1') then
+        ch0_disparity_set   <= '0';
+        ch0_tx_chardispval  <= '0';
+        ch0_tx_chardispmode <= '0';
+      elsif rising_edge(ch0_ref_clk_i) then
+        if(ch0_disparity_set = '0' and ch0_tx_k_i = '1' and ch0_tx_data_i = x"bc" and ch0_align_done = '1') then
+          ch0_disparity_set <= '1';
+          if(g_force_disparity = 0) then
+            ch0_tx_chardispval <= '0';
+          else
+            ch0_tx_chardispval <= '1';
+          end if;
+          ch0_tx_chardispmode <= '1';
+        else
+          ch0_tx_chardispmode <= '0';
+          ch0_tx_chardispval  <= '0';
         end if;
       end if;
-    end if;
-  end process;
+    end process;
+
+    p_gen_output_ch0 : process(ch0_rx_rec_clk, ch0_gtp_reset)
+    begin
+      if(ch0_gtp_reset = '1') then
+        ch0_rx_data_o    <= (others => '0');
+        ch0_rx_k_o       <= '0';
+        ch0_rx_enc_err_o <= '0';
+        
+      elsif rising_edge(ch0_rx_rec_clk) then
+        if(ch0_rx_enable_output_synced = '0') then
+-- make sure the output data is invalid when the link is down and that it will
+-- trigger the sync loss detection
+          ch0_rx_data_o    <= (others => '0');
+          ch0_rx_k_o       <= '1';
+          ch0_rx_enc_err_o <= '1';
+        else
+          ch0_rx_data_o    <= ch0_rx_data_int;
+          ch0_rx_k_o       <= ch0_rx_k_int;
+          ch0_rx_enc_err_o <= ch0_rx_disperr or ch0_rx_invcode;
+        end if;
+      end if;
+    end process;
 
 
-  ch0_gtp_reset <= ch0_rst_synced or std_logic(not ch0_reset_counter(ch0_reset_counter'left));
-  ch1_gtp_reset <= ch1_rst_synced or std_logic(not ch1_reset_counter(ch1_reset_counter'left));
+-- drive the recovered clock output
+    ch0_rx_rbclk_o <= ch0_rx_rec_clk;
 
-  ch0_rx_rec_clk_pad <= ch0_gtp_clkout_int(1);
-  ch1_rx_rec_clk_pad <= ch1_gtp_clkout_int(1);
+  end generate gen_with_channel0;
 
-  ch0_ref_clk_in(0)   <= gtp_clk_i;
-  ch0_ref_clk_in(1) <= '0';
+  -------------------------------------------------------------------------------
+  -- Channel 1 logic
+  -------------------------------------------------------------------------------
 
-  ch1_ref_clk_in(0)   <= gtp_clk_i;
-  ch1_ref_clk_in(1) <= '0';
+  gen_with_channel1 : if(g_enable_ch1 /= 0) generate
+
+    ch1_rst_n          <= not ch1_gtp_reset;
+    ch1_tx_disparity_o <= ch1_disp_pipe(1);
+
+    ch1_gtp_reset      <= ch1_rst_synced or std_logic(not ch1_reset_counter(ch1_reset_counter'left));
+    ch1_rx_rec_clk_pad <= ch1_gtp_clkout_int(1);
+    ch1_ref_clk_in(0)  <= gtp_clk_i;
+    ch1_ref_clk_in(1)  <= '0';
+
+    gen_disp_ch1 : process(ch1_ref_clk_i)
+    begin
+      if rising_edge(ch1_ref_clk_i) then
+        if(ch1_tx_chardispmode = '1' or ch1_rst_n = '0') then
+          if(g_force_disparity = 0) then
+            ch1_cur_disp <= RD_MINUS;
+          else
+            ch1_cur_disp <= RD_PLUS;
+          end if;
+          ch1_disp_pipe <= (others => '0');
+        else
+          ch1_cur_disp     <= f_next_8b10b_disparity8(ch1_cur_disp, ch1_tx_k_i, ch1_tx_data_i);
+          ch1_disp_pipe(0) <= to_std_logic(ch1_cur_disp);
+          ch1_disp_pipe(1) <= ch1_disp_pipe(0);
+        end if;
+      end if;
+    end process;
+
+    p_gen_reset_ch1 : process(ch1_ref_clk_i)
+    begin
+      if rising_edge(ch1_ref_clk_i) then
+
+        ch1_rst_d0     <= ch1_rst_i;
+        ch1_rst_synced <= ch1_rst_d0;
+
+        if(ch1_rst_synced = '1') then
+          ch1_reset_counter <= (others => '0');
+        else
+          if(ch1_reset_counter(ch1_reset_counter'left) = '0') then
+            ch1_reset_counter <= ch1_reset_counter + 1;
+          end if;
+        end if;
+      end if;
+    end process;
+
+    U_Rbclk_buf_ch1 : BUFIO2
+      port map (
+        DIVCLK       => ch1_rx_divclk,
+        IOCLK        => open,
+        SERDESSTROBE => open,
+        I            => ch1_rx_rec_clk_pad);
+
+    U_Rbclk_bufg_ch1 : BUFG
+      port map (
+        I => ch1_rx_divclk,
+        O => ch1_rx_rec_clk
+        );
+
+    ch1_gtp_locked   <= ch1_gtp_pll_lockdet and ch1_gtp_reset_done;
+    ch1_tx_enc_err_o <= '0';
+
+    U_align_ch1 : gtp_phase_align
+      generic map (
+        g_simulation => g_simulation) 
+      port map (
+        gtp_rst_i                   => ch1_gtp_reset,
+        gtp_tx_clk_i                => ch1_ref_clk_i,
+        gtp_tx_en_pma_phase_align_o => ch1_tx_en_pma_phase_align,
+        gtp_tx_pma_set_phase_o      => ch1_tx_pma_set_phase,
+        align_en_i                  => ch1_gtp_locked,
+        align_done_o                => ch1_align_done);
+
+    U_bitslide_ch1 : gtp_bitslide
+      generic map (
+        g_simulation => g_simulation)
+      port map (
+        gtp_rst_i                => ch1_gtp_reset,
+        gtp_rx_clk_i             => ch1_rx_rec_clk,
+        gtp_rx_comma_det_i       => ch1_rx_comma_det,
+        gtp_rx_byte_is_aligned_i => ch1_rx_byte_is_aligned,
+        serdes_ready_i           => ch1_gtp_locked,
+        gtp_rx_slide_o           => ch1_rx_slide,
+        gtp_rx_cdr_rst_o         => ch1_rx_cdr_rst,
+        bitslide_o               => ch1_rx_bitslide_int,
+        synced_o                 => ch1_rx_synced);
+
+    ch1_rx_bitslide_o    <= ch1_rx_bitslide_int(3 downto 0);
+    ch1_rx_enable_output <= ch1_rx_synced and ch1_align_done;
+
+    U_sync_oen_ch1 : gc_sync_ffs
+      generic map (
+        g_sync_edge => "positive")
+      port map (
+        clk_i    => ch1_rx_rec_clk,
+        rst_n_i  => '1',
+        data_i   => ch1_rx_enable_output,
+        synced_o => ch1_rx_enable_output_synced,
+        npulse_o => open,
+        ppulse_o => open);
+
+    p_force_proper_disparity_ch1 : process(ch1_ref_clk_i, ch1_gtp_reset)
+    begin
+      if (ch1_gtp_reset = '1') then
+        ch1_disparity_set   <= '0';
+        ch1_tx_chardispval  <= '0';
+        ch1_tx_chardispmode <= '0';
+        
+      elsif rising_edge(ch1_ref_clk_i) then
+        if(ch1_disparity_set = '0' and ch1_tx_k_i = '1' and ch1_tx_data_i = x"bc" and ch1_align_done = '1') then
+          ch1_disparity_set <= '1';
+          if(g_force_disparity = 0) then
+            ch1_tx_chardispval <= '0';
+          else
+            ch1_tx_chardispval <= '1';
+          end if;
+          ch1_tx_chardispmode <= '1';
+        else
+          ch1_tx_chardispmode <= '0';
+          ch1_tx_chardispval  <= '0';
+        end if;
+      end if;
+    end process;
+
+    p_gen_output_ch1 : process(ch1_rx_rec_clk, ch1_rst_i)
+    begin
+      if(ch1_rst_i = '1') then
+        ch1_rx_data_o    <= (others => '0');
+        ch1_rx_k_o       <= '0';
+        ch1_rx_enc_err_o <= '0';
+        
+      elsif rising_edge(ch1_rx_rec_clk) then
+        if(ch1_rx_enable_output_synced = '0') then
+-- make sure the output data is invalid when the link is down and that it will
+-- trigger the sync loss detection
+          ch1_rx_data_o    <= (others => '0');
+          ch1_rx_k_o       <= '1';
+          ch1_rx_enc_err_o <= '1';
+        else
+          ch1_rx_data_o    <= ch1_rx_data_int;
+          ch1_rx_k_o       <= ch1_rx_k_int;
+          ch1_rx_enc_err_o <= ch1_rx_disperr or ch1_rx_invcode;
+        end if;
+      end if;
+    end process;
+
+    ch1_rx_rbclk_o <= ch1_rx_rec_clk;
+  end generate gen_with_channel1;
+
 
   U_GTP_TILE_INST : WHITERABBITGTP_WRAPPER_TILE_SPARTAN6
     generic map
@@ -569,217 +788,5 @@ begin  -- rtl
 
       );
 
-  U_Rbclk_buf_ch0 : BUFIO2
-    port map (
-      DIVCLK       => ch0_rx_divclk,
-      IOCLK        => open,
-      SERDESSTROBE => open,
-      I            => ch0_rx_rec_clk_pad);
-
-  U_Rbclk_bufg_ch0 : BUFG
-    port map (
-      I => ch0_rx_divclk,
-      O => ch0_rx_rec_clk
-      );
-
-  U_Rbclk_buf_ch1 : BUFIO2
-    port map (
-      DIVCLK       => ch1_rx_divclk,
-      IOCLK        => open,
-      SERDESSTROBE => open,
-      I            => ch1_rx_rec_clk_pad);
-
-  U_Rbclk_bufg_ch1 : BUFG
-    port map (
-      I => ch1_rx_divclk,
-      O => ch1_rx_rec_clk
-      );
-
-  
-  ch0_gtp_locked   <= ch0_gtp_pll_lockdet and ch0_gtp_reset_done;
-  ch0_tx_enc_err_o <= '0';
-
-  ch1_gtp_locked   <= ch1_gtp_pll_lockdet and ch1_gtp_reset_done;
-  ch1_tx_enc_err_o <= '0';
-
-  U_align_ch0 : gtp_phase_align
-    generic map (
-      g_simulation => g_simulation) 
-    port map (
-      gtp_rst_i                   => ch0_gtp_reset,
-      gtp_tx_clk_i                => ch0_ref_clk_i,
-      gtp_tx_en_pma_phase_align_o => ch0_tx_en_pma_phase_align,
-      gtp_tx_pma_set_phase_o      => ch0_tx_pma_set_phase,
-      align_en_i                  => ch0_gtp_locked,
-      align_done_o                => ch0_align_done);
-
-  
-  U_align_ch1 : gtp_phase_align
-    generic map (
-      g_simulation => g_simulation) 
-    port map (
-      gtp_rst_i                   => ch1_gtp_reset,
-      gtp_tx_clk_i                => ch1_ref_clk_i,
-      gtp_tx_en_pma_phase_align_o => ch1_tx_en_pma_phase_align,
-      gtp_tx_pma_set_phase_o      => ch1_tx_pma_set_phase,
-      align_en_i                  => ch1_gtp_locked,
-      align_done_o                => ch1_align_done);
-
-  
-  U_bitslide_ch0 : gtp_bitslide
-    generic map (
-      g_simulation => g_simulation)
-    port map (
-      gtp_rst_i                => ch0_gtp_reset,
-      gtp_rx_clk_i             => ch0_rx_rec_clk,
-      gtp_rx_comma_det_i       => ch0_rx_comma_det,
-      gtp_rx_byte_is_aligned_i => ch0_rx_byte_is_aligned,
-      serdes_ready_i           => ch0_gtp_locked,
-      gtp_rx_slide_o           => ch0_rx_slide,
-      gtp_rx_cdr_rst_o         => ch0_rx_cdr_rst,
-      bitslide_o               => ch0_rx_bitslide_int,
-      synced_o                 => ch0_rx_synced);
-
-  ch0_rx_bitslide_o <= ch0_rx_bitslide_int(3 downto 0);
-
-  U_bitslide_ch1 : gtp_bitslide
-    generic map (
-      g_simulation => g_simulation)
-    port map (
-      gtp_rst_i                => ch1_gtp_reset,
-      gtp_rx_clk_i             => ch1_rx_rec_clk,
-      gtp_rx_comma_det_i       => ch1_rx_comma_det,
-      gtp_rx_byte_is_aligned_i => ch1_rx_byte_is_aligned,
-      serdes_ready_i           => ch1_gtp_locked,
-      gtp_rx_slide_o           => ch1_rx_slide,
-      gtp_rx_cdr_rst_o         => ch1_rx_cdr_rst,
-      bitslide_o               => ch1_rx_bitslide_int,
-      synced_o                 => ch1_rx_synced);
-
-  ch1_rx_bitslide_o <= ch1_rx_bitslide_int(3 downto 0);
-
-
-  ch0_rx_enable_output <= ch0_rx_synced and ch0_align_done;
-  ch1_rx_enable_output <= ch1_rx_synced and ch1_align_done;
-
-  U_sync_oen_ch0 : gc_sync_ffs
-    generic map (
-      g_sync_edge => "positive")
-    port map (
-      clk_i    => ch0_rx_rec_clk,
-      rst_n_i  => '1',
-      data_i   => ch0_rx_enable_output,
-      synced_o => ch0_rx_enable_output_synced,
-      npulse_o => open,
-      ppulse_o => open);
-
-  U_sync_oen_ch1 : gc_sync_ffs
-    generic map (
-      g_sync_edge => "positive")
-    port map (
-      clk_i    => ch1_rx_rec_clk,
-      rst_n_i  => '1',
-      data_i   => ch1_rx_enable_output,
-      synced_o => ch1_rx_enable_output_synced,
-      npulse_o => open,
-      ppulse_o => open);
-
-  
-  p_force_proper_disparity_ch0 : process(ch0_ref_clk_i, ch0_gtp_reset)
-  begin
-    if (ch0_gtp_reset = '1') then
-      ch0_disparity_set   <= '0';
-      ch0_tx_chardispval  <= '0';
-      ch0_tx_chardispmode <= '0';
-    elsif rising_edge(ch0_ref_clk_i) then
-      if(ch0_disparity_set = '0' and ch0_tx_k_i = '1' and ch0_tx_data_i = x"bc" and ch0_align_done = '1') then
-        ch0_disparity_set <= '1';
-        if(g_force_disparity = 0) then
-          ch0_tx_chardispval <= '0' ;
-        else
-          ch0_tx_chardispval <= '1';
-        end if;
-        ch0_tx_chardispmode <= '1';
-      else
-        ch0_tx_chardispmode <= '0';
-        ch0_tx_chardispval  <= '0';
-      end if;
-    end if;
-  end process;
-
-  p_force_proper_disparity_ch1 : process(ch1_ref_clk_i, ch1_gtp_reset)
-  begin
-    if (ch1_gtp_reset = '1') then
-      ch1_disparity_set   <= '0';
-      ch1_tx_chardispval  <= '0';
-      ch1_tx_chardispmode <= '0';
-      
-    elsif rising_edge(ch1_ref_clk_i) then
-      if(ch1_disparity_set = '0' and ch1_tx_k_i = '1' and ch1_tx_data_i = x"bc" and ch1_align_done = '1') then
-        ch1_disparity_set <= '1';
-        if(g_force_disparity = 0) then
-          ch1_tx_chardispval <= '0';
-        else
-          ch1_tx_chardispval <= '1';
-        end if;
-        ch1_tx_chardispmode <= '1';
-      else
-        ch1_tx_chardispmode <= '0';
-        ch1_tx_chardispval  <= '0';
-      end if;
-    end if;
-  end process;
-
-  p_gen_output_ch0 : process(ch0_rx_rec_clk, ch0_gtp_reset)
-  begin
-    if(ch0_gtp_reset = '1') then
-      ch0_rx_data_o    <= (others => '0');
-      ch0_rx_k_o       <= '0';
-      ch0_rx_enc_err_o <= '0';
-      
-    elsif rising_edge(ch0_rx_rec_clk) then
-      if(ch0_rx_enable_output_synced = '0') then
--- make sure the output data is invalid when the link is down and that it will
--- trigger the sync loss detection
-        ch0_rx_data_o    <= (others => '0');
-        ch0_rx_k_o       <= '1';
-        ch0_rx_enc_err_o <= '1';
-      else
-        ch0_rx_data_o    <= ch0_rx_data_int;
-        ch0_rx_k_o       <= ch0_rx_k_int;
-        ch0_rx_enc_err_o <= ch0_rx_disperr or ch0_rx_invcode;
-      end if;
-    end if;
-  end process;
-
-  p_gen_output_ch1 : process(ch1_rx_rec_clk, ch1_rst_i)
-  begin
-    if(ch1_rst_i = '1') then
-      ch1_rx_data_o    <= (others => '0');
-      ch1_rx_k_o       <= '0';
-      ch1_rx_enc_err_o <= '0';
-      
-    elsif rising_edge(ch1_rx_rec_clk) then
-      if(ch1_rx_enable_output_synced = '0') then
--- make sure the output data is invalid when the link is down and that it will
--- trigger the sync loss detection
-        ch1_rx_data_o    <= (others => '0');
-        ch1_rx_k_o       <= '1';
-        ch1_rx_enc_err_o <= '1';
-      else
-        ch1_rx_data_o    <= ch1_rx_data_int;
-        ch1_rx_k_o       <= ch1_rx_k_int;
-        ch1_rx_enc_err_o <= ch1_rx_disperr or ch1_rx_invcode;
-      end if;
-    end if;
-  end process;
-
-
--- drive the recovered clock output
-  ch0_rx_rbclk_o <= ch0_rx_rec_clk;
---  ch0_tx_disparity_o <= ch0_tx_rundisp_vec(0);
-
-  ch1_rx_rbclk_o <= ch1_rx_rec_clk;
---  ch1_tx_disparity_o <= ch1_tx_rundisp_vec(0);
 
 end rtl;
