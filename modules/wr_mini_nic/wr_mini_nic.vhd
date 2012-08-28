@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2012-07-13
+-- Last update: 2012-08-28
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -276,32 +276,6 @@ architecture behavioral of wr_mini_nic is
   signal bad_addr      : std_logic;
 
 
-  --component chipscope_ila
-  --  port (
-  --    CONTROL : inout std_logic_vector(35 downto 0);
-  --    CLK     : in    std_logic;
-  --    TRIG0   : in    std_logic_vector(31 downto 0);
-  --    TRIG1   : in    std_logic_vector(31 downto 0);
-  --    TRIG2   : in    std_logic_vector(31 downto 0);
-  --    TRIG3   : in    std_logic_vector(31 downto 0));
-  --end component;
-
-
-
-
-  --component chipscope_icon
-  --  port (
-  --    CONTROL0 : inout std_logic_vector (35 downto 0));
-  --end component;
-
-  --signal CONTROL : std_logic_vector(35 downto 0);
-  --signal CLK     : std_logic;
-  --signal TRIG0   : std_logic_vector(31 downto 0);
-  --signal TRIG1   : std_logic_vector(31 downto 0);
-  --signal TRIG2   : std_logic_vector(31 downto 0);
-  --signal TRIG3   : std_logic_vector(31 downto 0);
-
-  
 begin  -- behavioral
 
   --chipscope_ila_1 : chipscope_ila
@@ -649,20 +623,6 @@ begin  -- behavioral
 -------------------------------------------------------------------------------  
 
 
-  --TRIG0(2 downto 0) <= std_logic_vector(nrx_state);
-  --TRIG0(3) <= nrx_buf_full;
-  --TRIG0(g_memsize_log2-1+4 downto 4) <= std_logic_vector(nrx_avail);
-
-  --TRIG1(g_memsize_log2-1 downto 0) <= mem_addr_int;
-  --TRIG1(16)                        <= bad_addr;
-  --TRIG1(17)                        <= nrx_mem_wr;
-  --TRIG1(18)                        <= mem_arb_rx;
-  --TRIG2 <= nrx_mem_d;
-  --TRIG1(19) <= mem_wr_int;
-
-
-
-
 
   nrx_status_reg <= f_unmarshall_wrf_status(snk_dat_i);
 
@@ -768,7 +728,6 @@ begin  -- behavioral
             --  end if;
             
             when RX_WAIT_SOF =>
---            TRIG0(2 downto 0) <= "000";
 
               nrx_newpacket <= '0';
               nrx_done      <= '0';
@@ -795,7 +754,6 @@ begin  -- behavioral
 -------------------------------------------------------------------------------              
               
             when RX_ALLOCATE_DESCRIPTOR =>
---            TRIG0(2 downto 0) <= "001";
 
 -- wait until we have memory access
               if(mem_arb_rx = '0') then
@@ -820,7 +778,6 @@ begin  -- behavioral
 -------------------------------------------------------------------------------              
               
             when RX_DATA =>
---            TRIG0(2 downto 0) <= "010";
 
               nrx_mem_wr <= '0';
 
@@ -929,7 +886,6 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_RESYNC =>
---            TRIG0(2 downto 0) <= "011";
 
               -- check for error/abort conditions, they may appear even when
               -- the fabric is not accepting the data (tx_dreq_o = 0)
@@ -954,17 +910,18 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_MEM_FLUSH =>
---            TRIG0(2 downto 0) <= "100";
               nrx_stall_mask <= '1';
 
               if(nrx_buf_full = '0') then
                 nrx_mem_wr <= '1';
-              else
-                nrx_size <= nrx_size - 1;  --the buffer is full, last word was not written
               end if;
+
               if(mem_arb_rx = '0') then
                 if(nrx_buf_full = '0') then
                   nrx_avail <= nrx_avail - 1;
+                else
+                	nrx_size <= nrx_size - 1;  --the buffer is full, last word was not written
+                	nrx_mem_a <= nrx_mem_a - 1;
                 end if;
                 nrx_state <= RX_UPDATE_DESC;
               end if;
@@ -977,8 +934,11 @@ begin  -- behavioral
 -------------------------------------------------------------------------------
               
             when RX_UPDATE_DESC =>
---            TRIG0(2 downto 0) <= "101";
               nrx_stall_mask <= '1';
+
+              if(nrx_avail = to_unsigned(0, nrx_avail'length)) then
+                nrx_buf_full <= '1';
+              end if;
 
               if(mem_arb_rx = '0') then
 
@@ -1006,18 +966,18 @@ begin  -- behavioral
 
                 nrx_mem_wr <= '1';
 
-                -- trigger the RX interrupt and assert RX_READY flag to inform
-                -- the host that we've received something
-                nrx_newpacket          <= '1';
-                regs_in.mcr_rx_ready_i <= '1';
 
                 -- wait for another packet
                 if(snk_cyc_i = '1') then
                   nrx_state <= RX_IGNORE;
                 elsif(nrx_buf_full = '1') then
-                  nrx_state <= RX_BUF_FULL;
+                  nrx_state      <= RX_BUF_FULL;
                   nrx_stall_mask <= '1';
                 else
+                  -- trigger the RX interrupt and assert RX_READY flag to inform
+                  -- the host that we've received something
+                  nrx_newpacket          <= '1';
+                  regs_in.mcr_rx_ready_i <= '1';
                   nrx_state <= RX_WAIT_SOF;
                 end if;
               else
@@ -1025,23 +985,29 @@ begin  -- behavioral
               end if;
               
             when RX_IGNORE =>
+              nrx_mem_wr <= '0';
+              --drop the rest of the packet
               nrx_stall_mask <= '0';
               if(snk_cyc_i = '0') then
                 if(nrx_buf_full = '1') then
                   nrx_stall_mask <= '1';
-                  nrx_state <= RX_BUF_FULL;
+                  nrx_state      <= RX_BUF_FULL;
                 else
                   nrx_state <= RX_WAIT_SOF;
                 end if;
               end if;
 
             when RX_BUF_FULL =>
+                nrx_mem_wr 						 <= '0';
+                regs_in.mcr_rx_full_i  <= nrx_buf_full;
+                nrx_newpacket          <= '1';
+                regs_in.mcr_rx_ready_i <= '1';
               if(nrx_buf_full = '0') then
                 nrx_stall_mask <= '0';
-                nrx_state <= RX_WAIT_SOF;
+                nrx_state      <= RX_WAIT_SOF;
               else
                 nrx_stall_mask <= '1';
-              end if;                  
+              end if;
               
           end case;
         end if;
@@ -1064,6 +1030,8 @@ begin  -- behavioral
       snk_stall_int <= '1';
       -- the condition below forces the RX FSM to go into RX_MEM_RESYNC state. Don't
       -- receive anything during this time
+    elsif(nrx_state = RX_IGNORE or nrx_state = RX_BUF_FULL) then
+      snk_stall_int <= nrx_stall_mask;
     elsif(nrx_toggle = '1' and mem_arb_rx = '1') then
       snk_stall_int <= '1';
     elsif(nrx_stall_mask = '1') then
@@ -1118,7 +1086,9 @@ begin  -- behavioral
 
         if (nrx_newpacket_d0 = '0' and nrx_newpacket = '1') then
           irq_rx <= '1';
-        elsif (regs_in.mcr_rx_full_i = '1') then
+        elsif (regs_in.mcr_rx_full_i = '1' and (nrx_state = RX_WAIT_SOF or nrx_state = RX_BUF_FULL)) then
+          --if buf_full occured during packet reception RX state machine will generate erronous packet
+          --so the interrupt will either be there
           irq_rx <= '1';
         elsif (irq_rx_ack = '1') then
           irq_rx <= '0';
