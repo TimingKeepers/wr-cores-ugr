@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-06-27
+-- Last update: 2012-08-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -215,19 +215,19 @@ architecture behavioral of ep_rx_path is
 
   component ep_rx_status_reg_insert
     port (
-      clk_sys_i         : in  std_logic;
-      rst_n_i           : in  std_logic;
-      snk_fab_i         : in  t_ep_internal_fabric;
-      snk_dreq_o        : out std_logic;
-      src_fab_o         : out t_ep_internal_fabric;
-      src_dreq_i        : in  std_logic;
-      pfilter_drop_i    : in  std_logic;
-      pfilter_pclass_i  : in  std_logic_vector(7 downto 0);
-      pfilter_done_i    : in  std_logic;
-      ematch_done_i     : in  std_logic;
-      ematch_is_hp_i    : in  std_logic;
-      ematch_is_pause_i : in  std_logic;
-      rmon_o            : out t_rmon_triggers);
+      clk_sys_i       : in  std_logic;
+      rst_n_i         : in  std_logic;
+      snk_fab_i       : in  t_ep_internal_fabric;
+      snk_dreq_o      : out std_logic;
+      src_fab_o       : out t_ep_internal_fabric;
+      src_dreq_i      : in  std_logic;
+      mbuf_valid_i    : in  std_logic;
+      mbuf_ack_o      : out  std_logic;
+      mbuf_drop_i     : in  std_logic;
+      mbuf_pclass_i   : in  std_logic_vector(7 downto 0);
+      mbuf_is_hp_i    : in  std_logic;
+      mbuf_is_pause_i : in  std_logic;
+      rmon_o          : out t_rmon_triggers);
   end component;
 
   component ep_rx_buffer
@@ -292,8 +292,10 @@ architecture behavioral of ep_rx_path is
   signal vlan_vid      : std_logic_vector(11 downto 0);
   signal vlan_tag_done : std_logic;
 
-  signal pcs_fifo_almostfull : std_logic;
-  
+  signal pcs_fifo_almostfull                                    : std_logic;
+  signal mbuf_rd, mbuf_valid, mbuf_we, mbuf_pf_drop, mbuf_is_hp : std_logic;
+  signal mbuf_is_pause, mbuf_full, mbuf_we_d0, mbuf_we_d1       : std_logic;
+  signal mbuf_pf_class                                          : std_logic_vector(7 downto 0);
   
 begin  -- behavioral
 
@@ -338,11 +340,36 @@ begin  -- behavioral
     pfilter_pclass <= (others => '0');
   end generate gen_without_packet_filter;
 
+  mbuf_we <= ematch_done when
+             (regs_i.pfcr0_enable_o = '0' or not g_with_dpi_classifier) else
+             pfilter_done;
+
+  U_match_buffer : generic_shiftreg_fifo
+    generic map (
+      g_data_width => 8 + 1 + 1 + 1,
+      g_size       => 16)
+    port map (
+      rst_n_i           => rst_n_sys_i,
+      clk_i             => clk_sys_i,
+      d_i (0)           => ematch_is_hp,
+      d_i (1)           => ematch_is_pause,
+      d_i (2)           => pfilter_drop,
+      d_i (10 downto 3) => pfilter_pclass,
+
+      we_i              => mbuf_we,
+      q_o (0)           => mbuf_is_hp,
+      q_o (1)           => mbuf_is_pause,
+      q_o (2)           => mbuf_pf_drop,
+      q_o (10 downto 3) => mbuf_pf_class,
+
+      rd_i      => mbuf_rd,
+      full_o    => mbuf_full,
+      q_valid_o => mbuf_valid);
 
   U_Rx_Clock_Align_FIFO : ep_clock_alignment_fifo
     generic map (
-      g_size                 => 64,
-      g_almostfull_threshold => 52)
+      g_size                 => 128,
+      g_almostfull_threshold => 112)
     port map (
       rst_n_rd_i       => rst_n_sys_i,
       clk_wr_i         => clk_rx_i,
@@ -353,7 +380,7 @@ begin  -- behavioral
       full_o           => open,
       empty_o          => open,
       almostfull_o     => pcs_fifo_almostfull_o,
-      pass_threshold_i => std_logic_vector(to_unsigned(32, 6)));  -- fixme: add
+      pass_threshold_i => std_logic_vector(to_unsigned(32, 7)));  -- fixme: add
                                                                   -- register
 
   U_Insert_OOB : ep_rx_oob_insert
@@ -416,19 +443,19 @@ begin  -- behavioral
 
   U_Gen_Status : ep_rx_status_reg_insert
     port map (
-      clk_sys_i         => clk_sys_i,
-      rst_n_i           => rst_n_sys_i,
-      snk_fab_i         => fab_pipe(7),
-      snk_dreq_o        => dreq_pipe(7),
-      src_fab_o         => fab_pipe(8),
-      src_dreq_i        => dreq_pipe(8),
-      pfilter_drop_i    => pfilter_drop,
-      pfilter_pclass_i  => pfilter_pclass,
-      pfilter_done_i    => pfilter_done,
-      ematch_done_i     => ematch_done,
-      ematch_is_hp_i    => ematch_is_hp,
-      ematch_is_pause_i => ematch_is_pause,
-      rmon_o            => open);
+      clk_sys_i       => clk_sys_i,
+      rst_n_i         => rst_n_sys_i,
+      snk_fab_i       => fab_pipe(7),
+      snk_dreq_o      => dreq_pipe(7),
+      src_fab_o       => fab_pipe(8),
+      src_dreq_i      => dreq_pipe(8),
+      mbuf_valid_i    => mbuf_valid,
+      mbuf_ack_o      => mbuf_rd,
+      mbuf_drop_i     => mbuf_pf_drop,
+      mbuf_pclass_i   => mbuf_pf_class,
+      mbuf_is_hp_i    => mbuf_is_hp,
+      mbuf_is_pause_i => mbuf_is_pause,
+      rmon_o          => open);
 
   gen_with_rx_buffer : if g_with_rx_buffer generate
     U_Rx_Buffer : ep_rx_buffer

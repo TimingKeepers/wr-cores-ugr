@@ -150,7 +150,7 @@ begin  -- behavioral
       if rst_n_rx_i = '0' or snk_fab_i.sof = '1' then
         done_int <= '0';
       else
-        if hdr_offset(8) = '1' then
+        if hdr_offset(8) = '1' or snk_fab_i.error = '1' then
           done_int <= '1';
         end if;
       end if;
@@ -164,7 +164,7 @@ begin  -- behavioral
       clk_i    => clk_sys_i,
       rst_n_i  => rst_n_sys_i,
       data_i   => done_int,
-      synced_o => match_done_o);
+      ppulse_o => match_done_o);
 
 
 end behavioral;
