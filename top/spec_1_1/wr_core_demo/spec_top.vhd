@@ -743,6 +743,8 @@ begin
 
   U_GTP : wr_gtp_phy_spartan6
     generic map (
+			g_enable_ch0 => 0,
+			g_enable_ch1 => 1,
       g_simulation => 0)
     port map (
       gtp_clk_i => gtp_dedicated_clk,
