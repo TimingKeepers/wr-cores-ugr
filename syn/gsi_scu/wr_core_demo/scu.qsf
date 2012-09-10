@@ -27,7 +27,7 @@ set_global_assignment -name DEVICE EP2AGX125EF29C5
 set_global_assignment -name TOP_LEVEL_ENTITY scu_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 11.1
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "11:00:25  FEBRUARY 13, 2012"
-set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP2"
+set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP1"
 set_global_assignment -name SEARCH_PATH ./
 set_global_assignment -name SEARCH_PATH "pci_express_compiler-library/"
 set_global_assignment -name SEARCH_PATH "pci_megacore-library/"
@@ -704,6 +704,10 @@ set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3
 set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3_ODT
 set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to DDR3_WE_n
+set_global_assignment -name VHDL_FILE "../../../ip_cores/general-cores/modules/common/gc_reset.vhd"
+set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/EB_SPEC_Test/etherbone_pkg.vhd"
+set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_bangbang_pd.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_crc32_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/pow_reset.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/flash_loader.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/altera_pkg.vhd
