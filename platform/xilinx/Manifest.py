@@ -1,2 +1,2 @@
 files = [ "wr_xilinx_pkg.vhd" ]
-modules = {"local" : ["wr_gtp_phy", "chipscope"]}
+modules = {"local" : ["wr_gtp_phy"]}
