@@ -55,7 +55,7 @@ use work.wishbone_pkg.all;
 use work.endpoint_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.sysc_wbgen2_pkg.all;
-
+use work.etherbone_pkg.all;
 
 entity wr_core is
   generic(
@@ -71,7 +71,8 @@ entity wr_core is
     g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
     g_dpram_size                : integer                        := 20480;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
-    g_address_granularity       : t_wishbone_address_granularity := WORD
+    g_address_granularity       : t_wishbone_address_granularity := WORD;
+    g_aux_sdb                   : t_sdb_device                   := c_etherbone_sdb
     );
   port(
 
@@ -313,7 +314,7 @@ architecture struct of wr_core is
      4 => f_sdb_embed_device(c_wrc_periph0_sdb,    x"00000400"),  -- Syscon
      5 => f_sdb_embed_device(c_wrc_periph1_sdb,    x"00000500"),  -- UART
      6 => f_sdb_embed_device(c_wrc_periph2_sdb,    x"00000600"),  -- 1-Wire
-     7 => f_sdb_embed_device(c_wrc_periph2_sdb,    x"00000700")  -- aux WB bus
+     7 => f_sdb_embed_device(g_aux_sdb,            x"00000700")  -- aux WB bus
      );
 
   constant c_secbar_sdb_address : t_wishbone_address := x"00000800";
