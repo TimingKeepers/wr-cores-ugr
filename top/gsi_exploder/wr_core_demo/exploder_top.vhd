@@ -62,32 +62,15 @@ end exploder_top;
 
 architecture rtl of exploder_top is
 
-  constant c_xwr_gpio_32_sdb : t_sdb_device := (
-    abi_class     => x"0000", -- undocumented device
-    abi_ver_major => x"01",
-    abi_ver_minor => x"01",
-    wbd_endian    => c_sdb_endian_big,
-    wbd_width     => x"7", -- 8/16/32-bit port granularity
-    sdb_component => (
-    addr_first    => x"0000000000000000",
-    addr_last     => x"000000000000001f",
-    product => (
-    vendor_id     => x"0000000000000651", -- GSI
-    device_id     => x"35aa6b95",
-    version       => x"00000001",
-    date          => x"20120305",
-    name          => "GSI_GPIO_32        ")));
-	
   -- WR core layout
   constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
   
   -- Ref clock crossbar
-  constant c_ref_slaves  : natural := 3;
+  constant c_ref_slaves  : natural := 2;
   constant c_ref_masters : natural := 1;
   constant c_ref_layout : t_sdb_record_array(c_ref_slaves-1 downto 0) :=
-   (0 => f_sdb_embed_device(c_xwr_gpio_32_sdb,            x"00000000"),
-    1 => f_sdb_embed_device(c_xwr_eca_sdb,                x"00040000"),
-    2 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00080000"));
+   (0 => f_sdb_embed_device(c_xwr_eca_sdb,                x"00040000"),
+    1 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00080000"));
   constant c_ref_sdb_address : t_wishbone_address := x"000C0000";
   constant c_ref_bridge : t_sdb_bridge := 
     f_xwb_bridge_layout_sdb(true, c_ref_layout, c_ref_sdb_address);
@@ -98,13 +81,12 @@ architecture rtl of exploder_top is
   signal cbar_ref_master_o : t_wishbone_master_out_array(c_ref_slaves-1 downto 0);
   
   -- Top crossbar layout
-  constant c_slaves : natural := 3;
+  constant c_slaves : natural := 2;
   constant c_masters : natural := 1;
   constant c_test_dpram_size : natural := 2048;
   constant c_layout : t_sdb_record_array(c_slaves-1 downto 0) :=
-   (0 => f_sdb_embed_device(f_xwb_dpram(c_test_dpram_size), x"00000000"),
-    1 => f_sdb_embed_bridge(c_ref_bridge,                   x"00100000"),
-    2 => f_sdb_embed_bridge(c_wrcore_bridge_sdb,            x"00200000"));
+   (0 => f_sdb_embed_bridge(c_wrcore_bridge_sdb, x"00000000"),
+    1 => f_sdb_embed_bridge(c_ref_bridge,        x"00100000"));
   constant c_sdb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
@@ -128,7 +110,6 @@ architecture rtl of exploder_top is
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
 
-  signal pio_reg : std_logic_vector(7 downto 0);
   signal ext_pps : std_logic;
   signal pps : std_logic;
 
@@ -152,13 +133,10 @@ architecture rtl of exploder_top is
   signal mb_src_in     : t_wrf_source_in;
   signal mb_snk_out    : t_wrf_sink_out;
   signal mb_snk_in     : t_wrf_sink_in;
-  signal mb_master_out : t_wishbone_master_out;
-  signal mb_master_in  : t_wishbone_master_in;
   
   signal tm_utc    : std_logic_vector(39 downto 0);
   signal tm_cycles : std_logic_vector(27 downto 0);
 
-  signal triggers : std_logic_vector(3 downto 0);
   signal eca_toggle: std_logic_vector(31 downto 0);
   
   signal owr_pwren_o : std_logic_vector(1 downto 0);
@@ -280,8 +258,8 @@ begin
       owr_en_o    => owr_en_o,
       owr_i       => owr_i,
       
-      slave_i => cbar_master_o(2),
-      slave_o => cbar_master_i(2),
+      slave_i => cbar_master_o(0),
+      slave_o => cbar_master_i(0),
       aux_master_o => wrc_master_o,
       aux_master_i => wrc_master_i,
 
@@ -355,24 +333,6 @@ begin
       pulse_i    => pps,
       extended_o => ext_pps);
   
-  test_ram : xwb_dpram
-    generic map(
-      g_size                  => c_test_dpram_size,
-      g_init_file             => "",
-      g_must_have_init_file   => false,
-      g_slave1_interface_mode => PIPELINED,
-      g_slave2_interface_mode => PIPELINED,
-      g_slave1_granularity    => BYTE,
-      g_slave2_granularity    => WORD)  
-    port map(
-      clk_sys_i => pllout_clk_sys,
-      rst_n_i   => pllout_clk_sys_rstn,
-
-      slave1_i => cbar_master_o(0),
-      slave1_o => cbar_master_i(0),
-      slave2_i => cc_dummy_slave_in,
-      slave2_o => open);
-    
   U_ebone : EB_CORE
     generic map(
        g_sdb_address => x"00000000" & c_sdb_address)
@@ -388,50 +348,31 @@ begin
       master_o    => cbar_slave_i(0),
       master_i    => cbar_slave_o(0));
   
-  triggers <= '0' & '0' & pio_reg(0 downto 0) & pps;
-  
   TLU : wb_timestamp_latch
     generic map (
-      g_num_triggers => 4,
+      g_num_triggers => 1,
       g_fifo_depth   => 10)
     port map (
       ref_clk_i       => clk_125m_pllref_p,
       sys_clk_i       => clk_125m_pllref_p,
       nRSt_i          => clk_125m_pllref_p_rstn,
-      triggers_i      => triggers,
+      triggers_i      => (others => '0'),
       tm_time_valid_i => '0',
       tm_utc_i        => tm_utc,
       tm_cycles_i     => tm_cycles,
-      wb_slave_i      => cbar_ref_master_o(2),
-      wb_slave_o      => cbar_ref_master_i(2));
+      wb_slave_i      => cbar_ref_master_o(1),
+      wb_slave_o      => cbar_ref_master_i(1));
 
   ECA : xwr_eca
     port map(
       clk_i      => clk_125m_pllref_p,
       rst_n_i    => clk_125m_pllref_p_rstn,
-      slave_i    => cbar_ref_master_o(1),
-      slave_o    => cbar_ref_master_i(1),
+      slave_i    => cbar_ref_master_o(0),
+      slave_o    => cbar_ref_master_i(0),
       tm_utc_i   => tm_utc,
       tm_cycle_i => tm_cycles,
       toggle_o   => eca_toggle);
       
-  cbar_ref_master_i(0) <= mb_master_in;
-  mb_master_out <= cbar_ref_master_o(0);
-  gpio : process(clk_125m_pllref_p)
-  begin
-    if rising_edge(clk_125m_pllref_p) then
-      if mb_master_out.cyc = '1' and mb_master_out.stb = '1' and mb_master_out.we = '1' then
-        pio_reg <= mb_master_out.dat(7 downto 0);
-      end if;
-      mb_master_in.ack <= mb_master_out.cyc and mb_master_out.stb;
-    end if;
-  end process;
-  mb_master_in.int <= '0';
-  mb_master_in.err <= '0';
-  mb_master_in.rty <= '0';
-  mb_master_in.stall <= '0';
-  mb_master_in.dat <= std_logic_vector(to_unsigned(0,mb_master_in.dat'length-pio_reg'length)) & pio_reg;
-	
   GSI_REF_CON : xwb_sdb_crossbar
    generic map(
      g_num_masters => c_ref_masters,
@@ -480,7 +421,7 @@ begin
      master_o      => cbar_master_o);
   
   hpv(7) <= eca_toggle(1);
-  hpv(6 downto 4) <= pio_reg(2 downto 0);
+  hpv(6 downto 4) <= (others => '1');
   hpv(3) <= not ext_pps;
   hpv(2) <=  not '1';
   hpv(1) <= not led_green;
