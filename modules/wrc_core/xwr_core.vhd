@@ -56,7 +56,8 @@ entity xwr_core is
     g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
     g_dpram_size                : integer                        := 20480;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
-    g_address_granularity       : t_wishbone_address_granularity := WORD
+    g_address_granularity       : t_wishbone_address_granularity := WORD;
+    g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
     );
   port(
     ---------------------------------------------------------------------------
@@ -202,7 +203,8 @@ architecture struct of xwr_core is
       g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
       g_dpram_size                : integer                        := 16384;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
-      g_address_granularity       : t_wishbone_address_granularity := WORD);
+      g_address_granularity       : t_wishbone_address_granularity := WORD;
+    	g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb);
     port(
       clk_sys_i  : in std_logic;
       clk_dmtd_i : in std_logic;
@@ -333,7 +335,8 @@ begin
       g_dpram_initv               => g_dpram_initv,
       g_dpram_size                => g_dpram_size,
       g_interface_mode            => g_interface_mode,
-      g_address_granularity       => g_address_granularity)
+      g_address_granularity       => g_address_granularity,
+			g_aux_sdb										=> g_aux_sdb)
     port map(
       clk_sys_i  => clk_sys_i,
       clk_dmtd_i => clk_dmtd_i,

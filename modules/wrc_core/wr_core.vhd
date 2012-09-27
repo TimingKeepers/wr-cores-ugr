@@ -55,7 +55,6 @@ use work.wishbone_pkg.all;
 use work.endpoint_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.sysc_wbgen2_pkg.all;
-use work.etherbone_pkg.all;
 
 entity wr_core is
   generic(
@@ -72,7 +71,7 @@ entity wr_core is
     g_dpram_size                : integer                        := 20480;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity       : t_wishbone_address_granularity := WORD;
-    g_aux_sdb                   : t_sdb_device                   := c_etherbone_sdb
+    g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
     );
   port(
 
