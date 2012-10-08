@@ -700,7 +700,7 @@ begin
       rst_aux_n_o => etherbone_rst_n
       );
 
-  Etherbone : EB_CORE
+  Etherbone : eb_slave_core
     generic map (
       g_sdb_address => x"0000000000030000")
     port map (
