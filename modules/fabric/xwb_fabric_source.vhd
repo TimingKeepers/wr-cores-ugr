@@ -95,7 +95,7 @@ begin  -- rtl
     end if;
   end process;
 
-  src_o.cyc <= cyc_int or post_sof;
+  src_o.cyc <= cyc_int;
   src_o.we  <= '1';
   src_o.stb <= post_dvalid and q_valid;
   src_o.sel <= '1' & not fout(19);
