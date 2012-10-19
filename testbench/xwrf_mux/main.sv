@@ -3,6 +3,7 @@
 `include "if_wb_link.svh"
 `include "wb_packet_source.svh"
 `include "wb_packet_sink.svh"
+import wr_fabric_pkg::*;
 
 `define WIRE_WB_SINK(iface, prefix) \
 .prefix``_adr_i(iface.adr), \
@@ -26,46 +27,117 @@
 .prefix``_stall_i(iface.stall)
 
 
+`define WIRE_WRF_SRC(dst, src) \
+assign dst``_o.cyc = src.cyc; \
+assign dst``_o.stb = src.stb; \
+assign dst``_o.adr = src.adr; \
+assign dst``_o.dat = src.dat_o; \
+assign dst``_o.sel = src.sel; \
+assign src.ack = dst``_i.ack; \
+assign src.err = dst``_i.err; \
+assign src.stall = dst``_i.stall;
+
+`define WIRE_WRF_SRC_I(dst, src, i) \
+assign dst``_o[i].cyc = src.cyc; \
+assign dst``_o[i].stb = src.stb; \
+assign dst``_o[i].adr = src.adr; \
+assign dst``_o[i].dat = src.dat_o; \
+assign dst``_o[i].sel = src.sel; \
+assign src.ack = dst``_i[i].ack; \
+assign src.err = dst``_i[i].err; \
+assign src.stall = dst``_i[i].stall;
+
+`define WIRE_WRF_SNK(dst, src) \
+assign dst.cyc = src``_i.cyc; \
+assign dst.stb = src``_i.stb; \
+assign dst.adr = src``_i.adr; \
+assign dst.dat_i = src``_i.dat; \
+assign dst.sel = src``_i.sel; \
+assign src``_o.ack = dst.ack; \
+assign src``_o.err = dst.err; \
+assign src``_o.stall = dst.stall;
+
+`define WIRE_WRF_SNK_I(dst, src, i) \
+assign dst.cyc = src``_i[i].cyc; \
+assign dst.stb = src``_i[i].stb; \
+assign dst.adr = src``_i[i].adr; \
+assign dst.dat_i = src``_i[i].dat; \
+assign dst.sel = src``_i[i].sel; \
+assign src``_o[i].ack = dst.ack; \
+assign src``_o[i].err = dst.err; \
+assign src``_o[i].stall = dst.stall;
 
         
-module mux_svwrap
-    (
-           input clk_sys_i, 
-           input rst_n_i
-           );
+module mux_svwrap (
+    input clk_sys_i, 
+    input rst_n_i
+  );
 
    IWishboneMaster #(2,16) U_ep_src (clk_sys_i, rst_n_i);
    IWishboneMaster #(2,16) U_minic_src (clk_sys_i, rst_n_i);
    IWishboneMaster #(2,16) U_ext_src (clk_sys_i, rst_n_i);
-   IWishboneSlave #(2,16) U_ep_snk (clk_sys_i, rst_n_i);
-   IWishboneSlave #(2,16) U_minic_snk (clk_sys_i, rst_n_i);
-   IWishboneSlave #(2,16) U_ext_snk (clk_sys_i, rst_n_i);
+   IWishboneSlave  #(2,16) U_ep_snk (clk_sys_i, rst_n_i);
+   IWishboneSlave  #(2,16) U_minic_snk (clk_sys_i, rst_n_i);
+   IWishboneSlave  #(2,16) U_ext_snk (clk_sys_i, rst_n_i);
+   IWishboneMaster #(2,16) U_mux_src (clk_sys_i, rst_n_i);
+   IWishboneSlave  #(2,16) U_mux_snk (clk_sys_i, rst_n_i);
 
-   wbp_mux 
-     U_Mux
-       (
-        .clk_sys_i (clk_sys_i),
-        .rst_n_i   (rst_n_i),
+   t_wrf_source_out ep_src_o;
+   t_wrf_source_in  ep_src_i;
+   t_wrf_sink_out   ep_snk_o;
+   t_wrf_sink_in    ep_snk_i;
 
-        `WIRE_WB_SINK(U_ep_src, ep_wbs),
-        `WIRE_WB_SOURCE(U_ep_snk, ep_wbm),
+   `WIRE_WRF_SRC(ep_src, U_ep_src);
+   `WIRE_WRF_SNK(U_ep_snk, ep_snk);
 
-        `WIRE_WB_SINK(U_minic_src, ptp_wbs),
-        `WIRE_WB_SOURCE(U_minic_snk, ptp_wbm),
+   t_wrf_source_out mux_src_o[2:0];
+   t_wrf_source_in  mux_src_i[2:0];
+   t_wrf_sink_out   mux_snk_o[2:0];
+   t_wrf_sink_in    mux_snk_i[2:0];
 
-        `WIRE_WB_SINK(U_ext_src, ext_wbs),
-        `WIRE_WB_SOURCE(U_ext_snk, ext_wbm),
+   `WIRE_WRF_SRC_I(mux_src, U_minic_src, 0);
+   `WIRE_WRF_SNK_I(U_minic_snk, mux_snk, 0);
+   //assign U_minic_snk.cyc = 1'b1; //mux_snk_i[0].cyc;
+   //assign U_minic_snk.stb = mux_snk_i[0].stb;
+   //assign mux_snk_o[0].ack = U_minic_snk.ack;
+   //assign mux_snk_o[0].err= U_minic_snk.err;
+   //assign mux_snk_o[0].stall = U_minic_snk.stall;
+   `WIRE_WRF_SRC_I(mux_src, U_ext_src, 1);
+   `WIRE_WRF_SNK_I(U_ext_snk, mux_snk, 1);
+   `WIRE_WRF_SRC_I(mux_src, U_mux_src, 2);
+   `WIRE_WRF_SNK_I(U_mux_snk, mux_snk, 2);
 
-        .class_core_i (8'hf0)
-        );
+   reg [7:0]muxclass[2:0] = {8'h10, 8'h04, 8'h01};
+
+   xwrf_mux 
+    #(
+      .g_muxed_ports(3))
+   U_Mux
+    (
+      .clk_sys_i (clk_sys_i),
+      .rst_n_i   (rst_n_i),
+
+      .ep_snk_i (ep_src_o),
+      .ep_snk_o (ep_src_i),
+      .ep_src_i (ep_snk_o),
+      .ep_src_o (ep_snk_i),
+
+      .mux_snk_i(mux_src_o),
+      .mux_snk_o(mux_src_i),
+      .mux_src_i(mux_snk_o),
+      .mux_src_o(mux_snk_i),
+
+      .mux_class_i (muxclass)
+    );
 
    assign U_ep_snk.we  = 1;
    assign U_minic_snk.we  = 1;
    assign U_ext_snk.we  = 1;
+   assign U_mux_snk.we  = 1;
    
    
-   WBPacketSource ep_src, minic_src, ext_src;
-   WBPacketSink ep_snk, minic_snk, ext_snk;
+   WBPacketSource ep_src, minic_src, ext_src, mux_src;
+   WBPacketSink ep_snk, minic_snk, ext_snk, mux_snk;
    
    initial begin
       @(posedge rst_n_i);
@@ -74,11 +146,17 @@ module mux_svwrap
       ep_src  = new(U_ep_src.get_accessor());
       minic_src  = new(U_minic_src.get_accessor());
       ext_src  = new(U_ext_src.get_accessor());
+      mux_src  = new(U_mux_src.get_accessor());
 
       ep_snk  = new(U_ep_snk.get_accessor());
       minic_snk  = new(U_minic_snk.get_accessor());
       ext_snk  = new(U_ext_snk.get_accessor());
+      mux_snk  = new(U_mux_snk.get_accessor());
       
+      U_ep_src.settings.cyc_on_stall = 1;
+      U_minic_src.settings.cyc_on_stall = 1;
+      U_ext_src.settings.cyc_on_stall = 1;
+      U_mux_src.settings.cyc_on_stall = 1;
       
    end
    
@@ -130,7 +208,7 @@ module main;
      int i;
      
 
-   tmpl                      = new;
+      tmpl                   = new;
       tmpl.src               = '{1,2,3,4,5,6};
       tmpl.dst               = '{10,11,12,13,14,15};
       tmpl.has_smac          = 1;
@@ -205,6 +283,7 @@ module main;
       fork
          send_random_packets(DUT.ext_src, from_ext, n_packets, 1);
          send_random_packets(DUT.minic_src, from_minic, n_packets, 2);
+         send_random_packets(DUT.mux_src, from_minic, n_packets, 3);
       join
       
 
@@ -258,8 +337,8 @@ module main;
       
       @(posedge rst_n);
       @(posedge clk_sys);
-      test_classifier(100);
-//      test_arbiter(10000);
+//      test_classifier(100);
+      test_arbiter(100);
       
       
    end
