@@ -4,9 +4,9 @@
 -------------------------------------------------------------------------------
 -- File       : wbp_mux.vhd
 -- Author     : Grzegorz Daniluk
--- Company    : Elproma
+-- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-11
--- Last update: 2011-10-27
+-- Last update: 2012-10-19
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -18,348 +18,211 @@
 -- has to be forwarded to Mini-NIC (if it is the PTP message) or to the 
 -- external interface (others).
 -------------------------------------------------------------------------------
--- Copyright (c) 2011 Grzegorz Daniluk
+-- Copyright (c) 2012 Grzegorz Daniluk
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author          Description
 -- 2011-08-11  1.0      greg.d          Created
+-- 2012-10-16  2.0      greg.d          generic number of ports
 -------------------------------------------------------------------------------
-
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
+library work;
 use work.wr_fabric_pkg.all;
+use work.genram_pkg.all;
 
-entity wbp_mux is
+entity xwbp_mux is
   generic(
-    g_aw        : integer := 2;
-    g_dw        : integer := 16;
-    g_sw        : integer := 2
-  );
+    g_muxed_ports : integer := 2);
   port(
-    clk_sys_i      : in  std_logic;
-    rst_n_i        : in  std_logic; 
-
+    clk_sys_i   : in  std_logic;
+    rst_n_i     : in  std_logic;
     --ENDPOINT
-    ep_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-    ep_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-    ep_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-    ep_snk_cyc_i   : in  std_logic;
-    ep_snk_stb_i   : in  std_logic;
-    ep_snk_ack_o   : out std_logic;
-    ep_snk_err_o   : out std_logic;
-    ep_snk_stall_o : out std_logic;
-    
-    ep_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-    ep_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-    ep_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-    ep_src_cyc_o  : out std_logic;
-    ep_src_stb_o  : out std_logic;
-    ep_src_ack_i  : in  std_logic;
-    ep_src_err_i  : in  std_logic;
-    ep_src_stall_i: in  std_logic;
-
-    --PTP packets eg. for Mini-NIC
-    ptp_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-    ptp_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-    ptp_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-    ptp_snk_cyc_i   : in  std_logic;
-    ptp_snk_stb_i   : in  std_logic;
-    ptp_snk_ack_o   : out std_logic;
-    ptp_snk_err_o   : out std_logic;
-    ptp_snk_stall_o : out std_logic;
-
-    ptp_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-    ptp_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-    ptp_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-    ptp_src_cyc_o  : out std_logic;
-    ptp_src_stb_o  : out std_logic;
-    ptp_src_ack_i  : in  std_logic;
-    ptp_src_err_i  : in  std_logic;
-    ptp_src_stall_i: in  std_logic;
-
-    --External WBP port
-    ext_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-    ext_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-    ext_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-    ext_snk_cyc_i   : in  std_logic;
-    ext_snk_stb_i   : in  std_logic;
-    ext_snk_ack_o   : out std_logic;
-    ext_snk_err_o   : out std_logic;
-    ext_snk_stall_o : out std_logic;
-    
-    ext_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-    ext_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-    ext_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-    ext_src_cyc_o  : out std_logic;
-    ext_src_stb_o  : out std_logic;
-    ext_src_ack_i  : in  std_logic;
-    ext_src_err_i  : in  std_logic;
-    ext_src_stall_i: in  std_logic;
-
-    class_core_i: in std_logic_vector(7 downto 0)
+    ep_src_o    : out t_wrf_source_out;
+    ep_src_i    : in  t_wrf_source_in;
+    ep_snk_o    : out t_wrf_sink_out;
+    ep_snk_i    : in  t_wrf_sink_in;
+    --Muxed ports
+    mux_src_o   : out t_wrf_source_out_array(g_muxed_ports-1 downto 0);
+    mux_src_i   : in  t_wrf_source_in_array(g_muxed_ports-1 downto 0);
+    mux_snk_o   : out t_wrf_sink_out_array(g_muxed_ports-1 downto 0);
+    mux_snk_i   : in  t_wrf_sink_in_array(g_muxed_ports-1 downto 0);
+    --
+    mux_class_i : in  t_wbp_mux_class(g_muxed_ports-1 downto 0)
   );
-end wbp_mux;
+end xwbp_mux;
 
-architecture behaviour of wbp_mux is
+architecture behaviour of xwbp_mux is
 
-  --==================================--
-  -- WBP fabtic interface definitions --
-  --==================================--
-  -- WBP available addresses
+  function f_hot_to_bin(x : std_logic_vector(g_muxed_ports-1 downto 0))
+    return integer is
+      variable ret : std_logic_vector(f_log2_size(g_muxed_ports)-1 downto 0);
+  begin
+    ret := (others => '0');
 
-  -- WBP available packet classes (PTP and Etherbone)
-  
+    for i in x'range loop
+      if x(i) = '1' then
+        ret := ret or std_logic_vector(to_unsigned(i, f_log2_size(g_muxed_ports)));
+      end if;
+    end loop;
+    return to_integer(unsigned(ret));
+  end function;
 
-  --==================================--
-  --   Masters to Slave mux signals   --
-  --==================================--
-  constant c_LAST_EXT : std_logic := '0';
-  constant c_LAST_PTP : std_logic := '1';
-  type t_mux is (MUX_SEL, MUX_EXT, MUX_PTP,MUX_END);
-
-  signal mux                 : t_mux;
-  signal mux_last            : std_logic;
-  signal mux_extdat_reg      : std_logic_vector(g_dw-1 downto 0);
-  signal mux_ptpdat_reg      : std_logic_vector(g_dw-1 downto 0);
-  signal mux_extadr_reg      : std_logic_vector(g_aw-1 downto 0);
-  signal mux_ptpadr_reg      : std_logic_vector(g_aw-1 downto 0);
-  signal mux_extsel_reg      : std_logic_vector(g_sw-1 downto 0);
-  signal mux_ptpsel_reg      : std_logic_vector(g_sw-1 downto 0);
-  signal mux_extcyc_reg      : std_logic;
-  signal mux_ptpcyc_reg      : std_logic;
-  signal mux_extstb_reg      : std_logic;
-  signal mux_ptpstb_reg      : std_logic;
-  signal mux_pend_ext        : std_logic;
-  signal mux_pend_ptp        : std_logic;
-  signal force_stall         : std_logic;
-  signal ep_snk_stall_out : std_logic;
-  
+  function f_match_class(port_c, pkt_c : std_logic_vector(7 downto 0)) return std_logic is
+    variable ret : std_logic;
+  begin
+    ret := '0';
+    for i in 7 downto 0 loop
+      ret := ret or (port_c(i) xor pkt_c(i));
+    end loop;
+    return not(ret);
+  end function;
 
   --==================================--
-  --  Master to Slaves demux signals  --
+  --  Masters to Endpoint mux signals --
   --==================================--
-  type t_demux is (DMUX_WAIT, DMUX_STATUS, DMUX_PAYLOAD);
-  signal demux                 : t_demux;
-  signal dmux_stall_mask       : std_logic;
-  signal dmux_status_reg       : std_logic_vector(g_dw-1 downto 0);
-  signal dmux_status_class : std_logic_vector(7 downto 0);
-  signal ep_stall_mask         : std_logic;
-  signal ptp_select,ext_select : std_logic;
-  signal ptp_send_status, ext_send_status : std_logic;
-  signal ep_src_stall_d0 : std_logic;
+  type   t_mux is (MUX_SEL, MUX_TRANSFER);
+  signal mux        : t_mux;
+  signal mux_cycs   : std_logic_vector(g_muxed_ports-1 downto 0);
+  signal mux_rrobin : unsigned(f_log2_size(g_muxed_ports)-1 downto 0);
+  signal mux_select : std_logic_vector(g_muxed_ports-1 downto 0);
+
+  --==================================--
+  -- Endpoint to Slaves demux signals --
+  --==================================--
+  type   t_demux is (DMUX_WAIT, DMUX_STATUS, DMUX_PAYLOAD);
+  signal demux            : t_demux;
+  signal dmux_sel         : std_logic_vector(g_muxed_ports-1 downto 0);
+  signal dmux_status_reg  : std_logic_vector(15 downto 0);
+  signal dmux_select      : std_logic_vector(g_muxed_ports-1 downto 0);
+  signal dmux_sel_zero    : std_logic;
+  signal dmux_snd_stat    : std_logic_vector(g_muxed_ports-1 downto 0);
+  signal ep_stall_mask    : std_logic;
+  signal ep_snk_out_stall : std_logic;
 
 begin
 
-dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
-  
-  --===============================================--
-  --                                               --
-  -- Two WBP Masters talking to a single WBP Slave --
-  --                                               --
-  --===============================================--
+  --=============================================--
+  --                                             --
+  --   Many Fabric Masters talking to ENDPOINT   --
+  --                                             --
+  --=============================================--
+  GEN_MUX_CYCS_REG : for I in 0 to g_muxed_ports-1 generate
+    mux_cycs(I) <= mux_snk_i(I).cyc;
+  end generate;
+
   process(clk_sys_i)
+    variable sel : integer range 0 to g_muxed_ports-1;
   begin
     if rising_edge(clk_sys_i) then
-      if(rst_n_i='0') then
-        mux_pend_ext <= '0';
-        mux_pend_ptp <= '0';
-        mux_last     <= '1';
-
-        mux    <= MUX_SEL;
-        ep_src_stall_d0 <= '0';
+      if(rst_n_i = '0') then
+        mux_rrobin <= (others => '0');
+        mux        <= MUX_SEL;
       else
-        ep_src_stall_d0<=ep_src_stall_i;
         case(mux) is
           when MUX_SEL =>
-            if( ext_snk_cyc_i='1' and ptp_snk_cyc_i='0' ) then 
-              mux <= MUX_EXT;
-            elsif( ext_snk_cyc_i='0' and ptp_snk_cyc_i='1' ) then 
-              mux <= MUX_PTP;
-            --little Round Robin here
-            elsif( ext_snk_cyc_i='1' and ptp_snk_cyc_i='1' and mux_last=c_LAST_PTP ) then 
-              mux <= MUX_EXT;
-            elsif( ext_snk_cyc_i='1' and ptp_snk_cyc_i='1' and mux_last=c_LAST_EXT ) then 
-              mux <= MUX_PTP;
+            mux_select <= (others => '0');
+            if(to_integer(unsigned(mux_cycs)) /= 0) then
+              --one of the fabric masters wants to send sth, check with one
+              for i in 0 to g_muxed_ports-1 loop
+                if(i+to_integer(mux_rrobin) > g_muxed_ports-1) then
+                  sel := i+to_integer(mux_rrobin) - g_muxed_ports;
+                else
+                  sel := i+to_integer(mux_rrobin);
+                end if;
+                if(mux_cycs(sel) = '1') then
+                 exit;
+               end if;
+              end loop;
+              mux_select(sel) <= '1';
+              mux             <= MUX_TRANSFER;
             end if;
-
-            if( ext_snk_cyc_i='1' and ext_snk_stb_i='1' ) then
-              mux_pend_ext <= '1';
-            elsif( ext_snk_cyc_i='0' ) then
-              mux_pend_ext <= '0';
+          when MUX_TRANSFER =>
+            if(mux_snk_i(sel).cyc = '0') then  --cycle end
+              mux_rrobin <= to_unsigned(sel, f_log2_size(g_muxed_ports))+1;
+              mux        <= MUX_SEL;
             end if;
-            if( ptp_snk_cyc_i='1' and ptp_snk_stb_i='1' ) then
-              mux_pend_ptp <= '1';
-            elsif( ptp_snk_cyc_i='0' ) then
-              mux_pend_ptp <= '0';
-            end if;
-
-          --Transfer from EXT WBP interface in progress
-          when MUX_EXT =>
-            mux_last     <= c_LAST_EXT;
-            mux_pend_ext <= '0';
-            if( ptp_snk_cyc_i='1' and ptp_snk_stb_i='1' ) then
-              mux_pend_ptp <= '1';
-            elsif( ptp_snk_cyc_i='0' ) then
-              mux_pend_ptp <= '0';
-            end if;
-
-            if( ext_snk_cyc_i = '0' and ep_src_stall_i = '0' and ep_src_stall_d0 ='0') then 
-              mux <= MUX_SEL;
-            end if;
-
-          --Transfer from PTP WBP interface in progress
-          when MUX_PTP =>
-            mux_last <= c_LAST_PTP;
-            mux_pend_ptp <= '0';
-            if( ext_snk_cyc_i='1' and ext_snk_stb_i='1' ) then
-              mux_pend_ext <= '1';
-            elsif( ext_snk_cyc_i='0' ) then
-              mux_pend_ext <= '0';
-            end if;
-
-        if( ptp_snk_cyc_i='0' and ep_src_stall_i = '0' and ep_src_stall_d0= '0') then 
-              mux <= MUX_SEL;
-            end if;
-
-          when MUX_END =>
-        mux <= MUX_SEL;
-          --Just in case
-          when others=>
-            mux <= MUX_SEL;
         end case;
       end if;
     end if;
   end process;
 
-  force_stall <= '1' when( mux=MUX_SEL and ext_snk_cyc_i='1' and ptp_snk_cyc_i='1' ) else
-                 '0';
 
-  --buffers
-  process(clk_sys_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if(rst_n_i='0') then
-        mux_extdat_reg <= (others=>'0');
-        mux_ptpdat_reg <= (others=>'0');
-        mux_extadr_reg <= (others=>'0');
-        mux_ptpadr_reg <= (others=>'0');
-        mux_extsel_reg <= (others=>'0');
-        mux_ptpsel_reg <= (others=>'0');
-        mux_extcyc_reg <= '0';
-        mux_ptpcyc_reg <= '0';
-        mux_extstb_reg <= '0';
-        mux_ptpstb_reg <= '0';
-      else
-        if(ep_src_stall_i='0') then
-          mux_extdat_reg <= ext_snk_dat_i;
-          mux_ptpdat_reg <= ptp_snk_dat_i;
-          mux_extadr_reg <= ext_snk_adr_i;
-          mux_ptpadr_reg <= ptp_snk_adr_i;
-          mux_extsel_reg <= ext_snk_sel_i;
-          mux_ptpsel_reg <= ptp_snk_sel_i;
-          mux_extcyc_reg <= ext_snk_cyc_i;
-          mux_ptpcyc_reg <= ptp_snk_cyc_i;
-          mux_extstb_reg <= ext_snk_stb_i;
-          mux_ptpstb_reg <= ptp_snk_stb_i;
-        end if;
-      end if;
-    end if;
-  end process;
+  GEN_MUX_CONNS : for J in 0 to g_muxed_ports-1 generate
+    mux_snk_o(J).ack <= ep_src_i.ack when(mux /= MUX_SEL and mux_select(J) = '1') else
+                        '0';
+    mux_snk_o(J).stall <= ep_src_i.stall when(mux /= MUX_SEL and mux_select(J) = '1') else
+                          '1';
+    mux_snk_o(J).err <= ep_src_i.err when(mux /= MUX_SEL and mux_select(J) = '1') else
+                        '0';
+  end generate;
 
-  ep_src_adr_o    <= mux_extadr_reg  when(mux=MUX_EXT) else
-                     mux_ptpadr_reg  when(mux=MUX_PTP) else
-                     (others=>'0');
-  ep_src_dat_o    <= mux_extdat_reg  when(mux=MUX_EXT) else
-                     mux_ptpdat_reg  when(mux=MUX_PTP) else
-                     (others=>'0');
-  ep_src_sel_o    <= mux_extsel_reg  when(mux=MUX_EXT) else
-                     mux_ptpsel_reg  when(mux=MUX_PTP) else
-                     (others=>'0');
-  ep_src_cyc_o    <= mux_extcyc_reg  when(mux=MUX_EXT) else
-                     mux_ptpcyc_reg  when(mux=MUX_PTP) else
-                     '0';
-  ep_src_stb_o    <= mux_extstb_reg or mux_pend_ext  when(mux=MUX_EXT) else
-                     mux_ptpstb_reg or mux_pend_ptp  when(mux=MUX_PTP) else
-                     '0';
-
-  ext_snk_ack_o   <= ep_src_ack_i   when(mux=MUX_EXT) else
-                     '0';
-  ptp_snk_ack_o   <= ep_src_ack_i   when(mux=MUX_PTP) else
-                     '0';
-
-  ext_snk_err_o   <= ep_src_err_i   when(mux=MUX_EXT) else
-                     '0';
-  ptp_snk_err_o   <= ep_src_err_i   when(mux=MUX_PTP) else
-                     '0';
-
-  ext_snk_stall_o <= ep_src_stall_i when(mux=MUX_EXT) else
-                     '1'            when(mux=MUX_PTP) else
-                     '1'            when(force_stall='1') else
-                     '0';
-
-  ptp_snk_stall_o <= ep_src_stall_i when(mux=MUX_PTP) else
-                     '1'            when(mux=MUX_EXT) else
-                     '1'            when(force_stall='1') else
-                     '0';
+  ep_src_o.cyc <= mux_snk_i(f_hot_to_bin(mux_select)).cyc when(mux /= MUX_SEL) else
+                  '0';
+  ep_src_o.stb <= mux_snk_i(f_hot_to_bin(mux_select)).stb when(mux /= MUX_SEL) else
+                  '0';
+  ep_src_o.adr <= mux_snk_i(f_hot_to_bin(mux_select)).adr;
+  ep_src_o.dat <= mux_snk_i(f_hot_to_bin(mux_select)).dat;
+  ep_src_o.sel <= mux_snk_i(f_hot_to_bin(mux_select)).sel;
+  ep_src_o.we  <= '1';
 
 
   --=============================================--
   --                                             --
-  --     WBP Master talking to two WBP Slaves    --
+  --    ENDPOINT talking to many Fabric Slaves   --
   --                                             --
   --=============================================--
-  process(clk_sys_i)
+
+  CLASS_MATCH : for I in 0 to g_muxed_ports-1 generate
+    dmux_sel(I) <= f_match_class(mux_class_i(I), f_unmarshall_wrf_status(dmux_status_reg).match_class);
+  end generate;
+
+  DMUX_FSM : process(clk_sys_i)
+    variable sel : integer range 0 to g_muxed_ports-1;
   begin
     if rising_edge(clk_sys_i) then
-      if( rst_n_i='0' ) then
-        dmux_stall_mask <= '0';
-        ptp_select      <= '0';
-        ptp_send_status <= '0';
-        ext_select      <= '0';
-        ext_send_status <= '0';
+      if(rst_n_i = '0') then
+        dmux_select     <= (others => '0');
+        dmux_snd_stat   <= (others => '0');
         dmux_status_reg <= (others => '0');
         ep_stall_mask   <= '0';
-        demux <= DMUX_WAIT;
+        demux           <= DMUX_WAIT;
       else
         case demux is
           ---------------------------------------------------------------
-          --State DMUX_WAIT: Wait for the WBP cycle to start and then 
+          --State DMUX_WAIT: Wait for the WRF cycle to start and then 
           --                 wait for the STATUS word
           ---------------------------------------------------------------
           when DMUX_WAIT =>
-            ptp_select      <= '0';
-            ptp_send_status <= '0';
-            ext_select      <= '0';
-            ext_send_status <= '0';
-            if( ep_snk_cyc_i='1' and ep_snk_stb_i='1' and ep_snk_adr_i=c_WRF_STATUS ) then
+            dmux_select     <= (others => '0');
+            dmux_snd_stat   <= (others => '0');
+            dmux_status_reg <= (others => '0');
+            ep_stall_mask   <= '0';
+            if(ep_snk_i.cyc = '1' and ep_snk_i.stb = '1' and ep_snk_i.adr = c_WRF_STATUS) then
               ep_stall_mask   <= '1';
-              dmux_status_reg <= ep_snk_dat_i;
-              demux <= DMUX_STATUS;
-            else
-              dmux_status_reg<=(others => '0');
-              ep_stall_mask  <= '0';
+              dmux_status_reg <= ep_snk_i.dat;
+              demux           <= DMUX_STATUS;
             end if;
 
           ---------------------------------------------------------------
           --State DMUX_STATUS: Send Status word to appropriate interface
           ---------------------------------------------------------------
           when DMUX_STATUS =>
+            ep_stall_mask <= '1';
 
-            ep_stall_mask   <= '1';
-
-            if(( dmux_status_class = x"00") or ((dmux_status_class and class_core_i) /= "00000000")) then
-              ptp_select      <= '1';
-              ptp_send_status <= '1';
-              if( ptp_src_stall_i='0' ) then
-                demux <= DMUX_PAYLOAD;
-              end if;
-            else 
-              ext_select      <= '1';
-              ext_send_status <= '1';
-              if( ext_src_stall_i='0' ) then
-                demux <= DMUX_PAYLOAD;
-              end if;
+            if(to_integer(unsigned(dmux_sel)) = 0) then  --class not matched to anything, pass pkt to last port
+              dmux_select(g_muxed_ports-1)   <= '1';
+              dmux_snd_stat(g_muxed_ports-1) <= '1';
+              sel                            := g_muxed_ports-1;
+            else
+              dmux_select   <= dmux_sel;
+              dmux_snd_stat <= dmux_sel;
+              sel           := f_hot_to_bin(dmux_sel);
+            end if;
+            if(mux_src_i(sel).stall = '0') then
+              demux <= DMUX_PAYLOAD;
             end if;
 
           ---------------------------------------------------------------
@@ -367,248 +230,54 @@ dmux_status_class <= f_unmarshall_wrf_status(dmux_status_reg).match_class;
           --                    current transfer
           ---------------------------------------------------------------
           when DMUX_PAYLOAD =>
-            ptp_send_status <= '0';
-            ext_send_status <= '0';
-            ep_stall_mask   <= '0';
+            dmux_snd_stat <= (others => '0');
+            ep_stall_mask <= '0';
 
-            if(ep_snk_cyc_i = '0') then
+            if(ep_snk_i.cyc = '0') then
               demux <= DMUX_WAIT;
             end if;
 
           when others =>
             demux <= DMUX_WAIT;
-        end case; 
+        end case;
       end if;
     end if;
   end process;
 
+  dmux_sel_zero <= '1' when(to_integer(unsigned(dmux_select)) = 0) else
+                   '0';
 
-  ptp_src_cyc_o  <= ep_snk_cyc_i when(ptp_select = '1') else 
-                    '0';
-  ptp_src_stb_o  <= '1'          when(ptp_send_status = '1') else
-                    ep_snk_stb_i when(ptp_select = '1') else 
-                    '0';
-  ptp_src_adr_o  <= c_WRF_STATUS when(ptp_send_status = '1') else
-                    ep_snk_adr_i when(ptp_select = '1') else 
-                    (others=>'0');
-  ptp_src_dat_o  <= dmux_status_reg when(ptp_send_status = '1') else
-                    ep_snk_dat_i    when(ptp_select = '1') else 
-                    (others=>'0');
-  ptp_src_sel_o  <= (others=>'1') when(ptp_send_status = '1') else 
-                    ep_snk_sel_i  when(ptp_select = '1') else 
-                    (others=>'1');
-
-
-  ep_snk_ack_o   <= ptp_src_ack_i when(ptp_select = '1') else
-                    ext_src_ack_i when(ext_select = '1') else
-                    (ep_snk_cyc_i and ep_snk_stb_i and not ep_snk_stall_out);
-
-  ep_snk_err_o   <= ptp_src_err_i when(ptp_select = '1') else
-                    ext_src_err_i when(ext_select = '1') else
-                    '0';
-
-  ep_snk_stall_out <= '1'             when(ep_stall_mask = '1') else
-                    ptp_src_stall_i when(ptp_select = '1') else
-                    ext_src_stall_i when(ext_select = '1') else
-                    '0';
-
-ep_snk_stall_o <= ep_snk_stall_out;
+  GEN_DMUX_CONN : for I in 0 to g_muxed_ports-1 generate
+    mux_src_o(I).cyc <= ep_snk_i.cyc when(dmux_select(I) = '1') else
+                        '0';
+    mux_src_o(I).stb <= '1' when(dmux_snd_stat(I) = '1') else
+                        ep_snk_i.stb when(dmux_select(I) = '1') else
+                        '0';
+    mux_src_o(I).adr <= c_WRF_STATUS when(dmux_snd_stat(I) = '1') else
+                        ep_snk_i.adr when(dmux_select(I) = '1') else
+                        (others => '0');
+    mux_src_o(I).dat <= dmux_status_reg when(dmux_snd_stat(I) = '1') else
+                        ep_snk_i.dat when(dmux_select(I) = '1') else
+                        (others => '0');
+    mux_src_o(I).sel <= (others => '1') when(dmux_snd_stat(I) = '1') else
+                        ep_snk_i.sel when(dmux_select(I) = '1') else
+                        (others => '1');
+    mux_src_o(I).we <= '1';
+  end generate;
 
 
-  ext_src_cyc_o  <= ep_snk_cyc_i when(ext_select = '1') else 
-                    '0';
-  ext_src_stb_o  <= '1'          when(ext_send_status = '1') else
-                    ep_snk_stb_i when(ext_select = '1') else 
-                    '0';
-  ext_src_adr_o  <= c_WRF_STATUS when(ext_send_status = '1') else
-                    ep_snk_adr_i when(ext_select = '1') else 
-                    (others=>'0');
-  ext_src_dat_o  <= dmux_status_reg when(ext_send_status = '1') else
-                    ep_snk_dat_i    when(ext_select = '1') else 
-                    (others=>'0');
-  ext_src_sel_o  <= (others=>'1') when(ext_send_status = '1') else 
-                    ep_snk_sel_i  when(ext_select = '1') else 
-                    (others=>'1');
+  ep_snk_o.ack <= ep_snk_i.cyc and ep_snk_i.stb and not ep_snk_out_stall when(dmux_sel_zero = '1') else
+                      mux_src_i(f_hot_to_bin(dmux_select)).ack;
+
+  ep_snk_o.err <= '0' when(dmux_sel_zero = '1') else
+                      mux_src_i(f_hot_to_bin(dmux_select)).err;
+
+  ep_snk_out_stall <= '1' when(ep_stall_mask = '1') else
+                      '0' when(dmux_sel_zero = '1') else
+                      mux_src_i(f_hot_to_bin(dmux_select)).stall;
+
+  ep_snk_o.stall <= ep_snk_out_stall;
+
 
 end behaviour;
 
-
-
-
---==========================================================--
---      ENTITY USING RECORDS DEFINED FOR PIPELINED WB       --
---==========================================================--
-library ieee;
-use ieee.std_logic_1164.all;
-use work.wr_fabric_pkg.all;
-
-
-entity xwbp_mux is
-  port(
-    clk_sys_i      : in  std_logic;
-    rst_n_i        : in  std_logic; 
-
-    --ENDPOINT
-    ep_src_o       : out t_wrf_source_out;
-    ep_src_i       : in  t_wrf_source_in;
-    ep_snk_o       : out t_wrf_sink_out;
-    ep_snk_i       : in  t_wrf_sink_in;
-    --PTP packets eg. from Mini-NIC
-    ptp_src_o      : out t_wrf_source_out;
-    ptp_src_i      : in  t_wrf_source_in;
-    ptp_snk_o      : out t_wrf_sink_out;
-    ptp_snk_i      : in  t_wrf_sink_in;
-    --External WBP port
-    ext_src_o      : out t_wrf_source_out;
-    ext_src_i      : in  t_wrf_source_in;
-    ext_snk_o      : out t_wrf_sink_out;
-    ext_snk_i      : in  t_wrf_sink_in;
-    class_core_i : in std_logic_vector(7 downto 0)
-  );
-end xwbp_mux;
-
-architecture behaviour of xwbp_mux is
-
-  component wbp_mux
-    generic(
-      g_aw        : integer := 2;
-      g_dw        : integer := 16;
-      g_sw        : integer := 2
-    );
-    port(
-      clk_sys_i      : in  std_logic;
-      rst_n_i        : in  std_logic; 
-  
-      --ENDPOINT
-      ep_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-      ep_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-      ep_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-      ep_snk_cyc_i   : in  std_logic;
-      ep_snk_stb_i   : in  std_logic;
-      ep_snk_ack_o   : out std_logic;
-      ep_snk_err_o   : out std_logic;
-      ep_snk_stall_o : out std_logic;
-      
-      ep_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-      ep_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-      ep_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-      ep_src_cyc_o  : out std_logic;
-      ep_src_stb_o  : out std_logic;
-      ep_src_ack_i  : in  std_logic;
-      ep_src_err_i  : in  std_logic;
-      ep_src_stall_i: in  std_logic;
-  
-      --PTP packets eg. for Mini-NIC
-      ptp_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-      ptp_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-      ptp_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-      ptp_snk_cyc_i   : in  std_logic;
-      ptp_snk_stb_i   : in  std_logic;
-      ptp_snk_ack_o   : out std_logic;
-      ptp_snk_err_o   : out std_logic;
-      ptp_snk_stall_o : out std_logic;
-  
-      ptp_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-      ptp_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-      ptp_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-      ptp_src_cyc_o  : out std_logic;
-      ptp_src_stb_o  : out std_logic;
-      ptp_src_ack_i  : in  std_logic;
-      ptp_src_err_i  : in  std_logic;
-      ptp_src_stall_i: in  std_logic;
-  
-      --External WBP port
-      ext_snk_adr_i   : in  std_logic_vector(g_aw-1 downto 0);
-      ext_snk_dat_i   : in  std_logic_vector(g_dw-1 downto 0);
-      ext_snk_sel_i   : in  std_logic_vector(g_sw-1 downto 0);
-      ext_snk_cyc_i   : in  std_logic;
-      ext_snk_stb_i   : in  std_logic;
-      ext_snk_ack_o   : out std_logic;
-      ext_snk_err_o   : out std_logic;
-      ext_snk_stall_o : out std_logic;
-      
-      ext_src_adr_o  : out std_logic_vector(g_aw-1 downto 0);
-      ext_src_dat_o  : out std_logic_vector(g_dw-1 downto 0);
-      ext_src_sel_o  : out std_logic_vector(g_sw-1 downto 0);
-      ext_src_cyc_o  : out std_logic;
-      ext_src_stb_o  : out std_logic;
-      ext_src_ack_i  : in  std_logic;
-      ext_src_err_i  : in  std_logic;
-      ext_src_stall_i: in  std_logic;
-      class_core_i : in std_logic_vector(7 downto 0)
-    );
-  end component;
-
-begin
-  
-  WBP_MUX_STDLOGIC: wbp_mux 
-    generic map(
-        g_aw => 2,
-        g_dw => 16,
-        g_sw => 2
-      )
-    port map(
-        clk_sys_i       => clk_sys_i,
-        rst_n_i         => rst_n_i,
-                       
-        ep_snk_adr_i    => ep_snk_i.adr,
-        ep_snk_dat_i    => ep_snk_i.dat,
-        ep_snk_sel_i    => ep_snk_i.sel,
-        ep_snk_cyc_i    => ep_snk_i.cyc,
-        ep_snk_stb_i    => ep_snk_i.stb,
-        ep_snk_ack_o    => ep_snk_o.ack,
-        ep_snk_err_o    => ep_snk_o.err,
-        ep_snk_stall_o  => ep_snk_o.stall,
-        
-        ep_src_adr_o    => ep_src_o.adr,
-        ep_src_dat_o    => ep_src_o.dat,
-        ep_src_sel_o    => ep_src_o.sel,
-        ep_src_cyc_o    => ep_src_o.cyc,
-        ep_src_stb_o    => ep_src_o.stb,
-        ep_src_ack_i    => ep_src_i.ack,
-        ep_src_err_i    => ep_src_i.err,
-        ep_src_stall_i  => ep_src_i.stall,
-                       
-        ptp_snk_adr_i   => ptp_snk_i.adr,
-        ptp_snk_dat_i   => ptp_snk_i.dat,
-        ptp_snk_sel_i   => ptp_snk_i.sel,
-        ptp_snk_cyc_i   => ptp_snk_i.cyc,
-        ptp_snk_stb_i   => ptp_snk_i.stb,
-        ptp_snk_ack_o   => ptp_snk_o.ack,
-        ptp_snk_err_o   => ptp_snk_o.err,
-        ptp_snk_stall_o => ptp_snk_o.stall,
-                       
-        ptp_src_adr_o   => ptp_src_o.adr, 
-        ptp_src_dat_o   => ptp_src_o.dat,
-        ptp_src_sel_o   => ptp_src_o.sel,
-        ptp_src_cyc_o   => ptp_src_o.cyc,
-        ptp_src_stb_o   => ptp_src_o.stb,
-        ptp_src_ack_i   => ptp_src_i.ack,
-        ptp_src_err_i   => ptp_src_i.err,
-        ptp_src_stall_i => ptp_src_i.stall,
-                       
-        ext_snk_adr_i   => ext_snk_i.adr, 
-        ext_snk_dat_i   => ext_snk_i.dat,
-        ext_snk_sel_i   => ext_snk_i.sel,
-        ext_snk_cyc_i   => ext_snk_i.cyc,
-        ext_snk_stb_i   => ext_snk_i.stb,
-        ext_snk_ack_o   => ext_snk_o.ack,
-        ext_snk_err_o   => ext_snk_o.err,
-        ext_snk_stall_o => ext_snk_o.stall,
-        
-        ext_src_adr_o   => ext_src_o.adr, 
-        ext_src_dat_o   => ext_src_o.dat,
-        ext_src_sel_o   => ext_src_o.sel,
-        ext_src_cyc_o   => ext_src_o.cyc,
-        ext_src_stb_o   => ext_src_o.stb,
-        ext_src_ack_i   => ext_src_i.ack,
-        ext_src_err_i   => ext_src_i.err,
-        ext_src_stall_i => ext_src_i.stall,
-        class_core_i=> class_core_i
-      );
-
-  ext_src_o.we <= '1';
-  ptp_src_o.we <= '1';
-  ep_src_o.we <= '1';
-  
-end behaviour;

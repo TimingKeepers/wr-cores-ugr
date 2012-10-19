@@ -12,6 +12,8 @@ package wr_fabric_pkg is
   constant c_WRF_OOB_TYPE_RX : std_logic_vector(3 downto 0) := "0000";
   constant c_WRF_OOB_TYPE_TX : std_logic_vector(3 downto 0) := "0001";
 
+  type t_wbp_mux_class is array (natural range <>) of std_logic_vector(7 downto 0);
+
   type t_wrf_status_reg is record
     is_hp       : std_logic;
     has_smac    : std_logic;
