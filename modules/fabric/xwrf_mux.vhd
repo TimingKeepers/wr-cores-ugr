@@ -2,7 +2,7 @@
 -- Title      : Simple Pipelined Wishbone MUX/DEMUX for WRPC
 -- Project    : WhiteRabbit
 -------------------------------------------------------------------------------
--- File       : wbp_mux.vhd
+-- File       : wrf_mux.vhd
 -- Author     : Grzegorz Daniluk
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-11
@@ -33,7 +33,7 @@ library work;
 use work.wr_fabric_pkg.all;
 use work.genram_pkg.all;
 
-entity xwbp_mux is
+entity xwrf_mux is
   generic(
     g_muxed_ports : integer := 2);
   port(
@@ -50,11 +50,11 @@ entity xwbp_mux is
     mux_snk_o   : out t_wrf_sink_out_array(g_muxed_ports-1 downto 0);
     mux_snk_i   : in  t_wrf_sink_in_array(g_muxed_ports-1 downto 0);
     --
-    mux_class_i : in  t_wbp_mux_class(g_muxed_ports-1 downto 0)
+    mux_class_i : in  t_wrf_mux_class(g_muxed_ports-1 downto 0)
   );
-end xwbp_mux;
+end xwrf_mux;
 
-architecture behaviour of xwbp_mux is
+architecture behaviour of xwrf_mux is
 
   function f_hot_to_bin(x : std_logic_vector(g_muxed_ports-1 downto 0))
     return integer is

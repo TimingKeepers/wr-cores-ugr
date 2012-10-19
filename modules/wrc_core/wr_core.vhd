@@ -379,7 +379,7 @@ architecture struct of wr_core is
   signal mux_src_in  : t_wrf_source_in_array(1 downto 0);
   signal mux_snk_out : t_wrf_sink_out_array(1 downto 0);
   signal mux_snk_in  : t_wrf_sink_in_array(1 downto 0);
-  signal mux_class   : t_wbp_mux_class(1 downto 0);
+  signal mux_class   : t_wrf_mux_class(1 downto 0);
 
   signal dummy : std_logic_vector(31 downto 0);
 
@@ -879,7 +879,7 @@ begin
   -----------------------------------------------------------------------------
   -- WBP MUX
   -----------------------------------------------------------------------------
-  U_WBP_Mux : xwbp_mux
+  U_WBP_Mux : xwrf_mux
     generic map(
       g_muxed_ports => 2)
     port map (
