@@ -294,7 +294,8 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
       g_dpram_size                : integer                        := 20480;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
-      g_address_granularity       : t_wishbone_address_granularity := WORD
+      g_address_granularity       : t_wishbone_address_granularity := WORD;
+      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
       );
     port(
       clk_sys_i  : in std_logic;
