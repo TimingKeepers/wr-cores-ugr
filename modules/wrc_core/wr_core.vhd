@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-10-19
+-- Last update: 2012-11-27
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -804,7 +804,6 @@ begin
   --trig2(23) <= mux_snk_out(1).ack;
   --trig2(24) <= mux_snk_out(1).stall;
   --trig2(26) <= mux_snk_out(1).err;
-
   -----------------------------------------------------------------------------
   -- WB Secondary Crossbar
   -----------------------------------------------------------------------------
@@ -895,8 +894,8 @@ begin
       mux_snk_i   => mux_snk_in,
       mux_class_i => mux_class);
 
-  mux_class(0)  <= x"01";
-  mux_class(1)  <= x"07";
+  mux_class(0)  <= x"0f";
+  mux_class(1)  <= x"f0";
   ext_src_adr_o <= mux_src_out(1).adr;
   ext_src_dat_o <= mux_src_out(1).dat;
   ext_src_stb_o <= mux_src_out(1).stb;
