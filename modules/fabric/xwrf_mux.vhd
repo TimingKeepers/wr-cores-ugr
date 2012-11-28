@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-11
--- Last update: 2012-10-19
+-- Last update: 2012-11-28
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -70,14 +70,14 @@ architecture behaviour of xwrf_mux is
     return to_integer(unsigned(ret));
   end function;
 
-  function f_match_class(port_c, pkt_c : std_logic_vector(7 downto 0)) return std_logic is
+  function f_match_class(port_mask, pkt_mask : std_logic_vector(7 downto 0)) return std_logic is
     variable ret : std_logic;
   begin
-    ret := '0';
-    for i in 7 downto 0 loop
-      ret := ret or (port_c(i) xor pkt_c(i));
-    end loop;
-    return not(ret);
+    if((port_mask and pkt_mask) /= x"00") then
+      return '1';
+    else
+      return '0';
+    end if;
   end function;
 
   --==================================--
