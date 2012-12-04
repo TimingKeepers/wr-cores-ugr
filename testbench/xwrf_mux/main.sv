@@ -107,7 +107,7 @@ module mux_svwrap (
    `WIRE_WRF_SRC_I(mux_src, U_mux_src, 2);
    `WIRE_WRF_SNK_I(U_mux_snk, mux_snk, 2);
 
-   reg [7:0]muxclass[2:0] = {8'h10, 8'h04, 8'h01};
+   reg [7:0]muxclass[2:0] = {8'h03, 8'h0c, 8'hf0};
 
    xwrf_mux 
     #(
