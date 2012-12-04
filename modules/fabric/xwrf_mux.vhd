@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-11
--- Last update: 2012-11-28
+-- Last update: 2012-12-04
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -27,6 +27,8 @@
 -------------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_misc.all;
+
 use ieee.numeric_std.all;
 
 library work;
@@ -62,9 +64,11 @@ architecture behaviour of xwrf_mux is
   begin
     ret := (others => '0');
 
-    for i in x'range loop
+    -- if there are few ones set in _x_ then the least significant will be
+    -- translated to bin
+    for i in g_muxed_ports-1 downto 0 loop
       if x(i) = '1' then
-        ret := ret or std_logic_vector(to_unsigned(i, f_log2_size(g_muxed_ports)));
+        ret := std_logic_vector(to_unsigned(i, f_log2_size(g_muxed_ports)));
       end if;
     end loop;
     return to_integer(unsigned(ret));
@@ -97,6 +101,7 @@ architecture behaviour of xwrf_mux is
   signal dmux_sel         : std_logic_vector(g_muxed_ports-1 downto 0);
   signal dmux_status_reg  : std_logic_vector(15 downto 0);
   signal dmux_select      : std_logic_vector(g_muxed_ports-1 downto 0);
+  signal dmux_others      : std_logic_vector(g_muxed_ports-1 downto 0);
   signal dmux_sel_zero    : std_logic;
   signal dmux_snd_stat    : std_logic_vector(g_muxed_ports-1 downto 0);
   signal ep_stall_mask    : std_logic;
@@ -247,20 +252,28 @@ begin
   dmux_sel_zero <= '1' when(to_integer(unsigned(dmux_select)) = 0) else
                    '0';
 
+  -- dmux_others signal says for given interface I if any other interface was
+  -- also matched to packet class 
+  dmux_others(0) <= '0';
+  GEN_DMUX_OTHERS : for I in 1 to g_muxed_ports-1 generate
+      dmux_others(I) <= or_reduce(dmux_select(I-1 downto 0));
+  end generate;
+
+
   GEN_DMUX_CONN : for I in 0 to g_muxed_ports-1 generate
-    mux_src_o(I).cyc <= ep_snk_i.cyc when(dmux_select(I) = '1') else
+    mux_src_o(I).cyc <= ep_snk_i.cyc when(dmux_select(I) = '1' and dmux_others(I) = '0') else
                         '0';
-    mux_src_o(I).stb <= '1' when(dmux_snd_stat(I) = '1') else
-                        ep_snk_i.stb when(dmux_select(I) = '1') else
+    mux_src_o(I).stb <= '1' when(dmux_snd_stat(I) = '1' and dmux_others(I) = '0') else
+                        ep_snk_i.stb when(dmux_select(I) = '1' and dmux_others(I) = '0') else
                         '0';
-    mux_src_o(I).adr <= c_WRF_STATUS when(dmux_snd_stat(I) = '1') else
-                        ep_snk_i.adr when(dmux_select(I) = '1') else
+    mux_src_o(I).adr <= c_WRF_STATUS when(dmux_snd_stat(I) = '1' and dmux_others(I) = '0') else
+                        ep_snk_i.adr when(dmux_select(I) = '1' and dmux_others(I) = '0') else
                         (others => '0');
-    mux_src_o(I).dat <= dmux_status_reg when(dmux_snd_stat(I) = '1') else
-                        ep_snk_i.dat when(dmux_select(I) = '1') else
+    mux_src_o(I).dat <= dmux_status_reg when(dmux_snd_stat(I) = '1' and dmux_others(I) = '0') else
+                        ep_snk_i.dat when(dmux_select(I) = '1' and dmux_others(I) = '0') else
                         (others => '0');
-    mux_src_o(I).sel <= (others => '1') when(dmux_snd_stat(I) = '1') else
-                        ep_snk_i.sel when(dmux_select(I) = '1') else
+    mux_src_o(I).sel <= (others => '1') when(dmux_snd_stat(I) = '1' and dmux_others(I) = '0') else
+                        ep_snk_i.sel when(dmux_select(I) = '1' and dmux_others(I) = '0') else
                         (others => '1');
     mux_src_o(I).we <= '1';
   end generate;
