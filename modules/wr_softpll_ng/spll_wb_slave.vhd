@@ -32,7 +32,6 @@ entity spll_wb_slave is
     wb_ack_o                                 : out    std_logic;
     wb_stall_o                               : out    std_logic;
     wb_int_o                                 : out    std_logic;
-    tag_hpll_rd_period_o                     : out    std_logic;
     irq_tag_i                                : in     std_logic;
     regs_i                                   : in     t_spll_in_registers;
     regs_o                                   : out    t_spll_out_registers
@@ -41,11 +40,8 @@ end spll_wb_slave;
 
 architecture syn of spll_wb_slave is
 
-signal spll_csr_per_sel_int                     : std_logic_vector(5 downto 0);
-signal spll_csr_per_en_int                      : std_logic      ;
 signal spll_eccr_ext_en_int                     : std_logic      ;
 signal spll_eccr_align_en_int                   : std_logic      ;
-signal spll_dccr_gate_div_int                   : std_logic_vector(5 downto 0);
 signal spll_occr_out_lock_int                   : std_logic_vector(7 downto 0);
 signal spll_deglitch_thr_int                    : std_logic_vector(15 downto 0);
 signal spll_dfr_host_rst_n                      : std_logic      ;
@@ -99,16 +95,11 @@ begin
       ack_sreg <= "0000000000";
       ack_in_progress <= '0';
       rddata_reg <= "00000000000000000000000000000000";
-      spll_csr_per_sel_int <= "000000";
-      spll_csr_per_en_int <= '0';
       spll_eccr_ext_en_int <= '0';
       spll_eccr_align_en_int <= '0';
-      spll_dccr_gate_div_int <= "000000";
-      regs_o.rcger_gate_sel_wr_o <= '0';
       spll_occr_out_lock_int <= "00000000";
       regs_o.rcer_load_o <= '0';
       regs_o.ocer_load_o <= '0';
-      tag_hpll_rd_period_o <= '0';
       regs_o.dac_hpll_wr_o <= '0';
       regs_o.dac_main_value_wr_o <= '0';
       regs_o.dac_main_dac_sel_wr_o <= '0';
@@ -128,10 +119,8 @@ begin
       ack_sreg(9) <= '0';
       if (ack_in_progress = '1') then
         if (ack_sreg(0) = '1') then
-          regs_o.rcger_gate_sel_wr_o <= '0';
           regs_o.rcer_load_o <= '0';
           regs_o.ocer_load_o <= '0';
-          tag_hpll_rd_period_o <= '0';
           regs_o.dac_hpll_wr_o <= '0';
           regs_o.dac_main_value_wr_o <= '0';
           regs_o.dac_main_dac_sel_wr_o <= '0';
@@ -144,7 +133,6 @@ begin
           eic_isr_write_int <= '0';
           ack_in_progress <= '0';
         else
-          regs_o.rcger_gate_sel_wr_o <= '0';
           regs_o.rcer_load_o <= '0';
           regs_o.ocer_load_o <= '0';
           regs_o.dac_hpll_wr_o <= '0';
@@ -160,17 +148,20 @@ begin
           case rwaddr_reg(4 downto 0) is
           when "00000" => 
             if (wb_we_i = '1') then
-              spll_csr_per_sel_int <= wrdata_reg(5 downto 0);
-              spll_csr_per_en_int <= wrdata_reg(19);
             end if;
-            rddata_reg(5 downto 0) <= spll_csr_per_sel_int;
-            rddata_reg(13 downto 8) <= regs_i.csr_n_ref_i;
-            rddata_reg(18 downto 16) <= regs_i.csr_n_out_i;
-            rddata_reg(19) <= spll_csr_per_en_int;
+            rddata_reg(5 downto 0) <= regs_i.csr_n_ref_i;
+            rddata_reg(10 downto 8) <= regs_i.csr_n_out_i;
+            rddata_reg(11) <= regs_i.csr_dbg_supported_i;
             rddata_reg(6) <= 'X';
             rddata_reg(7) <= 'X';
+            rddata_reg(12) <= 'X';
+            rddata_reg(13) <= 'X';
             rddata_reg(14) <= 'X';
             rddata_reg(15) <= 'X';
+            rddata_reg(16) <= 'X';
+            rddata_reg(17) <= 'X';
+            rddata_reg(18) <= 'X';
+            rddata_reg(19) <= 'X';
             rddata_reg(20) <= 'X';
             rddata_reg(21) <= 'X';
             rddata_reg(22) <= 'X';
@@ -226,27 +217,11 @@ begin
             ack_in_progress <= '1';
           when "00010" => 
             if (wb_we_i = '1') then
-              spll_dccr_gate_div_int <= wrdata_reg(5 downto 0);
+              spll_occr_out_lock_int <= wrdata_reg(15 downto 8);
             end if;
-            rddata_reg(5 downto 0) <= spll_dccr_gate_div_int;
-            rddata_reg(6) <= 'X';
-            rddata_reg(7) <= 'X';
-            rddata_reg(8) <= 'X';
-            rddata_reg(9) <= 'X';
-            rddata_reg(10) <= 'X';
-            rddata_reg(11) <= 'X';
-            rddata_reg(12) <= 'X';
-            rddata_reg(13) <= 'X';
-            rddata_reg(14) <= 'X';
-            rddata_reg(15) <= 'X';
-            rddata_reg(16) <= 'X';
-            rddata_reg(17) <= 'X';
-            rddata_reg(18) <= 'X';
-            rddata_reg(19) <= 'X';
-            rddata_reg(20) <= 'X';
-            rddata_reg(21) <= 'X';
-            rddata_reg(22) <= 'X';
-            rddata_reg(23) <= 'X';
+            rddata_reg(7 downto 0) <= regs_i.occr_out_en_i;
+            rddata_reg(15 downto 8) <= spll_occr_out_lock_int;
+            rddata_reg(23 downto 16) <= regs_i.occr_out_det_type_i;
             rddata_reg(24) <= 'X';
             rddata_reg(25) <= 'X';
             rddata_reg(26) <= 'X';
@@ -259,74 +234,12 @@ begin
             ack_in_progress <= '1';
           when "00011" => 
             if (wb_we_i = '1') then
-              regs_o.rcger_gate_sel_wr_o <= '1';
-            end if;
-            rddata_reg(0) <= 'X';
-            rddata_reg(1) <= 'X';
-            rddata_reg(2) <= 'X';
-            rddata_reg(3) <= 'X';
-            rddata_reg(4) <= 'X';
-            rddata_reg(5) <= 'X';
-            rddata_reg(6) <= 'X';
-            rddata_reg(7) <= 'X';
-            rddata_reg(8) <= 'X';
-            rddata_reg(9) <= 'X';
-            rddata_reg(10) <= 'X';
-            rddata_reg(11) <= 'X';
-            rddata_reg(12) <= 'X';
-            rddata_reg(13) <= 'X';
-            rddata_reg(14) <= 'X';
-            rddata_reg(15) <= 'X';
-            rddata_reg(16) <= 'X';
-            rddata_reg(17) <= 'X';
-            rddata_reg(18) <= 'X';
-            rddata_reg(19) <= 'X';
-            rddata_reg(20) <= 'X';
-            rddata_reg(21) <= 'X';
-            rddata_reg(22) <= 'X';
-            rddata_reg(23) <= 'X';
-            rddata_reg(24) <= 'X';
-            rddata_reg(25) <= 'X';
-            rddata_reg(26) <= 'X';
-            rddata_reg(27) <= 'X';
-            rddata_reg(28) <= 'X';
-            rddata_reg(29) <= 'X';
-            rddata_reg(30) <= 'X';
-            rddata_reg(31) <= 'X';
-            ack_sreg(0) <= '1';
-            ack_in_progress <= '1';
-          when "00100" => 
-            if (wb_we_i = '1') then
-              spll_occr_out_lock_int <= wrdata_reg(15 downto 8);
-            end if;
-            rddata_reg(7 downto 0) <= regs_i.occr_out_en_i;
-            rddata_reg(15 downto 8) <= spll_occr_out_lock_int;
-            rddata_reg(16) <= 'X';
-            rddata_reg(17) <= 'X';
-            rddata_reg(18) <= 'X';
-            rddata_reg(19) <= 'X';
-            rddata_reg(20) <= 'X';
-            rddata_reg(21) <= 'X';
-            rddata_reg(22) <= 'X';
-            rddata_reg(23) <= 'X';
-            rddata_reg(24) <= 'X';
-            rddata_reg(25) <= 'X';
-            rddata_reg(26) <= 'X';
-            rddata_reg(27) <= 'X';
-            rddata_reg(28) <= 'X';
-            rddata_reg(29) <= 'X';
-            rddata_reg(30) <= 'X';
-            rddata_reg(31) <= 'X';
-            ack_sreg(0) <= '1';
-            ack_in_progress <= '1';
-          when "00101" => 
-            if (wb_we_i = '1') then
               regs_o.rcer_load_o <= '1';
             end if;
             rddata_reg(31 downto 0) <= regs_i.rcer_i;
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "00110" => 
+          when "00100" => 
             if (wb_we_i = '1') then
               regs_o.ocer_load_o <= '1';
             end if;
@@ -357,30 +270,7 @@ begin
             rddata_reg(31) <= 'X';
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "00111" => 
-            if (wb_we_i = '1') then
-            end if;
-            rddata_reg(15 downto 0) <= regs_i.per_hpll_error_i;
-            tag_hpll_rd_period_o <= '1';
-            rddata_reg(16) <= regs_i.per_hpll_valid_i;
-            rddata_reg(17) <= 'X';
-            rddata_reg(18) <= 'X';
-            rddata_reg(19) <= 'X';
-            rddata_reg(20) <= 'X';
-            rddata_reg(21) <= 'X';
-            rddata_reg(22) <= 'X';
-            rddata_reg(23) <= 'X';
-            rddata_reg(24) <= 'X';
-            rddata_reg(25) <= 'X';
-            rddata_reg(26) <= 'X';
-            rddata_reg(27) <= 'X';
-            rddata_reg(28) <= 'X';
-            rddata_reg(29) <= 'X';
-            rddata_reg(30) <= 'X';
-            rddata_reg(31) <= 'X';
-            ack_sreg(0) <= '1';
-            ack_in_progress <= '1';
-          when "01000" => 
+          when "00101" => 
             if (wb_we_i = '1') then
               regs_o.dac_hpll_wr_o <= '1';
             end if;
@@ -418,7 +308,7 @@ begin
             rddata_reg(31) <= 'X';
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "01001" => 
+          when "00110" => 
             if (wb_we_i = '1') then
               regs_o.dac_main_value_wr_o <= '1';
               regs_o.dac_main_dac_sel_wr_o <= '1';
@@ -457,7 +347,7 @@ begin
             rddata_reg(31) <= 'X';
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "01010" => 
+          when "00111" => 
             if (wb_we_i = '1') then
               spll_deglitch_thr_int <= wrdata_reg(15 downto 0);
             end if;
@@ -480,7 +370,7 @@ begin
             rddata_reg(31) <= 'X';
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "01011" => 
+          when "01000" => 
             if (wb_we_i = '1') then
               regs_o.dfr_spll_value_wr_o <= '1';
               regs_o.dfr_spll_eos_wr_o <= '1';
@@ -519,14 +409,14 @@ begin
             rddata_reg(31) <= 'X';
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "01100" => 
+          when "01001" => 
             if (wb_we_i = '1') then
               regs_o.crr_in_load_o <= '1';
             end if;
             rddata_reg(31 downto 0) <= regs_i.crr_in_i;
             ack_sreg(0) <= '1';
             ack_in_progress <= '1';
-          when "01101" => 
+          when "01010" => 
             if (wb_we_i = '1') then
               regs_o.crr_out_load_o <= '1';
             end if;
@@ -819,12 +709,9 @@ begin
   
 -- Drive the data output bus
   wb_dat_o <= rddata_reg;
--- Period detector reference select
-  regs_o.csr_per_sel_o <= spll_csr_per_sel_int;
 -- Number of reference channels (max: 32)
 -- Number of output channels (max: 8)
--- Enable Period Measurement
-  regs_o.csr_per_en_o <= spll_csr_per_en_int;
+-- Debug queue supported
 -- Enable External Clock BB Detector
   regs_o.eccr_ext_en_o <= spll_eccr_ext_en_int;
 -- External Clock Input Available
@@ -832,20 +719,14 @@ begin
   regs_o.eccr_align_en_o <= spll_eccr_align_en_int;
 -- PPS/phase alignment done
 -- External Clock Reference Present
--- DMTD Clock Undersampling Divider
-  regs_o.dccr_gate_div_o <= spll_dccr_gate_div_int;
--- Reference Channel Undersampling Enable
--- pass-through field: Reference Channel Undersampling Enable in register: Reference Channel Undersampling Enable Register
-  regs_o.rcger_gate_sel_o <= wrdata_reg(31 downto 0);
 -- Output Channel HW enable flag
 -- Output Channel locked flag
   regs_o.occr_out_lock_o <= spll_occr_out_lock_int;
+-- Output Channel Phase Detector Type
 -- Reference Channel Enable
   regs_o.rcer_o <= wrdata_reg(31 downto 0);
 -- Output Channel Enable
   regs_o.ocer_o <= wrdata_reg(7 downto 0);
--- Period error value
--- Period Error Valid
 -- DAC value
 -- pass-through field: DAC value in register: Helper DAC Output
   regs_o.dac_hpll_o <= wrdata_reg(15 downto 0);

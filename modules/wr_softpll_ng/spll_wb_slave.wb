@@ -10,16 +10,6 @@ peripheral {
 			prefix = "CSR";
 			
 
-      field {
-         align = 8;
-         name = "Period detector reference select";
-         prefix = "PER_SEL";
-         size = 6;
-         type = SLV;
-         access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
-      };
-
 			field {
 				 align = 8;
 				 name = "Number of reference channels (max: 32)";
@@ -41,11 +31,11 @@ peripheral {
 			};
 
       field {
-         name = "Enable Period Measurement";
-         prefix = "PER_EN";
+         name = "Debug queue supported";
+         prefix = "DBG_SUPPORTED";
          type = BIT;
-         access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
+         access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
       };
 	 };
 
@@ -110,36 +100,6 @@ peripheral {
 
    };
   
-
----------------------------------------------
--- DMTD gating/undersampling configuration
----------------------------------------------
-	 reg {
-			name = "DMTD Clock Control Register";
-			prefix = "DCCR";
-			
-      field {
-         name = "DMTD Clock Undersampling Divider";
-         prefix = "GATE_DIV";
-         size = 6;
-         type = SLV;
-         access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
-      };
-	 };
-
-   reg {
-      name = "Reference Channel Undersampling Enable Register";
-      prefix = "RCGER";
-      
-      field {
-         name = "Reference Channel Undersampling Enable";
-         prefix = "GATE_SEL";
-         size = 32;
-         type = PASS_THROUGH;
-      };
-   };
-
 	 reg {
 			name = "Output Channel Control Register";
 			prefix = "OCCR";
@@ -162,10 +122,20 @@ peripheral {
 				 access_bus = READ_WRITE;
 				 access_dev = READ_ONLY;
 			};
+
+      field {
+				 name = "Output Channel Phase Detector Type";
+         description = "Phase detector type used by corresponding output: 0 = DDMTD, 1 = BangBang";
+				 prefix = "OUT_DET_TYPE";
+				 type = SLV;
+				 size = 8;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
 	 };
 	 
 	 reg {
-			name = "Reference Channel Enable Register";
+			name = "Reference Channel Tagging Enable Register";
 			prefix = "RCER";
 			
 			field {
@@ -181,7 +151,7 @@ peripheral {
 	 };
 
 	 reg {
-			name = "Output Channel Enable Register";
+			name = "Output Channel Tagging Enable Register";
 			prefix = "OCER";
 			
 			field {
@@ -196,32 +166,7 @@ peripheral {
 			};
 	 };
 
-
-	 reg {
-			name = "HPLL Period Error";
-			prefix = "PER_HPLL";
-			field {
-				 name = "Period error value";
-         prefix = "ERROR";
-				 type = SLV;
-				 size = 16;
-				 access_bus = READ_ONLY;
-				 access_dev = WRITE_ONLY;
-				 ack_read = "tag_hpll_rd_period_o";
-			};
-
-
-			field {
-         name = "Period Error Valid";
-         prefix = "VALID";
-         type = BIT;
-				 access_bus = READ_ONLY;
-				 access_dev = WRITE_ONLY;
-      };
-
-	 };
-
-	 reg {
+   reg {
 			name = "Helper DAC Output";
 			prefix = "DAC_HPLL";
 			
@@ -253,7 +198,7 @@ peripheral {
 	 }; 
 
 	 reg {
-			name = "Deglitcher threshold";
+			name = "DDMTD Deglitcher threshold";
 			prefix = "DEGLITCH_THR";
 			
 			field {

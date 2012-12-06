@@ -23,14 +23,14 @@ package spll_wbgen2_pkg is
   type t_spll_in_registers is record
     csr_n_ref_i                              : std_logic_vector(5 downto 0);
     csr_n_out_i                              : std_logic_vector(2 downto 0);
+    csr_dbg_supported_i                      : std_logic;
     eccr_ext_supported_i                     : std_logic;
     eccr_align_done_i                        : std_logic;
     eccr_ext_ref_present_i                   : std_logic;
     occr_out_en_i                            : std_logic_vector(7 downto 0);
+    occr_out_det_type_i                      : std_logic_vector(7 downto 0);
     rcer_i                                   : std_logic_vector(31 downto 0);
     ocer_i                                   : std_logic_vector(7 downto 0);
-    per_hpll_error_i                         : std_logic_vector(15 downto 0);
-    per_hpll_valid_i                         : std_logic;
     crr_in_i                                 : std_logic_vector(31 downto 0);
     crr_out_i                                : std_logic_vector(15 downto 0);
     dfr_host_wr_req_i                        : std_logic;
@@ -45,14 +45,14 @@ package spll_wbgen2_pkg is
   constant c_spll_in_registers_init_value: t_spll_in_registers := (
     csr_n_ref_i => (others => '0'),
     csr_n_out_i => (others => '0'),
+    csr_dbg_supported_i => '0',
     eccr_ext_supported_i => '0',
     eccr_align_done_i => '0',
     eccr_ext_ref_present_i => '0',
     occr_out_en_i => (others => '0'),
+    occr_out_det_type_i => (others => '0'),
     rcer_i => (others => '0'),
     ocer_i => (others => '0'),
-    per_hpll_error_i => (others => '0'),
-    per_hpll_valid_i => '0',
     crr_in_i => (others => '0'),
     crr_out_i => (others => '0'),
     dfr_host_wr_req_i => '0',
@@ -67,13 +67,8 @@ package spll_wbgen2_pkg is
     -- Output registers (WB slave -> user design)
     
     type t_spll_out_registers is record
-      csr_per_sel_o                            : std_logic_vector(5 downto 0);
-      csr_per_en_o                             : std_logic;
       eccr_ext_en_o                            : std_logic;
       eccr_align_en_o                          : std_logic;
-      dccr_gate_div_o                          : std_logic_vector(5 downto 0);
-      rcger_gate_sel_o                         : std_logic_vector(31 downto 0);
-      rcger_gate_sel_wr_o                      : std_logic;
       occr_out_lock_o                          : std_logic_vector(7 downto 0);
       rcer_o                                   : std_logic_vector(31 downto 0);
       rcer_load_o                              : std_logic;
@@ -102,13 +97,8 @@ package spll_wbgen2_pkg is
       end record;
     
     constant c_spll_out_registers_init_value: t_spll_out_registers := (
-      csr_per_sel_o => (others => '0'),
-      csr_per_en_o => '0',
       eccr_ext_en_o => '0',
       eccr_align_en_o => '0',
-      dccr_gate_div_o => (others => '0'),
-      rcger_gate_sel_o => (others => '0'),
-      rcger_gate_sel_wr_o => '0',
       occr_out_lock_o => (others => '0'),
       rcer_o => (others => '0'),
       rcer_load_o => '0',
@@ -166,14 +156,14 @@ variable tmp: t_spll_in_registers;
 begin
 tmp.csr_n_ref_i := f_x_to_zero(left.csr_n_ref_i) or f_x_to_zero(right.csr_n_ref_i);
 tmp.csr_n_out_i := f_x_to_zero(left.csr_n_out_i) or f_x_to_zero(right.csr_n_out_i);
+tmp.csr_dbg_supported_i := f_x_to_zero(left.csr_dbg_supported_i) or f_x_to_zero(right.csr_dbg_supported_i);
 tmp.eccr_ext_supported_i := f_x_to_zero(left.eccr_ext_supported_i) or f_x_to_zero(right.eccr_ext_supported_i);
 tmp.eccr_align_done_i := f_x_to_zero(left.eccr_align_done_i) or f_x_to_zero(right.eccr_align_done_i);
 tmp.eccr_ext_ref_present_i := f_x_to_zero(left.eccr_ext_ref_present_i) or f_x_to_zero(right.eccr_ext_ref_present_i);
 tmp.occr_out_en_i := f_x_to_zero(left.occr_out_en_i) or f_x_to_zero(right.occr_out_en_i);
+tmp.occr_out_det_type_i := f_x_to_zero(left.occr_out_det_type_i) or f_x_to_zero(right.occr_out_det_type_i);
 tmp.rcer_i := f_x_to_zero(left.rcer_i) or f_x_to_zero(right.rcer_i);
 tmp.ocer_i := f_x_to_zero(left.ocer_i) or f_x_to_zero(right.ocer_i);
-tmp.per_hpll_error_i := f_x_to_zero(left.per_hpll_error_i) or f_x_to_zero(right.per_hpll_error_i);
-tmp.per_hpll_valid_i := f_x_to_zero(left.per_hpll_valid_i) or f_x_to_zero(right.per_hpll_valid_i);
 tmp.crr_in_i := f_x_to_zero(left.crr_in_i) or f_x_to_zero(right.crr_in_i);
 tmp.crr_out_i := f_x_to_zero(left.crr_out_i) or f_x_to_zero(right.crr_out_i);
 tmp.dfr_host_wr_req_i := f_x_to_zero(left.dfr_host_wr_req_i) or f_x_to_zero(right.dfr_host_wr_req_i);
