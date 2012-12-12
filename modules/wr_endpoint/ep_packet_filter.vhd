@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-08-29
+-- Last update: 2012-12-12
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -142,6 +142,7 @@ architecture behavioral of ep_packet_filter is
   signal pc   : unsigned(c_PC_SIZE-1 downto 0);
   signal ir   : std_logic_vector(35 downto 0);
   signal insn : t_microcode_instruction;
+  signal insn_predecoded : t_microcode_instruction;
 
   signal done_int : std_logic;
   signal regs     : std_logic_vector(31 downto 0);
@@ -215,10 +216,12 @@ begin  -- behavioral
       clkb_i  => clk_rx_i,
       bweb_i  => "00",
       web_i   => '0',
-      ab_i    => insn.offset,
+      ab_i    => insn_predecoded.offset,
       db_i    => x"0000",
       qb_o    => pmem_rdata);
 
+  insn_predecoded <= f_decode_insn(mm_rdata);
+  
   src_fab_o <= snk_fab_i;
 
   p_pc_counter : process(clk_rx_i)
