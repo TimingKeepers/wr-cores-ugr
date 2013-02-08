@@ -84,7 +84,7 @@ begin  -- rtl
       if rst_n_i = '0' then
         cyc_int <= '0';
       else
-        if(src_i.stall = '0' and q_valid = '1') then
+        if( q_valid = '1') then
           if(post_sof = '1')then
             cyc_int <= '1';
           elsif(post_eof = '1') then
