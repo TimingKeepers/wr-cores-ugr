@@ -619,9 +619,10 @@ begin
   U_WR_CORE : xwr_core
     generic map (
       g_simulation                => 0,
+      g_with_external_clock_input => true,
+      --
       g_phys_uart                 => true,
       g_virtual_uart              => true,
-      g_with_external_clock_input => true,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
       g_dpram_initf               => "wrc.ram",
@@ -655,8 +656,8 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      led_red_o   => LED_RED,
-      led_green_o => LED_GREEN,
+      led_act_o   => LED_RED,
+      led_link_o  => LED_GREEN,
       scl_o       => wrc_scl_o,
       scl_i       => wrc_scl_i,
       sda_o       => wrc_sda_o,
@@ -691,7 +692,7 @@ begin
       tm_clk_aux_lock_en_i => '0',
       tm_clk_aux_locked_o  => open,
       tm_time_valid_o      => open,
-      tm_utc_o             => open,
+      tm_tai_o             => open,
       tm_cycles_o          => open,
       pps_p_o              => pps,
       pps_led_o            => pps_led,

@@ -350,8 +350,8 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       phy_rst_o          : out std_logic;
       phy_loopen_o       : out std_logic;
 
-      led_red_o   : out std_logic;
-      led_green_o : out std_logic;
+      led_act_o   : out std_logic;
+      led_link_o : out std_logic;
       scl_o       : out std_logic;
       scl_i       : in  std_logic;
       sda_o       : out std_logic;
@@ -391,7 +391,7 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       tm_clk_aux_lock_en_i : in  std_logic;
       tm_clk_aux_locked_o  : out std_logic;
       tm_time_valid_o      : out std_logic;
-      tm_utc_o             : out std_logic_vector(39 downto 0);
+      tm_tai_o             : out std_logic_vector(39 downto 0);
       tm_cycles_o          : out std_logic_vector(27 downto 0);
       pps_p_o              : out std_logic;
 			pps_led_o						 : out std_logic;

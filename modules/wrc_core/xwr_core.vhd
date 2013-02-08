@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2012-07-09
+-- Last update: 2013-02-08
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -47,15 +47,16 @@ entity xwr_core is
     --if set to 1, then blocks in PCS use smaller calibration counter to speed 
     --up simulation
     g_simulation                : integer                        := 0;
+    g_with_external_clock_input : boolean                        := false;
+    --
     g_phys_uart                 : boolean                        := true;
     g_virtual_uart              : boolean                        := false;
-    g_with_external_clock_input : boolean                        := false;
     g_aux_clks                  : integer                        := 1;
     g_ep_rxbuf_size             : integer                        := 1024;
     g_dpram_initf               : string                         := "";
     g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
-    g_dpram_size                : integer                        := 20480;  --in 32-bit words
-    g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
+    g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
+    g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity       : t_wishbone_address_granularity := WORD;
     g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
     );
@@ -82,7 +83,8 @@ entity xwr_core is
     -- External PPS input (cesium, GPSDO, etc.), used in Grandmaster mode
     pps_ext_i : in std_logic := '0';
 
-    rst_n_i            : in  std_logic;
+    rst_n_i : in std_logic;
+
     -----------------------------------------
     --Timing system
     -----------------------------------------
@@ -112,32 +114,32 @@ entity xwr_core is
     -----------------------------------------
     --GPIO
     -----------------------------------------
-    led_red_o   : out std_logic;
-    led_green_o : out std_logic;
-    scl_o       : out std_logic;
-    scl_i       : in  std_logic;
-    sda_o       : out std_logic;
-    sda_i       : in  std_logic;
-    sfp_scl_o   : out std_logic;
-    sfp_scl_i   : in  std_logic;
-    sfp_sda_o   : out std_logic;
-    sfp_sda_i   : in  std_logic;
-    sfp_det_i   : in  std_logic;
-    btn1_i      : in  std_logic;
-    btn2_i      : in  std_logic;
+    led_act_o  : out std_logic;
+    led_link_o : out std_logic;
+    scl_o      : out std_logic;
+    scl_i      : in  std_logic := '1';
+    sda_o      : out std_logic;
+    sda_i      : in  std_logic := '1';
+    sfp_scl_o  : out std_logic;
+    sfp_scl_i  : in  std_logic := '1';
+    sfp_sda_o  : out std_logic;
+    sfp_sda_i  : in  std_logic := '1';
+    sfp_det_i  : in  std_logic;
+    btn1_i     : in  std_logic := '1';
+    btn2_i     : in  std_logic := '1';
 
     -----------------------------------------
     --UART
     -----------------------------------------
-    uart_rxd_i : in  std_logic;
+    uart_rxd_i : in  std_logic := '0';
     uart_txd_o : out std_logic;
 
     -----------------------------------------
     -- 1-wire
     -----------------------------------------
-    owr_pwren_o: out std_logic_vector(1 downto 0);
-    owr_en_o : out std_logic_vector(1 downto 0);
-    owr_i    : in  std_logic_vector(1 downto 0);
+    owr_pwren_o : out std_logic_vector(1 downto 0);
+    owr_en_o    : out std_logic_vector(1 downto 0);
+    owr_i       : in  std_logic_vector(1 downto 0) := (others => '1');
 
     -----------------------------------------
     --External WB interface
@@ -145,8 +147,8 @@ entity xwr_core is
     slave_i : in  t_wishbone_slave_in := cc_dummy_slave_in;
     slave_o : out t_wishbone_slave_out;
 
-    aux_master_o : out  t_wishbone_master_out;
-    aux_master_i : in t_wishbone_master_in := cc_dummy_master_in;
+    aux_master_o : out t_wishbone_master_out;
+    aux_master_i : in  t_wishbone_master_in := cc_dummy_master_in;
 
     -----------------------------------------
     -- External Fabric I/F
@@ -171,12 +173,12 @@ entity xwr_core is
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
     tm_dac_wr_o          : out std_logic;
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i : in  std_logic;
+    tm_clk_aux_lock_en_i : in  std_logic := '0';
     -- Aux clock locked flag
     tm_clk_aux_locked_o  : out std_logic;
     -- Timecode output
     tm_time_valid_o      : out std_logic;
-    tm_utc_o             : out std_logic_vector(39 downto 0);
+    tm_tai_o             : out std_logic_vector(39 downto 0);
     tm_cycles_o          : out std_logic_vector(27 downto 0);
     -- 1PPS output
     pps_p_o              : out std_logic;
@@ -204,7 +206,7 @@ architecture struct of xwr_core is
       g_dpram_size                : integer                        := 16384;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity       : t_wishbone_address_granularity := WORD;
-    	g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb);
+      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb);
     port(
       clk_sys_i  : in std_logic;
       clk_dmtd_i : in std_logic;
@@ -232,26 +234,26 @@ architecture struct of xwr_core is
       phy_rst_o          : out std_logic;
       phy_loopen_o       : out std_logic;
 
-      led_red_o   : out std_logic;
-      led_green_o : out std_logic;
-      scl_o       : out std_logic;
-      scl_i       : in  std_logic;
-      sda_o       : out std_logic;
-      sda_i       : in  std_logic;
-      sfp_scl_o   : out std_logic;
-      sfp_scl_i   : in  std_logic;
-      sfp_sda_o   : out std_logic;
-      sfp_sda_i   : in  std_logic;
-      sfp_det_i   : in  std_logic;
-      btn1_i      : in  std_logic;
-      btn2_i      : in  std_logic;
+      led_act_o  : out std_logic;
+      led_link_o : out std_logic;
+      scl_o      : out std_logic;
+      scl_i      : in  std_logic;
+      sda_o      : out std_logic;
+      sda_i      : in  std_logic;
+      sfp_scl_o  : out std_logic;
+      sfp_scl_i  : in  std_logic;
+      sfp_sda_o  : out std_logic;
+      sfp_sda_i  : in  std_logic;
+      sfp_det_i  : in  std_logic;
+      btn1_i     : in  std_logic;
+      btn2_i     : in  std_logic;
 
       uart_rxd_i : in  std_logic;
       uart_txd_o : out std_logic;
 
-      owr_pwren_o: out std_logic_vector(1 downto 0);
-      owr_en_o : out std_logic_vector(1 downto 0);
-      owr_i    : in  std_logic_vector(1 downto 0);
+      owr_pwren_o : out std_logic_vector(1 downto 0);
+      owr_en_o    : out std_logic_vector(1 downto 0);
+      owr_i       : in  std_logic_vector(1 downto 0);
 
       wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
       wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
@@ -303,16 +305,16 @@ architecture struct of xwr_core is
       txtsu_stb_o          : out std_logic;
       txtsu_ack_i          : in  std_logic;
 
-      tm_link_up_o         : out std_logic;
-      tm_dac_value_o       : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o          : out std_logic;
-      tm_clk_aux_lock_en_i : in  std_logic;
-      tm_clk_aux_locked_o  : out std_logic;
-      tm_time_valid_o      : out std_logic;
-      tm_utc_o             : out std_logic_vector(39 downto 0);
-      tm_cycles_o          : out std_logic_vector(27 downto 0);
-      pps_p_o              : out std_logic;
-		  pps_led_o						 : out std_logic;
+      tm_link_up_o          : out std_logic;
+      tm_dac_value_o        : out std_logic_vector(23 downto 0);
+      tm_dac_wr_o           : out std_logic;
+      tm_clk_aux_lock_en_i  : in  std_logic;
+      tm_clk_aux_locked_o   : out std_logic;
+      tm_time_valid_o       : out std_logic;
+      tm_tai_o              : out std_logic_vector(39 downto 0);
+      tm_cycles_o           : out std_logic_vector(27 downto 0);
+      pps_p_o               : out std_logic;
+      pps_led_o             : out std_logic;
 
       dio_o       : out std_logic_vector(3 downto 0);
       rst_aux_n_o : out std_logic;
@@ -336,7 +338,7 @@ begin
       g_dpram_size                => g_dpram_size,
       g_interface_mode            => g_interface_mode,
       g_address_granularity       => g_address_granularity,
-			g_aux_sdb										=> g_aux_sdb)
+      g_aux_sdb                   => g_aux_sdb)
     port map(
       clk_sys_i  => clk_sys_i,
       clk_dmtd_i => clk_dmtd_i,
@@ -364,25 +366,25 @@ begin
       phy_rst_o          => phy_rst_o,
       phy_loopen_o       => phy_loopen_o,
 
-      led_red_o   => led_red_o,
-      led_green_o => led_green_o,
-      scl_o       => scl_o,
-      scl_i       => scl_i,
-      sda_o       => sda_o,
-      sda_i       => sda_i,
-      sfp_scl_o   => sfp_scl_o,
-      sfp_scl_i   => sfp_scl_i,
-      sfp_sda_o   => sfp_sda_o,
-      sfp_sda_i   => sfp_sda_i,
-      sfp_det_i   => sfp_det_i,
-      btn1_i      => btn1_i,
-      btn2_i      => btn2_i,
-      uart_rxd_i  => uart_rxd_i,
-      uart_txd_o  => uart_txd_o,
+      led_act_o  => led_act_o,
+      led_link_o => led_link_o,
+      scl_o      => scl_o,
+      scl_i      => scl_i,
+      sda_o      => sda_o,
+      sda_i      => sda_i,
+      sfp_scl_o  => sfp_scl_o,
+      sfp_scl_i  => sfp_scl_i,
+      sfp_sda_o  => sfp_sda_o,
+      sfp_sda_i  => sfp_sda_i,
+      sfp_det_i  => sfp_det_i,
+      btn1_i     => btn1_i,
+      btn2_i     => btn2_i,
+      uart_rxd_i => uart_rxd_i,
+      uart_txd_o => uart_txd_o,
 
       owr_pwren_o => owr_pwren_o,
-      owr_en_o => owr_en_o,
-      owr_i    => owr_i,
+      owr_en_o    => owr_en_o,
+      owr_i       => owr_i,
 
       wb_adr_i   => slave_i.adr,
       wb_dat_i   => slave_i.dat,
@@ -433,16 +435,16 @@ begin
       txtsu_stb_o          => timestamps_o.stb,
       txtsu_ack_i          => timestamps_ack_i,
 
-      tm_link_up_o         => tm_link_up_o,
-      tm_dac_value_o       => tm_dac_value_o,
-      tm_dac_wr_o          => tm_dac_wr_o,
-      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
-      tm_clk_aux_locked_o  => tm_clk_aux_locked_o,
-      tm_time_valid_o      => tm_time_valid_o,
-      tm_utc_o             => tm_utc_o,
-      tm_cycles_o          => tm_cycles_o,
-      pps_p_o              => pps_p_o,
-			pps_led_o						 => pps_led_o,
+      tm_link_up_o                => tm_link_up_o,
+      tm_dac_value_o              => tm_dac_value_o,
+      tm_dac_wr_o                 => tm_dac_wr_o,
+      tm_clk_aux_lock_en_i        => tm_clk_aux_lock_en_i,
+      tm_clk_aux_locked_o         => tm_clk_aux_locked_o,
+      tm_time_valid_o             => tm_time_valid_o,
+      tm_tai_o                    => tm_tai_o,
+      tm_cycles_o                 => tm_cycles_o,
+      pps_p_o                     => pps_p_o,
+      pps_led_o                   => pps_led_o,
 
       dio_o       => dio_o,
       rst_aux_n_o => rst_aux_n_o,
