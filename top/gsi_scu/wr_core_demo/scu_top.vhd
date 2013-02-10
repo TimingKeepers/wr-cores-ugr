@@ -8,8 +8,8 @@ use work.wr_fabric_pkg.all;
 
 library work;
 use work.wishbone_pkg.all;
+use work.eca_pkg.all;
 use work.wb_cores_pkg_gsi.all;
-use work.xwr_eca_pkg.all;
 use work.pcie_wb_pkg.all;
 use work.wr_altera_pkg.all;
 use work.lpc_uart_pkg.all;
@@ -175,11 +175,12 @@ architecture rtl of scu_top is
   constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
   
   -- Ref clock crossbar
-  constant c_ref_slaves  : natural := 2;
-  constant c_ref_masters : natural := 1;
+  constant c_ref_slaves  : natural := 3;
+  constant c_ref_masters : natural := 2;
   constant c_ref_layout : t_sdb_record_array(c_ref_slaves-1 downto 0) :=
-   (0 => f_sdb_embed_device(c_xwr_eca_sdb,                x"00040000"),
-    1 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00080000"));
+   (0 => f_sdb_embed_device(c_eca_sdb,                    x"00040000"),
+    1 => f_sdb_embed_device(c_eca_evt_sdb,                x"00060000"),
+    2 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00080000"));
   constant c_ref_sdb_address : t_wishbone_address := x"000C0000";
   constant c_ref_bridge : t_sdb_bridge := 
     f_xwb_bridge_layout_sdb(true, c_ref_layout, c_ref_sdb_address);
@@ -202,6 +203,11 @@ architecture rtl of scu_top is
   signal cbar_slave_o  : t_wishbone_slave_out_array(c_masters-1 downto 0);
   signal cbar_master_i : t_wishbone_master_in_array(c_slaves-1 downto 0);
   signal cbar_master_o : t_wishbone_master_out_array(c_slaves-1 downto 0);
+  
+  signal pcie_slave_i : t_wishbone_slave_in;
+  signal pcie_slave_o : t_wishbone_slave_out;
+  signal eca_pcie_master_i : t_wishbone_master_in;
+  signal eca_pcie_master_o : t_wishbone_master_out;
 
   signal pllout_clk_sys   : std_logic;
   signal pllout_clk_dmtd  : std_logic;
@@ -246,7 +252,7 @@ architecture rtl of scu_top is
   signal tm_utc    : std_logic_vector(39 downto 0);
   signal tm_cycles : std_logic_vector(27 downto 0);
 
-  signal eca_toggle: std_logic_vector(31 downto 0);
+  signal channels : t_channel_array(2 downto 0);
   
   signal owr_pwren_o : std_logic_vector(1 downto 0);
   signal owr_en_o: std_logic_vector(1 downto 0);
@@ -441,7 +447,7 @@ begin
       clk_i      => pllout_clk_sys,
       rst_n_i    => pllout_clk_sys_rstn,
       pulse_i    => pps,
-      extended_o => lemo_led(1));
+      extended_o => ext_pps);
   
   lpc_slave: lpc_uart
     port map(
@@ -462,7 +468,7 @@ begin
       seven_seg_L => open,
       seven_seg_H => open);
       
-   U_ebone : EB_CORE
+   U_ebone : eb_slave_core
      generic map(
        g_sdb_address => x"00000000" & c_sdb_address)
      port map(
@@ -490,7 +496,20 @@ begin
        wb_clk        => pllout_clk_sys,
        wb_rstn_i     => pllout_clk_sys_rstn,
        master_o      => cbar_slave_i(1),
-       master_i      => cbar_slave_o(1));
+       master_i      => cbar_slave_o(1),
+       slave_i       => pcie_slave_i,
+       slave_o       => pcie_slave_o);
+  
+  PCIeInt : xwb_clock_crossing
+    port map(
+      slave_clk_i    => clk_125m_pllref_p,
+      slave_rst_n_i  => clk_125m_pllref_p_rstn,
+      slave_i        => eca_pcie_master_o,
+      slave_o        => eca_pcie_master_i,
+      master_clk_i   => pllout_clk_sys,
+      master_rst_n_i => pllout_clk_sys_rstn,
+      master_i       => pcie_slave_o,
+      master_o       => pcie_slave_i);      
   
   TLU : wb_timestamp_latch
     generic map (
@@ -504,19 +523,60 @@ begin
       tm_time_valid_i => '0',
       tm_utc_i        => tm_utc,
       tm_cycles_i     => tm_cycles,
-      wb_slave_i      => cbar_ref_master_o(1),
-      wb_slave_o      => cbar_ref_master_i(1));
+      wb_slave_i      => cbar_ref_master_o(2),
+      wb_slave_o      => cbar_ref_master_i(2));
 
-  ECA : xwr_eca
+  ECA0 : wr_eca
+    generic map(
+      g_eca_name       => f_name("SCU top"),
+      g_channel_names  => (f_name("GPIO: LEMOs(0-1) LEDs(2-5)"), 
+                           f_name("PCIe: Interrupt generator"), 
+                           f_name("WB:   timing bus")),
+      g_log_table_size => 7,
+      g_log_queue_len  => 8,
+      g_num_channels   => 3,
+      g_num_streams    => 1)
     port map(
-      clk_i      => clk_125m_pllref_p,
-      rst_n_i    => clk_125m_pllref_p_rstn,
-      slave_i    => cbar_ref_master_o(0),
-      slave_o    => cbar_ref_master_i(0),
-      tm_utc_i   => tm_utc,
-      tm_cycle_i => tm_cycles,
-      toggle_o   => eca_toggle);
-      
+      e_clk_i  (0)=> clk_125m_pllref_p,
+      e_rst_n_i(0)=> clk_125m_pllref_p_rstn,
+      e_slave_i(0)=> cbar_ref_master_o(1),
+      e_slave_o(0)=> cbar_ref_master_i(1),
+      c_clk_i     => clk_125m_pllref_p,
+      c_rst_n_i   => clk_125m_pllref_p_rstn,
+      c_slave_i   => cbar_ref_master_o(0),
+      c_slave_o   => cbar_ref_master_i(0),
+      a_clk_i     => clk_125m_pllref_p,
+      a_rst_n_i   => clk_125m_pllref_p_rstn,
+      a_utc_i     => tm_utc,
+      a_cycles_i  => tm_cycles,
+      a_channel_o => channels);
+  
+  C0 : eca_gpio_channel
+    port map(
+      clk_i     => clk_125m_pllref_p,
+      rst_n_i   => clk_125m_pllref_p_rstn,
+      channel_i => channels(0),
+      gpio_o(0) => leds_o(0),
+      gpio_o(1) => leds_o(1),
+      gpio_o(2) => leds_o(2),
+      gpio_o(3) => leds_o(3));
+  
+  C1 : eca_wb_channel
+    port map(
+      clk_i     => clk_125m_pllref_p,
+      rst_n_i   => clk_125m_pllref_p_rstn,
+      channel_i => channels(1),
+      master_o  => eca_pcie_master_o,
+      master_i  => eca_pcie_master_i);
+  
+  C2 : eca_wb_channel
+    port map(
+      clk_i     => clk_125m_pllref_p,
+      rst_n_i   => clk_125m_pllref_p_rstn,
+      channel_i => channels(2),
+      master_o  => cbar_ref_slave_i(1),
+      master_i  => cbar_ref_slave_o(1));
+  
   GSI_REF_CON : xwb_sdb_crossbar
    generic map(
      g_num_masters => c_ref_masters,
@@ -583,10 +643,7 @@ begin
   sfp2_tx_disable_o <= '0';				-- enable SFP
   
   lemo_en_in <= "01";                 -- configure lemo 1 as output, lemo 2 as input
-  lemo_io1 <= eca_toggle(0 downto 0);
-  
-  --leds_o(0) <= eca_toggle(0);
-  --leds_o(1) <= pio_reg(0);
-  leds_o <= ddr3_test_status(3 downto 0);	
+  lemo_io1(0) <= ext_pps;
+  lemo_led(1) <= ext_pps;
   
 end rtl;
