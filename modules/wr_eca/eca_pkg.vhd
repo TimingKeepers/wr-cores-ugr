@@ -117,7 +117,7 @@ package eca_pkg is
       -- Actions output according to time
       a_clk_i     : in  std_logic;
       a_rst_n_i   : in  std_logic; -- Hold for at least 10 cycles
-      a_utc_i     : in  std_logic_vector(39 downto 0);
+      a_tai_i     : in  std_logic_vector(39 downto 0);
       a_cycles_i  : in  std_logic_vector(27 downto 0);
       a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
   end component;
@@ -265,7 +265,7 @@ package eca_pkg is
   component eca_wr_time is
     port(
       clk_i    : in std_logic;
-      utc_i    : in std_logic_vector(39 downto 0);
+      tai_i    : in std_logic_vector(39 downto 0);
       cycles_i : in std_logic_vector(27 downto 0);
       time_o   : out t_time);
   end component;

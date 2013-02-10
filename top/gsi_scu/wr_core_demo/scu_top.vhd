@@ -22,7 +22,7 @@ entity scu_top is
 
     L_CLKp : in std_logic;            -- local clk from 125Mhz oszillator
     nres   : in std_logic;            -- powerup reset
-
+    
     -----------------------------------------
     -- UART on front panel
     -----------------------------------------
@@ -249,7 +249,7 @@ architecture rtl of scu_top is
   signal mb_snk_out    : t_wrf_sink_out;
   signal mb_snk_in     : t_wrf_sink_in;
   
-  signal tm_utc    : std_logic_vector(39 downto 0);
+  signal tm_tai    : std_logic_vector(39 downto 0);
   signal tm_cycles : std_logic_vector(27 downto 0);
 
   signal channels : t_channel_array(2 downto 0);
@@ -352,8 +352,8 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
       
-      led_red_o   => open,
-      led_green_o => open,
+      led_act_o   => open,
+      led_link_o  => open,
       scl_o       => scl_o,
       scl_i       => scl_i,
       sda_i       => sda_i,
@@ -389,7 +389,7 @@ begin
       tm_clk_aux_lock_en_i => '0',
       tm_clk_aux_locked_o  => open,
       tm_time_valid_o      => open,
-      tm_utc_o             => tm_utc,
+      tm_tai_o             => tm_tai,
       tm_cycles_o          => tm_cycles,
       pps_p_o              => pps,
       
@@ -521,7 +521,7 @@ begin
       nRSt_i          => clk_125m_pllref_p_rstn,
       triggers_i      => lemo_io2,
       tm_time_valid_i => '0',
-      tm_utc_i        => tm_utc,
+      tm_utc_i        => tm_tai,
       tm_cycles_i     => tm_cycles,
       wb_slave_i      => cbar_ref_master_o(2),
       wb_slave_o      => cbar_ref_master_i(2));
@@ -547,7 +547,7 @@ begin
       c_slave_o   => cbar_ref_master_i(0),
       a_clk_i     => clk_125m_pllref_p,
       a_rst_n_i   => clk_125m_pllref_p_rstn,
-      a_utc_i     => tm_utc,
+      a_tai_i     => tm_tai,
       a_cycles_i  => tm_cycles,
       a_channel_o => channels);
   
@@ -559,7 +559,8 @@ begin
       gpio_o(0) => leds_o(0),
       gpio_o(1) => leds_o(1),
       gpio_o(2) => leds_o(2),
-      gpio_o(3) => leds_o(3));
+      gpio_o(3) => leds_o(3),
+      gpio_o(15 downto 4) => open);
   
   C1 : eca_wb_channel
     port map(

@@ -705,6 +705,7 @@ set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_L_PER_LENGTH 8.66N -to DDR3
 set_instance_assignment -name BOARD_MODEL_NEAR_TLINE_C_PER_LENGTH 3.47P -to DDR3_ODT
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to DDR3_WE_n
 set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
+set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwrf_mux.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_gpio_channel.vhd
 set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/eb_slave_core/xetherbone_core.vhd"
 set_global_assignment -name VHDL_FILE "../../../ip_cores/etherbone-core/hdl/eb_slave_core/WB_bus_adapter_streaming_sg.vhd"

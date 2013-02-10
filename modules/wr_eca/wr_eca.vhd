@@ -53,7 +53,7 @@ entity wr_eca is
     -- Actions output according to time
     a_clk_i     : in  std_logic;
     a_rst_n_i   : in  std_logic;
-    a_utc_i     : in  std_logic_vector(39 downto 0);
+    a_tai_i     : in  std_logic_vector(39 downto 0);
     a_cycles_i  : in  std_logic_vector(27 downto 0);
     a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
 end wr_eca;
@@ -111,7 +111,7 @@ begin
   T0 : eca_wr_time
     port map(
       clk_i    => a_clk_i,
-      utc_i    => a_utc_i,
+      tai_i    => a_tai_i,
       cycles_i => a_cycles_i,
       time_o   => sa_time0);
   

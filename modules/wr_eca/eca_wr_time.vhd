@@ -34,7 +34,7 @@ use work.eca_pkg.all;
 entity eca_wr_time is
   port(
     clk_i    : in std_logic;
-    utc_i    : in std_logic_vector(39 downto 0);
+    tai_i    : in std_logic_vector(39 downto 0);
     cycles_i : in std_logic_vector(27 downto 0);
     time_o   : out t_time);
 end eca_wr_time;
@@ -81,9 +81,9 @@ begin
       r0_b <= (others => '0');
       
       if s0_load then
-        -- Multiply utc_i by 5
-        r0_a(39 downto  0) <= utc_i;
-        r0_b(41 downto  2) <= utc_i;
+        -- Multiply tai_i by 5
+        r0_a(39 downto  0) <= tai_i;
+        r0_b(41 downto  2) <= tai_i;
         r0_cycles <= cycles_i;
       elsif s0_cycles then
         -- Multiply by 2^6, add offset (31), add cycles
