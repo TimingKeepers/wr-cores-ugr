@@ -368,14 +368,18 @@ begin
           rc_cw_channel <= sc_wc_channel;
         end if;
         
-        -- Only allow the record to be valid if it is topologically sorted
+        -- Only allow the next pointer to be valid if it is topologically sorted
         -- This ensures that there is never a loop in the walker chain.
-        -- Also, if the channel is out-of-range, drop it as well.
-        if rc_cw_wen = '1' and 
-           (unsigned(rc_cw_next) >= unsigned(rc_cw_addr) or
-            to_integer(unsigned(rc_cw_channel)) >= g_num_channels) then
+        if rc_cw_wen = '1' and rc_cw_valid = '1' and 
+           unsigned(rc_cw_next) >= unsigned(rc_cw_addr) then
           rc_cw_valid <= '0';
           rc_cw_wen   <= '1';
+        end if;
+        
+        -- If the channel is out-of-range, zero it.
+        if to_integer(unsigned(rc_cw_channel)) >= g_num_channels then
+          rc_cw_channel <= (others => '0');
+          rc_cw_wen <= '1';
         end if;
         
         -- Record maximum fill
