@@ -206,8 +206,6 @@ architecture rtl of scu_top is
   
   signal pcie_slave_i : t_wishbone_slave_in;
   signal pcie_slave_o : t_wishbone_slave_out;
-  signal eca_pcie_master_i : t_wishbone_master_in;
-  signal eca_pcie_master_o : t_wishbone_master_out;
 
   signal pllout_clk_sys   : std_logic;
   signal pllout_clk_dmtd  : std_logic;
@@ -271,6 +269,8 @@ architecture rtl of scu_top is
   
   signal s_hpla_ch: unsigned(15 downto 0);
   signal ddr3_test_status: std_logic_vector(7 downto 0);
+  
+  signal eca_gpio : std_logic_vector(15 downto 0);
   
 begin
 
@@ -489,27 +489,21 @@ begin
     port map(
        clk125_i      => pllout_clk_sys,
        cal_clk50_i   => clk_reconf,
+       
        pcie_refclk_i => pcie_refclk_i,
        pcie_rstn_i   => nPCI_RESET,
        pcie_rx_i     => pcie_rx_i,
        pcie_tx_o     => pcie_tx_o,
-       wb_clk        => pllout_clk_sys,
-       wb_rstn_i     => pllout_clk_sys_rstn,
+       
+       master_clk_i  => pllout_clk_sys,
+       master_rstn_i => pllout_clk_sys_rstn,
        master_o      => cbar_slave_i(1),
        master_i      => cbar_slave_o(1),
+       
+       slave_clk_i   => clk_125m_pllref_p,
+       slave_rstn_i  => clk_125m_pllref_p_rstn,
        slave_i       => pcie_slave_i,
        slave_o       => pcie_slave_o);
-  
-  PCIeInt : xwb_clock_crossing
-    port map(
-      slave_clk_i    => clk_125m_pllref_p,
-      slave_rst_n_i  => clk_125m_pllref_p_rstn,
-      slave_i        => eca_pcie_master_o,
-      slave_o        => eca_pcie_master_i,
-      master_clk_i   => pllout_clk_sys,
-      master_rst_n_i => pllout_clk_sys_rstn,
-      master_i       => pcie_slave_o,
-      master_o       => pcie_slave_i);      
   
   TLU : wb_timestamp_latch
     generic map (
@@ -556,19 +550,15 @@ begin
       clk_i     => clk_125m_pllref_p,
       rst_n_i   => clk_125m_pllref_p_rstn,
       channel_i => channels(0),
-      gpio_o(0) => leds_o(0),
-      gpio_o(1) => leds_o(1),
-      gpio_o(2) => leds_o(2),
-      gpio_o(3) => leds_o(3),
-      gpio_o(15 downto 4) => open);
+      gpio_o    => eca_gpio);
   
   C1 : eca_wb_channel
     port map(
       clk_i     => clk_125m_pllref_p,
       rst_n_i   => clk_125m_pllref_p_rstn,
       channel_i => channels(1),
-      master_o  => eca_pcie_master_o,
-      master_i  => eca_pcie_master_i);
+      master_o  => pcie_slave_i,
+      master_i  => pcie_slave_o);
   
   C2 : eca_wb_channel
     port map(
@@ -646,5 +636,10 @@ begin
   lemo_en_in <= "01";                 -- configure lemo 1 as output, lemo 2 as input
   lemo_io1(0) <= ext_pps;
   lemo_led(1) <= ext_pps;
+  
+  leds_o(0) <= eca_gpio(0);
+  leds_o(1) <= eca_gpio(1);
+  leds_o(2) <= eca_gpio(2);
+  leds_o(3) <= eca_gpio(3);
   
 end rtl;
