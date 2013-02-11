@@ -174,29 +174,14 @@ architecture rtl of scu_top is
   -- WR core layout
   constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
   
-  -- Ref clock crossbar
-  constant c_ref_slaves  : natural := 3;
-  constant c_ref_masters : natural := 2;
-  constant c_ref_layout : t_sdb_record_array(c_ref_slaves-1 downto 0) :=
-   (0 => f_sdb_embed_device(c_eca_sdb,                    x"00040000"),
-    1 => f_sdb_embed_device(c_eca_evt_sdb,                x"00060000"),
-    2 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00080000"));
-  constant c_ref_sdb_address : t_wishbone_address := x"000C0000";
-  constant c_ref_bridge : t_sdb_bridge := 
-    f_xwb_bridge_layout_sdb(true, c_ref_layout, c_ref_sdb_address);
-  
-  signal cbar_ref_slave_i  : t_wishbone_slave_in_array (c_ref_masters-1 downto 0);
-  signal cbar_ref_slave_o  : t_wishbone_slave_out_array(c_ref_masters-1 downto 0);
-  signal cbar_ref_master_i : t_wishbone_master_in_array(c_ref_slaves-1 downto 0);
-  signal cbar_ref_master_o : t_wishbone_master_out_array(c_ref_slaves-1 downto 0);
-  
   -- Top crossbar layout
-  constant c_slaves : natural := 2;
+  constant c_slaves  : natural := 4;
   constant c_masters : natural := 2;
-  constant c_test_dpram_size : natural := 2048;
   constant c_layout : t_sdb_record_array(c_slaves-1 downto 0) :=
-   (0 => f_sdb_embed_bridge(c_wrcore_bridge_sdb, x"00000000"),
-    1 => f_sdb_embed_bridge(c_ref_bridge,        x"00100000"));
+   (0 => f_sdb_embed_bridge(c_wrcore_bridge_sdb,          x"00000000"),
+    1 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00100000"),
+    2 => f_sdb_embed_device(c_eca_sdb,                    x"00100800"),
+    3 => f_sdb_embed_device(c_eca_evt_sdb,                x"00100C00"));
   constant c_sdb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
@@ -250,7 +235,7 @@ architecture rtl of scu_top is
   signal tm_tai    : std_logic_vector(39 downto 0);
   signal tm_cycles : std_logic_vector(27 downto 0);
 
-  signal channels : t_channel_array(2 downto 0);
+  signal channels : t_channel_array(1 downto 0);
   
   signal owr_pwren_o : std_logic_vector(1 downto 0);
   signal owr_en_o: std_logic_vector(1 downto 0);
@@ -324,7 +309,8 @@ begin
       g_dpram_initf               => "",
       g_dpram_size                => 90112/4,
       g_interface_mode            => PIPELINED,
-      g_address_granularity       => BYTE)
+      g_address_granularity       => BYTE,
+      g_aux_sdb                   => c_etherbone_sdb)
     port map (
       clk_sys_i  => pllout_clk_sys,
       clk_dmtd_i => pllout_clk_dmtd,
@@ -511,14 +497,14 @@ begin
       g_fifo_depth   => 10)
     port map (
       ref_clk_i       => clk_125m_pllref_p,
-      sys_clk_i       => clk_125m_pllref_p,
-      nRSt_i          => clk_125m_pllref_p_rstn,
+      sys_clk_i       => pllout_clk_sys,
+      nRSt_i          => pllout_clk_sys_rstn,
       triggers_i      => lemo_io2,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_tai,
       tm_cycles_i     => tm_cycles,
-      wb_slave_i      => cbar_ref_master_o(2),
-      wb_slave_o      => cbar_ref_master_i(2));
+      wb_slave_i      => cbar_master_o(1),
+      wb_slave_o      => cbar_master_i(1));
 
   ECA0 : wr_eca
     generic map(
@@ -528,17 +514,17 @@ begin
                            f_name("WB:   timing bus")),
       g_log_table_size => 7,
       g_log_queue_len  => 8,
-      g_num_channels   => 3,
+      g_num_channels   => 2,
       g_num_streams    => 1)
     port map(
-      e_clk_i  (0)=> clk_125m_pllref_p,
-      e_rst_n_i(0)=> clk_125m_pllref_p_rstn,
-      e_slave_i(0)=> cbar_ref_master_o(1),
-      e_slave_o(0)=> cbar_ref_master_i(1),
-      c_clk_i     => clk_125m_pllref_p,
-      c_rst_n_i   => clk_125m_pllref_p_rstn,
-      c_slave_i   => cbar_ref_master_o(0),
-      c_slave_o   => cbar_ref_master_i(0),
+      e_clk_i  (0)=> pllout_clk_sys,
+      e_rst_n_i(0)=> pllout_clk_sys_rstn,
+      e_slave_i(0)=> cbar_master_o(3),
+      e_slave_o(0)=> cbar_master_i(3),
+      c_clk_i     => pllout_clk_sys,
+      c_rst_n_i   => pllout_clk_sys_rstn,
+      c_slave_i   => cbar_master_o(2),
+      c_slave_o   => cbar_master_i(2),
       a_clk_i     => clk_125m_pllref_p,
       a_rst_n_i   => clk_125m_pllref_p_rstn,
       a_tai_i     => tm_tai,
@@ -560,43 +546,6 @@ begin
       master_o  => pcie_slave_i,
       master_i  => pcie_slave_o);
   
-  C2 : eca_wb_channel
-    port map(
-      clk_i     => clk_125m_pllref_p,
-      rst_n_i   => clk_125m_pllref_p_rstn,
-      channel_i => channels(2),
-      master_o  => cbar_ref_slave_i(1),
-      master_i  => cbar_ref_slave_o(1));
-  
-  GSI_REF_CON : xwb_sdb_crossbar
-   generic map(
-     g_num_masters => c_ref_masters,
-     g_num_slaves  => c_ref_slaves,
-     g_registered  => true,
-     g_wraparound  => true,
-     g_layout      => c_ref_layout,
-     g_sdb_addr    => c_ref_sdb_address)
-   port map(
-     clk_sys_i     => clk_125m_pllref_p,
-     rst_n_i       => clk_125m_pllref_p_rstn,
-     -- Master connections (INTERCON is a slave)
-     slave_i       => cbar_ref_slave_i,
-     slave_o       => cbar_ref_slave_o,
-     -- Slave connections (INTERCON is a master)
-     master_i      => cbar_ref_master_i,
-     master_o      => cbar_ref_master_o);
-  
-  cross_my_clocks : xwb_clock_crossing
-    port map(
-      slave_clk_i    => pllout_clk_sys,
-      slave_rst_n_i  => pllout_clk_sys_rstn,
-      slave_i        => cbar_master_o(1),
-      slave_o        => cbar_master_i(1),
-      master_clk_i   => clk_125m_pllref_p,
-      master_rst_n_i => clk_125m_pllref_p_rstn,
-      master_i       => cbar_ref_slave_o(0),
-      master_o       => cbar_ref_slave_i(0));
-   
   GSI_CON : xwb_sdb_crossbar
    generic map(
      g_num_masters => c_masters,
