@@ -60,66 +60,31 @@ entity wr_gxb_phy_arriaii is
 
   port (
 
-    clk_reconf_i : in std_logic;
+    clk_reconf_i : in  std_logic;
+    clk_ref_i    : in  std_logic;
 
-    clk_ref_i : in std_logic;
+    tx_clk_o       : out std_logic;  -- TX path, synchronous to tx_clk_o
+    tx_data_i      : in  std_logic_vector(7 downto 0);   -- data input (8 bits, not 8b10b-encoded)
+    tx_k_i         : in  std_logic;  -- 1 when tx_data_i contains a control code, 0 when it's a data byte
+    tx_disparity_o : out std_logic;  -- disparity of the currently transmitted 8b10b code (1 = plus, 0 = minus).
+    tx_enc_err_o   : out std_logic;  -- Encoding error indication (1 = error, 0 = no error)
 
-    -- TX path, synchronous to tx_clk_o
+    rx_rbclk_o    : out std_logic;  -- RX recovered clock
+    rx_data_o     : out std_logic_vector(7 downto 0);  -- 8b10b-decoded data output. 
+    rx_k_o        : out std_logic;   -- 1 when the byte on rx_data_o is a control code
+    rx_enc_err_o  : out std_logic;   -- encoding error indication
+    rx_bitslide_o : out std_logic_vector(3 downto 0); -- RX bitslide indication, indicating the delay of the RX path of the transceiver (in UIs). Must be valid when ch0_rx_data_o is valid.
 
-    tx_clk_o : out std_logic;
-
-    -- data input (8 bits, not 8b10b-encoded)
-    tx_data_i : in std_logic_vector(7 downto 0);
-
-    -- 1 when tx_data_i contains a control code, 0 when it's a data byte
-    tx_k_i : in std_logic;
-
-    -- disparity of the currently transmitted 8b10b code (1 = plus, 0 = minus).
-    -- Necessary for the PCS to generate proper frame termination sequences.
-    tx_disparity_o : out std_logic;
-
-    -- Encoding error indication (1 = error, 0 = no error)
-    tx_enc_err_o : out std_logic;
-
-
-    -- RX recovered clock
-    rx_rbclk_o : out std_logic;
-
-    -- 8b10b-decoded data output. The data output must be kept invalid before
-    -- the transceiver is locked on the incoming signal to prevent the EP from
-    -- detecting a false carrier.
-    rx_data_o : out std_logic_vector(7 downto 0);
-
-    -- 1 when the byte on rx_data_o is a control code
-    rx_k_o : out std_logic;
-
-    -- encoding error indication
-    rx_enc_err_o : out std_logic;
-
-    -- RX bitslide indication, indicating the delay of the RX path of the
-    -- transceiver (in UIs). Must be valid when ch0_rx_data_o is valid.
-    rx_bitslide_o : out std_logic_vector(3 downto 0);
-
-    -- reset input, active hi
-    rst_i : in std_logic;
-
-    -- local loopback enable (Tx->Rx), active hi
-    loopen_i : in std_logic;
-
+    rst_i    : in std_logic;  -- reset input, active hi
+    loopen_i : in std_logic; -- local loopback enable (Tx->Rx), active hi
 
     pad_txp_o : out std_logic;
-
-    pad_rxp_i : in std_logic := '0'
-    );
-
+    pad_rxp_i : in std_logic := '0');
 
 end wr_gxb_phy_arriaii;
 
 architecture rtl of wr_gxb_phy_arriaii is
 
-  
-
-  
   component arria_phy
     generic (
       starting_channel_number : natural := 0);
@@ -143,6 +108,7 @@ architecture rtl of wr_gxb_phy_arriaii is
       rx_ctrldetect               : out std_logic_vector (0 downto 0);
       rx_dataout                  : out std_logic_vector (7 downto 0);
       rx_errdetect                : out std_logic_vector (0 downto 0);
+      rx_seriallpbken             : in  std_logic_vector (0 downto 0);
       tx_clkout                   : out std_logic_vector (0 downto 0);
       tx_dataout                  : out std_logic_vector (0 downto 0));
   end component;
@@ -169,6 +135,7 @@ architecture rtl of wr_gxb_phy_arriaii is
   signal rx_ctrldetect               : std_logic_vector (0 downto 0);
   signal rx_dataout                  : std_logic_vector (7 downto 0);
   signal rx_errdetect                : std_logic_vector (0 downto 0);
+  signal rx_seriallpbken             : std_logic_vector (0 downto 0);
   signal tx_clkout                   : std_logic_vector (0 downto 0);
   signal tx_dataout                  : std_logic_vector (0 downto 0);
   signal reconfig_busy               : std_logic;
@@ -210,30 +177,31 @@ begin  -- rtl
       cal_blk_clk      => clk_reconf_i,
       pll_inclk        => clk_ref_i,
       reconfig_clk     => clk_reconf_i,
-      reconfig_togxb   => reconfig_togxb,
       reconfig_fromgxb => reconfig_fromgxb,
+      reconfig_togxb   => reconfig_togxb,
 
-      rx_datain                => f_sl_to_slv(pad_rxp_i),
-      tx_bitslipboundaryselect => "00000",
-      tx_ctrlenable            => f_sl_to_slv(tx_k_i),
-      tx_datain                => tx_data_i,
-      tx_dispval               => f_sl_to_slv(tx_dispval),
-      tx_forcedisp             => f_sl_to_slv(tx_forcedisp),
-      tx_dataout               => tx_dataout,
-
-      tx_digitalreset => f_sl_to_slv(rst_pipe(2)),
-      rx_analogreset  => f_sl_to_slv(rst_pipe(4)),
-      rx_digitalreset  => f_sl_to_slv(rst_pipe(6)),
-
-      rx_bitslipboundaryselectout => open,
+      rx_analogreset              => f_sl_to_slv(rst_pipe(4)),
+      rx_bitslipboundaryselectout => rx_bitslipboundaryselectout,
       rx_clkout                   => rx_clkout,
       rx_ctrldetect               => rx_ctrldetect,
+      rx_datain                   => f_sl_to_slv(pad_rxp_i),
       rx_dataout                  => rx_dataout,
+      rx_digitalreset             => f_sl_to_slv(rst_pipe(6)),
       rx_errdetect                => rx_errdetect,
-      tx_clkout                   => tx_clkout);
+      rx_seriallpbken             => rx_seriallpbken,
+
+      tx_bitslipboundaryselect => "00000",
+      tx_clkout                => tx_clkout,
+      tx_ctrlenable            => f_sl_to_slv(tx_k_i),
+      tx_datain                => tx_data_i,
+      tx_dataout               => tx_dataout,
+      tx_digitalreset          => f_sl_to_slv(rst_pipe(2)),
+      tx_dispval               => f_sl_to_slv(tx_dispval),
+      tx_forcedisp             => f_sl_to_slv(tx_forcedisp));
 
   rx_clk_int <= rx_clkout(0);
   pad_txp_o  <= tx_dataout(0);
+  rx_seriallpbken(0) <= loopen_i;
 
   gen_disp : process(clk_ref_i)
   begin
@@ -295,4 +263,5 @@ begin  -- rtl
 
   rx_rbclk_o <= rx_clk_int;
   tx_clk_o   <= tx_clkout(0);
+  rx_bitslide_o <= rx_bitslipboundaryselectout(3 downto 0);
 end rtl;
