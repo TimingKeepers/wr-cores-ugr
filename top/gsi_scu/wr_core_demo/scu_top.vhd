@@ -192,16 +192,13 @@ architecture rtl of scu_top is
   signal pcie_slave_i : t_wishbone_slave_in;
   signal pcie_slave_o : t_wishbone_slave_out;
 
-  signal pllout_clk_sys   : std_logic;
-  signal pllout_clk_dmtd  : std_logic;
   signal locked           : std_logic;
   signal clk_sys          : std_logic;
+  signal clk_ref          : std_logic;
   signal clk_dmtd         : std_logic;
   signal clk_reconf       : std_logic;
   
-  signal pllout_clk_sys_rstn    : std_logic;
-  signal clk_125m_pllref_p_rstn : std_logic;
-  signal reset_clks, reset_rstn : std_logic_vector(1 downto 0);
+  signal rstn_sys, rstn_ref : std_logic;
 
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
@@ -252,9 +249,6 @@ architecture rtl of scu_top is
   signal sfp2_sda_i:	std_logic;
   signal sfp2_det_i: std_logic;
   
-  signal s_hpla_ch: unsigned(15 downto 0);
-  signal ddr3_test_status: std_logic_vector(7 downto 0);
-  
   signal eca_gpio : std_logic_vector(15 downto 0);
   
 begin
@@ -275,28 +269,27 @@ begin
     port map(
       noe_in   => '0');
   
-  dmtd_clk_pll_inst : dmtd_clk_pll port map (
-    inclk0 => clk_20m_vcxo_i,           -- 20Mhz 
-    c0     => pllout_clk_dmtd); 
+  dmtd_pll_inst : dmtd_clk_pll port map (
+    inclk0 => clk_20m_vcxo_i,    --  20  Mhz 
+    c0     => clk_dmtd);         --  62.5MHz
 
   sys_pll_inst : sys_pll port map (
-    inclk0 => L_CLKp,                   -- 125Mhz 
-    c0     => pllout_clk_sys,
-    c1     => clk_reconf,               -- 50Mhz for reconfig block
+    inclk0 => clk_125m_pllref_p, -- 125  Mhz 
+    c0     => clk_sys,           --  62.5MHz
+    c1     => clk_reconf,        --  50  Mhz
+    c2     => clk_ref,           -- 125  MHz
     locked => locked);
   
   reset : gc_reset
     generic map(
       g_clocks => 2)
     port map(
-      free_clk_i => clk_20m_vcxo_i,
+      free_clk_i => clk_dmtd,
       locked_i   => locked,
-      clks_i     => reset_clks,
-      rstn_o     => reset_rstn);
-  reset_clks(0) <= pllout_clk_sys;
-  reset_clks(1) <= clk_125m_pllref_p;
-  pllout_clk_sys_rstn <= reset_rstn(0);
-  clk_125m_pllref_p_rstn <= reset_rstn(1);
+      clks_i(0)  => clk_sys,
+      clks_i(1)  => clk_ref,
+      rstn_o(0)  => rstn_sys,
+      rstn_o(1)  => rstn_ref);
 
   U_WR_CORE : xwr_core
     generic map (
@@ -312,13 +305,13 @@ begin
       g_address_granularity       => BYTE,
       g_aux_sdb                   => c_etherbone_sdb)
     port map (
-      clk_sys_i  => pllout_clk_sys,
-      clk_dmtd_i => pllout_clk_dmtd,
-      clk_ref_i  => clk_125m_pllref_p,
+      clk_sys_i  => clk_sys,
+      clk_dmtd_i => clk_dmtd,
+      clk_ref_i  => clk_ref,
       clk_aux_i  => (others => '0'),
       clk_ext_i  => '0', -- g_with_external_clock_input controls usage
       pps_ext_i  => '0',
-      rst_n_i    => pllout_clk_sys_rstn,
+      rst_n_i    => rstn_sys,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
       dac_hpll_data_o    => dac_hpll_data,
@@ -389,7 +382,7 @@ begin
       g_force_disparity => 1)
     port map (
       clk_reconf_i   => clk_reconf,
-      clk_ref_i      => clk_125m_pllref_p,
+      clk_ref_i      => clk_ref,
       tx_clk_o       => phy_tx_clk,
       tx_data_i      => phy_tx_data,
       tx_k_i         => phy_tx_k,
@@ -401,7 +394,7 @@ begin
       rx_enc_err_o   => phy_rx_enc_err,
       rx_bitslide_o  => phy_rx_bitslide,
       rst_i          => phy_rst,
-      loopen_i       => '0',
+      loopen_i       => phy_loopen,
       pad_txp_o      => sfp2_txp_o,
       pad_rxp_i      => sfp2_rxp_i);
 
@@ -411,8 +404,8 @@ begin
       g_num_extra_bits => 8)            -- AD DACs with 24bit interface
 
     port map (
-      clk_i   => pllout_clk_sys,
-      rst_n_i => pllout_clk_sys_rstn,
+      clk_i   => clk_sys,
+      rst_n_i => rstn_sys,
 
       val1_i  => dac_dpll_data,
       load1_i => dac_dpll_load_p1,
@@ -430,36 +423,17 @@ begin
     generic map (
       g_width => 10000000)
     port map (
-      clk_i      => pllout_clk_sys,
-      rst_n_i    => pllout_clk_sys_rstn,
+      clk_i      => clk_sys,
+      rst_n_i    => rstn_sys,
       pulse_i    => pps,
       extended_o => ext_pps);
   
-  lpc_slave: lpc_uart
-    port map(
-      lpc_clk => LPC_FPGA_CLK,
-      lpc_serirq => LPC_SERIRQ,
-      lpc_ad => LPC_AD,
-      lpc_frame_n => nLPC_FRAME,
-      lpc_reset_n => nPCI_RESET,
-      
-      serial_rxd => uart_rxd_i(1),
-      serial_txd => uart_txd_o(1),
-      serial_dtr => open,
-      serial_dcd => '0',
-      serial_dsr => '0',
-      serial_ri => '0',
-      serial_cts => '0',
-      serial_rts => open,
-      seven_seg_L => open,
-      seven_seg_H => open);
-      
    U_ebone : eb_slave_core
      generic map(
        g_sdb_address => x"00000000" & c_sdb_address)
      port map(
-       clk_i       => pllout_clk_sys,
-       nRst_i      => pllout_clk_sys_rstn,
+       clk_i       => clk_sys,
+       nRst_i      => rstn_sys,
        snk_i       => mb_snk_in,
        snk_o       => mb_snk_out,
        src_o       => mb_src_out,
@@ -473,7 +447,7 @@ begin
     generic map(
        sdb_addr => c_sdb_address)
     port map(
-       clk125_i      => pllout_clk_sys,
+       clk125_i      => clk_ref,
        cal_clk50_i   => clk_reconf,
        
        pcie_refclk_i => pcie_refclk_i,
@@ -481,13 +455,13 @@ begin
        pcie_rx_i     => pcie_rx_i,
        pcie_tx_o     => pcie_tx_o,
        
-       master_clk_i  => pllout_clk_sys,
-       master_rstn_i => pllout_clk_sys_rstn,
+       master_clk_i  => clk_sys,
+       master_rstn_i => rstn_sys,
        master_o      => cbar_slave_i(1),
        master_i      => cbar_slave_o(1),
        
-       slave_clk_i   => clk_125m_pllref_p,
-       slave_rstn_i  => clk_125m_pllref_p_rstn,
+       slave_clk_i   => clk_ref,
+       slave_rstn_i  => rstn_ref,
        slave_i       => pcie_slave_i,
        slave_o       => pcie_slave_o);
   
@@ -496,9 +470,9 @@ begin
       g_num_triggers => 1,
       g_fifo_depth   => 10)
     port map (
-      ref_clk_i       => clk_125m_pllref_p,
-      sys_clk_i       => pllout_clk_sys,
-      nRSt_i          => pllout_clk_sys_rstn,
+      ref_clk_i       => clk_ref,
+      sys_clk_i       => clk_sys,
+      nRSt_i          => rstn_sys,
       triggers_i      => lemo_io2,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_tai,
@@ -517,31 +491,31 @@ begin
       g_num_channels   => 2,
       g_num_streams    => 1)
     port map(
-      e_clk_i  (0)=> pllout_clk_sys,
-      e_rst_n_i(0)=> pllout_clk_sys_rstn,
+      e_clk_i  (0)=> clk_sys,
+      e_rst_n_i(0)=> rstn_sys,
       e_slave_i(0)=> cbar_master_o(3),
       e_slave_o(0)=> cbar_master_i(3),
-      c_clk_i     => pllout_clk_sys,
-      c_rst_n_i   => pllout_clk_sys_rstn,
+      c_clk_i     => clk_sys,
+      c_rst_n_i   => rstn_sys,
       c_slave_i   => cbar_master_o(2),
       c_slave_o   => cbar_master_i(2),
-      a_clk_i     => clk_125m_pllref_p,
-      a_rst_n_i   => clk_125m_pllref_p_rstn,
+      a_clk_i     => clk_ref,
+      a_rst_n_i   => rstn_ref,
       a_tai_i     => tm_tai,
       a_cycles_i  => tm_cycles,
       a_channel_o => channels);
   
   C0 : eca_gpio_channel
     port map(
-      clk_i     => clk_125m_pllref_p,
-      rst_n_i   => clk_125m_pllref_p_rstn,
+      clk_i     => clk_ref,
+      rst_n_i   => rstn_ref,
       channel_i => channels(0),
       gpio_o    => eca_gpio);
   
   C1 : eca_wb_channel
     port map(
-      clk_i     => clk_125m_pllref_p,
-      rst_n_i   => clk_125m_pllref_p_rstn,
+      clk_i     => clk_ref,
+      rst_n_i   => rstn_ref,
       channel_i => channels(1),
       master_o  => pcie_slave_i,
       master_i  => pcie_slave_o);
@@ -555,28 +529,14 @@ begin
      g_layout      => c_layout,
      g_sdb_addr    => c_sdb_address)
    port map(
-     clk_sys_i     => pllout_clk_sys,
-     rst_n_i       => pllout_clk_sys_rstn,
+     clk_sys_i     => clk_sys,
+     rst_n_i       => rstn_sys,
      -- Master connections (INTERCON is a slave)
      slave_i       => cbar_slave_i,
      slave_o       => cbar_slave_o,
      -- Slave connections (INTERCON is a master)
      master_i      => cbar_master_i,
      master_o      => cbar_master_o);
-  
-  la_counter: process (pllout_clk_sys)
-  begin
-    if rising_edge(pllout_clk_sys) then
-      if pllout_clk_sys_rstn = '0' then
-        s_hpla_ch <= (others => '0');
-      else
-        s_hpla_ch <= s_hpla_ch + 1;
-      end if;
-    end if;	
-  end process;
-  
-  hpla_ch <= std_logic_vector(s_hpla_ch);
-  hpla_clk <= pllout_clk_sys;
   
   serial_to_cb_o   <= '0'; 				-- connects the serial ports to the carrier board
   
@@ -590,5 +550,11 @@ begin
   leds_o(1) <= eca_gpio(1);
   leds_o(2) <= eca_gpio(2);
   leds_o(3) <= eca_gpio(3);
+  
+  hpla_ch(0) <= clk_ref;
+  hpla_ch(1) <= clk_sys;
+  hpla_ch(2) <= phy_tx_clk;
+  hpla_ch(3) <= phy_rx_rbclk;
+  hpla_ch(4) <= clk_dmtd;
   
 end rtl;
