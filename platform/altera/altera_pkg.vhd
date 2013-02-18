@@ -36,6 +36,7 @@ package wr_altera_pkg is
         inclk0 : in  std_logic := '0';
         c0     : out std_logic;
         c1     : out std_logic;
+        c2     : out std_logic;
         locked : out std_logic
         );
   end component;
