@@ -3,8 +3,8 @@ action = "synthesis"
 
 fetchto = "../../../ip_cores"
 
-syn_device = "ep2agx125ef"
-syn_grade = "c5"
+syn_device = "ep2agx125df"
+syn_grade = "c6"
 syn_package = "25"
 syn_top = "exploder_top"
 syn_project = "exploder_top"

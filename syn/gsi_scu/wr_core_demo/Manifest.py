@@ -10,5 +10,3 @@ syn_top = "scu_top"
 syn_project = "scu"
 
 modules = {"local" : [ "../../../", "../../../top/gsi_scu/wr_core_demo"]}
-
-				 

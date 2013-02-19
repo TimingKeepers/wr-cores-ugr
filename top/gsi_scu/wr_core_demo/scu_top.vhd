@@ -12,7 +12,6 @@ use work.eca_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 use work.pcie_wb_pkg.all;
 use work.wr_altera_pkg.all;
-use work.lpc_uart_pkg.all;
 use work.etherbone_pkg.all;
 
 entity scu_top is
