@@ -22,21 +22,33 @@ package wr_altera_pkg is
       );
   end component;
 
-  component dmtd_clk_pll
+  component dmtd_pll
     port
       (
-        inclk0 : in  std_logic := '0';
-        c0     : out std_logic
+        inclk0 : in  std_logic := '0'; -- 20   MHz
+        c0     : out std_logic;        -- 62.5 MHz
+        locked : out std_logic
+        );
+  end component;
+
+  component ref_pll
+    port
+      (
+        inclk0 : in  std_logic := '0'; -- 125 MHz
+        c0     : out std_logic;        -- 125 MHz
+        locked : out std_logic
         );
   end component;
 
   component sys_pll
     port
       (
-        inclk0 : in  std_logic := '0';
-        c0     : out std_logic;
-        c1     : out std_logic;
-        c2     : out std_logic;
+        inclk0 : in  std_logic := '0'; -- 125   MHz
+        c0     : out std_logic;        -- 125   MHz
+        c1     : out std_logic;        --  50   MHz
+        c2     : out std_logic;        --  62.5 MHz
+        c3     : out std_logic;        --  20   MHz
+        c4     : out std_logic;        -- 100   MHz
         locked : out std_logic
         );
   end component;

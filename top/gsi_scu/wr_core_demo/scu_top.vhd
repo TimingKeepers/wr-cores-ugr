@@ -17,10 +17,9 @@ use work.etherbone_pkg.all;
 entity scu_top is
   port(
     clk_20m_vcxo_i    : in std_logic;  -- 20MHz VCXO clock
-    clk_125m_pllref_p : in std_logic;  -- 125 MHz PLL reference
-
-    L_CLKp : in std_logic;            -- local clk from 125Mhz oszillator
-    nres   : in std_logic;            -- powerup reset
+    clk_125m_pllref_i : in std_logic;  -- 125 MHz PLL reference
+    clk_125m_local_i  : in std_logic;  -- local clk from 125Mhz oszillator
+    nres              : in std_logic; -- powerup reset
     
     -----------------------------------------
     -- UART on front panel
@@ -191,14 +190,23 @@ architecture rtl of scu_top is
   signal pcie_slave_i : t_wishbone_slave_in;
   signal pcie_slave_o : t_wishbone_slave_out;
 
-  signal locked           : std_logic;
-  signal clk_sys          : std_logic;
-  signal clk_ref          : std_logic;
-  signal clk_dmtd         : std_logic;
+  -- Sys PLL from clk_125m_local_i
+  signal sys_locked       : std_logic;
+  signal clk_pcie         : std_logic;
   signal clk_reconf       : std_logic;
+  signal clk_sys          : std_logic;
+  signal clk_scubus       : std_logic;
+  signal rstn_sys         : std_logic;
   
-  signal rstn_sys, rstn_ref : std_logic;
-
+  -- Ref PLL from clk_125m_pllref_i
+  signal ref_locked       : std_logic;
+  signal clk_ref          : std_logic;
+  signal rstn_ref         : std_logic;
+  
+  -- DMTD PLL from clk_20m_vcxo_i
+  signal dmtd_locked      : std_logic;
+  signal clk_dmtd         : std_logic;
+  
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
@@ -268,27 +276,42 @@ begin
     port map(
       noe_in   => '0');
   
-  dmtd_pll_inst : dmtd_clk_pll port map (
+  dmtd_inst : dmtd_pll port map(
     inclk0 => clk_20m_vcxo_i,    --  20  Mhz 
-    c0     => clk_dmtd);         --  62.5MHz
-
-  sys_pll_inst : sys_pll port map (
-    inclk0 => clk_125m_pllref_p, -- 125  Mhz 
-    c0     => clk_sys,           --  62.5MHz
-    c1     => clk_reconf,        --  50  Mhz
-    c2     => clk_ref,           -- 125  MHz
-    locked => locked);
+    c0     => clk_dmtd,          --  62.5MHz
+    locked => dmtd_locked);
   
-  reset : gc_reset
+  ref_inst : ref_pll port map(
+    inclk0 => clk_125m_pllref_i, -- 125 MHz
+    c0     => clk_ref,           -- 125 MHz
+    locked => ref_locked);
+
+  sys_inst : sys_pll port map(
+    inclk0 => clk_125m_local_i, -- 125  Mhz 
+    c0     => clk_pcie,         -- 125  MHz
+    c1     => clk_reconf,       --  50  Mhz
+    c2     => clk_sys,          --  62.5MHz
+    c3     => clk_scubus,       --  20  MHz
+    c4     => open,             -- 100  MHz
+    locked => sys_locked);
+  
+  sys_reset : gc_reset
     generic map(
-      g_clocks => 2)
+      g_clocks => 1)
     port map(
-      free_clk_i => clk_dmtd,
-      locked_i   => locked,
+      free_clk_i => clk_sys,
+      locked_i   => sys_locked,
       clks_i(0)  => clk_sys,
-      clks_i(1)  => clk_ref,
-      rstn_o(0)  => rstn_sys,
-      rstn_o(1)  => rstn_ref);
+      rstn_o(0)  => rstn_sys);
+
+  ref_reset : gc_reset
+    generic map(
+      g_clocks => 1)
+    port map(
+      free_clk_i => clk_ref,
+      locked_i   => ref_locked,
+      clks_i(0)  => clk_ref,
+      rstn_o(0)  => rstn_ref);
 
   U_WR_CORE : xwr_core
     generic map (
@@ -400,8 +423,7 @@ begin
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
       g_invert_sclk    => false,
-      g_num_extra_bits => 8)            -- AD DACs with 24bit interface
-
+      g_num_extra_bits => 8) -- AD DACs with 24bit interface
     port map (
       clk_i   => clk_sys,
       rst_n_i => rstn_sys,
@@ -446,7 +468,7 @@ begin
     generic map(
        sdb_addr => c_sdb_address)
     port map(
-       clk125_i      => clk_ref,
+       clk125_i      => clk_pcie,
        cal_clk50_i   => clk_reconf,
        
        pcie_refclk_i => pcie_refclk_i,
@@ -545,15 +567,15 @@ begin
   lemo_io1(0) <= ext_pps;
   lemo_led(1) <= ext_pps;
   
-  leds_o(0) <= eca_gpio(0);
-  leds_o(1) <= eca_gpio(1);
-  leds_o(2) <= eca_gpio(2);
-  leds_o(3) <= eca_gpio(3);
+  leds_o(0) <= not eca_gpio(0);
+  leds_o(1) <= not eca_gpio(1);
+  leds_o(2) <= not eca_gpio(2);
+  leds_o(3) <= not eca_gpio(3);
   
-  hpla_ch(0) <= clk_ref;
-  hpla_ch(1) <= clk_sys;
-  hpla_ch(2) <= phy_tx_clk;
-  hpla_ch(3) <= phy_rx_rbclk;
-  hpla_ch(4) <= clk_dmtd;
+--  hpla_ch(0) <= clk_ref;
+--  hpla_ch(1) <= clk_sys;
+--  hpla_ch(2) <= phy_tx_clk;
+--  hpla_ch(3) <= phy_rx_rbclk;
+--  hpla_ch(4) <= clk_dmtd;
   
 end rtl;

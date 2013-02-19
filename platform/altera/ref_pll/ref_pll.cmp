@@ -13,10 +13,11 @@
 --applicable agreement for further details.
 
 
-component dmtd_clk_pll
+component ref_pll
 	PORT
 	(
 		inclk0		: IN STD_LOGIC  := '0';
-		c0		: OUT STD_LOGIC 
+		c0		: OUT STD_LOGIC ;
+		locked		: OUT STD_LOGIC 
 	);
 end component;
