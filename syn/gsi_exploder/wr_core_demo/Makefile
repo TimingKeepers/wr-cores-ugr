@@ -1,4 +1,4 @@
-TARGET		=  scu
+TARGET		=  exploder_top
 
 QUARTUS		?= /opt/quartus
 QUARTUS_BIN	=  $(QUARTUS)/bin
