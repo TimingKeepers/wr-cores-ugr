@@ -45,8 +45,8 @@ entity scu_top is
     -----------------------------------------
     -- LEMO on front panel
     -----------------------------------------
-    lemo_io1       : out std_logic_vector(0 downto 0);
-    lemo_io2       : in  std_logic_vector(0 downto 0);
+    lemo_io1       : inout std_logic;
+    lemo_io2       : inout std_logic;
     lemo_en_in     : out std_logic_vector(2 downto 1);
     lemo_led       : out std_logic_vector(2 downto 1);
     
@@ -71,9 +71,15 @@ entity scu_top is
     OneWire_CB     : inout std_logic;
     
     -----------------------------------------------------------------------
+    -- QL1 serdes
+    -----------------------------------------------------------------------
+--    QL1_GXB_RX        : in std_logic_vector(3 downto 0);
+--    QL1_GXB_TX        : out std_logic_vector(3 downto 0);
+    
+    -----------------------------------------------------------------------
     -- AUX SFP 
     -----------------------------------------------------------------------
-    sfp1_tx_disable_o : out std_logic;
+    sfp1_tx_disable_o : out std_logic := '0';
     --sfp1_txp_o        : out std_logic;
     --sfp1_rxp_i        : in  std_logic;
     
@@ -84,7 +90,7 @@ entity scu_top is
     -----------------------------------------------------------------------
     -- Timing SFP 
     -----------------------------------------------------------------------
-    sfp2_tx_disable_o : out std_logic;
+    sfp2_tx_disable_o : out std_logic := '0';
     sfp2_txp_o        : out std_logic;
     sfp2_rxp_i        : in  std_logic;
     
@@ -107,6 +113,13 @@ entity scu_top is
     A_EXT_LVDS_CLKOUT : out std_logic;
     A_EXT_LVDS_CLKIN  : in std_logic;
     EIO               : out std_logic_vector(16 downto 0);
+    
+    -----------------------------------------------------------------------
+    -- serial channel SCU bus
+    -----------------------------------------------------------------------
+    
+    --A_MASTER_CON_RX   : in std_logic_vector(3 downto 0);
+    --A_MASTER_CON_TX   : out std_logic_vector(3 downto 0);
     
     -----------------------------------------------------------------------
     -- SCU Bus
@@ -145,26 +158,27 @@ entity scu_top is
     nWE_FSH           : out   std_logic;
     nOE_FSH           : out   std_logic;
     nRST_FSH          : out   std_logic;
-    WAIT_FSH          : in    std_logic);
+    WAIT_FSH          : in    std_logic;
     
     -----------------------------------------------------------------------
     -- DDR3
     -----------------------------------------------------------------------
---    DDR3_DQ           : inout std_logic_vector(15 downto 0);
---    DDR3_DM           : out   std_logic_vector(1 downto 0);
---    DDR3_BA           : out   std_logic_vector(2 downto 0);
---    DDR3_ADDR         : out   std_logic_vector(12 downto 0);
---    DDR3_CS_n         : out   std_logic_vector(0 downto 0);
+    DDR3_DQ           : inout std_logic_vector(15 downto 0);
+    DDR3_DM           : out   std_logic_vector(1 downto 0);
+    DDR3_BA           : out   std_logic_vector(2 downto 0);
+    DDR3_ADDR         : out   std_logic_vector(12 downto 0);
+    DDR3_CS_n         : out   std_logic_vector(0 downto 0);
 --    DDR3_DQS          : inout std_logic_vector(1 downto 0);
 --    DDR3_DQSn         : inout std_logic_vector(1 downto 0);
---    DDR3_RES_n        : out   std_logic;
---    DDR3_CKE          : out   std_logic_vector(0 downto 0);
---    DDR3_ODT          : out   std_logic_vector(0 downto 0);
---    DDR3_CAS_n        : out   std_logic;
---    DDR3_RAS_n        : out   std_logic;
+    DDR3_RES_n        : out   std_logic;
+    DDR3_CKE          : out   std_logic_vector(0 downto 0);
+    DDR3_ODT          : out   std_logic_vector(0 downto 0);
+    DDR3_CAS_n        : out   std_logic;
+    DDR3_RAS_n        : out   std_logic;
 --    DDR3_CLK          : inout std_logic_vector(0 downto 0);
 --    DDR3_CLK_n        : inout std_logic_vector(0 downto 0);
---    DDR3_WE_n         : out   std_logic);
+    DDR3_WE_n         : out   std_logic);
+    
 end scu_top;
 
 architecture rtl of scu_top is
@@ -494,7 +508,7 @@ begin
       ref_clk_i       => clk_ref,
       sys_clk_i       => clk_sys,
       nRSt_i          => rstn_sys,
-      triggers_i      => lemo_io2,
+      triggers_i(0)   => lemo_io2,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_tai,
       tm_cycles_i     => tm_cycles,
@@ -564,7 +578,7 @@ begin
   sfp2_tx_disable_o <= '0';				-- enable SFP
   
   lemo_en_in <= "01";                 -- configure lemo 1 as output, lemo 2 as input
-  lemo_io1(0) <= ext_pps;
+  lemo_io1 <= ext_pps;
   lemo_led(1) <= ext_pps;
   
   leds_o(0) <= not eca_gpio(0);
@@ -572,10 +586,10 @@ begin
   leds_o(2) <= not eca_gpio(2);
   leds_o(3) <= not eca_gpio(3);
   
---  hpla_ch(0) <= clk_ref;
---  hpla_ch(1) <= clk_sys;
---  hpla_ch(2) <= phy_tx_clk;
---  hpla_ch(3) <= phy_rx_rbclk;
---  hpla_ch(4) <= clk_dmtd;
+  hpla_ch(0) <= clk_ref;
+  hpla_ch(1) <= clk_sys;
+  hpla_ch(2) <= phy_tx_clk;
+  hpla_ch(3) <= phy_rx_rbclk;
+  hpla_ch(4) <= clk_dmtd;
   
 end rtl;
