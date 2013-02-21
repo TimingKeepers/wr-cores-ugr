@@ -12,3 +12,7 @@ set_clock_groups -asynchronous                \
  -group { pcie_refclk_i     PCIe|*          } \
  -group { wr_gxb_phy*                       } \
  -group { LPC_FPGA_CLK                      }
+
+# PCIe constraints; SERDES Digital Reset inputs are asynchronous:
+set_false_path -to {*|altera_pcie_serdes:serdes|*|tx_digitalreset_reg0c[0]}
+set_false_path -to {*|altera_pcie_serdes:serdes|*|rx_digitalreset_reg0c[0]}
