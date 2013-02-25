@@ -136,7 +136,9 @@ architecture rtl of eca_walker is
   subtype  c_time_range    is natural range c_time_bits     +c_next_range'left downto c_next_range'left+1;
   subtype  c_tag_range     is natural range c_tag_bits      +c_time_range'left downto c_time_range'left+1;
   subtype  c_channel_range is natural range c_channel_bits  +c_tag_range'left  downto c_tag_range'left +1;
-  constant c_table_data_bits : natural := std_logic_vector(c_channel_range)'left + 1; --'
+  
+  subtype  t_table_data_type is std_logic_vector(c_channel_range);
+  constant c_table_data_bits : natural := t_table_data_type'left + 1; --'
 begin
   
   Active : eca_sdp

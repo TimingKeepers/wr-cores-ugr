@@ -104,7 +104,7 @@ architecture rtl of eca_search is
   signal r1_state : t_state     := input;
   
   signal r1_first : t_list_ptr;
-  signal r1_test  : t_event;
+  signal r1_test_n: t_event;
   signal r1_stb   : std_logic;
   signal r1_done  : std_logic;
   
@@ -144,7 +144,9 @@ architecture rtl of eca_search is
   constant c_valid_offset : natural := 0;
   subtype  c_first_range is natural range c_list_ptr_bits+c_valid_offset     downto c_valid_offset    +1;
   subtype  c_event_range is natural range c_event_bits   +c_first_range'left downto c_first_range'left+1;
-  constant c_data_bits : natural := std_logic_vector(c_event_range)'left+1; --'
+  
+  subtype  t_data_type is std_logic_vector(c_event_range);
+  constant c_data_bits : natural := t_data_type'left+1; --'
 begin
 
   Active : eca_sdp
@@ -190,7 +192,7 @@ begin
     port map(
       clk_i => clk_i,
       a_i   => r1_event,
-      b_i   => not r1_test,
+      b_i   => r1_test_n,
       c_i   => '1',
       c1_o  => s2_less,
       x2_o  => open,
@@ -230,7 +232,7 @@ begin
       end if;
       
       r1_first <= s0_first;
-      r1_test  <= s0_test;
+      r1_test_n<= not s0_test;
       r1_stb   <= f_eca_active_high(r0_state = output) and s0_valid;
       r1_done  <= f_eca_active_high(r0_state = output) and not s0_valid;
       

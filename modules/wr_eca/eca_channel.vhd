@@ -231,7 +231,9 @@ architecture rtl of eca_channel is
   subtype  cd_tag_range   is natural range c_tag_bits  +cd_time_range'left  downto cd_time_range'left  +1;
   subtype  cd_param_range is natural range c_param_bits+cd_tag_range'left   downto cd_tag_range'left   +1;
   subtype  cd_event_range is natural range c_event_bits+cd_param_range'left downto cd_param_range'left +1;
-  constant cd_data_bits : natural := std_logic_vector(cd_event_range)'left + 1; --'
+  
+  subtype  cd_data_type is std_logic_vector(cd_event_range);
+  constant cd_data_bits : natural := cd_data_type'left + 1; --'
   
 begin
 
