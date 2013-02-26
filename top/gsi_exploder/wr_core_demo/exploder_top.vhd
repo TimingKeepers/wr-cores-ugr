@@ -315,13 +315,14 @@ architecture rtl of exploder_top is
   constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
   
   -- Top crossbar layout
-  constant c_slaves  : natural := 4;
+  constant c_slaves  : natural := 5;
   constant c_masters : natural := 2;
   constant c_layout : t_sdb_record_array(c_slaves-1 downto 0) :=
    (0 => f_sdb_embed_bridge(c_wrcore_bridge_sdb,          x"00000000"),
     1 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00100000"),
     2 => f_sdb_embed_device(c_eca_sdb,                    x"00100800"),
-    3 => f_sdb_embed_device(c_eca_evt_sdb,                x"00100C00"));
+    3 => f_sdb_embed_device(c_eca_evt_sdb,                x"00100C00"),
+    4 => f_sdb_embed_device(c_wb_serial_lcd_sdb,          x"00100D00"));
   constant c_sdb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
@@ -405,6 +406,12 @@ architecture rtl of exploder_top is
   
   signal lemo_ttl : std_logic;
   signal lemo_i   : std_logic_vector(8 downto 1);
+  
+  signal di_scp : std_logic;
+  signal di_lp  : std_logic;
+  signal di_flm : std_logic;
+  signal di_dat : std_logic;
+  signal di_bll : std_logic;
 begin
 
   -- open drain buffer for one wire (only one)
@@ -745,8 +752,8 @@ begin
   hpw_io(15 downto 7) <= (others => 'Z');
   
   -- Use output LEMOs in TTL mode
-  lemo_ttl <= '1';
-  select_o <= lemo_ttl;
+  lemo_ttl <= '0';
+  select_o  <= lemo_ttl;
   selectn_o <= not lemo_ttl;
   
   -- LEMO outputs
@@ -792,18 +799,33 @@ begin
   end generate;
   
   -- Display back light
-  -- red=nolink, yellow=link+notrack, green=track
-  -- red is so overpowering that we need to tone it down to get yellow
-  bll_o   <= '1';
-  red_o   <= (tm_valid and tm_up) or clk_lcd;
-  blue_o  <= '1';
-  green_o <= not tm_up;
+  -- red=nolink, blue=link+notrack, green=track
+  di_bll <= '1';
+  bll_o   <= 'Z' when di_bll='1' else '0';
+  red_o   <= '0' when (not tm_up)                  = '1' else 'Z';
+  blue_o  <= '0' when (    tm_up and not tm_valid) = '1' else 'Z';
+  green_o <= '0' when (    tm_up and     tm_valid) = '1' else 'Z';
   
   -- Display
-  discp_o <= '0'; -- clock
-  dilp_o  <= '0';
-  diflm_o <= '0';
-  diin_o  <= '0';
+  display : wb_serial_lcd
+    generic map(
+      g_wait => 1,
+      g_hold => 15)
+    port map(
+      slave_clk_i  => clk_sys,
+      slave_rstn_i => rstn_sys,
+      slave_i      => cbar_master_o(4),
+      slave_o      => cbar_master_i(4),
+      di_clk_i     => clk_lcd,
+      di_scp_o     => di_scp,
+      di_lp_o      => di_lp,
+      di_flm_o     => di_flm,
+      di_dat_o     => di_dat);
+  
+  discp_o <= '0' when (di_scp = '0') else 'Z';
+  dilp_o  <= '0' when (di_lp  = '0') else 'Z';
+  diflm_o <= '0' when (di_flm = '0') else 'Z';
+  diin_o  <= '0' when (di_dat = '0') else 'Z';
   
   -- USB micro controller
   pres_o <= '0';
