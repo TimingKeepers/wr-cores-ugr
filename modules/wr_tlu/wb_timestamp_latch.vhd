@@ -397,18 +397,18 @@ begin  -- behavioral
             ---------------------------------------------------------------------
  
             case address is
-              when x"000" => null;
+              when x"000" => wb_slave_o.ack <= '1';
               when x"004" => fifo_clear <= data; wb_slave_o.ack <= '1'; -- clear fifo
               -- trigger channel status (armed/inactive)
-              when x"008" => null;
+              when x"008" => wb_slave_o.ack <= '1';
               when x"00C" => trigger_active <= trigger_active or data; wb_slave_o.ack <= '1'; --armed
               when x"010" => trigger_active <= trigger_active and not data; wb_slave_o.ack <= '1'; --inactive
               -- trigger channel edge select (pos/neg)               
-              when x"014" => null;    
+              when x"014" => wb_slave_o.ack <= '1';   
               when x"018"  => trigger_edge <= trigger_edge or data; wb_slave_o.ack <= '1'; --pos
               when x"01C"  => trigger_edge <= trigger_edge and not data; wb_slave_o.ack <= '1'; --neg               
 
-              when others => wb_slave_o.err <= '1';
+              when others => wb_slave_o.err <= '1';  
             end case;
           else
             -------------------------------------------------------------------
@@ -416,16 +416,16 @@ begin  -- behavioral
             -------------------------------------------------------------------
                case address is
 
-                when x"000" => wb_slave_o.dat <= pad_4_WB(fifo_data_rdy);  wb_slave_o.ack <= '1';
-                when x"004" => null;
+                when x"000" => wb_slave_o.dat <= pad_4_WB(fifo_data_rdy); wb_slave_o.ack <= '1'; 
+                when x"004" => wb_slave_o.ack <= '1';
            
                 when x"008" => wb_slave_o.dat <= pad_4_WB(trigger_active); wb_slave_o.ack <= '1';
-                when x"00C" => null;
-                when x"010" => null;
+                when x"00C" => wb_slave_o.ack <= '1';
+                when x"010" => wb_slave_o.ack <= '1';
                                
                 when x"014"  => wb_slave_o.dat <= pad_4_WB(trigger_edge); wb_slave_o.ack <= '1';
-                when x"018" => null;
-                when x"01C" => null;
+                when x"018" => wb_slave_o.ack <= '1';
+                when x"01C" => wb_slave_o.ack <= '1';
                 when x"100" => wb_slave_o.dat <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_in(0)(67 downto 60);
 										 cur_tm_word1   <= tm_fifo_in(0)(59 downto 28);
 										 cur_tm_word2   <= std_logic_vector(to_unsigned(0, 32-28)) & tm_fifo_in(0)(27 downto 0);
@@ -433,7 +433,7 @@ begin  -- behavioral
 					 when x"104" => wb_slave_o.dat <= cur_tm_word1; wb_slave_o.ack <= '1';
 					 when x"108" => wb_slave_o.dat <= cur_tm_word2; wb_slave_o.ack <= '1';
 					 
-                when others => wb_slave_o.err <= '1';
+                when others => wb_slave_o.err <= '1';  
               end case;
             end if;
           else
@@ -463,7 +463,7 @@ begin  -- behavioral
                 -- timestamp cycles word
                 when "100" => wb_slave_o.dat <= tm_word2(i); wb_slave_o.ack <= '1';
 
-                when others => wb_slave_o.err <= '1';
+                when others => wb_slave_o.ack <= '1';  
               end case;
             end if; -- if address < map_end
         end if; -- if address > fifo_offset
