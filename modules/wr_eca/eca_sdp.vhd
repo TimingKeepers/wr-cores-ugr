@@ -51,7 +51,7 @@ architecture rtl of eca_sdp is
   type ram_t is array(2**g_addr_bits-1 downto 0) of 
     std_logic_vector(g_data_bits-1 downto 0);
     
-  signal ram : ram_t;
+  signal ram : ram_t := (others => (others => '0'));
 begin
   
   r : process(r_clk_i)
