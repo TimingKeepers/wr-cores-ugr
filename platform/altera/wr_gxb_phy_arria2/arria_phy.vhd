@@ -141,7 +141,7 @@
 	 SIGNAL  wire_tx_pll0_clk	:	STD_LOGIC_VECTOR (3 DOWNTO 0);
 	 SIGNAL  wire_tx_pll0_dprioout	:	STD_LOGIC_VECTOR (299 DOWNTO 0);
 	 SIGNAL  wire_tx_pll0_inclk	:	STD_LOGIC_VECTOR (9 DOWNTO 0);
-	 SIGNAL  wire_tx_pll0_locked	:	STD_LOGIC;
+	 --SIGNAL  wire_tx_pll0_locked	:	STD_LOGIC;
 	 SIGNAL  wire_receive_pcs0_bitslipboundaryselectout	:	STD_LOGIC_VECTOR (4 DOWNTO 0);
 	 SIGNAL  wire_receive_pcs0_cdrctrllocktorefcl	:	STD_LOGIC;
 	 SIGNAL  wire_w_lg_reconfig_togxb_busy307w	:	STD_LOGIC_VECTOR (0 DOWNTO 0);
@@ -155,7 +155,7 @@
 	 SIGNAL  wire_receive_pcs0_pipepowerdown	:	STD_LOGIC_VECTOR (1 DOWNTO 0);
 	 SIGNAL  wire_receive_pcs0_pipepowerstate	:	STD_LOGIC_VECTOR (3 DOWNTO 0);
 	 SIGNAL  wire_receive_pcs0_rxfound	:	STD_LOGIC_VECTOR (1 DOWNTO 0);
-	 SIGNAL  wire_receive_pcs0_signaldetect	:	STD_LOGIC;
+	 --SIGNAL  wire_receive_pcs0_signaldetect	:	STD_LOGIC;
 	 SIGNAL  wire_receive_pcs0_xgmdatain	:	STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 SIGNAL  wire_receive_pma0_analogtestbus	:	STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 SIGNAL  wire_receive_pma0_clockout	:	STD_LOGIC;
@@ -173,7 +173,7 @@
 	 SIGNAL  wire_transmit_pcs0_dispval	:	STD_LOGIC_VECTOR (3 DOWNTO 0);
 	 SIGNAL  wire_transmit_pcs0_dprioout	:	STD_LOGIC_VECTOR (149 DOWNTO 0);
 	 SIGNAL  wire_transmit_pcs0_forcedisp	:	STD_LOGIC_VECTOR (3 DOWNTO 0);
-	 SIGNAL  wire_transmit_pcs0_forceelecidleout	:	STD_LOGIC;
+	 --SIGNAL  wire_transmit_pcs0_forceelecidleout	:	STD_LOGIC;
 	 SIGNAL  wire_transmit_pcs0_powerdn	:	STD_LOGIC_VECTOR (1 DOWNTO 0);
 	 SIGNAL  wire_transmit_pcs0_revparallelfdbk	:	STD_LOGIC_VECTOR (19 DOWNTO 0);
 	 SIGNAL  wire_transmit_pcs0_txdetectrx	:	STD_LOGIC;
@@ -1697,7 +1697,7 @@
 		dprioin => pll0_dprioin(299 DOWNTO 0),
 		dprioout => wire_tx_pll0_dprioout,
 		inclk => wire_tx_pll0_inclk,
-		locked => wire_tx_pll0_locked,
+		locked => open, -- wire_tx_pll0_locked,
 		powerdown => pllpowerdn_in(0)
 	  );
 	wire_receive_pcs0_cdrctrllocktorefcl <= wire_w_lg_reconfig_togxb_busy307w(0);
@@ -1841,7 +1841,7 @@
 		rmfifowrena => wire_gnd,
 		rxdetectvalid => wire_gnd,
 		rxfound => wire_receive_pcs0_rxfound,
-		signaldetect => wire_receive_pcs0_signaldetect,
+		signaldetect => open, -- wire_receive_pcs0_signaldetect,
 		signaldetected => rx_signaldetect_wire(0),
 		xgmctrlin => wire_gnd,
 		xgmdatain => wire_receive_pcs0_xgmdatain
@@ -1971,7 +1971,7 @@
 		enrevparallellpbk => wire_gnd,
 		forcedisp => wire_transmit_pcs0_forcedisp,
 		forcedispcompliance => wire_gnd,
-		forceelecidleout => wire_transmit_pcs0_forceelecidleout,
+		forceelecidleout => open, -- wire_transmit_pcs0_forceelecidleout,
 		invpol => tx_invpolarity(0),
 		localrefclk => tx_localrefclk(0),
 		phfiforddisable => wire_gnd,
