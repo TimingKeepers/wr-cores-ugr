@@ -203,6 +203,7 @@ architecture rtl of eca_channel is
   signal scan_next    : t_table_lo_index;
   signal scan_time_p4 : t_queue_index;
   signal scan_time_m4 : t_queue_index;
+  signal scan_valid3  : std_logic_vector(c_scanners-1 downto 0);
   signal scan_valid2  : std_logic_vector(c_scanners-1 downto 0);
   signal scan_valid1  : std_logic_vector(c_scanners-1 downto 0);
   signal scan_lesseq  : std_logic_vector(c_scanners-1 downto 0);
@@ -264,8 +265,9 @@ begin
   TSx : for table_hi_idx in 0 to c_scanners-1 generate
     TS : eca_sdp
       generic map(
-        g_addr_bits => c_table_lo_index_bits,
-        g_data_bits => c_time_bits+1)
+        g_addr_bits  => c_table_lo_index_bits,
+        g_data_bits  => c_time_bits+1,
+        g_dual_clock => false)
       port map(
         w_clk_i                 => clk_i,
         w_en_i                  => ts_manage_write(table_hi_idx),
@@ -281,8 +283,9 @@ begin
   -- The data part of the table
   TD : eca_sdp
     generic map(
-      g_addr_bits => c_table_index_bits,
-      g_data_bits => cd_data_bits)
+      g_addr_bits  => c_table_index_bits,
+      g_data_bits  => cd_data_bits,
+      g_dual_clock => false)
     port map(
       w_clk_i                  => clk_i,
       w_en_i                   => td_manage_write,
@@ -303,8 +306,9 @@ begin
   -- The free queue
   F : eca_sdp
     generic map(
-      g_addr_bits => c_table_index_bits,
-      g_data_bits => c_table_index_bits)
+      g_addr_bits  => c_table_index_bits,
+      g_data_bits  => c_table_index_bits,
+      g_dual_clock => false)
     port map(
       w_clk_i  => clk_i,
       w_en_i   => fw_manage_free,
@@ -411,7 +415,11 @@ begin
     begin
       if rising_edge(clk_i) then
         -- No reset; logic is acyclic
-        scan_valid2(table_hi_idx) <= ts_scan_valid(table_hi_idx);
+        
+        scan_valid3(table_hi_idx) <= -- beware of RW conflict on memory
+          f_eca_active_high(ts_manage_index(table_hi_idx) /= ts_scan_index(table_hi_idx));
+        
+        scan_valid2(table_hi_idx) <= ts_scan_valid(table_hi_idx) and scan_valid3(table_hi_idx);
         scan_time  (table_hi_idx) <= ts_scan_time(table_hi_idx);
         
         scan_valid1(table_hi_idx) <= scan_valid2(table_hi_idx);

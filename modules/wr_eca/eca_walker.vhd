@@ -143,8 +143,9 @@ begin
   
   Active : eca_sdp
     generic map(
-      g_addr_bits => c_table_index_bits,
-      g_data_bits => c_table_data_bits)
+      g_addr_bits  => c_table_index_bits,
+      g_data_bits  => c_table_data_bits,
+      g_dual_clock => true)
     port map(
       r_clk_i                   => clk_i,
       r_addr_i(s_w_addr'length) => s_w_page,
@@ -166,8 +167,9 @@ begin
   
   Program : eca_sdp
     generic map(
-      g_addr_bits => c_table_index_bits,
-      g_data_bits => c_table_data_bits)
+      g_addr_bits  => c_table_index_bits,
+      g_data_bits  => c_table_data_bits,
+      g_dual_clock => false)
     port map(
       r_clk_i                   => t_clk_i,
       r_addr_i(t_addr_i'length) => t_page_i,

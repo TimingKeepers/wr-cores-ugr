@@ -27,16 +27,19 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
 use work.wishbone_pkg.all;
 use work.eca_pkg.all;
+use work.genram_pkg.all;
 
 -- Registers its inputs. Async outputs. 
 -- When r_clk_i=w_clk_i and r_addr_i=w_addr_i, r_data_o return old data (not w_data_i).
 -- If r_clk_i /= w_clk_i, then r_data_o is undefined.
 entity eca_sdp is
   generic(
-    g_addr_bits : natural := 8;
-    g_data_bits : natural := 8);
+    g_addr_bits  : natural := 8;
+    g_data_bits  : natural := 8;
+    g_dual_clock : boolean);
   port(
     r_clk_i  : in  std_logic;
     r_addr_i : in  std_logic_vector(g_addr_bits-1 downto 0);
@@ -48,27 +51,22 @@ entity eca_sdp is
 end eca_sdp;
 
 architecture rtl of eca_sdp is
-  type ram_t is array(2**g_addr_bits-1 downto 0) of 
-    std_logic_vector(g_data_bits-1 downto 0);
-    
-  signal ram : ram_t := (others => (others => '0'));
 begin
   
-  r : process(r_clk_i)
-  begin
-    if rising_edge(r_clk_i) then
-      r_data_o <= ram(to_integer(unsigned(r_addr_i)));
-    end if;
-  end process;
-  
-  w : process(w_clk_i)
-  begin
-    if rising_edge(w_clk_i) then
-      if w_en_i = '1' then
-        ram(to_integer(unsigned(w_addr_i))) <= w_data_i;
-      end if;
-    end if;
-  end process;
-  
+  ram : generic_simple_dpram
+    generic map(
+      g_data_width               => g_data_bits,
+      g_size                     => 2**g_addr_bits,
+      g_with_byte_enable         => false,
+      g_addr_conflict_resolution => "dont_care",
+      g_dual_clock               => g_dual_clock)
+    port map(
+      clka_i => w_clk_i,
+      wea_i  => w_en_i,
+      aa_i   => w_addr_i,
+      da_i   => w_data_i,
+      clkb_i => r_clk_i,
+      ab_i   => r_addr_i,
+      qb_o   => r_data_o);
 
 end rtl;
