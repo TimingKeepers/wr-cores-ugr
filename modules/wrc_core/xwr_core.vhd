@@ -54,7 +54,6 @@ entity xwr_core is
     g_aux_clks                  : integer                        := 1;
     g_ep_rxbuf_size             : integer                        := 1024;
     g_dpram_initf               : string                         := "";
-    g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
     g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity       : t_wishbone_address_granularity := WORD;
@@ -202,7 +201,6 @@ architecture struct of xwr_core is
       g_aux_clks                  : integer                        := 1;
       g_rx_buffer_size            : integer                        := 12;
       g_dpram_initf               : string                         := "";
-      g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
       g_dpram_size                : integer                        := 16384;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity       : t_wishbone_address_granularity := WORD;
@@ -334,7 +332,6 @@ begin
       g_with_external_clock_input => g_with_external_clock_input,
       g_aux_clks                  => g_aux_clks,
       g_dpram_initf               => g_dpram_initf,
-      g_dpram_initv               => g_dpram_initv,
       g_dpram_size                => g_dpram_size,
       g_interface_mode            => g_interface_mode,
       g_address_granularity       => g_address_granularity,
