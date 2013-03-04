@@ -158,7 +158,6 @@ architecture behavioral of wb_timestamp_latch is
   -- LATCH UNIT(s)
   -----------------------------------------------------------------------------
   -- trigger sync chain
-  signal triggers_synced          : channel;
   signal triggers_pos_edge_synced : channel;
   signal triggers_neg_edge_synced : channel;
   -- tm latch registers
@@ -176,8 +175,7 @@ architecture behavioral of wb_timestamp_latch is
   signal rd                       : channel;
   signal we                       : channel;
   signal rd_empty                 : channel;
-  signal wr_empty                 : channel;
-  signal wr_full                  : channel;
+
   signal rd_count                 : t_cnt_array;
   signal wr_count                 : t_cnt_array;
 
@@ -287,7 +285,7 @@ begin  -- behavioral
         clk_i    => ref_clk_i,
         rst_n_i  => nRst_i,
         data_i   => triggers_i(i),
-        synced_o => triggers_synced(i),
+        synced_o => open,
         npulse_o => triggers_neg_edge_synced(i),
         ppulse_o => triggers_pos_edge_synced(i));
 
@@ -317,8 +315,8 @@ begin  -- behavioral
         clk_wr_i          => ref_clk_i,
         d_i               => tm_fifo_in(i),
         we_i              => we(i),
-        wr_empty_o        => wr_empty(i),
-        wr_full_o         => wr_full(i),
+        wr_empty_o        => open,
+        wr_full_o         => open,
         wr_almost_empty_o => open,
         wr_almost_full_o  => open,
         wr_count_o        => open,
@@ -368,6 +366,9 @@ begin  -- behavioral
   data          <= wb_slave_i.dat(g_num_triggers-1 downto 0);
 
 
+  wb_slave_o.int <= '0';
+  wb_slave_o.rty <= '0';
+  
   wb_if : process (sys_clk_i)
     variable i : natural range 0 to g_num_triggers-1 := 0;
 
