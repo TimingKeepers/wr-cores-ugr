@@ -195,7 +195,7 @@ architecture rtl of eca_channel is
   signal dispatch_mux_record   : t_mux_record;
   
   -- Scan registers
-  signal scan_time      : t_time_array       (c_scanners-1 downto 0);
+  signal scan_time_n    : t_time_array       (c_scanners-1 downto 0);
   signal scan_time_idx  : t_queue_index_array(c_scanners-1 downto 0);
   signal scan_index     : t_table_lo_index_array(3 downto 1) := (others => (others => '0'));
   
@@ -420,10 +420,10 @@ begin
           f_eca_active_high(ts_manage_index(table_hi_idx) /= ts_scan_index(table_hi_idx));
         
         scan_valid2(table_hi_idx) <= ts_scan_valid(table_hi_idx) and scan_valid3(table_hi_idx);
-        scan_time  (table_hi_idx) <= ts_scan_time(table_hi_idx);
+        scan_time_n(table_hi_idx) <= not ts_scan_time(table_hi_idx);
         
         scan_valid1(table_hi_idx) <= scan_valid2(table_hi_idx);
-        time_idx := scan_time(table_hi_idx)(time_idx'range);
+        time_idx := not scan_time_n(table_hi_idx)(time_idx'range);
         scan_time_idx(table_hi_idx) <= time_idx;
         -- pipeline hazard if: (time_idx - (time_i - 4)) <= 12
         scan_hazard(table_hi_idx) <= 
@@ -440,7 +440,7 @@ begin
       port map(
         clk_i => clk_i,
         a_i   => time_Q_i,
-        b_i   => not scan_time(table_hi_idx),
+        b_i   => scan_time_n(table_hi_idx),
         c_i   => '1',
         c1_o  => scan_lesseq(table_hi_idx),
         x2_o  => open,
