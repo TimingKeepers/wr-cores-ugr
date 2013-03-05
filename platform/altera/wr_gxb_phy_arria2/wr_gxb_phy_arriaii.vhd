@@ -39,6 +39,7 @@
 -- 2010-11-18  0.4      twlostow  Initial release
 -- 2011-02-07  0.5      twlostow  Verified on Spartan6 GTP (single channel only)
 -- 2011-05-15  0.6      twlostow  Added reference clock output
+-- 2013-03-04  0.7      terpstra  Restructured reset to account for ref!=txclk
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -75,7 +76,7 @@ entity wr_gxb_phy_arriaii is
     rx_enc_err_o  : out std_logic;   -- encoding error indication
     rx_bitslide_o : out std_logic_vector(3 downto 0); -- RX bitslide indication, indicating the delay of the RX path of the transceiver (in UIs). Must be valid when ch0_rx_data_o is valid.
 
-    rst_i    : in std_logic;  -- reset input, active hi
+    rst_i    : in std_logic;  -- reset input, active hi, asynchronous (wb_sys_clk)
     loopen_i : in std_logic; -- local loopback enable (Tx->Rx), active hi
 
     pad_txp_o : out std_logic;
@@ -121,31 +122,30 @@ architecture rtl of wr_gxb_phy_arriaii is
       reconfig_togxb   : out std_logic_vector (3 downto 0));
   end component;
 
-  signal cal_blk_clk                 : std_logic;
-  signal pll_inclk                   : std_logic;
-  signal reconfig_clk                : std_logic;
-  signal reconfig_togxb              : std_logic_vector (3 downto 0);
-  signal tx_ctrlenable               : std_logic;
-  signal tx_datain                   : std_logic_vector (7 downto 0);
-  signal tx_dispval                  : std_logic;
-  signal tx_forcedisp                : std_logic;
-  signal reconfig_fromgxb            : std_logic_vector (16 downto 0);
-  signal rx_bitslipboundaryselectout : std_logic_vector (4 downto 0);
+  signal rx_clk_int                  : std_logic;
+  signal tx_clk_int                  : std_logic;
+  signal tx_clkout                   : std_logic_vector (0 downto 0);
   signal rx_clkout                   : std_logic_vector (0 downto 0);
+  
+  signal rst_ref_pipe : std_logic_vector(6 downto 0);
+  signal rst_rx_pipe  : std_logic_vector(3 downto 0);
+  signal rst_tx_pipe  : std_logic_vector(3 downto 0);
+  
+  signal reconfig_togxb              : std_logic_vector (3 downto 0);
+  signal reconfig_fromgxb            : std_logic_vector (16 downto 0);
+  
+  signal rx_bitslipboundaryselectout : std_logic_vector (4 downto 0);
   signal rx_ctrldetect               : std_logic_vector (0 downto 0);
   signal rx_dataout                  : std_logic_vector (7 downto 0);
   signal rx_errdetect                : std_logic_vector (0 downto 0);
   signal rx_seriallpbken             : std_logic_vector (0 downto 0);
-  signal tx_clkout                   : std_logic_vector (0 downto 0);
   signal tx_dataout                  : std_logic_vector (0 downto 0);
 
   signal disp_pipe     : std_logic_vector(1 downto 0);
   signal cur_disp      : t_8b10b_disparity;
   signal disparity_set : std_logic;
-  signal rx_clk_int    : std_logic;
-
-  signal rst_pipe : std_logic_vector(6 downto 0);
-  
+  signal tx_dispval                  : std_logic;
+  signal tx_forcedisp                : std_logic;
   
   function f_sl_to_slv(x : std_logic)
     return std_logic_vector is
@@ -157,10 +157,39 @@ architecture rtl of wr_gxb_phy_arriaii is
   
 begin  -- rtl
 
-  p_rst_pipe: process(clk_ref_i)
+  -- Clocking
+  rx_clk_int <= rx_clkout(0);
+  tx_clk_int <= tx_clkout(0);
+  
+  rx_rbclk_o <= rx_clk_int;
+  tx_clk_o   <= tx_clk_int;
+  
+  -- Serialize the asynchronous reset into the clock domains
+  -- This is needed to prevent asynchronous de-assert => clock recovery failure
+  p_rst_ref_pipe : process(clk_ref_i, rst_i)
     begin
-      if rising_edge(clk_ref_i) then
-        rst_pipe <= rst_pipe(rst_pipe'left-1 downto 0) & rst_i;
+      if rst_i = '1' then
+        rst_ref_pipe <= (others => '1');
+      elsif rising_edge(clk_ref_i) then
+        rst_ref_pipe <= '0' & rst_ref_pipe(rst_ref_pipe'left downto 1);
+      end if;
+    end process;
+  
+  p_rst_rx_pipe : process(rx_clk_int, rst_i)
+    begin
+      if rst_i = '1' then
+        rst_rx_pipe <= (others => '1');
+      elsif rising_edge(rx_clk_int) then
+        rst_rx_pipe <= '0' & rst_rx_pipe(rst_rx_pipe'left downto 1);
+      end if;
+    end process;
+
+  p_rst_tx_pipe : process(tx_clk_int, rst_i)
+    begin
+      if rst_i = '1' then
+        rst_tx_pipe <= (others => '1');
+      elsif rising_edge(tx_clk_int) then
+        rst_tx_pipe <= '0' & rst_tx_pipe(rst_tx_pipe'left downto 1);
       end if;
     end process;
 
@@ -179,13 +208,13 @@ begin  -- rtl
       reconfig_fromgxb => reconfig_fromgxb,
       reconfig_togxb   => reconfig_togxb,
 
-      rx_analogreset              => f_sl_to_slv(rst_pipe(4)),
+      rx_analogreset              => f_sl_to_slv(rst_ref_pipe(2)),
       rx_bitslipboundaryselectout => rx_bitslipboundaryselectout,
       rx_clkout                   => rx_clkout,
       rx_ctrldetect               => rx_ctrldetect,
       rx_datain                   => f_sl_to_slv(pad_rxp_i),
       rx_dataout                  => rx_dataout,
-      rx_digitalreset             => f_sl_to_slv(rst_pipe(6)),
+      rx_digitalreset             => f_sl_to_slv(rst_ref_pipe(0)),
       rx_errdetect                => rx_errdetect,
       rx_seriallpbken             => rx_seriallpbken,
 
@@ -194,18 +223,17 @@ begin  -- rtl
       tx_ctrlenable            => f_sl_to_slv(tx_k_i),
       tx_datain                => tx_data_i,
       tx_dataout               => tx_dataout,
-      tx_digitalreset          => f_sl_to_slv(rst_pipe(2)),
+      tx_digitalreset          => f_sl_to_slv(rst_ref_pipe(4)),
       tx_dispval               => f_sl_to_slv(tx_dispval),
       tx_forcedisp             => f_sl_to_slv(tx_forcedisp));
 
-  rx_clk_int <= rx_clkout(0);
   pad_txp_o  <= tx_dataout(0);
   rx_seriallpbken(0) <= loopen_i;
 
-  gen_disp : process(clk_ref_i)
+  gen_disp : process(tx_clk_int)
   begin
-    if rising_edge(clk_ref_i) then
-      if(rst_i = '1') then
+    if rising_edge(tx_clk_int) then
+      if (rst_tx_pipe(0) = '1') then
         if(g_force_disparity = 0) then
           cur_disp <= RD_MINUS;
         else
@@ -223,44 +251,46 @@ begin  -- rtl
   tx_disparity_o <= disp_pipe(1);
   tx_enc_err_o <= '0';
 
-
-  p_force_proper_disparity : process(clk_ref_i, rst_i)
+  p_force_proper_disparity : process(tx_clk_int)
   begin
-    if (rst_i = '1') then
-      disparity_set <= '0';
+    if rising_edge(tx_clk_int) then
+      if (rst_tx_pipe(0) = '1') then
+        disparity_set <= '0';
 
-      tx_dispval   <= '0';
-      tx_forcedisp <= '0';
-    elsif rising_edge(clk_ref_i) then
-      if(disparity_set = '0' and tx_k_i = '1' and tx_data_i = x"bc") then
-        disparity_set <= '1';
-        if(g_force_disparity = 0) then
-          tx_dispval <= '0';
-        else
-          tx_dispval <= '1';
-        end if;
-        tx_forcedisp <= '1';
-      else
-        tx_forcedisp <= '0';
         tx_dispval   <= '0';
+        tx_forcedisp <= '0';
+      else
+        if(disparity_set = '0' and tx_k_i = '1' and tx_data_i = x"bc") then
+          disparity_set <= '1';
+          if(g_force_disparity = 0) then
+            tx_dispval <= '0';
+          else
+            tx_dispval <= '1';
+          end if;
+          tx_forcedisp <= '1';
+        else
+          tx_forcedisp <= '0';
+          tx_dispval   <= '0';
+        end if;
       end if;
     end if;
   end process;
 
-  p_gen_output : process(rx_clk_int, rst_i)
+  p_gen_output : process(rx_clk_int)
   begin
-    if(rst_i = '1') then
-      rx_data_o    <= (others => '0');
-      rx_k_o       <= '0';
-      rx_enc_err_o <= '0';
-    elsif rising_edge(rx_clk_int) then
-      rx_data_o    <= rx_dataout;
-      rx_k_o       <= rx_ctrldetect(0);
-      rx_enc_err_o <= rx_errdetect(0);
+    if rising_edge(rx_clk_int) then
+      if (rst_rx_pipe(0) = '1') then
+        rx_data_o    <= (others => '0');
+        rx_k_o       <= '0';
+        rx_enc_err_o <= '0';
+      else
+        rx_data_o    <= rx_dataout;
+        rx_k_o       <= rx_ctrldetect(0);
+        rx_enc_err_o <= rx_errdetect(0);
+      end if;
     end if;
   end process;
 
-  rx_rbclk_o <= rx_clk_int;
-  tx_clk_o   <= tx_clkout(0);
   rx_bitslide_o <= rx_bitslipboundaryselectout(3 downto 0);
+
 end rtl;
