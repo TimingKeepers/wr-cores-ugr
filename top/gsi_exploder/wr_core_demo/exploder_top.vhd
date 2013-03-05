@@ -346,7 +346,7 @@ architecture rtl of exploder_top is
   signal rstn_ref         : std_logic;
   
   -- DMTD PLL from clk_20m_vcxo_i
-  signal dmtd_locked      : std_logic;
+  --signal dmtd_locked      : std_logic;
   signal clk_dmtd         : std_logic;
   
   signal dac_hpll_load_p1 : std_logic;
@@ -435,7 +435,7 @@ begin
   dmtd_inst : dmtd_pll port map(
     inclk0 => clk_20m_vcxo_i,    --  20  Mhz 
     c0     => clk_dmtd,          --  62.5MHz
-    locked => dmtd_locked);
+    locked => open); -- dmtd_locked);
   
   ref_inst : ref_pll port map(
     inclk0 => clk_125m_pllref_i, -- 125 MHz
@@ -477,7 +477,7 @@ begin
       g_with_external_clock_input => true,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "",
+      g_dpram_initf               => "../../../ip_cores/wrpc-sw/wrc.mif",
       g_dpram_size                => 131072/4,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
