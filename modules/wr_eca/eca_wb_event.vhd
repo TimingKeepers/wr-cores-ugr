@@ -108,8 +108,9 @@ begin
   
   Q : eca_sdp
     generic map(
-      g_addr_bits => c_addr1_bits,
-      g_data_bits => 32)
+      g_addr_bits  => c_addr1_bits,
+      g_data_bits  => 32,
+      g_dual_clock => true)
     port map(
       r_clk_i  =>  e_clk_i,
       r_addr_i => std_logic_vector(se_addr),

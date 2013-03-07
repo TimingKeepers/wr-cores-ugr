@@ -184,12 +184,12 @@ package eca_pkg is
   function f_eca_gray_decode(x : std_logic_vector; step : natural) return std_logic_vector;
   
   -- Registers its inputs. Async outputs. 
-  -- When r_clk_i=w_clk_i and r_addr_i=w_addr_i, r_data_o return old data (not w_data_i).
-  -- If r_clk_i /= w_clk_i, then r_data_o is undefined.
+  -- When r_addr_i=w_addr_i, r_data_o is undefined.
   component eca_sdp is
     generic(
-      g_addr_bits : natural := 8;
-      g_data_bits : natural := 8);
+      g_addr_bits  : natural := 8;
+      g_data_bits  : natural := 8;
+      g_dual_clock : boolean);
     port(
       r_clk_i  : in  std_logic;
       r_addr_i : in  std_logic_vector(g_addr_bits-1 downto 0);

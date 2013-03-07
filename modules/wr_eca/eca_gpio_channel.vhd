@@ -5,8 +5,8 @@
 --! Copyright (C) 2013 GSI Helmholtz Centre for Heavy Ion Research GmbH 
 --!
 --! This component takes an action channel and turns it into a GPIO controller.
---! The tag determines the action taken on the outputs; the state of the IO is:
---!   io(x) <= (tag(16+x) and io(x)) xor tag(x);
+--! The 32-bit tag is interpretted as (16-bit clear, 16-bit set).
+--! When both clear and set appear, the output is instead toggled.
 --!
 --------------------------------------------------------------------------------
 --! This library is free software; you can redistribute it and/or
@@ -49,13 +49,19 @@ begin
   gpio_o <= r_gpio;
 
   main : process(clk_i) is
+    variable v_set : std_logic_vector(15 downto 0);
+    variable v_clr : std_logic_vector(15 downto 0);
   begin
     if rising_edge(clk_i) then
       if rst_n_i = '0' then
         r_gpio <= (others => '0');
       else
         if channel_i.valid = '1' then
-          r_gpio <= (r_gpio and channel_i.tag(31 downto 16)) xor channel_i.tag(15 downto 0);
+          v_set := channel_i.tag(15 downto  0);
+          v_clr := channel_i.tag(31 downto 16);
+          r_gpio <= ((not v_set) and (not v_clr) and (    r_gpio)) or -- unmodified
+                    ((    v_set) and (    v_clr) and (not r_gpio)) or -- toggled
+                    ((    v_set) and (not v_clr));                    -- set
         end if;
       end if;
     end if;

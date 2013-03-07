@@ -214,7 +214,10 @@ int main(int argc, char** argv) {
   if ((status = socket.open()) != EB_OK) die(status, "etherbone::socket.open");
   
   Device device;
-  if ((status = device.open(socket, devpath)) != EB_OK) die(status, "etherbone::device.open");
+  if ((status = device.open(socket, devpath)) != EB_OK) {
+    fprintf(stderr, "%s: etherbone::device.open('%s') -- %s\n", program, devpath, eb_status(status));
+    return 1;
+  }
   
   std::vector<ECA> ecas;
   if ((status = ECA::load(device, ecas)) != EB_OK) die(status, "ECA::load");

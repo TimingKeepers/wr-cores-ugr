@@ -138,7 +138,6 @@ architecture rtl of wr_gxb_phy_arriaii is
   signal rx_seriallpbken             : std_logic_vector (0 downto 0);
   signal tx_clkout                   : std_logic_vector (0 downto 0);
   signal tx_dataout                  : std_logic_vector (0 downto 0);
-  signal reconfig_busy               : std_logic;
 
   signal disp_pipe     : std_logic_vector(1 downto 0);
   signal cur_disp      : t_8b10b_disparity;
@@ -169,7 +168,7 @@ begin  -- rtl
     port map (
       reconfig_clk     => clk_reconf_i,
       reconfig_fromgxb => reconfig_fromgxb,
-      busy             => reconfig_busy,
+      busy             => open,
       reconfig_togxb   => reconfig_togxb);
 
   U_The_PHY : arria_phy

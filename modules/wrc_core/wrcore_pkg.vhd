@@ -291,7 +291,6 @@ constant c_wrc_periph3_sdb : t_sdb_device := (
       g_aux_clks                  : integer                        := 1;
       g_ep_rxbuf_size             : integer                        := 1024;
       g_dpram_initf               : string                         := "";
-      g_dpram_initv               : t_xwb_dpram_init               := c_xwb_dpram_init_nothing;
       g_dpram_size                : integer                        := 20480;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
       g_address_granularity       : t_wishbone_address_granularity := WORD;

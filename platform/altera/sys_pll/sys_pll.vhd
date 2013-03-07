@@ -92,7 +92,6 @@ ARCHITECTURE SYN OF sys_pll IS
 		clk4_duty_cycle		: NATURAL;
 		clk4_multiply_by		: NATURAL;
 		clk4_phase_shift		: STRING;
-		compensate_clock		: STRING;
 		inclk0_input_frequency		: NATURAL;
 		intended_device_family		: STRING;
 		lpm_hint		: STRING;
@@ -192,12 +191,11 @@ BEGIN
 		clk4_duty_cycle => 50,
 		clk4_multiply_by => 4,
 		clk4_phase_shift => "0",
-		compensate_clock => "CLK0",
 		inclk0_input_frequency => 8000,
 		intended_device_family => "Arria II GX",
 		lpm_hint => "CBX_MODULE_PREFIX=sys_pll",
 		lpm_type => "altpll",
-		operation_mode => "NORMAL",
+		operation_mode => "NO_COMPENSATION",
 		pll_type => "Left_Right",
 		port_activeclock => "PORT_UNUSED",
 		port_areset => "PORT_UNUSED",
@@ -268,7 +266,7 @@ END SYN;
 -- Retrieval info: PRIVATE: CLKBAD_SWITCHOVER_CHECK STRING "0"
 -- Retrieval info: PRIVATE: CLKLOSS_CHECK STRING "0"
 -- Retrieval info: PRIVATE: CLKSWITCH_CHECK STRING "0"
--- Retrieval info: PRIVATE: CNX_NO_COMPENSATE_RADIO STRING "0"
+-- Retrieval info: PRIVATE: CNX_NO_COMPENSATE_RADIO STRING "1"
 -- Retrieval info: PRIVATE: CREATE_CLKBAD_CHECK STRING "0"
 -- Retrieval info: PRIVATE: CREATE_INCLK1_CHECK STRING "0"
 -- Retrieval info: PRIVATE: CUR_DEDICATED_CLK STRING "c0"
@@ -319,7 +317,7 @@ END SYN;
 -- Retrieval info: PRIVATE: MULT_FACTOR2 NUMERIC "1"
 -- Retrieval info: PRIVATE: MULT_FACTOR3 NUMERIC "1"
 -- Retrieval info: PRIVATE: MULT_FACTOR4 NUMERIC "1"
--- Retrieval info: PRIVATE: NORMAL_MODE_RADIO STRING "1"
+-- Retrieval info: PRIVATE: NORMAL_MODE_RADIO STRING "0"
 -- Retrieval info: PRIVATE: OUTPUT_FREQ0 STRING "125.00000000"
 -- Retrieval info: PRIVATE: OUTPUT_FREQ1 STRING "50.00000000"
 -- Retrieval info: PRIVATE: OUTPUT_FREQ2 STRING "62.50000000"
@@ -406,11 +404,10 @@ END SYN;
 -- Retrieval info: CONSTANT: CLK4_DUTY_CYCLE NUMERIC "50"
 -- Retrieval info: CONSTANT: CLK4_MULTIPLY_BY NUMERIC "4"
 -- Retrieval info: CONSTANT: CLK4_PHASE_SHIFT STRING "0"
--- Retrieval info: CONSTANT: COMPENSATE_CLOCK STRING "CLK0"
 -- Retrieval info: CONSTANT: INCLK0_INPUT_FREQUENCY NUMERIC "8000"
 -- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Arria II GX"
 -- Retrieval info: CONSTANT: LPM_TYPE STRING "altpll"
--- Retrieval info: CONSTANT: OPERATION_MODE STRING "NORMAL"
+-- Retrieval info: CONSTANT: OPERATION_MODE STRING "NO_COMPENSATION"
 -- Retrieval info: CONSTANT: PLL_TYPE STRING "Left_Right"
 -- Retrieval info: CONSTANT: PORT_ACTIVECLOCK STRING "PORT_UNUSED"
 -- Retrieval info: CONSTANT: PORT_ARESET STRING "PORT_UNUSED"

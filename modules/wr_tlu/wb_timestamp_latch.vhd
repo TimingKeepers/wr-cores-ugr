@@ -175,7 +175,6 @@ architecture behavioral of wb_timestamp_latch is
   signal rd                       : channel;
   signal we                       : channel;
   signal rd_empty                 : channel;
-
   signal rd_count                 : t_cnt_array;
   signal wr_count                 : t_cnt_array;
 

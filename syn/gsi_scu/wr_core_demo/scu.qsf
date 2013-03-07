@@ -26,11 +26,11 @@ set_global_assignment -name ENABLE_SIGNALTAP OFF
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "2.5 V"
 set_location_assignment PIN_Y10 -to nres
 set_global_assignment -name SMART_RECOMPILE ON
-set_location_assignment PIN_N3 -to clk_20m_vcxo_i
+set_location_assignment PIN_AE14 -to clk_20m_vcxo_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk_20m_vcxo_i
-set_location_assignment PIN_M1 -to clk_125m_pllref_i
+set_location_assignment PIN_AE15 -to clk_125m_pllref_i
 set_instance_assignment -name IO_STANDARD LVDS -to clk_125m_pllref_i
-set_location_assignment PIN_N1 -to "clk_125m_pllref_i(n)"
+set_location_assignment PIN_AF15 -to "clk_125m_pllref_i(n)"
 set_location_assignment PIN_D15 -to clk_125m_local_i
 set_instance_assignment -name IO_STANDARD LVDS -to clk_125m_local_i
 set_location_assignment PIN_C15 -to "clk_125m_local_i(n)"

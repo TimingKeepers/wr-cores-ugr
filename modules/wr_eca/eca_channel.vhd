@@ -195,7 +195,7 @@ architecture rtl of eca_channel is
   signal dispatch_mux_record   : t_mux_record;
   
   -- Scan registers
-  signal scan_time      : t_time_array       (c_scanners-1 downto 0);
+  signal scan_time_n    : t_time_array       (c_scanners-1 downto 0);
   signal scan_time_idx  : t_queue_index_array(c_scanners-1 downto 0);
   signal scan_index     : t_table_lo_index_array(3 downto 1) := (others => (others => '0'));
   
@@ -203,6 +203,7 @@ architecture rtl of eca_channel is
   signal scan_next    : t_table_lo_index;
   signal scan_time_p4 : t_queue_index;
   signal scan_time_m4 : t_queue_index;
+  signal scan_valid3  : std_logic_vector(c_scanners-1 downto 0);
   signal scan_valid2  : std_logic_vector(c_scanners-1 downto 0);
   signal scan_valid1  : std_logic_vector(c_scanners-1 downto 0);
   signal scan_lesseq  : std_logic_vector(c_scanners-1 downto 0);
@@ -264,8 +265,9 @@ begin
   TSx : for table_hi_idx in 0 to c_scanners-1 generate
     TS : eca_sdp
       generic map(
-        g_addr_bits => c_table_lo_index_bits,
-        g_data_bits => c_time_bits+1)
+        g_addr_bits  => c_table_lo_index_bits,
+        g_data_bits  => c_time_bits+1,
+        g_dual_clock => false)
       port map(
         w_clk_i                 => clk_i,
         w_en_i                  => ts_manage_write(table_hi_idx),
@@ -281,8 +283,9 @@ begin
   -- The data part of the table
   TD : eca_sdp
     generic map(
-      g_addr_bits => c_table_index_bits,
-      g_data_bits => cd_data_bits)
+      g_addr_bits  => c_table_index_bits,
+      g_data_bits  => cd_data_bits,
+      g_dual_clock => false)
     port map(
       w_clk_i                  => clk_i,
       w_en_i                   => td_manage_write,
@@ -303,8 +306,9 @@ begin
   -- The free queue
   F : eca_sdp
     generic map(
-      g_addr_bits => c_table_index_bits,
-      g_data_bits => c_table_index_bits)
+      g_addr_bits  => c_table_index_bits,
+      g_data_bits  => c_table_index_bits,
+      g_dual_clock => false)
     port map(
       w_clk_i  => clk_i,
       w_en_i   => fw_manage_free,
@@ -411,11 +415,15 @@ begin
     begin
       if rising_edge(clk_i) then
         -- No reset; logic is acyclic
-        scan_valid2(table_hi_idx) <= ts_scan_valid(table_hi_idx);
-        scan_time  (table_hi_idx) <= ts_scan_time(table_hi_idx);
+        
+        scan_valid3(table_hi_idx) <= -- beware of RW conflict on memory
+          f_eca_active_high(ts_manage_index(table_hi_idx) /= ts_scan_index(table_hi_idx));
+        
+        scan_valid2(table_hi_idx) <= ts_scan_valid(table_hi_idx) and scan_valid3(table_hi_idx);
+        scan_time_n(table_hi_idx) <= not ts_scan_time(table_hi_idx);
         
         scan_valid1(table_hi_idx) <= scan_valid2(table_hi_idx);
-        time_idx := scan_time(table_hi_idx)(time_idx'range);
+        time_idx := not scan_time_n(table_hi_idx)(time_idx'range);
         scan_time_idx(table_hi_idx) <= time_idx;
         -- pipeline hazard if: (time_idx - (time_i - 4)) <= 12
         scan_hazard(table_hi_idx) <= 
@@ -432,7 +440,7 @@ begin
       port map(
         clk_i => clk_i,
         a_i   => time_Q_i,
-        b_i   => not scan_time(table_hi_idx),
+        b_i   => scan_time_n(table_hi_idx),
         c_i   => '1',
         c1_o  => scan_lesseq(table_hi_idx),
         x2_o  => open,
