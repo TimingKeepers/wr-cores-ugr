@@ -33,8 +33,7 @@ use work.eca_pkg.all;
 use work.genram_pkg.all;
 
 -- Registers its inputs. Async outputs. 
--- When r_clk_i=w_clk_i and r_addr_i=w_addr_i, r_data_o return old data (not w_data_i).
--- If r_clk_i /= w_clk_i, then r_data_o is undefined.
+-- When r_clk_i=w_clk_i, r_data_o is undefined.
 entity eca_sdp is
   generic(
     g_addr_bits  : natural := 8;
