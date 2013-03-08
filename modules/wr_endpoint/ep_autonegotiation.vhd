@@ -187,6 +187,7 @@ begin  -- syn
           case state is
             when AN_ENABLE =>
               mdio_msr_anegcomplete_o <= '0';
+              pcs_link_ok_o <= '0';
 
               if mdio_mcr_anenable_i = '1' then
                 an_tx_val_o        <= (others => '0');  -- send breaklink
