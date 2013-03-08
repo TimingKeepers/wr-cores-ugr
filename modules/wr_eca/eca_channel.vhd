@@ -103,10 +103,12 @@ architecture rtl of eca_channel is
   subtype t_queue_index    is std_logic_vector(c_queue_index_bits   -1 downto 0);
   subtype t_table_lo_index is std_logic_vector(c_table_lo_index_bits-1 downto 0);
   subtype t_counter        is std_logic_vector(c_counter_bits       -1 downto 0);
+  subtype t_queue_data     is std_logic_vector(c_table_lo_index_bits   downto 0);
   
   type t_table_index_array    is array(natural range <>) of t_table_index;
   type t_queue_index_array    is array(natural range <>) of t_queue_index;
   type t_table_lo_index_array is array(natural range <>) of t_table_lo_index;
+  type t_queue_data_array     is array(natural range <>) of t_queue_data;
   
   constant c_free_last_index : t_free_index := (others => '1');
   constant c_last_time       : t_time       := (others => '1');
@@ -143,9 +145,11 @@ architecture rtl of eca_channel is
   signal q_scan_valid     : std_logic_vector      (c_scanners-1 downto 0);
   signal q_scan_time      : t_queue_index_array   (c_scanners-1 downto 0);
   signal q_scan_index     : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_scan_data      : t_queue_data_array    (c_scanners-1 downto 0);
   signal q_dispatch_valid : std_logic_vector      (c_scanners-1 downto 0);
   signal q_dispatch_time  : t_queue_index_array   (c_scanners-1 downto 0);
   signal q_dispatch_index : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_dispatch_data  : t_queue_data_array    (c_scanners-1 downto 0);
   
   -- TableS signals
   signal ts_manage_write : std_logic_vector      (c_scanners-1 downto 0);
@@ -242,23 +246,28 @@ begin
   -- However, because c_table_lo_index_bits < c_queue_index_bits, any conflict
   --          will be rewritten before the Q rolls over.
   Qx : for table_hi_idx in 0 to c_scanners-1 generate
+  
+    q_scan_data(table_hi_idx)(t_table_lo_index'range)  <= q_scan_index(table_hi_idx);
+    q_scan_data(table_hi_idx)(t_table_lo_index'length) <= '1';
+    q_dispatch_index(table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'range);
+    q_dispatch_valid(table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'length);
+    
     Q : eca_tdp
       generic map(
         g_addr_bits => c_queue_index_bits,
         g_data_bits => c_table_lo_index_bits+1)
       port map(
-        a_clk_i                                   => clk_i,
-        a_addr_i                                  => q_scan_time     (table_hi_idx),
-        aw_en_i                                   => q_scan_valid    (table_hi_idx),
-        aw_data_i(c_table_lo_index_bits downto 1) => q_scan_index    (table_hi_idx),
-        aw_data_i(0)                              => '1',
-        ar_data_o                                 => open,
-        b_clk_i                                   => clk_i,
-        b_addr_i                                  => q_dispatch_time (table_hi_idx),
-        bw_en_i                                   => '1',
-        bw_data_i                                 => (others => '0'),
-        br_data_o(c_table_lo_index_bits downto 1) => q_dispatch_index(table_hi_idx),
-        br_data_o(0)                              => q_dispatch_valid(table_hi_idx));
+        a_clk_i   => clk_i,
+        a_addr_i  => q_scan_time    (table_hi_idx),
+        aw_en_i   => q_scan_valid   (table_hi_idx),
+        aw_data_i => q_scan_data    (table_hi_idx),
+        ar_data_o => open,
+        b_clk_i   => clk_i,
+        b_addr_i  => q_dispatch_time(table_hi_idx),
+        bw_en_i   => '1',
+        bw_data_i => (others => '0'),
+        br_data_o => q_dispatch_data(table_hi_idx));
+    
   end generate;
   
   -- The replicated part of the table
@@ -405,7 +414,7 @@ begin
       scan_time_m4 <=
         std_logic_vector(
           unsigned(time_i(scan_time_m4'range)) + 
-          to_unsigned(-3, scan_time_m4'length));
+          to_unsigned(2**30-3, scan_time_m4'length));
     end if;
   end process;
   
@@ -478,10 +487,10 @@ begin
   manage_flags(0) <= dispatch_manage_kill;
   
   with manage_flags select manage_idx_next <=
-    manage_idx                                 when "00", -- No alloc, No free
-    std_logic_vector(unsigned(manage_idx) - 1) when "01", -- No alloc, FREE
-    std_logic_vector(unsigned(manage_idx) + 1) when "10", -- ALLOC,    No free
-    manage_idx                                 when "11"; -- ALLOC,    FREE
+    manage_idx                                 when "00",   -- No alloc, No free
+    std_logic_vector(unsigned(manage_idx) - 1) when "01",   -- No alloc, FREE
+    std_logic_vector(unsigned(manage_idx) + 1) when "10",   -- ALLOC,    No free
+    manage_idx                                 when others; -- ALLOC,    FREE
   
   fr_manage_index <= manage_idx_next(c_table_index_bits-1 downto 0);
   fw_manage_free  <= (not channel_i.valid and dispatch_manage_kill) or drain_i;
