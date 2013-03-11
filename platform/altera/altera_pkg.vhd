@@ -48,13 +48,14 @@ package wr_altera_pkg is
   end component;
 
   component wr_gxb_phy_arriaii
-    generic (
-      g_simulation      : integer;
-      g_force_disparity : integer);
     port (
       clk_reconf_i   : in  std_logic;
-      clk_ref_i      : in  std_logic;
-      tx_clk_o       : out std_logic;
+      clk_pll_i      : in  std_logic;
+      clk_cru_i      : in  std_logic;
+      clk_sys_i      : in  std_logic;
+      rstn_sys_i     : in  std_logic;
+      locked_o       : out std_logic;
+      loopen_i       : in  std_logic;
       tx_data_i      : in  std_logic_vector(7 downto 0);
       tx_k_i         : in  std_logic;
       tx_disparity_o : out std_logic;
@@ -64,10 +65,9 @@ package wr_altera_pkg is
       rx_k_o         : out std_logic;
       rx_enc_err_o   : out std_logic;
       rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      rst_i          : in  std_logic;
-      loopen_i       : in  std_logic;
       pad_txp_o      : out std_logic;
-      pad_rxp_i      : in  std_logic := '0');
+      pad_rxp_i      : in  std_logic := '0';
+      dbg_tx_clk_o   : out std_logic);
   end component;
 
 end wr_altera_pkg;
