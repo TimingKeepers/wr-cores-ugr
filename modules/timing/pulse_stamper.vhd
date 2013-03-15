@@ -49,7 +49,7 @@ entity pulse_stamper is
     -- 1: time given on tm_utc_i and tm_cycles_i is valid (otherwise, don't timestamp)
     tm_time_valid_i : in std_logic;
     -- number of seconds
-    tm_utc_i        : in std_logic_vector(39 downto 0);
+    tm_tai_i        : in std_logic_vector(39 downto 0);
     -- number of clk_ref_i cycles
     tm_cycles_i     : in std_logic_vector(27 downto 0);
 
@@ -57,10 +57,10 @@ entity pulse_stamper is
     ---------------------------------------------------------------------------
     -- Time tag output (clk_sys_i domain)
     ---------------------------------------------------------------------------
-    tag_utc_o      : out std_logic_vector(39 downto 0);
+    tag_tai_o      : out std_logic_vector(39 downto 0);
     tag_cycles_o   : out std_logic_vector(27 downto 0);
     -- single-cycle pulse: strobe tag on tag_utc_o and tag_cycles_o
-    tag_valid_p1_o : out std_logic
+    tag_valid_o : out std_logic
     );
 
   
@@ -101,7 +101,7 @@ begin  -- architecture rtl
  begin
   if clk_ref_i'event and clk_ref_i='1' then
     if pulse_ref_p1='1' and tm_time_valid_i='1' then
-      tag_utc_ref <= tm_utc_i;
+      tag_utc_ref <= tm_tai_i;
       tag_cycles_ref <= tm_cycles_i;
     end if;
   end if;
@@ -145,15 +145,15 @@ begin  -- architecture rtl
  begin
   if clk_sys_i'event and clk_sys_i='1' then
     if rst_n_i='0' then
-     tag_utc_o <= (others=>'0');
+     tag_tai_o <= (others=>'0');
      tag_cycles_o <= (others=>'0');
-     tag_valid_p1_o <= '0';
+     tag_valid_o <= '0';
     elsif pulse_sys_p1='1' then
-     tag_utc_o <= tag_utc_ref;
+     tag_tai_o <= tag_utc_ref;
      tag_cycles_o <= tag_cycles_ref;
-     tag_valid_p1_o <= '1';
+     tag_valid_o <= '1';
     else
-     tag_valid_p1_o <='0';
+     tag_valid_o <='0';
     end if;
   end if;
  end process sys_tags;

@@ -53,7 +53,7 @@ entity pulse_gen is
     -- produce pulses and keep trig_ready_o line permamaently active)
     tm_time_valid_i : in std_logic;
     -- number of seconds
-    tm_utc_i        : in std_logic_vector(39 downto 0);
+    tm_tai_i        : in std_logic_vector(39 downto 0);
     -- number of clk_ref_i cycles
     tm_cycles_i     : in std_logic_vector(27 downto 0);
 
@@ -67,9 +67,9 @@ entity pulse_gen is
 
     -- time at which the pulse will be produced + a single-cycle strobe to
     -- latch it in
-    trig_utc_i      : in std_logic_vector(39 downto 0);
+    trig_tai_i      : in std_logic_vector(39 downto 0);
     trig_cycles_i   : in std_logic_vector(27 downto 0);
-    trig_valid_p1_i : in std_logic
+    trig_valid_i : in std_logic
     );
 end pulse_gen;
 
@@ -95,8 +95,8 @@ begin  -- architecture rtl
      if rst_n_i='0' then
       trig_utc <= (others=>'0');
       trig_cycles <= (others=>'0');
-     elsif trig_valid_p1_i='1' then
-      trig_utc <= trig_utc_i;
+     elsif trig_valid_i='1' then
+      trig_utc <= trig_tai_i;
       trig_cycles <= trig_cycles_i;
      end if; 
     end if;
@@ -111,7 +111,7 @@ begin  -- architecture rtl
    if rst_n_i='0' or rst_from_sync='1' then
      trig_valid_sys_d1 <= '0';
    elsif clk_sys_i'event and clk_sys_i='1' then
-     if trig_valid_p1_i='1' then
+     if trig_valid_i='1' then
        trig_valid_sys_d1 <= '1';
      end if;
    end if;
@@ -165,7 +165,7 @@ begin  -- architecture rtl
    if rst_n_i='0' then
      trig_ready_o <= '1';
    elsif clk_sys_i'event and clk_sys_i='1' then
-     if trig_valid_p1_i='1' then
+     if trig_valid_i='1' then
        trig_ready_o <= '0';
      elsif rst_from_sync_d1='1' and rst_from_sync='0' then
      -- falling edge of reset_from_sync
@@ -188,7 +188,7 @@ begin  -- architecture rtl
    elsif clk_ref_i'event and clk_ref_i='1' then
     if tm_time_valid_i ='0' then
       pulse_o <= '0';
-    elsif tm_utc_i=trig_utc_ref and tm_cycles_i=trig_cycles_ref then
+    elsif tm_tai_i=trig_utc_ref and tm_cycles_i=trig_cycles_ref then
       pulse_o <= '1';
     else
       pulse_o <= '0';
