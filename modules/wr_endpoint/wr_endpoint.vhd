@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-04-26
--- Last update: 2012-06-27
+-- Last update: 2013-03-15
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -821,6 +821,7 @@ begin
       wb_stall_o => open,
 
       tx_clk_i => clk_ref_i,
+      rx_clk_i => phy_rx_clk_i,
 
       ep_rmon_ram_wr_i   => ep_rmon_ram_wr,
       ep_rmon_ram_rd_i   => ep_rmon_ram_rd,

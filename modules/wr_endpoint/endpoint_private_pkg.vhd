@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-06-27
+-- Last update: 2013-03-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -110,15 +110,15 @@ package endpoint_private_pkg is
   -- Endpoint's internal fabric used to connect the submodules with each other.
   -- Easier to handle than pipelined Wishbone.
   type t_ep_internal_fabric is record
-    sof              : std_logic;
-    eof              : std_logic;
-    error            : std_logic;
-    dvalid           : std_logic;
-    bytesel          : std_logic;
-    has_rx_timestamp : std_logic;
+    sof                : std_logic;
+    eof                : std_logic;
+    error              : std_logic;
+    dvalid             : std_logic;
+    bytesel            : std_logic;
+    has_rx_timestamp   : std_logic;
     rx_timestamp_valid : std_logic;
-    data             : std_logic_vector(15 downto 0);
-    addr             : std_logic_vector(1 downto 0);
+    data               : std_logic_vector(15 downto 0);
+    addr               : std_logic_vector(1 downto 0);
   end record;
 
   component ep_1000basex_pcs
@@ -252,16 +252,17 @@ package endpoint_private_pkg is
     port (
       rst_n_i            : in  std_logic;
       clk_sys_i          : in  std_logic;
-      wb_adr_i          : in  std_logic_vector(5 downto 0);
-      wb_dat_i          : in  std_logic_vector(31 downto 0);
-      wb_dat_o          : out std_logic_vector(31 downto 0);
+      wb_adr_i           : in  std_logic_vector(5 downto 0);
+      wb_dat_i           : in  std_logic_vector(31 downto 0);
+      wb_dat_o           : out std_logic_vector(31 downto 0);
       wb_cyc_i           : in  std_logic;
       wb_sel_i           : in  std_logic_vector(3 downto 0);
       wb_stb_i           : in  std_logic;
       wb_we_i            : in  std_logic;
       wb_ack_o           : out std_logic;
-      wb_stall_o : out std_logic;
+      wb_stall_o         : out std_logic;
       tx_clk_i           : in  std_logic;
+      rx_clk_i           : in  std_logic;
       ep_rmon_ram_addr_i : in  std_logic_vector(4 downto 0);
       ep_rmon_ram_data_o : out std_logic_vector(31 downto 0);
       ep_rmon_ram_rd_i   : in  std_logic;
@@ -392,32 +393,32 @@ package body endpoint_private_pkg is
     fab.data <= din(15 downto 0);
     if(din_valid = '1') then
       if(early_eof) then
-        fab.dvalid           <= not (not din(17) and din(16));
-        fab.sof              <= not din(17) and din(16) and din(15);
-        fab.eof              <= din(17);
-        fab.error            <= not din(17) and din(16) and din(13);
-        fab.has_rx_timestamp <= '0';
+        fab.dvalid             <= not (not din(17) and din(16));
+        fab.sof                <= not din(17) and din(16) and din(15);
+        fab.eof                <= din(17);
+        fab.error              <= not din(17) and din(16) and din(13);
+        fab.has_rx_timestamp   <= '0';
         fab.rx_timestamp_valid <= '0';
-        fab.bytesel          <= din(17) and din(16);
+        fab.bytesel            <= din(17) and din(16);
 
       else
-        fab.dvalid           <= not din(16);
-        fab.sof              <= din(16) and din(15);
-        fab.eof              <= din(16) and din(14);
-        fab.error            <= din(16) and din(13);
-        fab.has_rx_timestamp <= din(16) and din(12);
+        fab.dvalid             <= not din(16);
+        fab.sof                <= din(16) and din(15);
+        fab.eof                <= din(16) and din(14);
+        fab.error              <= din(16) and din(13);
+        fab.has_rx_timestamp   <= din(16) and din(12);
         fab.rx_timestamp_valid <= din(16) and din(11);
-        fab.bytesel          <= (not din(16)) and din(17);
+        fab.bytesel            <= (not din(16)) and din(17);
       end if;
     else
-      fab.bytesel          <= 'X';
-      fab.dvalid           <= '0';
-      fab.sof              <= '0';
-      fab.eof              <= '0';
-      fab.error            <= '0';
-      fab.has_rx_timestamp <= '0';
+      fab.bytesel            <= 'X';
+      fab.dvalid             <= '0';
+      fab.sof                <= '0';
+      fab.eof                <= '0';
+      fab.error              <= '0';
+      fab.has_rx_timestamp   <= '0';
       fab.rx_timestamp_valid <= '0';
-      fab.data             <= (others => 'X');
+      fab.data               <= (others => 'X');
     end if;
   end f_unpack_fifo_contents;
 

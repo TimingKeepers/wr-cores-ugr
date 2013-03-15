@@ -7,7 +7,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2009-06-22
--- Last update: 2012-03-16
+-- Last update: 2013-03-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ entity ep_timestamping_unit is
 -------------------------------------------------------------------------------
 -- TX Timestamp output (clk_ref_i clock domain)
 -------------------------------------------------------------------------------    
-    
+
     -- TX timestamp output (to TXTSU/Framer)
     txts_timestamp_o : out std_logic_vector(31 downto 0);
 
@@ -160,6 +160,10 @@ architecture syn of ep_timestamping_unit is
   signal txts_valid : std_logic;
 
   signal valid_rx, valid_tx : std_logic;
+
+
+  signal cal_count                                   : unsigned(5 downto 0);
+  signal rx_trigger_mask, rx_trigger_a, rx_cal_pulse_a : std_logic;
   
 begin  -- syn
 
@@ -182,6 +186,45 @@ begin  -- syn
       sync_done_o    => regs_o.tscr_cs_done_i
       );
 
+
+  p_rx_timestamper_calibration : process(clk_rx_i)
+  begin
+    if rising_edge(clk_rx_i) then
+      if rst_n_rx_i = '0' then
+        cal_count       <= (others => '0');
+        rx_cal_pulse_a  <= '0';
+        rx_trigger_mask <= '1';
+        
+      elsif(regs_i.tscr_rx_cal_start_o = '1') then
+        cal_count       <= to_unsigned(1, 6);
+        rx_trigger_mask <= '0';
+      elsif(cal_count /= 0) then
+        cal_count <= cal_count + 1;
+
+        if(rx_ts_done = '1') then
+          if(cntr_rx_f /= cntr_rx_r(g_timestamp_bits_f-1 downto 0)) then
+            regs_o.tscr_rx_cal_result_i <= '1';
+          else
+            regs_o.tscr_rx_cal_result_i <= '0';
+          end if;
+        end if;
+
+      else
+        
+        rx_trigger_mask <= '1';
+      end if;
+
+      if(cal_count (5 downto 4) = x"01") then
+        rx_cal_pulse_a <= '1';
+      else
+        rx_cal_pulse_a <= '0';
+      end if;
+      
+    end if;
+  end process;
+
+
+  rx_trigger_a       <= (rx_timestamp_trigger_p_a_i and rx_trigger_mask) or rx_cal_pulse_a;
   -- Sync chains for timestamp strobes: 4 combinations - (TX-RX) -> (rising/falling)
   sync_ffs_tx_r : gc_sync_ffs
     generic map (
@@ -194,13 +237,15 @@ begin  -- syn
       npulse_o => open,
       ppulse_o => take_tx_synced_p);
 
+
+  
   sync_ffs_rx_r : gc_sync_ffs
     generic map (
       g_sync_edge => "positive")
     port map (
       clk_i    => clk_ref_i,
       rst_n_i  => rst_n_ref_i,
-      data_i   => rx_timestamp_trigger_p_a_i,
+      data_i   => rx_trigger_a,
       synced_o => open,
       npulse_o => open,
       ppulse_o => take_rx_synced_p);
@@ -223,7 +268,7 @@ begin  -- syn
     port map (
       clk_i    => clk_ref_i,
       rst_n_i  => rst_n_ref_i,
-      data_i   => rx_timestamp_trigger_p_a_i,
+      data_i   => rx_trigger_a,
       synced_o => open,
       npulse_o => open,
       ppulse_o => take_rx_synced_p_fedge);

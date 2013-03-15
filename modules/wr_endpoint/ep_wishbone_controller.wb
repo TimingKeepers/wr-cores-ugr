@@ -179,6 +179,24 @@ peripheral {
 				 access_dev = WRITE_ONLY;
 				 clock = "tx_clk_i";
 			};
+
+			field {
+				 name = "Start calibration of RX timestamper";
+				 prefix = "RX_CAL_START";
+				 description = "write 1: start calibration.\
+                        write 0: no effect";
+         type = MONOSTABLE;
+				 clock = "rx_clk_i";
+			};
+
+      field {
+         name = "RX timestamper calibration result flag";
+         prefix = "RX_CAL_RESULT";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
 		};
 	
 		reg {
