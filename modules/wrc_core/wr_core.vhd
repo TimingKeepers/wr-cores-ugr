@@ -5,7 +5,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2013-02-08
+-- Last update: 2013-03-08
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ entity wr_core is
     g_virtual_uart              : boolean                        := false;
     g_aux_clks                  : integer                        := 1;
     g_rx_buffer_size            : integer                        := 1024;
-    g_dpram_initf               : string                         := "";
+    g_dpram_initf               : string                         := "default";
     g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity       : t_wishbone_address_granularity := WORD;
@@ -219,21 +219,21 @@ entity wr_core is
     -- Timecode/Servo Control
     -----------------------------------------
 
-    tm_link_up_o          : out std_logic;
+    tm_link_up_o         : out std_logic;
     -- DAC Control
-    tm_dac_value_o        : out std_logic_vector(23 downto 0);
-    tm_dac_wr_o           : out std_logic;
+    tm_dac_value_o       : out std_logic_vector(23 downto 0);
+    tm_dac_wr_o          : out std_logic;
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i  : in  std_logic := '0';
+    tm_clk_aux_lock_en_i : in  std_logic := '0';
     -- Aux clock locked flag
-    tm_clk_aux_locked_o   : out std_logic;
+    tm_clk_aux_locked_o  : out std_logic;
     -- Timecode output
-    tm_time_valid_o       : out std_logic;
-    tm_tai_o              : out std_logic_vector(39 downto 0);
-    tm_cycles_o           : out std_logic_vector(27 downto 0);
+    tm_time_valid_o      : out std_logic;
+    tm_tai_o             : out std_logic_vector(39 downto 0);
+    tm_cycles_o          : out std_logic_vector(27 downto 0);
     -- 1PPS output
-    pps_p_o               : out std_logic;
-    pps_led_o             : out std_logic;
+    pps_p_o              : out std_logic;
+    pps_led_o            : out std_logic;
 
     dio_o       : out std_logic_vector(3 downto 0);
     rst_aux_n_o : out std_logic;
@@ -243,6 +243,31 @@ entity wr_core is
 end wr_core;
 
 architecture struct of wr_core is
+
+  function f_choose_lm32_firmware_file return string is
+  begin
+    if(g_dpram_initf = "default") then
+      if(g_simulation /= 0) then
+        report "[WR Core] Using simulation LM32 firmware." severity note;
+        return "wrc-simulation.ram";
+      else
+        report "[WR Core] Using release LM32 firmware." severity note;
+        return "wrc-release.ram";
+      end if;
+    else
+      report "[WR Core] Using user-provided LM32 firmware." severity note;
+      return g_dpram_initf;
+    end if;
+  end function;
+
+  function f_check_if_lm32_firmware_necessary return boolean is
+  begin
+    if(g_dpram_initf /= "") then
+      return true;
+    else
+      return false;
+    end if;
+  end function;
 
   signal rst_wrc_n : std_logic;
   signal rst_net_n : std_logic;
@@ -309,12 +334,12 @@ architecture struct of wr_core is
      4 => f_sdb_embed_device(c_wrc_periph0_sdb, x"00000400"),  -- Syscon
      5 => f_sdb_embed_device(c_wrc_periph1_sdb, x"00000500"),  -- UART
      6 => f_sdb_embed_device(c_wrc_periph2_sdb, x"00000600"),  -- 1-Wire
-     7 => f_sdb_embed_device(g_aux_sdb,         x"00000700")           -- aux WB bus
+     7 => f_sdb_embed_device(g_aux_sdb, x"00000700")           -- aux WB bus
      );
 
   constant c_secbar_sdb_address : t_wishbone_address := x"00000800";
   constant c_secbar_bridge_sdb  : t_sdb_bridge       :=
-     f_xwb_bridge_layout_sdb(true, c_secbar_layout, c_secbar_sdb_address);
+    f_xwb_bridge_layout_sdb(true, c_secbar_layout, c_secbar_sdb_address);
 
   signal secbar_master_i : t_wishbone_master_in_array(7 downto 0);
   signal secbar_master_o : t_wishbone_master_out_array(7 downto 0);
@@ -323,8 +348,8 @@ architecture struct of wr_core is
   --WB intercon
   -----------------------------------------------------------------------------
   constant c_layout : t_sdb_record_array(1 downto 0) :=
-   (0 => f_sdb_embed_device(f_xwb_dpram(g_dpram_size), x"00000000"),
-    1 => f_sdb_embed_bridge(c_secbar_bridge_sdb, x"00020000"));
+    (0 => f_sdb_embed_device(f_xwb_dpram(g_dpram_size), x"00000000"),
+     1 => f_sdb_embed_bridge(c_secbar_bridge_sdb, x"00020000"));
   constant c_sdb_address : t_wishbone_address := x"00030000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
@@ -434,11 +459,11 @@ begin
       slave_o => ppsg_wb_out,
 
       -- Single-pulse PPS output for synchronizing endpoint to
-      pps_in_i        => pps_ext_i,
-      pps_csync_o     => s_pps_csync,
-      pps_out_o       => pps_p_o,
-      pps_led_o       => pps_led_o,
-      pps_valid_o     => pps_valid,
+      pps_in_i    => pps_ext_i,
+      pps_csync_o => s_pps_csync,
+      pps_out_o   => pps_p_o,
+      pps_led_o   => pps_led_o,
+      pps_valid_o => pps_valid,
 
       tm_utc_o        => tm_tai_o,
       tm_cycles_o     => tm_cycles_o,
@@ -642,8 +667,8 @@ begin
   DPRAM : xwb_dpram
     generic map(
       g_size                  => g_dpram_size,
-      g_init_file             => g_dpram_initf,
-      g_must_have_init_file   => true,
+      g_init_file             => f_choose_lm32_firmware_file,
+      g_must_have_init_file   => f_check_if_lm32_firmware_necessary,
       g_slave1_interface_mode => PIPELINED,
       g_slave2_interface_mode => PIPELINED,
       g_slave1_granularity    => BYTE,
