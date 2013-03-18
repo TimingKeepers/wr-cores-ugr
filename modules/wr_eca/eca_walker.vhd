@@ -139,31 +139,62 @@ architecture rtl of eca_walker is
   
   subtype  t_table_data_type is std_logic_vector(c_channel_range);
   constant c_table_data_bits : natural := t_table_data_type'left + 1; --'
+  
+  signal active_r_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal active_w_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal active_r_data_o : std_logic_vector(c_table_data_bits -1 downto 0);
+  signal active_w_data_i : std_logic_vector(c_table_data_bits -1 downto 0);
+  
+  signal program_r_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal program_w_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal program_r_data_o : std_logic_vector(c_table_data_bits -1 downto 0);
+  signal program_w_data_i : std_logic_vector(c_table_data_bits -1 downto 0);
+  
 begin
   
+  active_r_addr_i(s_w_addr'length) <= s_w_page;
+  active_r_addr_i(s_w_addr'range)  <= s_w_addr;
+  active_w_addr_i(t_addr_i'length) <= t_page_i;
+  active_w_addr_i(t_addr_i'range)  <= t_addr_i;
+  active_w_data_i(c_valid_offset)  <= tw_valid_i;
+  active_w_data_i(c_next_range)    <= tw_next_i;
+  active_w_data_i(c_time_range)    <= tw_time_i;
+  active_w_data_i(c_tag_range)     <= tw_tag_i;
+  active_w_data_i(c_channel_range) <= tw_channel_i;
+  s_mr_valid   <= active_r_data_o(c_valid_offset);
+  s_mr_next    <= active_r_data_o(c_next_range);
+  s_mr_time    <= active_r_data_o(c_time_range);
+  s_mr_tag     <= active_r_data_o(c_tag_range);
+  s_mr_channel <= active_r_data_o(c_channel_range);
+
   Active : eca_sdp
     generic map(
       g_addr_bits  => c_table_index_bits,
       g_data_bits  => c_table_data_bits,
       g_dual_clock => true)
     port map(
-      r_clk_i                   => clk_i,
-      r_addr_i(s_w_addr'length) => s_w_page,
-      r_addr_i(s_w_addr'range)  => s_w_addr,
-      r_data_o(c_valid_offset)  => s_mr_valid,
-      r_data_o(c_next_range)    => s_mr_next,
-      r_data_o(c_time_range)    => s_mr_time,
-      r_data_o(c_tag_range)     => s_mr_tag,
-      r_data_o(c_channel_range) => s_mr_channel,
-      w_clk_i                   => t_clk_i,
-      w_addr_i(t_addr_i'length) => t_page_i,
-      w_addr_i(t_addr_i'range)  => t_addr_i,
-      w_en_i                    => tw_en_i,
-      w_data_i(c_valid_offset)  => tw_valid_i,
-      w_data_i(c_next_range)    => tw_next_i,
-      w_data_i(c_time_range)    => tw_time_i,
-      w_data_i(c_tag_range)     => tw_tag_i,
-      w_data_i(c_channel_range) => tw_channel_i);
+      r_clk_i  => clk_i,
+      r_addr_i => active_r_addr_i,
+      r_data_o => active_r_data_o,
+      w_clk_i  => t_clk_i,
+      w_addr_i => active_w_addr_i,
+      w_en_i   => tw_en_i,
+      w_data_i => active_w_data_i);
+  
+  program_r_addr_i(t_addr_i'length) <= t_page_i;
+  program_r_addr_i(t_addr_i'range)  <= t_addr_i;
+  program_w_addr_i(t_addr_i'length) <= t_page_i;
+  program_w_addr_i(t_addr_i'range)  <= t_addr_i;
+  program_w_data_i(c_valid_offset)  <= tw_valid_i;
+  program_w_data_i(c_next_range)    <= tw_next_i;
+  program_w_data_i(c_time_range)    <= tw_time_i;
+  program_w_data_i(c_tag_range)     <= tw_tag_i;
+  program_w_data_i(c_channel_range) <= tw_channel_i;
+  tr_valid_o   <= program_r_data_o(c_valid_offset);
+  tr_next_o    <= program_r_data_o(c_next_range);
+  tr_time_o    <= program_r_data_o(c_time_range);
+  tr_tag_o     <= program_r_data_o(c_tag_range);
+  tr_channel_o <= program_r_data_o(c_channel_range);
   
   Program : eca_sdp
     generic map(
@@ -171,23 +202,13 @@ begin
       g_data_bits  => c_table_data_bits,
       g_dual_clock => false)
     port map(
-      r_clk_i                   => t_clk_i,
-      r_addr_i(t_addr_i'length) => t_page_i,
-      r_addr_i(t_addr_i'range)  => t_addr_i,
-      r_data_o(c_valid_offset)  => tr_valid_o,
-      r_data_o(c_next_range)    => tr_next_o,
-      r_data_o(c_time_range)    => tr_time_o,
-      r_data_o(c_tag_range)     => tr_tag_o,
-      r_data_o(c_channel_range) => tr_channel_o,
-      w_clk_i                   => t_clk_i,
-      w_addr_i(t_addr_i'length) => t_page_i,
-      w_addr_i(t_addr_i'range)  => t_addr_i,
-      w_en_i                    => tw_en_i,
-      w_data_i(c_valid_offset)  => tw_valid_i,
-      w_data_i(c_next_range)    => tw_next_i,
-      w_data_i(c_time_range)    => tw_time_i,
-      w_data_i(c_tag_range)     => tw_tag_i,
-      w_data_i(c_channel_range) => tw_channel_i);
+      r_clk_i  => t_clk_i,
+      r_addr_i => program_r_addr_i,
+      r_data_o => program_r_data_o,
+      w_clk_i  => t_clk_i,
+      w_addr_i => program_w_addr_i,
+      w_en_i   => tw_en_i,
+      w_data_i => program_w_data_i);
   
   walk : process(clk_i) is
   begin

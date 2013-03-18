@@ -1051,7 +1051,7 @@ begin  -- behavioral
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_i = '0') then
-
+        regs_in.mcr_tx_ts_ready_i <= '0';
         regs_in.tsr0_valid_i <= '0';
         regs_in.tsr0_pid_i   <= (others => '0');
         regs_in.tsr0_fid_i   <= (others => '0');
@@ -1061,12 +1061,15 @@ begin  -- behavioral
         -- Make sure the timestamp is written to the FIFO only once.
 
         if(txtsu_stb_i = '1' and txtsu_ack_int = '0') then
+          regs_in.mcr_tx_ts_ready_i <= '1';
           regs_in.tsr0_valid_i <= not txtsu_tsincorrect_i;
           regs_in.tsr0_fid_i   <= txtsu_frame_id_i;
           regs_in.tsr0_pid_i   <= txtsu_port_id_i;
           regs_in.tsr1_tsval_i <= txtsu_tsval_i;
           txtsu_ack_int        <= '1';
         else
+          -- clear the TS ready flag when a transmission begins
+          regs_in.mcr_tx_ts_ready_i <= regs_in.mcr_tx_ts_ready_i and regs_in.mcr_tx_idle_i;
           txtsu_ack_int <= '0';
         end if;
       end if;

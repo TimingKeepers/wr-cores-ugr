@@ -140,34 +140,63 @@ architecture rtl of eca_search is
   signal s3_try   : t_table_ptr;
   signal s3_probe : t_table_ptr;
   signal s3_state : t_state;
-
+  
   constant c_valid_offset : natural := 0;
   subtype  c_first_range is natural range c_list_ptr_bits+c_valid_offset     downto c_valid_offset    +1;
   subtype  c_event_range is natural range c_event_bits   +c_first_range'left downto c_first_range'left+1;
   
+  constant s3_probe_length : natural := s3_probe'length;
+  
   subtype  t_data_type is std_logic_vector(c_event_range);
   constant c_data_bits : natural := t_data_type'left+1; --'
+  
+  signal active_r_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal active_w_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal active_r_data_o : std_logic_vector(c_data_bits       -1 downto 0);
+  signal active_w_data_i : std_logic_vector(c_data_bits       -1 downto 0);
+  
+  signal program_r_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal program_w_addr_i : std_logic_vector(c_table_index_bits-1 downto 0);
+  signal program_r_data_o : std_logic_vector(c_data_bits       -1 downto 0);
+  signal program_w_data_i : std_logic_vector(c_data_bits       -1 downto 0);
+
 begin
 
+  active_r_addr_i(s3_probe_length) <= r3_page;
+  active_r_addr_i(s3_probe'range)  <= s3_probe;
+  active_w_addr_i(t_addr_i'length) <= t_page_i;
+  active_w_addr_i(t_addr_i'range)  <= t_addr_i;
+  active_w_data_i(c_valid_offset)  <= tw_valid_i;
+  active_w_data_i(c_first_range)   <= tw_first_i;
+  active_w_data_i(c_event_range)   <= tw_event_i;
+  s0_valid <= active_r_data_o(c_valid_offset);
+  s0_first <= active_r_data_o(c_first_range);
+  s0_test  <= active_r_data_o(c_event_range);
+  
   Active : eca_sdp
     generic map(
       g_addr_bits  => c_table_index_bits,
       g_data_bits  => c_data_bits,
       g_dual_clock => true)
     port map(
-      r_clk_i                   => clk_i,
-      r_addr_i(s3_probe'length) => r3_page,
-      r_addr_i(s3_probe'range)  => s3_probe,
-      r_data_o(c_valid_offset)  => s0_valid,
-      r_data_o(c_first_range)   => s0_first,
-      r_data_o(c_event_range)   => s0_test,
-      w_clk_i                   => t_clk_i,
-      w_addr_i(t_addr_i'length) => t_page_i,
-      w_addr_i(t_addr_i'range)  => t_addr_i,
-      w_en_i                    => tw_en_i,
-      w_data_i(c_valid_offset)  => tw_valid_i,
-      w_data_i(c_first_range)   => tw_first_i,
-      w_data_i(c_event_range)   => tw_event_i);
+      r_clk_i  => clk_i,
+      r_addr_i => active_r_addr_i,
+      r_data_o => active_r_data_o,
+      w_clk_i  => t_clk_i,
+      w_addr_i => active_w_addr_i,
+      w_en_i   => tw_en_i,
+      w_data_i => active_w_data_i);
+  
+  program_r_addr_i(t_addr_i'length) <= t_page_i;
+  program_r_addr_i(t_addr_i'range)  <= t_addr_i;
+  program_w_addr_i(t_addr_i'length) <= t_page_i;
+  program_w_addr_i(t_addr_i'range)  <= t_addr_i;
+  program_w_data_i(c_valid_offset)  <= tw_valid_i;
+  program_w_data_i(c_first_range)   <= tw_first_i;
+  program_w_data_i(c_event_range)   <= tw_event_i;
+  tr_valid_o <= program_r_data_o(c_valid_offset);
+  tr_first_o <= program_r_data_o(c_first_range);
+  tr_event_o <= program_r_data_o(c_event_range);
   
   Program : eca_sdp
     generic map(
@@ -175,19 +204,13 @@ begin
       g_data_bits  => c_data_bits,
       g_dual_clock => false)
     port map(
-      r_clk_i                   => t_clk_i,
-      r_addr_i(t_addr_i'length) => t_page_i,
-      r_addr_i(t_addr_i'range)  => t_addr_i,
-      r_data_o(c_valid_offset)  => tr_valid_o,
-      r_data_o(c_first_range)   => tr_first_o,
-      r_data_o(c_event_range)   => tr_event_o,
-      w_clk_i                   => t_clk_i,
-      w_addr_i(t_addr_i'length) => t_page_i,
-      w_addr_i(t_addr_i'range)  => t_addr_i,
-      w_en_i                    => tw_en_i,
-      w_data_i(c_valid_offset)  => tw_valid_i,
-      w_data_i(c_first_range)   => tw_first_i,
-      w_data_i(c_event_range)   => tw_event_i);
+      r_clk_i  => t_clk_i,
+      r_addr_i => program_r_addr_i,
+      r_data_o => program_r_data_o,
+      w_clk_i  => t_clk_i,
+      w_addr_i => program_w_addr_i,
+      w_en_i   => tw_en_i,
+      w_data_i => program_w_data_i);
   
   -- c_o=1 iff    r1_event - r1_test >= 0  ...   r1_test <= r1_event
   compare : eca_adder

@@ -18,24 +18,27 @@ component arria_phy
 	(
 		cal_blk_clk		: IN STD_LOGIC ;
 		pll_inclk		: IN STD_LOGIC ;
+		pll_powerdown		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
 		reconfig_clk		: IN STD_LOGIC ;
 		reconfig_togxb		: IN STD_LOGIC_VECTOR (3 DOWNTO 0);
 		rx_analogreset		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
+		rx_cruclk		: IN STD_LOGIC_VECTOR (0 DOWNTO 0) :=  (OTHERS => '0');
 		rx_datain		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
 		rx_digitalreset		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
+		rx_enapatternalign		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
 		rx_seriallpbken		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
 		tx_bitslipboundaryselect		: IN STD_LOGIC_VECTOR (4 DOWNTO 0);
-		tx_ctrlenable		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
-		tx_datain		: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
+		tx_datain		: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
 		tx_digitalreset		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
-		tx_dispval		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
-		tx_forcedisp		: IN STD_LOGIC_VECTOR (0 DOWNTO 0);
+		pll_locked		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
 		reconfig_fromgxb		: OUT STD_LOGIC_VECTOR (16 DOWNTO 0);
 		rx_bitslipboundaryselectout		: OUT STD_LOGIC_VECTOR (4 DOWNTO 0);
 		rx_clkout		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
-		rx_ctrldetect		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
-		rx_dataout		: OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
-		rx_errdetect		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
+		rx_dataout		: OUT STD_LOGIC_VECTOR (9 DOWNTO 0);
+		rx_freqlocked		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
+		rx_patterndetect		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
+		rx_pll_locked		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
+		rx_syncstatus		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
 		tx_clkout		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0);
 		tx_dataout		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0)
 	);

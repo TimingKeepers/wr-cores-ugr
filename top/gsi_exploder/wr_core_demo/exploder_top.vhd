@@ -28,6 +28,8 @@ entity exploder_top is
     -----------------------------------------
     -- Timing SFPs 2.5V
     -----------------------------------------
+    sfp_ref_clk_i   : in    std_logic; -- G23p G24n
+    
     sfp1_td_o       : out   std_logic; -- B21p B22n
     sfp1_rd_i       : in    std_logic; -- C23p C24n
     sfp1_tx_fault_i : in    std_logic; -- P1
@@ -340,13 +342,17 @@ architecture rtl of exploder_top is
   signal clk_lcd          : std_logic;
   signal rstn_sys         : std_logic;
   
+  -- RX PLL
+  signal gxb_locked       : std_logic;
+  signal rstn_wr          : std_logic;
+  
   -- Ref PLL from clk_125m_pllref_i
   signal ref_locked       : std_logic;
   signal clk_ref          : std_logic;
   signal rstn_ref         : std_logic;
   
   -- DMTD PLL from clk_20m_vcxo_i
-  signal dmtd_locked      : std_logic;
+  --signal dmtd_locked      : std_logic;
   signal clk_dmtd         : std_logic;
   
   signal dac_hpll_load_p1 : std_logic;
@@ -359,7 +365,6 @@ architecture rtl of exploder_top is
   signal ext_pps  : std_logic;
   signal pps      : std_logic;
 
-  signal phy_tx_clk       : std_logic;
   signal phy_tx_data      : std_logic_vector(7 downto 0);
   signal phy_tx_k         : std_logic;
   signal phy_tx_disparity : std_logic;
@@ -369,8 +374,8 @@ architecture rtl of exploder_top is
   signal phy_rx_k         : std_logic;
   signal phy_rx_enc_err   : std_logic;
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
-  signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
+  signal dbg_tx_clk       : std_logic;
 
   signal wrc_master_i  : t_wishbone_master_in;
   signal wrc_master_o  : t_wishbone_master_out;
@@ -435,7 +440,7 @@ begin
   dmtd_inst : dmtd_pll port map(
     inclk0 => clk_20m_vcxo_i,    --  20  Mhz 
     c0     => clk_dmtd,          --  62.5MHz
-    locked => dmtd_locked);
+    locked => open); -- dmtd_locked);
   
   ref_inst : ref_pll port map(
     inclk0 => clk_125m_pllref_i, -- 125 MHz
@@ -469,6 +474,7 @@ begin
       clks_i(0)  => clk_ref,
       rstn_o(0)  => rstn_ref);
 
+  rstn_wr <= rstn_sys and gxb_locked;
   U_WR_CORE : xwr_core
     generic map (
       g_simulation                => 0,
@@ -477,7 +483,7 @@ begin
       g_with_external_clock_input => true,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "",
+      g_dpram_initf               => "../../../ip_cores/wrpc-sw/wrc.mif",
       g_dpram_size                => 131072/4,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
@@ -489,14 +495,14 @@ begin
       clk_aux_i  => (others => '0'),
       clk_ext_i  => '0', -- g_with_external_clock_input controls usage
       pps_ext_i  => '0',
-      rst_n_i    => rstn_sys,
+      rst_n_i    => rstn_wr,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
       dac_hpll_data_o    => dac_hpll_data,
       dac_dpll_load_p1_o => dac_dpll_load_p1,
       dac_dpll_data_o    => dac_dpll_data,
 		
-      phy_ref_clk_i      => phy_tx_clk,
+      phy_ref_clk_i      => clk_ref,
       phy_tx_data_o      => phy_tx_data,
       phy_tx_k_o         => phy_tx_k,
       phy_tx_disparity_i => phy_tx_disparity,
@@ -506,7 +512,7 @@ begin
       phy_rx_k_i         => phy_rx_k,
       phy_rx_enc_err_i   => phy_rx_enc_err,
       phy_rx_bitslide_i  => phy_rx_bitslide,
-      phy_rst_o          => phy_rst,
+      phy_rst_o          => open,
       phy_loopen_o       => phy_loopen,
       
       led_act_o   => link_act,
@@ -556,13 +562,14 @@ begin
       link_ok_o            => open);
 
   wr_gxb_phy_arriaii_1 : wr_gxb_phy_arriaii
-    generic map (
-      g_simulation      => 0,
-      g_force_disparity => 1)
     port map (
       clk_reconf_i   => clk_reconf,
-      clk_ref_i      => clk_ref,
-      tx_clk_o       => phy_tx_clk,
+      clk_pll_i      => clk_ref,
+      clk_cru_i      => sfp_ref_clk_i,
+      clk_sys_i      => clk_sys,
+      rstn_sys_i     => rstn_sys,
+      locked_o       => gxb_locked,
+      loopen_i       => phy_loopen,
       tx_data_i      => phy_tx_data,
       tx_k_i         => phy_tx_k,
       tx_disparity_o => phy_tx_disparity,
@@ -572,10 +579,9 @@ begin
       rx_k_o         => phy_rx_k,
       rx_enc_err_o   => phy_rx_enc_err,
       rx_bitslide_o  => phy_rx_bitslide,
-      rst_i          => phy_rst,
-      loopen_i       => phy_loopen,
       pad_txp_o      => sfp1_td_o,
-      pad_rxp_i      => sfp1_rd_i);
+      pad_rxp_i      => sfp1_rd_i,
+      dbg_tx_clk_o   => dbg_tx_clk);
 
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
@@ -744,15 +750,16 @@ begin
   
   -- Baseboard logic analyzer (HPLA1)
   hpw_io(1 downto 0) <= (others => 'Z'); -- too close to clock inputs
-  hpw_io(2) <= clk_ref;
-  hpw_io(3) <= clk_sys;
-  hpw_io(4) <= phy_tx_clk;
-  hpw_io(5) <= phy_rx_rbclk;
-  hpw_io(6) <= clk_dmtd;
+  hpw_io(2) <= clk_ref;      -- pin 17
+  hpw_io(3) <= clk_sys;      -- pin 16
+  hpw_io(4) <= dbg_tx_clk;   -- pin 15
+  hpw_io(5) <= phy_rx_rbclk; -- pin 14
+  hpw_io(6) <= clk_dmtd;     -- pin 13
   hpw_io(15 downto 7) <= (others => 'Z');
+  -- 20 is ground
   
   -- Use output LEMOs in TTL mode
-  lemo_ttl <= '0';
+  lemo_ttl <= '1';
   select_o  <= lemo_ttl;
   selectn_o <= not lemo_ttl;
   

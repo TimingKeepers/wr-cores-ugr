@@ -206,24 +206,29 @@ architecture rtl of eca is
   signal rc1_time_gray    : t_time;
   signal rc0_time_gray    : t_time;
   
-  procedure update(signal o : inout std_logic_vector) is
-    alias r : std_logic_vector(o'length-1 downto 0) is o;
+  impure function update(x : std_logic_vector) return std_logic_vector is
+    alias    y : std_logic_vector(x'length-1 downto 0) is x;
+    variable o : std_logic_vector(x'length-1 downto 0);
   begin
-    if r'length >= 8 then
-      for i in (r'length/8)-1 downto 0 loop
+    if y'length >= 8 then
+      for i in (y'length/8)-1 downto 0 loop
         if c_slave_i.SEL(i) = '1' then
-          r(i*8+7 downto i*8) <= 
-            c_slave_i.DAT(i*8+7 downto i*8);
+          o(i*8+7 downto i*8) := c_slave_i.DAT(i*8+7 downto i*8);
+        else
+          o(i*8+7 downto i*8) := y(i*8+7 downto i*8);
         end if;
       end loop;
     end if;
     
-    if r'length mod 8 > 0 then
-      if c_slave_i.SEL(r'length/8) = '1' then
-        r(r'length-1 downto (r'length/8)*8) <=
-          c_slave_i.DAT(r'length-1 downto (r'length/8)*8);
+    if y'length mod 8 > 0 then
+      if c_slave_i.SEL(y'length/8) = '1' then
+        o(y'length-1 downto (y'length/8)*8) := c_slave_i.DAT(y'length-1 downto (y'length/8)*8);
+      else
+        o(y'length-1 downto (y'length/8)*8) := y(y'length-1 downto (y'length/8)*8);
       end if;
     end if;
+    
+    return o;
   end update;
   
   function f_all_names return t_all_name_array is
@@ -397,39 +402,39 @@ begin
                   rc_cs_page    <= rc_cs_page xor c_slave_i.DAT(25);
                   rc_cf_enabled <= not c_slave_i.DAT(24);
                 end if;
-              when  1 => update(rc_ce_idx);
+              when  1 => rc_ce_idx <= update(rc_ce_idx);
               when  2 => null; -- Cannot write to Time1
               when  3 => null; -- Cannot write to Time0
               when  4 => if c_slave_i.SEL(3) = '1' then rc_cs_active <= c_slave_i.DAT(31); end if;
-                         update(rc_cs_addr);
+                         rc_cs_addr <= update(rc_cs_addr);
                          rc_stall(2 downto 0) <= (others => '1'); -- wait for rc_cs_* to fill
               when  5 => if c_slave_i.SEL(3) = '1' then rc_cs_valid  <= c_slave_i.DAT(31); end if;
-                         update(rc_cs_first); 
+                         rc_cs_first <= update(rc_cs_first); 
                          rc_cs_wen <= not rc_cs_active;
                          rc_stall(2 downto 0) <= (others => '1'); -- prevent reading old data
-              when  6 => update(rc_cs_event(63 downto 32));
+              when  6 => rc_cs_event(63 downto 32) <= update(rc_cs_event(63 downto 32));
                          rc_cs_wen <= not rc_cs_active;
                          rc_stall(2 downto 0) <= (others => '1');
-              when  7 => update(rc_cs_event(31 downto 0));
+              when  7 => rc_cs_event(31 downto 0) <= update(rc_cs_event(31 downto 0));
                          rc_cs_wen <= not rc_cs_active;
                          rc_stall(2 downto 0) <= (others => '1');
               when  8 => if c_slave_i.SEL(3) = '1' then rc_cw_active <= c_slave_i.DAT(31); end if; 
-                         update(rc_cw_addr);
+                         rc_cw_addr <= update(rc_cw_addr);
                          rc_stall(2 downto 0) <= (others => '1'); -- wait for rc_cw_* to fill
               when  9 => if c_slave_i.SEL(3) = '1' then rc_cw_valid <= c_slave_i.DAT(31); end if;
-                         update(rc_cw_next);
+                         rc_cw_next <= update(rc_cw_next);
                          rc_cw_wen <= not rc_cw_active;
                          rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
-              when 10 => update(rc_cw_time(63 downto 32));
+              when 10 => rc_cw_time(63 downto 32) <= update(rc_cw_time(63 downto 32));
                          rc_cw_wen <= not rc_cw_active;
                          rc_stall(2 downto 0) <= (others => '1');
-              when 11 => update(rc_cw_time(31 downto  0));
+              when 11 => rc_cw_time(31 downto 0) <= update(rc_cw_time(31 downto  0));
                          rc_cw_wen <= not rc_cw_active;
                          rc_stall(2 downto 0) <= (others => '1');
-              when 12 => update(rc_cw_tag);
+              when 12 => rc_cw_tag <= update(rc_cw_tag);
                          rc_cw_wen <= not rc_cw_active;
                          rc_stall(2 downto 0) <= (others => '1');
-              when 13 => update(rc_cw_channel);
+              when 13 => rc_cw_channel <= update(rc_cw_channel);
                          rc_cw_wen <= not rc_cw_active;
                          rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
               when 14 => null; -- Freq1
@@ -444,14 +449,25 @@ begin
                   rc_cq_drain(channel)  <= c_slave_i.DAT(24);
                 end if;
                 
+                for channel_idx in 0 to g_num_channels-1 loop
+                  if channel_idx = channel then
+                    rc_cq_index(channel_idx) <= update(rc_cq_index(channel_idx));
+                  end if;
+                end loop;
+                
                 -- Wait a reallly long time.
                 -- It takes time for rc_cq_index to stabilize as input in a_clk_i
                 -- It takes time for the M9K to spit out the result
                 -- It takes time for the result to stabilize back into c_clk_i
-                update(rc_cq_index(channel));
-                rc_stall <= (others => '1'); 
+                rc_stall <= (others => '1');
+                                
               when 1 => 
-                update(rc_max_fill(channel));
+                for channel_idx in 0 to g_num_channels-1 loop
+                  if channel_idx = channel then
+                    rc_max_fill(channel_idx) <= update(rc_max_fill(channel_idx));
+                  end if;
+                end loop;
+                
               when 2 => null; -- Time1
               when 3 => null; -- Time0
               when 4 => null; -- Event1

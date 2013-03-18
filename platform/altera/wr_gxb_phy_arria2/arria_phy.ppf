@@ -4,24 +4,27 @@
 <global>
 <pin name="cal_blk_clk" direction="input" scope="external"  />
 <pin name="pll_inclk" direction="input" scope="external"  />
+<pin name="pll_powerdown[0..0]" direction="input" scope="external"  />
 <pin name="reconfig_clk" direction="input" scope="external"  />
 <pin name="reconfig_togxb[3..0]" direction="input" scope="external"  />
 <pin name="rx_analogreset[0..0]" direction="input" scope="external"  />
+<pin name="rx_cruclk[0..0]" direction="input" scope="external"  />
 <pin name="rx_datain[0..0]" direction="input" scope="external"  />
 <pin name="rx_digitalreset[0..0]" direction="input" scope="external"  />
+<pin name="rx_enapatternalign[0..0]" direction="input" scope="external"  />
 <pin name="rx_seriallpbken[0..0]" direction="input" scope="external"  />
 <pin name="tx_bitslipboundaryselect[4..0]" direction="input" scope="external"  />
-<pin name="tx_ctrlenable[0..0]" direction="input" scope="external"  />
-<pin name="tx_datain[7..0]" direction="input" scope="external"  />
+<pin name="tx_datain[9..0]" direction="input" scope="external"  />
 <pin name="tx_digitalreset[0..0]" direction="input" scope="external"  />
-<pin name="tx_dispval[0..0]" direction="input" scope="external"  />
-<pin name="tx_forcedisp[0..0]" direction="input" scope="external"  />
+<pin name="pll_locked[0..0]" direction="output" scope="external"  />
 <pin name="reconfig_fromgxb[16..0]" direction="output" scope="external"  />
 <pin name="rx_bitslipboundaryselectout[4..0]" direction="output" scope="external"  />
 <pin name="rx_clkout[0..0]" direction="output" scope="external"  />
-<pin name="rx_ctrldetect[0..0]" direction="output" scope="external"  />
-<pin name="rx_dataout[7..0]" direction="output" scope="external"  />
-<pin name="rx_errdetect[0..0]" direction="output" scope="external"  />
+<pin name="rx_dataout[9..0]" direction="output" scope="external"  />
+<pin name="rx_freqlocked[0..0]" direction="output" scope="external"  />
+<pin name="rx_patterndetect[0..0]" direction="output" scope="external"  />
+<pin name="rx_pll_locked[0..0]" direction="output" scope="external"  />
+<pin name="rx_syncstatus[0..0]" direction="output" scope="external"  />
 <pin name="tx_clkout[0..0]" direction="output" scope="external"  />
 <pin name="tx_dataout[0..0]" direction="output" scope="external"  />
 

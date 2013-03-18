@@ -249,10 +249,8 @@ begin  -- behavioral
     nRst_fifo(i)  <= nRst_i and not fifo_clear(i);
     
 	 
-	 
-    tm_fifo_in(i) <= sub_cap_delay(tm_utc_i, tm_cycles_i);
     tm_word0(i)   <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_out(i)(67 downto 60);
-	 tm_word1(i)   <= tm_fifo_out(i)(59 downto 28);
+    tm_word1(i)   <= tm_fifo_out(i)(59 downto 28);
     tm_word2(i)   <= std_logic_vector(to_unsigned(0, 32-28)) & tm_fifo_out(i)(27 downto 0);
 
     sync_trig_edge_reg : gc_sync_ffs
@@ -342,6 +340,7 @@ begin  -- behavioral
             if((trigger_edge_ref_clk(i) = '0' and triggers_neg_edge_synced(i) = '1')
                or ((trigger_edge_ref_clk(i) = '1') and (triggers_pos_edge_synced(i) = '1'))) then
               we(i) <= '1';
+              tm_fifo_in(i) <= sub_cap_delay(tm_utc_i, tm_cycles_i);
             end if;
           end if;
           ---------------------------------------------------------------------
