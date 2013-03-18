@@ -105,7 +105,7 @@ architecture behavioral of gtp_bitslide is
   signal state     : t_bitslide_fsm_state;
   signal counter   : unsigned(15 downto 0);
 
-  signal commas_missed : unsigned(1 downto 0);
+  signal commas_missed : unsigned(4 downto 0);
   
 begin  -- behavioral
 
@@ -149,7 +149,7 @@ begin  -- behavioral
           else
 
             commas_missed <= commas_missed + 1;
-            if(commas_missed(1) = '1') then
+            if(commas_missed(3) = '1') then
               state <= S_SYNC_LOST;
             end if;
           end if;
