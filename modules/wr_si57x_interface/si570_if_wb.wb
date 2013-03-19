@@ -1,0 +1,83 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+	 name = "silabs interface";
+	 hdl_entity = "si570_if_wb";
+	 prefix = "si570";
+	 
+	 reg {
+      name = "RFREQ low part";
+      prefix = "RFREQL";
+   
+			field {
+         name = "RFREQ low part";
+         size = 32;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+	 reg {
+      name = "RFREQ hi part";
+      prefix = "RFREQH";
+
+			field {
+         name = "RFREQ hi part";
+         size = 8;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "GPIO Set/Readback Register";
+      prefix = "GPSR";
+
+
+      field {
+         name = "SIlabs I2C bitbanged SCL";
+         prefix = "scl";
+         description = "write 1: Set FMC SCL line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+      };
+
+      field {
+         name = "SIlabs I2C bitbanged SDA";
+         prefix = "sda";
+         description = "write 1: Set FMC SDA line to 1 (pullup)\
+                        read : returns the current status of the SCL line.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+      };
+   };
+
+reg {
+      name = "GPIO Clear Register";
+      prefix = "GPCR";
+
+   
+      field {
+         name = "SILabs I2C bitbanged SCL";
+         prefix = "scl";
+         description = "write 1: Set SCL line to 0\
+                        read : returns the current status of the SCL line.";
+         type = MONOSTABLE;
+      };
+
+      field {
+         name = "SIlabs I2C bitbanged SDA";
+         prefix = "sda";
+         description = "write 1: Set SDA line to 0\
+                        read : returns the current status of the SCL line.";
+         type = MONOSTABLE;
+      };
+   };
+};
