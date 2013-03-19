@@ -188,6 +188,7 @@ architecture behavioral of ep_rx_pcs_8bit is
   signal lcr_ready         : std_logic;
   signal lcr_prev_val      : std_logic_vector(15 downto 0);
   signal lcr_cur_val       : std_logic_vector(15 downto 0);
+  signal lcr_final_val     : std_logic_vector(15 downto 0);
   signal lcr_validity_cntr : unsigned(1 downto 0);
 
   signal an_idle_cntr      : unsigned(1 downto 0);
@@ -469,6 +470,7 @@ begin
         lcr_ready         <= '0';
         lcr_cur_val       <= (others => '0');
         lcr_prev_val      <= (others => '0');
+        -- lcr_final_val ===> DO NOT CLEAR on reset
         lcr_validity_cntr <= (others => '0');
         an_idle_cntr      <= (others => '0');
         an_idle_match_int <= '0';
@@ -629,6 +631,7 @@ begin
                 if(lcr_validity_cntr = "10") then
 -- we've got 3? Indicate that we have received valid Config_Reg.
                   lcr_ready <= '1';
+                  lcr_final_val <= lcr_cur_val; -- only latched here, not even on reset
                 else
                   lcr_validity_cntr <= lcr_validity_cntr + 1;
                   lcr_ready         <= '0';
@@ -795,7 +798,7 @@ begin
     end if;
   end process;
 
-  an_rx_val_o <= lcr_cur_val;
+  an_rx_val_o <= lcr_final_val;
 
   U_sync_an_rx_ready : gc_sync_ffs
     generic map (
