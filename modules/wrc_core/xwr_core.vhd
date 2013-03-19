@@ -4,9 +4,9 @@
 -------------------------------------------------------------------------------
 -- File       : wr_core.vhd
 -- Author     : Grzegorz Daniluk
--- Company    : Elproma
+-- Company    : Elproma Elektronika, CERN BE-CO-HT
 -- Created    : 2011-02-02
--- Last update: 2013-02-08
+-- Last update: 2013-02-19
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -22,7 +22,26 @@
 -- wishbone bus is used for passing packets between Endpoint, Mini-NIC
 -- and External MAC interface.
 -------------------------------------------------------------------------------
--- Copyright (c) 2011 Grzegorz Daniluk
+--
+-- Copyright (c) 2011, 2012 Elproma Elektronika
+-- Copyright (c) 2012, 2013 CERN
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author          Description
