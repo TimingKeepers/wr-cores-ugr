@@ -154,6 +154,7 @@ architecture behavioral of ep_tx_pcs_8bit is
   signal reset_synced_txclk : std_logic;
 
   signal mdio_mcr_pdown_synced : std_logic;
+  signal an_tx_en_synced       : std_logic;
 
   signal s_one : std_logic := '1';
 
@@ -194,6 +195,15 @@ begin
       rst_n_i  => '1',
       data_i   => mdio_mcr_pdown_i,
       synced_o => mdio_mcr_pdown_synced);
+  
+  U_sync_tx_en : gc_sync_ffs
+    generic map (
+      g_sync_edge => "positive")
+    port map (
+      clk_i    => phy_tx_clk_i,
+      rst_n_i  => '1',
+      data_i   => an_tx_en_i,
+      synced_o => an_tx_en_synced);
 
   phy_tx_data_o <= tx_odata_reg;
   phy_tx_k_o    <= tx_is_k;
@@ -288,7 +298,7 @@ begin
             tx_error           <= '0';
 
 -- endpoint wants to send Config_Reg
-            if(an_tx_en_i = '1') then
+            if(an_tx_en_synced = '1') then
               tx_state        <= TX_CR1;
               tx_cr_alternate <= '0';
               fifo_rd         <= '0';
@@ -370,7 +380,7 @@ begin
             tx_odata_reg <= an_tx_val_i(15 downto 8);
 
 -- check if the autonegotiation control still wants the Config_Reg to be sent
-            if(an_tx_en_i = '1') then
+            if(an_tx_en_synced = '1') then
               tx_state <= TX_CR1;
             else
               tx_state <= TX_COMMA;
