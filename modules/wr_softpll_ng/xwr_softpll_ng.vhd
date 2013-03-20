@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-12-04
+-- Last update: 2013-03-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 -- Struct'ized version of wr_softpll_ng.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2012 CERN
+-- Copyright (c) 2012-2013 CERN
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   

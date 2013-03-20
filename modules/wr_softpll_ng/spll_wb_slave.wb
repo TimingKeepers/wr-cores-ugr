@@ -263,11 +263,49 @@ peripheral {
       };
    };
 
+   reg {
+      name = "Aux clock configuration register";
+      prefix = "AUX_CR";
+
+      field {
+         name = "Aux output select";
+         prefix = "AUX_SEL";
+         size = 3;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB reference divider";
+         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
+         prefix = "DIV_REF";
+         size = 6;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB feedback divider";
+         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
+         prefix = "DIV_FB";
+         size = 6;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB gating frequency select";
+         description = "BB detector output gating frequency. GATE = log2(period in clk_ref cycles).";
+         prefix = "GATE";
+         size = 4;
+         type = PASS_THROUGH;
+      };
+   };
+
 	 fifo_reg {
 			name = "Debug FIFO Register - Host side";		
 			prefix = "DFR_HOST";
 			direction = CORE_TO_BUS;		 		 
       size = 8192;
+
+      optional = "g_with_debug_fifo";
 
 			flags_dev = {FIFO_FULL, FIFO_EMPTY, FIFO_COUNT};
 			flags_bus = {FIFO_FULL, FIFO_EMPTY, FIFO_COUNT};
