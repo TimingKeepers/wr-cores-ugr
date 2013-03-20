@@ -56,6 +56,7 @@ package wr_altera_pkg is
       rstn_sys_i     : in  std_logic;
       locked_o       : out std_logic;
       loopen_i       : in  std_logic;
+      drop_link_i    : in  std_logic;
       tx_data_i      : in  std_logic_vector(7 downto 0);
       tx_k_i         : in  std_logic;
       tx_disparity_o : out std_logic;

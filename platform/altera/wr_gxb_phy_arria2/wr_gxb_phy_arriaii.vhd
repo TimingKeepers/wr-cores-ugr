@@ -66,7 +66,8 @@ entity wr_gxb_phy_arriaii is
     clk_sys_i    : in  std_logic; -- Used to reset the core
     rstn_sys_i   : in  std_logic; -- must last >= 1us
     locked_o     : out std_logic; -- Is the rx_rbclk valid? (clk_sys domain)
-    loopen_i     : in std_logic;  -- local loopback enable (Tx->Rx), active hi
+    loopen_i     : in  std_logic;  -- local loopback enable (Tx->Rx), active hi
+    drop_link_i  : in  std_logic; -- Kill the link?
 
     -- clocked by clk_pll_i
     tx_data_i      : in  std_logic_vector(7 downto 0);   -- data input (8 bits, not 8b10b-encoded)
@@ -172,6 +173,7 @@ architecture rtl of wr_gxb_phy_arriaii is
   signal sys_pll_locked    : std_logic_vector(2 downto 0);
   signal sys_reconfig_busy : std_logic_vector(2 downto 0);
   signal sys_rx_freqlocked : std_logic_vector(2 downto 0);
+  signal sys_drop_link     : std_logic_vector(2 downto 0);
   
   signal tx_8b10b_rstn : std_logic_vector(2 downto 0); -- tx domain
   signal rx_8b10b_rstn : std_logic_vector(2 downto 0); -- rx domain
@@ -285,20 +287,23 @@ begin
       sys_pll_locked    <= pll_locked    & sys_pll_locked   (sys_pll_locked'left    downto 1);
       sys_reconfig_busy <= reconfig_busy & sys_reconfig_busy(sys_reconfig_busy'left downto 1);
       sys_rx_freqlocked <= rx_freqlocked & sys_rx_freqlocked(sys_rx_freqlocked'left downto 1);
+      sys_drop_link     <= drop_link_i   & sys_drop_link    (sys_drop_link'left     downto 1);
       
       if rstn_sys_i = '0' then
         rst_state       <= WAIT_POWER;
         rst_delay       <= (others => '1');
         pll_powerdown   <= '1';
-        tx_digitalreset <= '1';
         rx_analogreset  <= '1';
+        locked_o        <= '0';
+        tx_digitalreset <= '1';
         rx_digitalreset <= '1';
       else
         case rst_state is
           when WAIT_POWER =>
             pll_powerdown   <= '1';
-            tx_digitalreset <= '1';
             rx_analogreset  <= '1';
+            locked_o        <= '0';
+            tx_digitalreset <= '1';
             rx_digitalreset <= '1';
             
             rst_delay <= rst_delay - 1;
@@ -323,8 +328,6 @@ begin
             end if;
             
           when WAIT_CONFIG =>
-            tx_digitalreset <= '0';
-            
             if sys_reconfig_busy(0) = '1' then
               rst_delay <= (others => '1');
             else
@@ -361,7 +364,12 @@ begin
             end if;
           
           when DONE =>
-            rx_digitalreset <= '0';
+            -- RX clock is now locked and safe
+            locked_o <= '1';
+            
+            -- Kill the link upon request
+            tx_digitalreset <= sys_drop_link(0);
+            rx_digitalreset <= sys_drop_link(0);
             
             if sys_pll_locked(0) = '0' then
               rst_delay <= (others => '1');
@@ -373,8 +381,6 @@ begin
     end if;
   end process;
   
-  -- Until RX path is enabled, clock is not safe
-  locked_o <= not rx_digitalreset;
   
   -- Generate reset for 8b10b encoder
   p_pll_reset : process(clk_pll_i) is

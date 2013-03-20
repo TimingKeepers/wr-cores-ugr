@@ -374,6 +374,7 @@ architecture rtl of exploder_top is
   signal phy_rx_k         : std_logic;
   signal phy_rx_enc_err   : std_logic;
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
+  signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
   signal dbg_tx_clk       : std_logic;
 
@@ -512,7 +513,7 @@ begin
       phy_rx_k_i         => phy_rx_k,
       phy_rx_enc_err_i   => phy_rx_enc_err,
       phy_rx_bitslide_i  => phy_rx_bitslide,
-      phy_rst_o          => open,
+      phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
       
       led_act_o   => link_act,
@@ -570,6 +571,7 @@ begin
       rstn_sys_i     => rstn_sys,
       locked_o       => gxb_locked,
       loopen_i       => phy_loopen,
+      drop_link_i    => phy_rst,
       tx_data_i      => phy_tx_data,
       tx_k_i         => phy_tx_k,
       tx_disparity_o => phy_tx_disparity,
@@ -658,7 +660,7 @@ begin
   ECA0 : wr_eca
     generic map(
       g_eca_name       => f_name("Exploder2C + DB2"),
-      g_channel_names  => (f_name("GPIO: TTL Output (1-6) Side LEDs(9-12)"), 
+      g_channel_names  => (f_name("GPIO: TTL Output (2-7) Side LEDs(9-12)"), 
                            f_name("GPIO: TRIGGER1+TRIGGER2 simultaneously (1-8)"), 
                            f_name("GPIO: LVDS Output (1-8) ECL Output (9-16)"),
                            f_name("WB:   Top-level bus controller")),
@@ -742,10 +744,10 @@ begin
   sfp4_mod2_io <= 'Z';
 
   -- Baseboard LEDs
-  hpv_o(0) <= not link_act; -- red   = traffic
-  hpv_o(1) <= not tm_up;    -- blue  = timing link up
-  hpv_o(2) <= not link_up;  -- green = link
-  hpv_o(3) <= not ext_pps;  -- white = PPS
+  hpv_o(0) <= not link_act and link_up; -- red   = traffic/no-link
+  hpv_o(1) <= not link_up;              -- blue  = link
+  hpv_o(2) <= not tm_valid;             -- green = timing valid
+  hpv_o(3) <= not ext_pps;              -- white = PPS
   hpv_o(7 downto 4) <= not eca_lemo_led(11 downto 8); -- ECA controls other LEDs
   
   -- Baseboard logic analyzer (HPLA1)
@@ -765,8 +767,8 @@ begin
   
   -- LEMO outputs
   ttnim_o(8) <= ext_pps;
-  ttnim_o(7) <= clk_ref;
-  ttnim_o(6 downto 1) <= eca_lemo_led(5 downto 0);
+  ttnim_o(1) <= clk_ref;
+  ttnim_o(7 downto 2) <= eca_lemo_led(6 downto 1);
   
   -- ECA outputs
   lvds_o <= eca_lvds_ecl(7 downto 0);

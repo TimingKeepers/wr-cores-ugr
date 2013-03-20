@@ -244,6 +244,7 @@ architecture rtl of scu_top is
   signal phy_rx_k         : std_logic;
   signal phy_rx_enc_err   : std_logic;
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
+  signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
   signal dbg_tx_clk       : std_logic;
 
@@ -370,7 +371,7 @@ begin
       phy_rx_k_i         => phy_rx_k,
       phy_rx_enc_err_i   => phy_rx_enc_err,
       phy_rx_bitslide_i  => phy_rx_bitslide,
-      phy_rst_o          => open,
+      phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
       
       led_act_o   => open,
@@ -427,6 +428,7 @@ begin
       rstn_sys_i     => rstn_sys,
       locked_o       => gxb_locked,
       loopen_i       => phy_loopen,
+      drop_link_i    => phy_rst,
       tx_data_i      => phy_tx_data,
       tx_k_i         => phy_tx_k,
       tx_disparity_o => phy_tx_disparity,
