@@ -7,6 +7,7 @@ use work.wishbone_pkg.all;
 use work.sysc_wbgen2_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.endpoint_pkg.all;
+use work.softpll_pkg.all;
 
 package wrcore_pkg is
 
@@ -238,7 +239,7 @@ package wrcore_pkg is
       product     => (
         vendor_id => x"000000000000CE42",  -- CERN
         device_id => x"65158dc0",
-        version   => x"00000001",
+        version   => x"00000002",
         date      => x"20120305",
         name      => "WR-Soft-PLL        ")));
   component xwr_softpll_ng
@@ -246,17 +247,13 @@ package wrcore_pkg is
       g_tag_bits             : integer;
       g_num_ref_inputs       : integer;
       g_num_outputs          : integer;
-      g_with_period_detector : boolean := false;
-      g_with_debug_fifo      : boolean := false;
-      g_with_ext_clock_input : boolean := false;
-      g_with_undersampling   : boolean := false;
-      g_reverse_dmtds        : boolean := false;
-      g_bb_ref_divider       : integer := 1;
-      g_bb_feedback_divider  : integer := 1;
-      g_bb_log2_gating       : integer := 1;
-      g_divide_input_by_2    : boolean := false;
+      g_with_debug_fifo      : boolean                        := false;
+      g_with_ext_clock_input : boolean                        := false;
+      g_reverse_dmtds        : boolean                        := false;
+      g_divide_input_by_2    : boolean                        := false;
       g_interface_mode       : t_wishbone_interface_mode;
-      g_address_granularity  : t_wishbone_address_granularity);
+      g_address_granularity  : t_wishbone_address_granularity;
+      g_channels_config      : t_softpll_channel_config_array := c_softpll_default_channel_config);
     port (
       clk_sys_i       : in  std_logic;
       rst_n_i         : in  std_logic;
@@ -297,7 +294,9 @@ package wrcore_pkg is
       g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
       g_address_granularity       : t_wishbone_address_granularity := BYTE;
-      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
+      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
+      g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
+      g_softpll_enable_debugger   : boolean                        := false
       );
     port(
       clk_sys_i  : in std_logic;
@@ -363,9 +362,9 @@ package wrcore_pkg is
 
       tm_link_up_o         : out std_logic;
       tm_dac_value_o       : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o          : out std_logic;
-      tm_clk_aux_lock_en_i : in  std_logic := '0';
-      tm_clk_aux_locked_o  : out std_logic;
+      tm_dac_wr_o          : out std_logic_vector(g_aux_clks-1 downto 0);
+      tm_clk_aux_lock_en_i : in  std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
+      tm_clk_aux_locked_o  : out std_logic_vector(g_aux_clks-1 downto 0);
       tm_time_valid_o      : out std_logic;
       tm_tai_o             : out std_logic_vector(39 downto 0);
       tm_cycles_o          : out std_logic_vector(27 downto 0);
@@ -394,7 +393,9 @@ package wrcore_pkg is
       g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
       g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
       g_address_granularity       : t_wishbone_address_granularity := WORD;
-      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
+      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
+      g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
+      g_softpll_enable_debugger   : boolean                        := false
       );
     port(
       ---------------------------------------------------------------------------
@@ -543,13 +544,12 @@ package wrcore_pkg is
       -----------------------------------------
 
       tm_link_up_o         : out std_logic;
-      -- DAC Control
+
       tm_dac_value_o       : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o          : out std_logic;
-      -- Aux clock lock enable
-      tm_clk_aux_lock_en_i : in  std_logic := '0';
-      -- Aux clock locked flag
-      tm_clk_aux_locked_o  : out std_logic;
+      tm_dac_wr_o          : out std_logic_vector(g_aux_clks-1 downto 0) ;
+      tm_clk_aux_lock_en_i : in  std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
+      tm_clk_aux_locked_o  : out std_logic_vector(g_aux_clks-1 downto 0) ;
+
       -- Timecode output
       tm_time_valid_o      : out std_logic;
       tm_tai_o             : out std_logic_vector(39 downto 0);
