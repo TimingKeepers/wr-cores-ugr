@@ -3,7 +3,7 @@ set_global_assignment -name DEVICE EP2AGX125DF25C6ES
 set_global_assignment -name TOP_LEVEL_ENTITY exploder_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 11.1
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "11:45:41 FEBRUARY 14, 2012"
-set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "12.1 SP1"
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
@@ -242,23 +242,23 @@ set_location_assignment PIN_W13 -to diout_i
 set_location_assignment PIN_AC18 -to discp_o
 set_location_assignment PIN_AB17 -to green_o
 set_location_assignment PIN_AB16 -to red_o
-set_location_assignment PIN_P7 -to pa_io[7]
-set_location_assignment PIN_R5 -to pa_io[6]
-set_location_assignment PIN_R7 -to pa_io[5]
-set_location_assignment PIN_R6 -to pa_io[4]
-set_location_assignment PIN_V1 -to pa_io[3]
-set_location_assignment PIN_U1 -to pa_io[2]
-set_location_assignment PIN_AB1 -to pa_io[1]
-set_location_assignment PIN_AA1 -to pa_io[0]
+set_location_assignment PIN_P7 -to pa_o[7]
+set_location_assignment PIN_R5 -to pa_o[6]
+set_location_assignment PIN_R7 -to pa_o[5]
+set_location_assignment PIN_R6 -to pa_o[4]
+set_location_assignment PIN_V1 -to pa_o[3]
+set_location_assignment PIN_U1 -to pa_o[2]
+set_location_assignment PIN_AB1 -to pa_o[1]
+set_location_assignment PIN_AA1 -to pa_o[0]
 set_location_assignment PIN_AC1 -to pres_o
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[7]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[6]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[5]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[4]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[3]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[2]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[1]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_io[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[7]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[6]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[5]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[4]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[3]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[2]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[0]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pres_o
 set_location_assignment PIN_AD2 -to slrd_o
 set_location_assignment PIN_T4 -to slwr_o
@@ -294,6 +294,43 @@ set_location_assignment PIN_G23 -to sfp_ref_clk_i
 set_instance_assignment -name IO_STANDARD LVDS -to sfp_ref_clk_i
 set_location_assignment PIN_G24 -to "sfp_ref_clk_i(n)"
 set_global_assignment -name FITTER_EFFORT "AUTO FIT"
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to slrd_o
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to slwr_o
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[0]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[1]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[2]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[3]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[4]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[5]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[6]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[7]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to ctl_i[0]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to ctl_i[1]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to ctl_i[2]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[0]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[0]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[0]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[1]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[1]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[1]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[2]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[2]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[2]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[3]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[3]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[3]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[4]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[4]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[4]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[5]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[5]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[5]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[6]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[6]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[6]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[7]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[7]
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[7]
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VHDL_FILE ../../../top/gsi_exploder/wr_core_demo/exploder_top.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
@@ -469,6 +506,7 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wi
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_xilinx_fpga_loader/xloader_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_clock_crossing/xwb_clock_crossing.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_dma/xwb_dma.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_dma/xwb_streamer.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_serial_lcd/wb_serial_lcd.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_dpssram.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_eic.vhd
@@ -498,7 +536,11 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_sl
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/sipo_flag.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/vhdl_2008_workaround_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/WB_bus_adapter_streaming_sg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_usb_slave_core.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/xetherbone_core.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb_fifos.vhd
 set_global_assignment -name SDC_FILE ../../../top/gsi_exploder/wr_core_demo/exploder_top.sdc
 set_global_assignment -name SDC_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_pcie/altera_pcie.sdc
 

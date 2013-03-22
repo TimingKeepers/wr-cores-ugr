@@ -12,6 +12,7 @@ use work.wb_cores_pkg_gsi.all;
 use work.eca_pkg.all;
 use work.wr_altera_pkg.all;
 use work.etherbone_pkg.all;
+use work.ez_usb_pkg.all;
 
 entity exploder_top is
   port(
@@ -120,17 +121,17 @@ entity exploder_top is
     sres_o : out   std_logic; -- AD5   active low reset#
     slrd_o : out   std_logic; -- AD2   read strobe
     slwr_o : out   std_logic; -- T4    write strobe
-    pa_io  : inout std_logic_vector(7 downto 0); -- bidirectional IO port
+    pa_o   : out   std_logic_vector(7 downto 0); -- control lines
     fd_io  : inout std_logic_vector(7 downto 0); -- FIFO data bus
-    ctl_i  : in    std_logic_vector(2 downto 0); -- GP output of controller
-    -- pa_io(0) -- AA1
-    -- pa_io(1) -- AB1
-    -- pa_io(2) -- U1
-    -- pa_io(3) -- V1
-    -- pa_io(4) -- R6
-    -- pa_io(5) -- R7
-    -- pa_io(6) -- R5
-    -- pa_io(7) -- P7
+    ctl_i  : in    std_logic_vector(2 downto 0); -- FIFO flags
+    -- pa_o(0) -- AA1
+    -- pa_o(1) -- AB1
+    -- pa_o(2) -- U1
+    -- pa_o(3) -- V1
+    -- pa_o(4) -- R6
+    -- pa_o(5) -- R7
+    -- pa_o(6) -- R5
+    -- pa_o(7) -- P7
     -- fd_io(0) -- AD4
     -- fd_io(1) -- U6
     -- fd_io(2) -- AD3
@@ -318,7 +319,7 @@ architecture rtl of exploder_top is
   
   -- Top crossbar layout
   constant c_slaves  : natural := 5;
-  constant c_masters : natural := 2;
+  constant c_masters : natural := 3;
   constant c_layout : t_sdb_record_array(c_slaves-1 downto 0) :=
    (0 => f_sdb_embed_bridge(c_wrcore_bridge_sdb,          x"00000000"),
     1 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00100000"),
@@ -418,6 +419,9 @@ architecture rtl of exploder_top is
   signal di_flm : std_logic;
   signal di_dat : std_logic;
   signal di_bll : std_logic;
+  
+  signal fd_oen : std_logic;
+  signal fd_o   : std_logic_vector(7 downto 0);
 begin
 
   -- open drain buffer for one wire (only one)
@@ -646,8 +650,9 @@ begin
       g_fifo_depth   => 10)
     port map (
       ref_clk_i                => clk_ref,
+      ref_rstn_i               => rstn_ref,
       sys_clk_i                => clk_sys,
-      nRSt_i                   => rstn_sys,
+      sys_rstn_i               => rstn_sys,
       triggers_i(15 downto  0) => rc_i,
       triggers_i(23 downto 16) => lemo_i,
       triggers_i(31 downto 24) => any_i,
@@ -660,7 +665,7 @@ begin
   ECA0 : wr_eca
     generic map(
       g_eca_name       => f_name("Exploder2C + DB2"),
-      g_channel_names  => (f_name("GPIO: TTL Output (2-7) Side LEDs(9-12)"), 
+      g_channel_names  => (f_name("GPIO: TTL Output (2-7) Side LEDs(9-12) NIM|TTL(16)"), 
                            f_name("GPIO: TRIGGER1+TRIGGER2 simultaneously (1-8)"), 
                            f_name("GPIO: LVDS Output (1-8) ECL Output (9-16)"),
                            f_name("WB:   Top-level bus controller")),
@@ -761,7 +766,7 @@ begin
   -- 20 is ground
   
   -- Use output LEMOs in TTL mode
-  lemo_ttl <= '1';
+  lemo_ttl  <= not eca_lemo_led(15);
   select_o  <= lemo_ttl;
   selectn_o <= not lemo_ttl;
   
@@ -783,14 +788,8 @@ begin
   -- Drive a '1' out the trigger bus on enable
   di_o <= (others => '1');
   
-  -- Use RES for Serial console
-  res_io(1) <= '0'; -- ground
-  res_io(2) <= '1'; -- power
-  res_io(3) <= uart_tx; -- TX
-  res_io(4) <= 'Z';
-  uart_rx <= res_io(4);
-  
-  res_io(8 downto 5) <= (others => 'Z');
+  -- RES is unused for now
+  res_io(8 downto 1) <= (others => 'Z');
   
   -- LEMO inputs can come from TTL or NIM standard
   lemo_i <= not (ttlin_i or nimin_i);
@@ -837,11 +836,37 @@ begin
   diin_o  <= '0' when (di_dat = '0') else 'Z';
   
   -- USB micro controller
-  pres_o <= '0';
-  sres_o <= '0'; -- hold reset
-  slrd_o <= '0';
-  slwr_o <= '0';
-  pa_io  <= (others => 'Z');
-  fd_io  <= (others => 'Z');
+  pres_o <= '0';      -- reserved pin connected to FPGA by mistake. must be ground.
+  sres_o <= rstn_sys; -- allow it to boot once the FPGA is reayd.
   
+  pa_o(0) <= '1'; -- intn0
+  pa_o(1) <= '1'; -- intn1
+  pa_o(3) <= '0'; -- used as GPIO out
+  pa_o(7) <= '0'; -- used as GPIO out
+  -- ctl_i(0) is used as GPIO in
+  
+  fd_io <= fd_o when fd_oen='1' else (others => 'Z');
+  
+  EZUSB : ez_usb
+    generic map(
+      g_sdb_address => c_sdb_address)
+    port map(
+      clk_sys_i    => clk_sys,
+      rstn_i       => rstn_sys,
+      master_i     => cbar_slave_o(2),
+      master_o     => cbar_slave_i(2),
+      uart_o       => uart_rx,
+      uart_i       => uart_tx,
+      fifoadr_o(0) => pa_o(4),
+      fifoadr_o(1) => pa_o(5),
+      flagbn_i     => ctl_i(1),
+      flagcn_i     => ctl_i(2),
+      sloen_o      => pa_o(2),
+      slrdn_o      => slrd_o,
+      slwrn_o      => slwr_o,
+      pktendn_o    => pa_o(6),
+      fd_i         => fd_io,
+      fd_o         => fd_o,
+      fd_oen_o     => fd_oen);
+
 end rtl;
