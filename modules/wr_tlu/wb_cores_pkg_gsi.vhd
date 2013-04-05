@@ -39,8 +39,9 @@ component wb_timestamp_latch
     g_fifo_depth   : natural);
   port (
     ref_clk_i       : in  std_logic;
+    ref_rstn_i      : in  std_logic;
     sys_clk_i       : in  std_logic;
-    nRSt_i          : in  std_logic;
+    sys_rstn_i      : in  std_logic;
     triggers_i      : in  std_logic_vector(g_num_triggers-1 downto 0);
     tm_time_valid_i : in  std_logic;
     tm_utc_i        : in  std_logic_vector(39 downto 0);

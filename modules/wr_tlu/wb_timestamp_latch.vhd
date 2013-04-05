@@ -60,8 +60,9 @@ entity wb_timestamp_latch is
           g_fifo_depth   : natural := 10);  
   port (
     ref_clk_i       : in  std_logic;    -- tranceiver clock domain
+    ref_rstn_i      : in  std_logic;
     sys_clk_i       : in  std_logic;    -- local clock domain
-    nRSt_i          : in  std_logic;
+    sys_rstn_i      : in  std_logic;
 
     triggers_i      : in  std_logic_vector(g_num_triggers-1 downto 0);  -- trigger lines for latch
     tm_time_valid_i : in  std_logic;    -- timestamp valid flag
@@ -246,7 +247,7 @@ begin  -- behavioral
   
   trig_sync : for i in 0 to g_num_triggers-1 generate
 
-    nRst_fifo(i)  <= nRst_i and not fifo_clear(i);
+    nRst_fifo(i)  <= ref_rstn_i and not fifo_clear(i);
     
 	 
     tm_word0(i)   <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_out(i)(67 downto 60);
@@ -258,7 +259,7 @@ begin  -- behavioral
         g_sync_edge => "positive")
       port map (
         clk_i    => ref_clk_i,
-        rst_n_i  => nRst_i,
+        rst_n_i  => ref_rstn_i,
         data_i   => trigger_edge(i),
         synced_o => trigger_edge_ref_clk(i),
         npulse_o => open,
@@ -269,7 +270,7 @@ begin  -- behavioral
         g_sync_edge => "positive")
       port map (
         clk_i    => ref_clk_i,
-        rst_n_i  => nRst_i,
+        rst_n_i  => ref_rstn_i,
         data_i   => trigger_active(i),
         synced_o => trigger_active_ref_clk(i),
         npulse_o => open,
@@ -280,7 +281,7 @@ begin  -- behavioral
         g_sync_edge => "positive")
       port map (
         clk_i    => ref_clk_i,
-        rst_n_i  => nRst_i,
+        rst_n_i  => ref_rstn_i,
         data_i   => triggers_i(i),
         synced_o => open,
         npulse_o => triggers_neg_edge_synced(i),
@@ -329,7 +330,7 @@ begin  -- behavioral
      latch : process (ref_clk_i)
     begin  -- process latch
       if ref_clk_i'event and ref_clk_i = '1' then  -- rising clock edge
-        if nRST_i = '0' then       -- synchronous reset (active low)
+        if ref_rstn_i = '0' then       -- synchronous reset (active low)
           we(i) <= '0';
         else
           ---------------------------------------------------------------------
@@ -373,7 +374,7 @@ begin  -- behavioral
   begin  -- process wb_if
     
     if sys_clk_i'event and sys_clk_i = '1' then  -- rising clock edge
-      if nRst_i = '0' then              -- synchronous reset (active low)
+      if sys_rstn_i = '0' then              -- synchronous reset (active low)
         trigger_active <= (others => '0');
         trigger_edge   <= (others => '1');
         rd             <= (others => '1');
