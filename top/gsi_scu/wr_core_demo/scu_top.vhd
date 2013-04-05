@@ -514,8 +514,9 @@ begin
       g_fifo_depth   => 10)
     port map (
       ref_clk_i       => clk_ref,
+      ref_rstn_i      => rstn_ref,
       sys_clk_i       => clk_sys,
-      nRSt_i          => rstn_sys,
+      sys_rstn_i      => rstn_sys,
       triggers_i(0)   => lemo_io2,
       tm_time_valid_i => '0',
       tm_utc_i        => tm_tai,
