@@ -117,21 +117,20 @@ entity exploder_top is
     -----------------------------------------
     -- USB micro controller 3.3V
     -----------------------------------------
-    pres_o : out   std_logic; -- AC1   res must be '0'
-    sres_o : out   std_logic; -- AD5   active low reset#
-    slrd_o : out   std_logic; -- AD2   read strobe
-    slwr_o : out   std_logic; -- T4    write strobe
-    pa_o   : out   std_logic_vector(7 downto 0); -- control lines
-    fd_io  : inout std_logic_vector(7 downto 0); -- FIFO data bus
-    ctl_i  : in    std_logic_vector(2 downto 0); -- FIFO flags
-    -- pa_o(0) -- AA1
-    -- pa_o(1) -- AB1
-    -- pa_o(2) -- U1
-    -- pa_o(3) -- V1
-    -- pa_o(4) -- R6
-    -- pa_o(5) -- R7
-    -- pa_o(6) -- R5
-    -- pa_o(7) -- P7
+    pres_o    : out   std_logic; -- AC1   res must be '0'
+    sres_o    : out   std_logic; -- AD5   active low reset#
+    slrdn_o   : out   std_logic; -- AD2   read strobe
+    slwrn_o   : out   std_logic; -- T4    write strobe
+    speed_i   : in    std_logic; -- PA0 = AA1
+    shift_i   : in    std_logic; -- PA1 = AB1
+    sloen_o   : out   std_logic; -- PA2 = U1
+    ebcyc_i   : in    std_logic; -- PA3 = V1
+    fifoadr_o : out   std_logic_vector(1 downto 0); -- 0=PA4=R6, 1=PA5=R7
+    pktendn_o : out   std_logic; -- PA6=R5
+    readyn_io : inout std_logic; -- PA7=P7
+    fulln_i   : in    std_logic; -- CTL1 = W2
+    emptyn_i  : in    std_logic; -- CTL2 = T5
+    fd_io     : inout std_logic_vector(7 downto 0); -- FIFO data bus
     -- fd_io(0) -- AD4
     -- fd_io(1) -- U6
     -- fd_io(2) -- AD3
@@ -140,9 +139,7 @@ entity exploder_top is
     -- fd_io(5) -- V7
     -- fd_io(6) -- T6
     -- fd_io(7) -- V6
-    -- ctl_i(0) -- V3
-    -- ctl_i(1) -- W2
-    -- ctl_i(2) -- T5
+    -- CTL0 = V3, unused
     
     -----------------------------------------
     -- LVDSCON1 (exploder2b_db2) 2.5V
@@ -839,34 +836,33 @@ begin
   pres_o <= '0';      -- reserved pin connected to FPGA by mistake. must be ground.
   sres_o <= rstn_sys; -- allow it to boot once the FPGA is reayd.
   
-  pa_o(0) <= '1'; -- intn0
-  pa_o(1) <= '1'; -- intn1
-  pa_o(3) <= '0'; -- used as GPIO out
-  pa_o(7) <= '0'; -- used as GPIO out
-  -- ctl_i(0) is used as GPIO in
-  
   fd_io <= fd_o when fd_oen='1' else (others => 'Z');
+  readyn_io <= 'Z'; -- weak pull-up
   
   EZUSB : ez_usb
     generic map(
       g_sdb_address => c_sdb_address)
     port map(
-      clk_sys_i    => clk_sys,
-      rstn_i       => rstn_sys,
-      master_i     => cbar_slave_o(2),
-      master_o     => cbar_slave_i(2),
-      uart_o       => uart_rx,
-      uart_i       => uart_tx,
-      fifoadr_o(0) => pa_o(4),
-      fifoadr_o(1) => pa_o(5),
-      flagbn_i     => ctl_i(1),
-      flagcn_i     => ctl_i(2),
-      sloen_o      => pa_o(2),
-      slrdn_o      => slrd_o,
-      slwrn_o      => slwr_o,
-      pktendn_o    => pa_o(6),
-      fd_i         => fd_io,
-      fd_o         => fd_o,
-      fd_oen_o     => fd_oen);
+      clk_sys_i => clk_sys,
+      rstn_i    => rstn_sys,
+      master_i  => cbar_slave_o(2),
+      master_o  => cbar_slave_i(2),
+      uart_o    => uart_rx,
+      uart_i    => uart_tx,
+      
+      ebcyc_i   => ebcyc_i,
+      speed_i   => speed_i,
+      shift_i   => shift_i,
+      fifoadr_o => fifoadr_o,
+      readyn_i  => readyn_io,
+      fulln_i   => fulln_i,
+      emptyn_i  => emptyn_i,
+      sloen_o   => sloen_o,
+      slrdn_o   => slrdn_o,
+      slwrn_o   => slwrn_o,
+      pktendn_o => pktendn_o,
+      fd_i      => fd_io,
+      fd_o      => fd_o,
+      fd_oen_o  => fd_oen);
 
 end rtl;

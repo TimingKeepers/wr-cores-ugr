@@ -229,12 +229,10 @@ set_instance_assignment -name IO_MAXIMUM_TOGGLE_RATE "0 MHz" -to hpw_io[0]
 set_instance_assignment -name IO_MAXIMUM_TOGGLE_RATE "0 MHz" -to hpw_io[1]
 set_location_assignment PIN_AB14 -to bll_o
 set_location_assignment PIN_AB9 -to blue_o
-set_location_assignment PIN_T5 -to ctl_i[2]
-set_location_assignment PIN_W2 -to ctl_i[1]
-set_location_assignment PIN_V3 -to ctl_i[0]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ctl_i[0]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ctl_i[1]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ctl_i[2]
+set_location_assignment PIN_T5 -to emptyn_i
+set_location_assignment PIN_W2 -to fulln_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to fulln_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to emptyn_i
 set_location_assignment PIN_V13 -to diflm_o
 set_location_assignment PIN_AA16 -to diin_o
 set_location_assignment PIN_AA14 -to dilp_o
@@ -242,30 +240,26 @@ set_location_assignment PIN_W13 -to diout_i
 set_location_assignment PIN_AC18 -to discp_o
 set_location_assignment PIN_AB17 -to green_o
 set_location_assignment PIN_AB16 -to red_o
-set_location_assignment PIN_P7 -to pa_o[7]
-set_location_assignment PIN_R5 -to pa_o[6]
-set_location_assignment PIN_R7 -to pa_o[5]
-set_location_assignment PIN_R6 -to pa_o[4]
-set_location_assignment PIN_V1 -to pa_o[3]
-set_location_assignment PIN_U1 -to pa_o[2]
-set_location_assignment PIN_AB1 -to pa_o[1]
-set_location_assignment PIN_AA1 -to pa_o[0]
+set_location_assignment PIN_P7 -to readyn_io
+set_location_assignment PIN_R5 -to pktendn_o
+set_location_assignment PIN_R7 -to fifoadr_o[1]
+set_location_assignment PIN_R6 -to fifoadr_o[0]
+set_location_assignment PIN_V1 -to ebcyc_i
+set_location_assignment PIN_U1 -to sloen_o
+set_location_assignment PIN_AB1 -to shift_i
+set_location_assignment PIN_AA1 -to speed_i
 set_location_assignment PIN_AC1 -to pres_o
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[7]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[6]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[5]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[4]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[3]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[2]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[1]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pa_o[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to readyn_io
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pktendn_o
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to fifoadr_o[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to fifoadr_o[0]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ebcyc_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sloen_o
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to shift_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to speed_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pres_o
-set_location_assignment PIN_AD2 -to slrd_o
-set_location_assignment PIN_T4 -to slwr_o
 set_location_assignment PIN_AD5 -to sres_o
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sres_o
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to slrd_o
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to slwr_o
 set_location_assignment PIN_V6 -to fd_io[7]
 set_location_assignment PIN_T6 -to fd_io[6]
 set_location_assignment PIN_V7 -to fd_io[5]
@@ -294,19 +288,12 @@ set_location_assignment PIN_G23 -to sfp_ref_clk_i
 set_instance_assignment -name IO_STANDARD LVDS -to sfp_ref_clk_i
 set_location_assignment PIN_G24 -to "sfp_ref_clk_i(n)"
 set_global_assignment -name FITTER_EFFORT "AUTO FIT"
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to slrd_o
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to slwr_o
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[0]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[1]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[2]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[3]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[4]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[5]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[6]
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pa_o[7]
-set_instance_assignment -name FAST_INPUT_REGISTER ON -to ctl_i[0]
-set_instance_assignment -name FAST_INPUT_REGISTER ON -to ctl_i[1]
-set_instance_assignment -name FAST_INPUT_REGISTER ON -to ctl_i[2]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sloen_o
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fifoadr_o[0]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fifoadr_o[1]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to pktendn_o
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to fulln_i
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to emptyn_i
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[0]
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[0]
 set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[0]
@@ -331,6 +318,12 @@ set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[6]
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to fd_io[7]
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to fd_io[7]
 set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to fd_io[7]
+set_location_assignment PIN_AD2 -to slrdn_o
+set_location_assignment PIN_T4 -to slwrn_o
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to slrdn_o
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to slwrn_o
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to slrdn_o
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to slwrn_o
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VHDL_FILE ../../../top/gsi_exploder/wr_core_demo/exploder_top.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
@@ -524,20 +517,26 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wi
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_pcie/pcie_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_pcie/pcie_wb_pkg.vhd
 set_global_assignment -name VERILOG_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_pcie/ip_compiler_for_pci_express-library/altpcie_rs_serdes.v
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_main_fsm.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_checksum.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_config.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_slave_core.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_internals_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_cfg_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_pass_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_tag_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_wbm_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_rx_fsm.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_tx_mux.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_slave.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_hdr_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_rx_ctrl.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_tx_ctrl.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_usb_slave_core.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_slave_core.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/etherbone_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_tx_ctrl.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_rx_ctrl.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/WB_bus_adapter_streaming_sg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/vhdl_2008_workaround_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_checksum.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/piso_flag.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/sipo_flag.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/vhdl_2008_workaround_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/WB_bus_adapter_streaming_sg.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_usb_slave_core.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/xetherbone_core.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb_fifos.vhd
