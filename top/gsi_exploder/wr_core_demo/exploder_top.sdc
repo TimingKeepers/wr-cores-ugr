@@ -5,6 +5,7 @@ derive_clock_uncertainty
 # Cut the clock domains from each other
 # Note: ref_inst|* and wr_gxb*|transmit_pcs0 are actually the same clock
 # However, we cut them to enforce a synchronizer between them in the GXB.
+# For the same reason, we cut the RX pcs0 and pma0 clocks.
 set_clock_groups -asynchronous                \
  -group { altera_reserved_tck               } \
  -group { clk_20m_vcxo_i    dmtd_inst|*     } \
@@ -16,5 +17,5 @@ set_clock_groups -asynchronous                \
           wr_gxb*|transmit_pcs0|*           } \
  -group { sfp_ref_clk_i                       \
           wr_gxb*|rx_cdr_pll0|*               \
-          wr_gxb*|receive_pma0|*              \
-          wr_gxb*|receive_pcs0|*            }
+          wr_gxb*|receive_pma0|*            } \
+ -group { wr_gxb*|receive_pcs0|*            }
