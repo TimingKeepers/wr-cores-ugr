@@ -460,7 +460,8 @@ begin
   
   sys_reset : gc_reset
     generic map(
-      g_clocks => 1)
+      g_clocks   => 1,
+      g_logdelay => 19) -- 8.4ms at 62.5MHz (must exceed 5ms for USB)
     port map(
       free_clk_i => clk_sys,
       locked_i   => sys_locked,
@@ -469,7 +470,8 @@ begin
 
   ref_reset : gc_reset
     generic map(
-      g_clocks => 1)
+      g_clocks   => 1,
+      g_logdelay => 20)
     port map(
       free_clk_i => clk_ref,
       locked_i   => ref_locked,
