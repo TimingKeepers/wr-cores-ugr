@@ -16,7 +16,7 @@ package wr_xilinx_pkg is
       g_simulation : integer := 0);
     port (
       gtp_clk_i          : in  std_logic;
-      ch0_ref_clk_i      : in  std_logic;
+      ch0_ref_clk_i      : in  std_logic := '0';
       ch0_tx_data_i      : in  std_logic_vector(7 downto 0) := "00000000";
       ch0_tx_k_i         : in  std_logic                    := '0';
       ch0_tx_disparity_o : out std_logic;
@@ -26,8 +26,8 @@ package wr_xilinx_pkg is
       ch0_rx_k_o         : out std_logic;
       ch0_rx_enc_err_o   : out std_logic;
       ch0_rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      ch0_rst_i          : in  std_logic;
-      ch0_loopen_i       : in  std_logic;
+      ch0_rst_i          : in  std_logic := '0';
+      ch0_loopen_i       : in  std_logic := '0';
       ch1_ref_clk_i      : in  std_logic;
       ch1_tx_data_i      : in  std_logic_vector(7 downto 0) := "00000000";
       ch1_tx_k_i         : in  std_logic                    := '0';
