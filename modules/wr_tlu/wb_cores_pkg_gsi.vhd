@@ -24,14 +24,7 @@ package wb_cores_pkg_gsi is
     date          => x"20120308",
     name          => "GSI_TM_LATCH       ")));
 
- component fake_timestamp
-   port (
-     ref_clk_i   : in  std_logic;
-     nRSt_i      : in  std_logic;
-     cnt_clr     : in  std_logic;
-     tm_utc_o    : out std_logic_vector(39 downto 0);
-     tm_cycles_o : out std_logic_vector(27 downto 0));
- end component;
+
  
 component wb_timestamp_latch
   generic (
@@ -43,7 +36,7 @@ component wb_timestamp_latch
     nRSt_i          : in  std_logic;
     triggers_i      : in  std_logic_vector(g_num_triggers-1 downto 0);
     tm_time_valid_i : in  std_logic;
-    tm_utc_i        : in  std_logic_vector(39 downto 0);
+    tm_tai_i        : in  std_logic_vector(39 downto 0);
     tm_cycles_i     : in  std_logic_vector(27 downto 0);
     wb_slave_i      : in  t_wishbone_slave_in;
     wb_slave_o      : out t_wishbone_slave_out);
