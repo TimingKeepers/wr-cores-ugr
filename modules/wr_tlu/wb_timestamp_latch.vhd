@@ -52,6 +52,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
 library work;
+use work.eca_pkg.all;
 use work.wishbone_pkg.all;
 use work.genram_pkg.all;
 
@@ -66,7 +67,7 @@ entity wb_timestamp_latch is
 
     triggers_i      : in  std_logic_vector(g_num_triggers-1 downto 0);  -- trigger lines for latch
     tm_time_valid_i : in  std_logic;    -- timestamp valid flag
-    tm_utc_i        : in  std_logic_vector(39 downto 0);  -- UTC Timestamp
+    tm_tai_i        : in  std_logic_vector(39 downto 0);  -- TAI Timestamp
     tm_cycles_i     : in  std_logic_vector(27 downto 0);  -- refclock cycle count
 
     wb_slave_i      : in  t_wishbone_slave_in;  -- Wishbone slave interface (sys_clk domain)
@@ -145,7 +146,7 @@ architecture behavioral of wb_timestamp_latch is
 -- stdlv with bit for every trigger channel
   subtype channel is std_logic_vector (g_num_triggers-1 downto 0);  
 -- stdlv to hold utc + cycle counter
-  subtype t_timestamp is std_logic_vector(67 downto 0);
+  subtype t_timestamp is std_logic_vector(95 downto 0);
   type    t_tm_array is array (0 to g_num_triggers-1) of t_timestamp;
 -- stdlv 32b wb bus word
   subtype t_word is std_logic_vector(31 downto 0);
@@ -164,12 +165,9 @@ architecture behavioral of wb_timestamp_latch is
   -- tm latch registers
   signal tm_fifo_in               : t_tm_array;
   signal tm_fifo_out              : t_tm_array;
-  signal tm_word0                 : t_word_array;
-  signal tm_word1                 : t_word_array;
-  signal tm_word2                 : t_word_array;
-  
-  signal cur_tm_word1				 : t_word;
-  signal cur_tm_word2				 : t_word;
+  signal sa_time0						 : t_time;
+  signal sa_time0_reg_LO			 : t_word;	
+  signal subnano						 : t_word_array;
   
   -- fifo signals
   signal nRst_fifo                : channel;
@@ -239,7 +237,13 @@ architecture behavioral of wb_timestamp_latch is
 
 begin  -- behavioral
 
-
+	   T0 : eca_wr_time
+    port map(
+      clk_i    => ref_clk_i,
+      tai_i    => tm_tai_i,
+      cycles_i => tm_cycles_i,
+      time_o   => sa_time0);
+	 
 
 -------------------------------------------------------------------------------
 -- BEGIN TRIGGER CHANNEL GENERATE
@@ -250,9 +254,6 @@ begin  -- behavioral
     nRst_fifo(i)  <= ref_rstn_i and not fifo_clear(i);
     
 	 
-    tm_word0(i)   <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_out(i)(67 downto 60);
-    tm_word1(i)   <= tm_fifo_out(i)(59 downto 28);
-    tm_word2(i)   <= std_logic_vector(to_unsigned(0, 32-28)) & tm_fifo_out(i)(27 downto 0);
 
     sync_trig_edge_reg : gc_sync_ffs
       generic map (
@@ -332,6 +333,7 @@ begin  -- behavioral
       if ref_clk_i'event and ref_clk_i = '1' then  -- rising clock edge
         if ref_rstn_i = '0' then       -- synchronous reset (active low)
           we(i) <= '0';
+			 subnano(i) <= (others=>'0');
         else
           ---------------------------------------------------------------------
           -- Latch timestamp if trigger is active and selected edge is detected
@@ -341,7 +343,7 @@ begin  -- behavioral
             if((trigger_edge_ref_clk(i) = '0' and triggers_neg_edge_synced(i) = '1')
                or ((trigger_edge_ref_clk(i) = '1') and (triggers_pos_edge_synced(i) = '1'))) then
               we(i) <= '1';
-              tm_fifo_in(i) <= sub_cap_delay(tm_utc_i, tm_cycles_i);
+              tm_fifo_in(i) <= std_logic_vector(unsigned(sa_time0)-3) & subnano(i); --sub_cap_delay(sa_time0, tm_cycles_i);
             end if;
           end if;
           ---------------------------------------------------------------------
@@ -378,6 +380,7 @@ begin  -- behavioral
         trigger_active <= (others => '0');
         trigger_edge   <= (others => '1');
         rd             <= (others => '1');
+		  
       else
         -----------------------------------------------------------------------
         fifo_clear       <= (others => '0');
@@ -426,12 +429,10 @@ begin  -- behavioral
                 when x"014"  => wb_slave_o.dat <= pad_4_WB(trigger_edge); wb_slave_o.ack <= '1';
                 when x"018" => wb_slave_o.ack <= '1';
                 when x"01C" => wb_slave_o.ack <= '1';
-                when x"100" => wb_slave_o.dat <= std_logic_vector(to_unsigned(0, 32-8)) & tm_fifo_in(0)(67 downto 60);
-										 cur_tm_word1   <= tm_fifo_in(0)(59 downto 28);
-										 cur_tm_word2   <= std_logic_vector(to_unsigned(0, 32-28)) & tm_fifo_in(0)(27 downto 0);
-										 wb_slave_o.ack <= '1';
-					 when x"104" => wb_slave_o.dat <= cur_tm_word1; wb_slave_o.ack <= '1';
-					 when x"108" => wb_slave_o.dat <= cur_tm_word2; wb_slave_o.ack <= '1';
+                when x"100" => wb_slave_o.dat <= sa_time0(63 downto 32);
+										sa_time0_reg_LO <= sa_time0(31 downto 0);
+										wb_slave_o.ack  <= '1';
+					 when x"104" => wb_slave_o.dat <= sa_time0_reg_LO; wb_slave_o.ack <= '1';
 					 
                 when others => wb_slave_o.err <= '1';  
               end case;
@@ -457,11 +458,11 @@ begin  -- behavioral
                 -- fifo fill count
                 when "001" => wb_slave_o.dat <= pad_4_WB(rd_count(i)); wb_slave_o.ack <= '1'; 
                 -- timestamp utc word 0
-                when "010" => wb_slave_o.dat <= tm_word0(i); wb_slave_o.ack <= '1';
+                when "010" => wb_slave_o.dat <= tm_fifo_out(i)(95 downto 64); wb_slave_o.ack <= '1';
                 -- timestamp utc word 1
-                when "011" => wb_slave_o.dat <= tm_word1(i); wb_slave_o.ack <= '1';
-                -- timestamp cycles word
-                when "100" => wb_slave_o.dat <= tm_word2(i); wb_slave_o.ack <= '1';
+                when "011" => wb_slave_o.dat <= tm_fifo_out(i)(63 downto 32); wb_slave_o.ack <= '1';
+                -- sub nano
+                when "100" => wb_slave_o.dat <= tm_fifo_out(i)(31 downto 0); wb_slave_o.ack <= '1';
 
                 when others => wb_slave_o.ack <= '1';  
               end case;
