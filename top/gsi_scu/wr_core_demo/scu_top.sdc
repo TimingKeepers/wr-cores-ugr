@@ -20,7 +20,7 @@ set_clock_groups -asynchronous                \
           wr_gxb*|transmit_pcs0|*           } \
  -group { sfp2_ref_clk_i                      \
           wr_gxb*|rx_cdr_pll0|*               \
-          wr_gxb*|receive_pma0|*              \
+          wr_gxb*|receive_pma0|*            } \
  -group { wr_gxb*|receive_pcs0|*            } \
  -group { pcie_refclk_i                       \
           PCIe*|tx_pll0|*                     \
