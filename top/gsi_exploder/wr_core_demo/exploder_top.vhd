@@ -677,7 +677,7 @@ begin
       triggers_i(23 downto 16) => lemo_i,
       triggers_i(31 downto 24) => any_i,
       tm_time_valid_i          => tm_valid,
-      tm_utc_i                 => tm_tai,
+      tm_tai_i                 => tm_tai,
       tm_cycles_i              => tm_cycles,
       wb_slave_i               => cbar_master_o(1),
       wb_slave_o               => cbar_master_i(1));

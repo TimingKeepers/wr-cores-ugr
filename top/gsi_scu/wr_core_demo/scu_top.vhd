@@ -542,7 +542,7 @@ begin
       sys_rstn_i      => rstn_sys,
       triggers_i(0)   => lemo_io2,
       tm_time_valid_i => '0',
-      tm_utc_i        => tm_tai,
+      tm_tai_i        => tm_tai,
       tm_cycles_i     => tm_cycles,
       wb_slave_i      => cbar_master_o(1),
       wb_slave_o      => cbar_master_i(1));
