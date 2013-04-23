@@ -3,19 +3,6 @@ use ieee.std_logic_1164.all;
 
 package wr_altera_pkg is
 
-  component flash_loader
-     port (
-        noe_in      : in std_logic
-     );
-  end component;
-
-  component pow_reset is
-    port (
-      clk    : in     std_logic;        -- 125Mhz
-      nreset : buffer std_logic
-      );
-  end component;
-
   component dmtd_pll
     port
       (
@@ -38,11 +25,9 @@ package wr_altera_pkg is
     port
       (
         inclk0 : in  std_logic := '0'; -- 125   MHz
-        c0     : out std_logic;        -- 125   MHz
+        c0     : out std_logic;        --  62.5 MHz
         c1     : out std_logic;        --  50   MHz
-        c2     : out std_logic;        --  62.5 MHz
-        c3     : out std_logic;        --  20   MHz
-        c4     : out std_logic;        -- 100   MHz
+        c2     : out std_logic;        --  20   MHz
         locked : out std_logic
         );
   end component;

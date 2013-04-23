@@ -2,15 +2,15 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
-
-library work;
 use work.wishbone_pkg.all;
 use work.wb_cores_pkg_gsi.all;
 use work.eca_pkg.all;
 use work.wr_altera_pkg.all;
+use work.altera_flash_pkg.all;
 use work.etherbone_pkg.all;
 use work.ez_usb_pkg.all;
 
@@ -306,7 +306,6 @@ entity exploder_top is
     -- nimin_i(6) -- AB7  N60 94
     -- nimin_i(7) -- U9   P61 98
     -- nimin_i(8) -- V9   N61 100
-    
 end exploder_top;
 
 architecture rtl of exploder_top is
@@ -315,14 +314,15 @@ architecture rtl of exploder_top is
   constant c_wrcore_bridge_sdb : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
   
   -- Top crossbar layout
-  constant c_slaves  : natural := 5;
+  constant c_slaves  : natural := 6;
   constant c_masters : natural := 3;
   constant c_layout : t_sdb_record_array(c_slaves-1 downto 0) :=
    (0 => f_sdb_embed_bridge(c_wrcore_bridge_sdb,          x"00000000"),
     1 => f_sdb_embed_device(c_xwr_wb_timestamp_latch_sdb, x"00100000"),
     2 => f_sdb_embed_device(c_eca_sdb,                    x"00100800"),
     3 => f_sdb_embed_device(c_eca_evt_sdb,                x"00100C00"),
-    4 => f_sdb_embed_device(c_wb_serial_lcd_sdb,          x"00100D00"));
+    4 => f_sdb_embed_device(c_wb_serial_lcd_sdb,          x"00100D00"),
+    5 => f_sdb_embed_device(c_wb_spi_flash_sdb,           x"01000000"));
   constant c_sdb_address : t_wishbone_address := x"00300000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (c_masters-1 downto 0);
@@ -335,10 +335,16 @@ architecture rtl of exploder_top is
   
   -- Sys PLL from clk_125m_local_i
   signal sys_locked       : std_logic;
-  signal clk_reconf       : std_logic;
-  signal clk_sys          : std_logic;
-  signal clk_lcd          : std_logic;
+  signal clk_62_5         : std_logic;
+  signal clk_50           : std_logic;
+  signal clk_20           : std_logic;
   signal rstn_sys         : std_logic;
+  
+  -- logical clock names
+  signal clk_sys          : std_logic;
+  signal clk_reconf       : std_logic;
+  signal clk_flash        : std_logic;
+  signal clk_lcd          : std_logic;
   
   -- RX PLL
   signal gxb_locked       : std_logic;
@@ -435,10 +441,6 @@ begin
   sfp1_mod1_io <= '0' when sfp1_scl_o = '0' else 'Z';
   sfp1_mod2_io <= '0' when sfp1_sda_o = '0' else 'Z';
   
-  Inst_flash_loader_v01 : flash_loader
-    port map(
-      noe_in   => '0');
-  
   dmtd_inst : dmtd_pll port map(
     inclk0 => clk_20m_vcxo_i,    --  20  Mhz 
     c0     => clk_dmtd,          --  62.5MHz
@@ -451,19 +453,22 @@ begin
 
   sys_inst : sys_pll port map(
     inclk0 => clk_125m_local_i, -- 125  Mhz 
-    c0     => open,             -- 125  MHz
-    c1     => clk_reconf,       --  50  Mhz
-    c2     => clk_sys,          --  62.5MHz
-    c3     => clk_lcd,          --  20  MHz
-    c4     => open,             -- 100  MHz
+    c0     => clk_62_5,         --  62.5 MHz
+    c1     => clk_50,           --  50  Mhz
+    c2     => clk_20,           --  20  MHz
     locked => sys_locked);
+  
+  clk_sys    <= clk_62_5;
+  clk_reconf <= clk_50;
+  clk_flash  <= clk_50;
+  clk_lcd    <= clk_20;
   
   sys_reset : gc_reset
     generic map(
       g_clocks   => 1,
       g_logdelay => 19) -- 8.4ms at 62.5MHz (must exceed 5ms for USB)
     port map(
-      free_clk_i => clk_sys,
+      free_clk_i => clk_62_5,
       locked_i   => sys_locked,
       clks_i(0)  => clk_sys,
       rstn_o(0)  => rstn_sys);
@@ -478,6 +483,22 @@ begin
       clks_i(0)  => clk_ref,
       rstn_o(0)  => rstn_ref);
 
+  flash : flash_top
+    generic map(
+      g_family                 => "Arria II GX",
+      g_port_width             => 1,   -- single-lane SPI bus
+      g_addr_width             => 24,  -- 3 byte addressed chip
+      g_input_latch_edge       => '1', -- 30ns at 50MHz (10+20) after falling edge sets up SPI output
+      g_output_latch_edge      => '0', -- falling edge to meet SPI setup times
+      g_input_to_output_cycles => 2)   -- delayed to work-around unconstrained design
+    port map(
+      clk_i     => clk_sys,
+      rstn_i    => rstn_sys,
+      slave_i   => cbar_master_o(5),
+      slave_o   => cbar_master_i(5),
+      clk_out_i => clk_flash,
+      clk_in_i  => clk_flash); -- no need to phase shift at 50MHz
+  
   rstn_wr <= rstn_sys and gxb_locked;
   U_WR_CORE : xwr_core
     generic map (
