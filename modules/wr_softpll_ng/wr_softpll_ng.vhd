@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-07-23
+-- Last update: 2013-03-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -199,7 +199,8 @@ architecture rtl of wr_softpll_ng is
   component dmtd_with_deglitcher
     generic (
       g_counter_bits      : natural;
-      g_divide_input_by_2 : boolean);
+      g_divide_input_by_2 : boolean;
+      g_reverse : boolean);
     port (
       rst_n_dmtdclk_i      : in  std_logic;
       rst_n_sysclk_i       : in  std_logic;
@@ -376,11 +377,6 @@ architecture rtl of wr_softpll_ng is
   signal dbg_seq_id            : unsigned(15 downto 0);
   signal dbg_fifo_permit_write : std_logic;
 
-
-  -- Temporary vectors for DDMTD clock selection (straight/reversed)
-  signal dmtd_ref_clk_in, dmtd_ref_clk_dmtd : std_logic_vector(g_num_ref_inputs-1 downto 0);
-  signal dmtd_fb_clk_in, dmtd_fb_clk_dmtd   : std_logic_vector(g_num_outputs-1 downto 0);
-
   signal bb_sync_en, bb_sync_done : std_logic;
   signal ext_ref_present          : std_logic;
   signal fb_resync_out            : std_logic_vector(g_num_outputs-1 downto 0);
@@ -484,22 +480,20 @@ begin  -- rtl
 
   gen_ref_dmtds : for i in 0 to g_num_ref_inputs-1 generate
 
-    dmtd_ref_clk_in(i)   <= f_pick(g_reverse_dmtds, clk_dmtd_i, clk_ref_i(i));
-    dmtd_ref_clk_dmtd(i) <= f_pick(g_reverse_dmtds, clk_ref_i(i), clk_dmtd_i);
-
     DMTD_REF : dmtd_with_deglitcher
       generic map (
         g_counter_bits      => g_tag_bits,
-        g_divide_input_by_2 => g_divide_input_by_2)
+        g_divide_input_by_2 => g_divide_input_by_2,
+        g_reverse => g_reverse_dmtds)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
         rst_n_sysclk_i  => rst_n_i,
 
-        clk_dmtd_i    => dmtd_ref_clk_dmtd(i),
+        clk_dmtd_i    => clk_dmtd_i,
         clk_dmtd_en_i => '1',           --clk_dmtd_en_ref(i),
 
         clk_sys_i => clk_sys_i,
-        clk_in_i  => dmtd_ref_clk_in(i),
+        clk_in_i  => clk_ref_i(i),
 
         resync_done_o    => regs_out.crr_in_i(i),
         resync_start_p_i => ref_resync_start_p(i),
@@ -518,21 +512,20 @@ begin  -- rtl
 
   gen_feedback_dmtds : for i in 0 to g_num_outputs-1 generate
 
-    dmtd_fb_clk_in(i)   <= f_pick(g_reverse_dmtds, clk_dmtd_i, clk_fb_i(i));
-    dmtd_fb_clk_dmtd(i) <= f_pick(g_reverse_dmtds, clk_fb_i(i), clk_dmtd_i);
-
     DMTD_FB : dmtd_with_deglitcher
       generic map (
         g_counter_bits      => g_tag_bits,
-        g_divide_input_by_2 => g_divide_input_by_2)
+        g_divide_input_by_2 => g_divide_input_by_2,
+        g_reverse => g_reverse_dmtds)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
         rst_n_sysclk_i  => rst_n_i,
-        clk_dmtd_i      => dmtd_fb_clk_dmtd(i),
+
+        clk_dmtd_i      => clk_dmtd_i,
         clk_dmtd_en_i   => '1',
 
         clk_sys_i => clk_sys_i,
-        clk_in_i  => dmtd_fb_clk_in(i),
+        clk_in_i  => clk_fb_i(i),
 
         resync_done_o    => regs_out.crr_out_i(i),
         resync_start_p_i => fb_resync_start_p(i),

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2012-07-24
+-- Last update: 2013-04-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -61,7 +61,10 @@ entity dmtd_with_deglitcher is
     -- Divides the inputs by 2 (effectively passing the clock through a flip flop)
     -- before it gets to the DMTD, effectively removing Place&Route warnings
     -- (at the cost of detector bandwidth)
-    g_divide_input_by_2 : boolean := false
+    g_divide_input_by_2 : boolean := false;
+
+    -- reversed mode: samples clk_dmtd with clk_in.
+    g_reverse : boolean := false
     );
   port (
     -- resets for different clock domains
@@ -132,8 +135,8 @@ architecture rtl of dmtd_with_deglitcher is
   signal in_d0, in_d1 : std_logic;
   signal s_one        : std_logic;
 
-  signal clk_in                                 : std_logic;
-  signal clk_i_d0, clk_i_d1, clk_i_d2, clk_i_d3 : std_logic;
+  signal clk_in                                           : std_logic;
+  signal clk_i_d0, clk_i_d1, clk_i_d2, clk_i_d3, clk_i_dx : std_logic;
 
   attribute keep             : string;
   attribute keep of clk_in   : signal is "true";
@@ -179,32 +182,58 @@ begin  -- rtl
       data_i   => resync_done_dmtd,
       synced_o => resync_done_o);
 
-  
-  
-  gen_input_div2 : if(g_divide_input_by_2 = true) generate
-    p_divide_input_clock : process(clk_in_i, rst_n_sysclk_i)
+
+  gen_straight : if(g_reverse = false) generate
+    
+    gen_input_div2 : if(g_divide_input_by_2 = true) generate
+      p_divide_input_clock : process(clk_in_i, rst_n_sysclk_i)
+      begin
+        if rst_n_sysclk_i = '0' then
+          clk_in <= '0';
+        elsif rising_edge(clk_in_i) then
+          clk_in <= not clk_in;
+        end if;
+      end process;
+    end generate gen_input_div2;
+
+    gen_input_straight : if(g_divide_input_by_2 = false) generate
+      clk_in <= clk_in_i;
+    end generate gen_input_straight;
+
+    p_the_dmtd_itself : process(clk_dmtd_i)
     begin
-      if rst_n_sysclk_i = '0' then
-        clk_in <= '0';
-      elsif rising_edge(clk_in_i) then
-        clk_in <= not clk_in;
+      if rising_edge(clk_dmtd_i) then
+        clk_i_d0 <= clk_in;
+        clk_i_d1 <= clk_i_d0;
+        clk_i_d2 <= clk_i_d1;
+        clk_i_d3 <= clk_i_d2;
       end if;
     end process;
-  end generate gen_input_div2;
 
-  gen_input_straight : if(g_divide_input_by_2 = false) generate
-    clk_in <= clk_in_i;
-  end generate gen_input_straight;
+  end generate gen_straight;
 
-  p_the_dmtd_itself : process(clk_dmtd_i)
-  begin
-    if rising_edge(clk_dmtd_i) then
-      clk_i_d0 <= clk_in;
-      clk_i_d1 <= clk_i_d0;
-      clk_i_d2 <= clk_i_d1;
-      clk_i_d3 <= clk_i_d2;
-    end if;
-  end process;
+  gen_reverse : if(g_reverse = true) generate
+
+    assert (not g_divide_input_by_2) report "dmtd_with_deglitcher: g_reverse implies g_divide_input_by_2 == false" severity failure;
+    
+    p_the_dmtd_itself : process(clk_in_i)
+    begin
+      if rising_edge(clk_in_i) then
+        clk_i_d0 <= clk_dmtd_i;
+        clk_i_d1 <= clk_i_d0;
+      end if;
+    end process;
+
+    p_sync : process(clk_dmtd_i)
+    begin
+      if rising_edge(clk_dmtd_i) then
+        clk_i_dx <= clk_i_d1;
+        clk_i_d2 <= not clk_i_dx;
+        clk_i_d3 <= clk_i_d2;
+      end if;
+    end process;
+
+  end generate gen_reverse;
 
 -- glitchproof DMTD output edge detection
   p_deglitch : process (clk_dmtd_i)
