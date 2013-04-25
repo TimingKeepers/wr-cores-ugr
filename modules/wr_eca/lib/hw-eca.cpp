@@ -182,7 +182,6 @@ status_t ECA::refresh(Device dev) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;
@@ -209,7 +208,6 @@ status_t ECA::disable(Device dev, bool d) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;
@@ -232,7 +230,6 @@ status_t ECA::flipTables(Device dev) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;

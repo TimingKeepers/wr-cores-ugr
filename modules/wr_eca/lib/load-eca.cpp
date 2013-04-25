@@ -48,7 +48,7 @@ static void trim(std::string& s) {
   s.resize(x);
 }
 
-void eca_sdb_search(SearchRecord* record, Device dev, sdb_t sdb, status_t status) {
+void eca_sdb_search(SearchRecord* record, Device dev, const struct sdb_table* sdb, status_t status) {
   if (status != EB_OK) {
     record->status = status;
     record->done = 1;
@@ -57,10 +57,10 @@ void eca_sdb_search(SearchRecord* record, Device dev, sdb_t sdb, status_t status
   
   unsigned devices = sdb->interconnect.sdb_records - 1;
   for (unsigned i = 0; i < devices; ++i) {
-    sdb_record_t des = &sdb->record[i];
+    const union sdb_record* des = &sdb->record[i];
     
     switch (des->empty.record_type) {
-      case sdb_device: {
+      case sdb_record_device: {
         if (des->device.sdb_component.product.vendor_id == GSI_VENDOR_ID) {
           switch (des->device.sdb_component.product.device_id) {
             case ECAE_DEVICE_ID: {
@@ -91,7 +91,7 @@ void eca_sdb_search(SearchRecord* record, Device dev, sdb_t sdb, status_t status
         }
         break;
       }
-      case sdb_bridge: {
+      case sdb_record_bridge: {
         dev.sdb_scan_bus(&des->bridge, record, sdb_wrap_function_callback<SearchRecord, eca_sdb_search>);
         
         record->done = 0;
@@ -187,7 +187,6 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
     cycle.close();
     
     done = 0;
-    dev.flush();
     while (!done) dev.socket().run();
     if (done < 0) return done;
     if (done == 2) return EB_FAIL;
@@ -225,7 +224,6 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
       cycle.close();
       
       done = 0;
-      dev.flush();
       while (!done) dev.socket().run();
       if (done < 0) return done;
       if (done == 2) return EB_FAIL;
@@ -255,7 +253,6 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
     cycle.close();
     
     done = 0;
-    dev.flush();
     while (!done) dev.socket().run();
     if (done < 0) return done;
     if (done == 2) return EB_FAIL;

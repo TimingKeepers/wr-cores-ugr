@@ -64,7 +64,6 @@ status_t ECA::loadWalk(Device dev, bool active, std::vector<WalkEntry>& table) {
     cycle.close();
     
     done = 0;
-    dev.flush();
     while (!done) dev.socket().run();
     if (done < 0) return done;
     if (done == 2) return EB_FAIL;

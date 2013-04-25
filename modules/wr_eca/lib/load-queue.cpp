@@ -72,7 +72,6 @@ status_t ECA::loadQueue(Device dev, unsigned channel, std::vector<ActionEntry>& 
     cycle.close();
     
     done = 0;
-    dev.flush();
     while (!done) dev.socket().run();
     if (done < 0) return done;
     if (done == 2) return EB_FAIL;

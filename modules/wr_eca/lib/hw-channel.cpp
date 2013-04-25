@@ -48,7 +48,6 @@ status_t ActionChannel::refresh(Device dev) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;
@@ -75,7 +74,6 @@ status_t ActionChannel::freeze(Device dev, bool freeze) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;
@@ -98,7 +96,6 @@ status_t ActionChannel::drain(Device dev, bool drain) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;
@@ -119,7 +116,6 @@ status_t ActionChannel::reset(Device dev) {
   cycle.close();
   
   done = 0;
-  dev.flush();
   while (!done) dev.socket().run();
   if (done < 0) return done;
   if (done == 2) return EB_FAIL;

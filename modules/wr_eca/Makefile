@@ -4,6 +4,9 @@ TARGETS  = lib/version.h libeca.a eca-ctl eca-table
 
 all:	$(TARGETS)
 
+install:
+	cp eca-ctl eca-table /usr/local/bin
+
 clean:
 	rm -f $(TARGETS) *.o lib/*.o git.*
 
