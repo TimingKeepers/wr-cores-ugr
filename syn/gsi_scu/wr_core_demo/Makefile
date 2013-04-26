@@ -10,7 +10,7 @@ all:	$(TARGET).sof $(TARGET).jic $(TARGET).rpd
 clean:
 	rm -rf db incremental_db PLLJ_PLLSPE_INFO.txt
 	rm -f $(TARGET).*.rpt $(TARGET).*.summary $(TARGET).map* $(TARGET).fit.* $(TARGET).pin $(TARGET).jdi $(TARGET)*.qdf $(TARGET).done $(TARGET).qws
-	rm -f $(TARGET).jam $(TARGET).jic $(TARGET).pof $(TARGET).sof $(TARGET).dep
+	rm -f $(TARGET).rpd $(TARGET).jic $(TARGET).pof $(TARGET).sof $(TARGET).dep
 
 %.sof:	%.qsf
 	$(QUARTUS_BIN)/quartus_map $*
