@@ -44,10 +44,10 @@
 --   Transceiver Clocking in Arria II Devices         <http://www.altera.com/literature/hb/arria-ii-gx/aiigx_52002.pdf>
 --   Reset Control and Power Down in Arria II Devices <http://www.altera.com/literature/hb/arria-ii-gx/aiigx_52004.pdf>
 --   Recommended Design Practices (Clock Gating)      <http://www.altera.com/literature/hb/qts/qts_qii51006.pdf>
---   Achieving Timing Closure in Basic (PMA Direct) Functional Mode 
---                                                    <http://www.altera.com/literature/an/an580.pdf>
 --   AN 610: Implementing Deterministic Latency for CPRI and OBSAI Protocols in Altera Devices
 --                                                    <http://www.altera.com/literature/an/an610.pdf>
+--   Achieving Timing Closure in Basic (PMA Direct) Functional Mode 
+--                                                    <http://www.altera.com/literature/an/an580.pdf>
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -58,7 +58,9 @@ use work.gencores_pkg.all;
 use work.disparity_gen_pkg.all;
 
 entity wr_gxb_phy_arriaii is
-
+  generic (
+    g_tx_latch_edge : std_logic := '1';
+    g_rx_latch_edge : std_logic := '0');
   port (
     clk_reconf_i : in  std_logic; -- 50 MHz
     clk_pll_i    : in  std_logic; -- feeds transmitter PLL
@@ -82,9 +84,7 @@ entity wr_gxb_phy_arriaii is
     rx_bitslide_o : out std_logic_vector(3 downto 0); -- RX bitslide indication, indicating the delay of the RX path of the transceiver (in UIs). Must be valid when rx_data_o is valid.
 
     pad_txp_o : out std_logic;
-    pad_rxp_i : in std_logic := '0';
-    
-    dbg_tx_clk_o : out std_logic);  -- do not use for anything other than an output on an oscilloscope
+    pad_rxp_i : in std_logic := '0');
 
 end wr_gxb_phy_arriaii;
 
@@ -155,8 +155,8 @@ architecture rtl of wr_gxb_phy_arriaii is
       out_10b_o : out std_logic_vector(9 downto 0));
   end component;
 
-  signal clk_rx        : std_logic; -- local  clock
-  signal clk_rx_glbl   : std_logic; -- global clock
+  signal clk_rx_gxb    : std_logic; -- pre clkctrl
+  signal clk_rx        : std_logic; -- global clock
   signal clk_tx        : std_logic; -- local  clock
   signal pll_locked    : std_logic;
   signal rx_freqlocked : std_logic;
@@ -187,31 +187,22 @@ architecture rtl of wr_gxb_phy_arriaii is
   signal tx_disp_pipe                : std_logic_vector (2 downto 0);
   signal rx_bitslipboundaryselectout : std_logic_vector (4 downto 0);
   
+  signal rx_gxb_dataout              : std_logic_vector (9 downto 0); -- signal out of GXB
+  signal rx_glbl_dataout             : std_logic_vector (9 downto 0); -- globally clocked register
+  
   signal rx_gxb_syncstatus           : std_logic;
-  signal rx_lcln_syncstatus          : std_logic;
-  signal rx_lclp_syncstatus          : std_logic;
   signal rx_glbl_syncstatus          : std_logic;
   
-  signal rx_gxb_dataout              : std_logic_vector (9 downto 0); -- signal
-  signal rx_lcln_dataout             : std_logic_vector (9 downto 0); -- local neg-edged register
-  signal rx_lclp_dataout             : std_logic_vector (9 downto 0); -- local pos-edged register
-  signal rx_glbl_dataout             : std_logic_vector (9 downto 0); -- global register (+1 inside decoder)
-  
-  signal tx_enc_datain               : std_logic_vector (9 downto 0); -- signal copy of register in encoder
-  signal tx_glbl_datain              : std_logic_vector (9 downto 0); -- global register
-  signal tx_lcln_datain              : std_logic_vector (9 downto 0); -- local neg-edged register
-  signal tx_lclp_datain              : std_logic_vector (9 downto 0); -- local pos-edged register
-  signal tx_gxb_datain               : std_logic_vector (9 downto 0); -- signal
+  signal tx_enc_datain               : std_logic_vector (9 downto 0); -- registered encoder output (clk_pll_i)
+  signal tx_gxb_datain               : std_logic_vector (9 downto 0); -- clock transfer register   (clk_tx)
   
 begin
 
-  rx_rbclk_o   <= clk_rx_glbl;
-  dbg_tx_clk_o <= clk_tx; -- NOT FOR USE WITH tx_* signals
-  
+  rx_rbclk_o   <= clk_rx;
   U_RxClkout : rxclkout
     port map (
-      inclk  => clk_rx,
-      outclk => clk_rx_glbl);
+      inclk  => clk_rx_gxb,
+      outclk => clk_rx);
   
   -- Altera PHY calibration block
   U_Reconf : altgx_reconf
@@ -230,7 +221,7 @@ begin
       -- Derived clocks used for tx/rx lines
       tx_clkout(0)                => clk_tx,
       pll_locked(0)               => pll_locked,
-      rx_clkout(0)                => clk_rx,
+      rx_clkout(0)                => clk_rx_gxb,
       rx_freqlocked(0)            => rx_freqlocked,
       rx_pll_locked(0)            => open,
       -- Calibration control of the GXB
@@ -270,7 +261,7 @@ begin
   -- Decode the RX data
   decoder : dec_8b10b
     port map(
-      clk_i       => clk_rx_glbl,
+      clk_i       => clk_rx,
       rst_n_i     => rx_8b10b_rstn(0),
       in_10b_i    => rx_glbl_dataout,
       ctrl_o      => rx_k_o,
@@ -392,17 +383,17 @@ begin
   
   -- Generate reset for the 8b10b decoder and ep_sync_detect
   -- should use global version of clk_rx
-  p_rx_reset : process(clk_rx_glbl) is
+  p_rx_reset : process(clk_rx) is
   begin
-    if rising_edge(clk_rx_glbl) then
+    if rising_edge(clk_rx) then
       rx_8b10b_rstn <= (not rx_digitalreset) & rx_8b10b_rstn(rx_8b10b_rstn'left downto 1);
     end if;
   end process;
   
   -- Dump the link if the bitslide changes
-  p_dump_link : process(clk_rx_glbl) is
+  p_dump_link : process(clk_rx) is
   begin
-    if rising_edge(clk_rx_glbl) then
+    if rising_edge(clk_rx) then
       if rx_glbl_syncstatus = '1' then
         rx_dump_link <= (others => '1');
       else
@@ -411,15 +402,6 @@ begin
     end if;
   end process;
   
-  -- A slow signal that doesn't traverse the full RX sync path
-  -- should use a global version of clk_rx
-  p_rx_bitslide : process(clk_rx_glbl) is
-  begin
-    if rising_edge(clk_rx_glbl) then
-      rx_bitslide_o <= rx_bitslipboundaryselectout(3 downto 0);
-    end if;
-  end process;
-   
   -- The disparity should be delayed for WR
   tx_disparity_o <= tx_disp_pipe(2);
   p_delay_disp : process(clk_pll_i)
@@ -430,68 +412,34 @@ begin
     end if;
   end process;
   
-  -- The extra registers are to allow signals enough time to reach the GXB
-  -- clk_pll_i may be a global clock
-  p_tx_path_pll : process(clk_pll_i) is
-  begin
-    if rising_edge(clk_pll_i) then
-      tx_glbl_datain <= tx_enc_datain;
-      -- tx_enc_datain is a registered output of enc_8b10b
-      -- Two back-to-back global registers should be enough to cross FPGA
-    end if;
-  end process;
-  
   -- Cross clock domain from pll_clk_i to tx_clk
-  -- Because they are async registers according to TimeQuest, they get placed
-  -- side-by-side like a synchronizer. However, they are actually in phase.
-  -- Thus we would get a hold violation unless we flip the clock edge.
-  -- tx_lcln_datain should use a local clock
-  p_tx_path_neg : process(clk_tx) is
+  -- These clocks are in phase copies of each other.
+  -- Ensure that clk_tx has GLOBAL_SIGNAL OFF
+  --  set_instance_assignment -name GLOBAL_SIGNAL OFF \
+  --    -from wr_gxb_phy_arriaii:wr_gxb_phy_arriaii_1|arria_phy:U_The_PHY|arria_phy_alt4gxb:arria_phy_alt4gxb_component|tx_clkout_int_wire[0] \
+  --    -to   wr_gxb_phy_arriaii:wr_gxb_phy_arriaii_1|tx_gxb_datain[*]
+  p_tx_path : process(clk_tx) is
   begin
-    if falling_edge(clk_tx) then
-      tx_lcln_datain <= tx_glbl_datain;
+    if clk_tx'event and clk_tx = g_tx_latch_edge then
+      tx_gxb_datain <= tx_enc_datain;
     end if;
   end process;
   
-  -- tx_lclp_datain should use a local clock
-  p_tx_path_pos : process(clk_tx) is
+  -- Additional register to improve timings
+  p_rx_path : process(clk_rx) is
   begin
-    if rising_edge(clk_tx) then
-      tx_lclp_datain <= tx_lcln_datain;
-    end if;
-  end process;
-  tx_gxb_datain <= tx_lclp_datain;
-  
-  -- Use the negative edge to improve insertion timing from GXB
-  -- (the clock line from the GXB is slower than the data)
-  -- these register should use a local clock
-  p_rx_path_neg : process(clk_rx) is
-  begin
-    if falling_edge(clk_rx) then
-      rx_lcln_dataout    <= rx_gxb_dataout;
-      rx_lcln_syncstatus <= rx_gxb_syncstatus;
+    if clk_rx'event and clk_rx = g_rx_latch_edge then
+      rx_glbl_dataout <= rx_gxb_dataout;
+      rx_glbl_syncstatus <= rx_gxb_syncstatus;
     end if;
   end process;
   
-  -- these should use the local clock
-  p_rx_path_pos : process(clk_rx) is
+  -- Slow registered signals out of the GXB
+  p_rx_regs : process(clk_rx) is
   begin
     if rising_edge(clk_rx) then
-      rx_lclp_dataout    <= rx_lcln_dataout;
-      rx_lclp_syncstatus <= rx_lcln_syncstatus;
+      rx_bitslide_o <= rx_bitslipboundaryselectout(3 downto 0);
     end if;
   end process;
   
-  -- these should use the global clock
-  p_rx_path_gbl : process(clk_rx_glbl) is
-  begin
-    if rising_edge(clk_rx_glbl) then
-      rx_glbl_dataout    <= rx_lclp_dataout;
-      rx_glbl_syncstatus <= rx_lclp_syncstatus;
-      
-      -- There is another register of rx_dataout inside dec_8b10b
-      -- Two back-to-back global registers should be enough to cross FPGA
-    end if;
-  end process;
-
 end rtl;

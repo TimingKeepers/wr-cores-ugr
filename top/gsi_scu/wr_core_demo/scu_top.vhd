@@ -253,7 +253,6 @@ architecture rtl of scu_top is
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
   signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
-  signal dbg_tx_clk       : std_logic;
 
   signal wrc_master_i  : t_wishbone_master_in;
   signal wrc_master_o  : t_wishbone_master_out;
@@ -462,8 +461,7 @@ begin
       rx_enc_err_o   => phy_rx_enc_err,
       rx_bitslide_o  => phy_rx_bitslide,
       pad_txp_o      => sfp2_txp_o,
-      pad_rxp_i      => sfp2_rxp_i,
-      dbg_tx_clk_o   => dbg_tx_clk);
+      pad_rxp_i      => sfp2_rxp_i);
 
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
@@ -618,11 +616,12 @@ begin
   leds_o(2) <= not eca_gpio(2);
   leds_o(3) <= not eca_gpio(3);
   
-  hpla_ch(0) <= clk_ref;
-  hpla_ch(1) <= clk_sys;
-  hpla_ch(2) <= dbg_tx_clk;
-  hpla_ch(3) <= phy_rx_rbclk;
-  hpla_ch(4) <= clk_dmtd;
+  -- hpla_ch(0) <= clk_ref;
+  -- hpla_ch(1) <= clk_sys;
+  -- hpla_ch(2) <= dbg_tx_clk;
+  -- hpla_ch(3) <= phy_rx_rbclk;
+  -- hpla_ch(4) <= clk_dmtd;
+  hpla_ch <= (others => 'Z');
   
   A_SysClock <= clk_scubus;
   

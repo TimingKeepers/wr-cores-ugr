@@ -33,6 +33,9 @@ package wr_altera_pkg is
   end component;
 
   component wr_gxb_phy_arriaii
+    generic (
+      g_tx_latch_edge : std_logic := '1';
+      g_rx_latch_edge : std_logic := '0');
     port (
       clk_reconf_i   : in  std_logic;
       clk_pll_i      : in  std_logic;
@@ -52,8 +55,7 @@ package wr_altera_pkg is
       rx_enc_err_o   : out std_logic;
       rx_bitslide_o  : out std_logic_vector(3 downto 0);
       pad_txp_o      : out std_logic;
-      pad_rxp_i      : in  std_logic := '0';
-      dbg_tx_clk_o   : out std_logic);
+      pad_rxp_i      : in  std_logic := '0');
   end component;
 
 end wr_altera_pkg;

@@ -380,7 +380,6 @@ architecture rtl of exploder_top is
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
   signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
-  signal dbg_tx_clk       : std_logic;
 
   signal wrc_master_i  : t_wishbone_master_in;
   signal wrc_master_o  : t_wishbone_master_out;
@@ -414,8 +413,9 @@ architecture rtl of exploder_top is
   signal eca_lvds_ecl : std_logic_vector(15 downto 0);
   signal eca_trigger  : std_logic_vector(15 downto 0);
   
-  signal lemo_ttl : std_logic;
-  signal lemo_i   : std_logic_vector(8 downto 1);
+  signal lemo_ttl   : std_logic;
+  signal lemo_i     : std_logic_vector(8 downto 1);
+  signal ref_toggle : std_logic;
   
   signal di_scp : std_logic;
   signal di_lp  : std_logic;
@@ -606,8 +606,7 @@ begin
       rx_enc_err_o   => phy_rx_enc_err,
       rx_bitslide_o  => phy_rx_bitslide,
       pad_txp_o      => sfp1_td_o,
-      pad_rxp_i      => sfp1_rd_i,
-      dbg_tx_clk_o   => dbg_tx_clk);
+      pad_rxp_i      => sfp1_rd_i);
 
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
@@ -776,13 +775,7 @@ begin
   hpv_o(7 downto 4) <= not eca_lemo_led(11 downto 8); -- ECA controls other LEDs
   
   -- Baseboard logic analyzer (HPLA1)
-  hpw_io(1 downto 0) <= (others => 'Z'); -- too close to clock inputs
-  hpw_io(2) <= clk_ref;      -- pin 17
-  hpw_io(3) <= clk_sys;      -- pin 16
-  hpw_io(4) <= dbg_tx_clk;   -- pin 15
-  hpw_io(5) <= phy_rx_rbclk; -- pin 14
-  hpw_io(6) <= clk_dmtd;     -- pin 13
-  hpw_io(15 downto 7) <= (others => 'Z');
+  hpw_io(15 downto 0) <= (others => 'Z');
   -- 20 is ground
   
   -- Use output LEMOs in TTL mode
@@ -792,8 +785,15 @@ begin
   
   -- LEMO outputs
   ttnim_o(8) <= ext_pps;
-  ttnim_o(1) <= clk_ref;
   ttnim_o(7 downto 2) <= eca_lemo_led(6 downto 1);
+  
+  ref_out : process(clk_ref) is
+  begin
+    if rising_edge(clk_ref) then
+      ref_toggle <= not ref_toggle;
+    end if;
+  end process;
+  ttnim_o(1) <= ref_toggle;
   
   -- ECA outputs
   lvds_o <= eca_lvds_ecl(7 downto 0);
