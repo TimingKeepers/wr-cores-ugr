@@ -1,0 +1,19 @@
+-- megafunction wizard: %ALTCLKCTRL%
+-- Retrieval info: PRIVATE: INTENDED_DEVICE_FAMILY STRING "Arria V"
+-- Retrieval info: PRIVATE: SYNTH_WRAPPER_GEN_POSTFIX STRING "0"
+-- Retrieval info: PRIVATE: clock_inputs NUMERIC "1"
+-- Retrieval info: CONSTANT: ENA_REGISTER_MODE STRING "always enabled"
+-- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Arria V"
+-- Retrieval info: CONSTANT: USE_GLITCH_FREE_SWITCH_OVER_IMPLEMENTATION STRING "OFF"
+-- Retrieval info: CONSTANT: clock_type STRING "Global Clock"
+-- Retrieval info: USED_PORT: inclk 0 0 0 0 INPUT NODEFVAL "inclk"
+-- Retrieval info: USED_PORT: outclk 0 0 0 0 OUTPUT NODEFVAL "outclk"
+-- Retrieval info: CONNECT: @ena 0 0 0 0 VCC 0 0 0 0
+-- Retrieval info: CONNECT: @inclk 0 0 3 1 GND 0 0 3 0
+-- Retrieval info: CONNECT: @inclk 0 0 1 0 inclk 0 0 0 0
+-- Retrieval info: CONNECT: outclk 0 0 0 0 @outclk 0 0 0 0
+-- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout.vhd TRUE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout.inc FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout.cmp TRUE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout.bsf FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout_inst.vhd FALSE

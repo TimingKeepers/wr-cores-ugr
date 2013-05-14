@@ -1,0 +1,26 @@
+# Quartus droppings
+greybox_tmp/
+# Arria5 PHY
+arria5_phy/
+arria5_phy_sim/
+arria5_phy.bsf
+arria5_phy.cmp
+arria5_phy.ppf
+arria5_phy.qip
+arria5_phy.sip
+arria5_phy.spd
+arria5_phy.vhd
+# Arria5 PHY reconfig
+arria5_phy_reconf/
+arria5_phy_reconf_sim/
+arria5_phy_reconf.bsf
+arria5_phy_reconf.cmp
+arria5_phy_reconf.ppf
+arria5_phy_reconf.qip
+arria5_phy_reconf.sip
+arria5_phy_reconf.spd
+arria5_phy_reconf.vhd
+# Altera clock gate
+arria5_rxclkout.cmp
+arria5_rxclkout.qip
+arria5_rxclkout.vhd

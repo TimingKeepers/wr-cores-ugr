@@ -1,0 +1,3 @@
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "arria5_phy.qip"]
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "arria5_phy_reconf.qip"]
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "arria5_rxclkout.qip"]
