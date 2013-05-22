@@ -57,7 +57,7 @@ library work;
 use work.gencores_pkg.all;
 use work.disparity_gen_pkg.all;
 
-entity wr_gxb_phy_arriaii is
+entity wr_arria2_phy is
   generic (
     g_tx_latch_edge : std_logic := '1';
     g_rx_latch_edge : std_logic := '0');
@@ -86,17 +86,17 @@ entity wr_gxb_phy_arriaii is
     pad_txp_o : out std_logic;
     pad_rxp_i : in std_logic := '0');
 
-end wr_gxb_phy_arriaii;
+end wr_arria2_phy;
 
-architecture rtl of wr_gxb_phy_arriaii is
+architecture rtl of wr_arria2_phy is
 
-  component rxclkout
+  component arria2_rxclkout
     port(
       inclk  : in  std_logic;
       outclk : out std_logic);
   end component;
   
-  component arria_phy
+  component arria2_phy
     port (
       cal_blk_clk                 : in  std_logic;
       pll_inclk                   : in  std_logic;
@@ -125,7 +125,7 @@ architecture rtl of wr_gxb_phy_arriaii is
       tx_dataout                  : out std_logic_vector (0 downto 0));
   end component;
 
-  component altgx_reconf
+  component arria2_phy_reconf
     port (
       reconfig_clk     : in  std_logic;
       reconfig_fromgxb : in  std_logic_vector (16 downto 0);
@@ -199,13 +199,13 @@ architecture rtl of wr_gxb_phy_arriaii is
 begin
 
   rx_rbclk_o   <= clk_rx;
-  U_RxClkout : rxclkout
+  U_RxClkout : arria2_rxclkout
     port map (
       inclk  => clk_rx_gxb,
       outclk => clk_rx);
   
   -- Altera PHY calibration block
-  U_Reconf : altgx_reconf
+  U_Reconf : arria2_phy_reconf
     port map (
       reconfig_clk     => clk_reconf_i,
       reconfig_fromgxb => reconfig_fromgxb,
@@ -213,7 +213,7 @@ begin
       reconfig_togxb   => reconfig_togxb);
 
   --- The serializer and byte aligner
-  U_The_PHY : arria_phy
+  U_The_PHY : arria2_phy
     port map (
       -- Clocks feeding the CMU and CRU of the transceiver
       pll_inclk                   => clk_pll_i,

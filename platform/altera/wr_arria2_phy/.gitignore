@@ -1,0 +1,11 @@
+arria2_phy.cmp
+arria2_phy.ppf
+arria2_phy.qip
+arria2_phy.vhd
+arria2_phy_reconf.cmp
+arria2_phy_reconf.qip
+arria2_phy_reconf.vhd
+arria2_phy_reconf_inst.vhd
+arria2_rxclkout.cmp
+arria2_rxclkout.qip
+arria2_rxclkout.vhd

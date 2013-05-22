@@ -32,7 +32,7 @@ package wr_altera_pkg is
         );
   end component;
 
-  component wr_gxb_phy_arriaii
+  component wr_arria2_phy
     generic (
       g_tx_latch_edge : std_logic := '1';
       g_rx_latch_edge : std_logic := '0');
