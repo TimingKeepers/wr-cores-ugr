@@ -16,3 +16,4 @@ doc/
 *.bin
 *.elf
 Makefile
+ip_cores

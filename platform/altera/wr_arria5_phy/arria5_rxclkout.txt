@@ -1,4 +1,14 @@
 -- megafunction wizard: %ALTCLKCTRL%
+-- GENERATION: STANDARD
+-- VERSION: WM1.0
+-- MODULE: altclkctrl
+
+--altclkctrl CBX_AUTO_BLACKBOX="ALL" CLOCK_TYPE="Global Clock" DEVICE_FAMILY="Arria V" ENA_REGISTER_MODE="always enabled" USE_GLITCH_FREE_SWITCH_OVER_IMPLEMENTATION="OFF" ena inclk outclk
+--VERSION_BEGIN 12.1SP1 cbx_altclkbuf 2013:01:31:18:04:54:SJ cbx_cycloneii 2013:01:31:18:04:54:SJ cbx_lpm_add_sub 2013:01:31:18:04:54:SJ cbx_lpm_compare 2013:01:31:18:04:54:SJ cbx_lpm_decode 2013:01:31:18:04:54:SJ cbx_lpm_mux 2013:01:31:18:04:54:SJ cbx_mgl 2013:01:31:19:27:12:SJ cbx_stratix 2013:01:31:18:04:54:SJ cbx_stratixii 2013:01:31:18:04:54:SJ cbx_stratixiii 2013:01:31:18:04:54:SJ cbx_stratixv 2013:01:31:18:04:54:SJ  VERSION_END
+
+-- ============================================================
+-- CNX file retrieval info
+-- ============================================================
 -- Retrieval info: PRIVATE: INTENDED_DEVICE_FAMILY STRING "Arria V"
 -- Retrieval info: PRIVATE: SYNTH_WRAPPER_GEN_POSTFIX STRING "0"
 -- Retrieval info: PRIVATE: clock_inputs NUMERIC "1"
@@ -17,3 +27,4 @@
 -- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout.cmp TRUE
 -- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout.bsf FALSE
 -- Retrieval info: GEN_FILE: TYPE_NORMAL arria5_rxclkout_inst.vhd FALSE
+-- Retrieval info: LIB_FILE: arriav

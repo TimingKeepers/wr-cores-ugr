@@ -711,7 +711,6 @@ set_location_assignment PIN_C27 -to A_MASTER_CON_RX[1]
 set_location_assignment PIN_D25 -to QL2_REFCLK6p
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to lemo_io1
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to lemo_io2
-set_global_assignment -name SEARCH_PATH "../../../ip_cores/general-cores/platform/altera/wb_pcie/ip_compiler_for_pci_express-library/"
 set_location_assignment PIN_E27 -to sfp2_ref_clk_i
 set_instance_assignment -name IO_STANDARD LVDS -to sfp2_ref_clk_i
 set_location_assignment PIN_E28 -to "sfp2_ref_clk_i(n)"
@@ -729,14 +728,14 @@ set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF
 set_instance_assignment -name GLOBAL_SIGNAL OFF -from "wr_gxb_phy_arriaii:wr_gxb_phy_arriaii_1|arria_phy:U_The_PHY|arria_phy_alt4gxb:arria_phy_alt4gxb_component|tx_clkout_int_wire[0]" -to "wr_gxb_phy_arriaii:wr_gxb_phy_arriaii_1|tx_gxb_datain[*]"
 set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT FAST
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
-set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/wr_fabric_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_sink.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/genram_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wishbone_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_source.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwrf_mux.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/dec_8b10b.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/enc_8b10b.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/wr_tbi_phy.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gencores_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/disparity_gen_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/timing/dmtd_phase_meas.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/timing/dmtd_with_deglitcher.vhd
@@ -745,9 +744,9 @@ set_global_assignment -name VHDL_FILE ../../../modules/timing/hpll_period_detect
 set_global_assignment -name VHDL_FILE ../../../modules/timing/pulse_gen.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/timing/pulse_stamper.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_packet_buffer.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wb_slave.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wbgen2_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/wr_mini_nic.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/xwr_mini_nic.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_period_detect.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_bangbang_pd.vhd
@@ -755,15 +754,15 @@ set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_wbgen2
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/wr_softpll_ng.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/xwr_softpll_ng.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_softpll_ng/spll_wb_slave.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_registers_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/endpoint_private_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_8bit.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_pcs_8bit.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_tx_pcs_16bit.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_16bit.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_autonegotiation.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_pcs_tbi_mdio_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_1000basex_pcs.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_crc_size_check.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_crc32_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_bypass_queue.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_path.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_wb_master.vhd
@@ -782,8 +781,8 @@ set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_buffer.
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_sync_detect.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_sync_detect_16bit.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_wishbone_controller.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_registers_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_crc32_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_pcs_8bit.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/ep_rx_crc_size_check.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/endpoint_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/wr_endpoint.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_endpoint/xwr_endpoint.vhd
@@ -797,7 +796,7 @@ set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_adder.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_channel.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_gpio_channel.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_offset.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_cores_pkg_gsi.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_sdp.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_search.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_tdp.vhd
@@ -806,26 +805,23 @@ set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_wb_channel.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_wb_event.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/eca_wr_time.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_eca/wr_eca.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_cores_pkg_gsi.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wr_tlu/wb_timestamp_latch.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_core.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrcore_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wr_core.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_dpram.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrcore_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/altera_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_periph.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wb_reset.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/wrc_syscon_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_core.vhd
 set_global_assignment -name VHDL_FILE ../../../modules/wrc_core/xwr_syscon_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/altera_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/altgx_reconf.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/arria_phy.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/rxclkout.vhd
-set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_gxb_phy_arria2/wr_gxb_phy_arriaii.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_wb_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/dmtd_pll/dmtd_pll.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/ref_pll/ref_pll.vhd
 set_global_assignment -name VHDL_FILE ../../../platform/altera/sys_pll/sys_pll.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gencores_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../platform/altera/wr_arria2_phy/wr_arria2_phy.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_tbi_phy/wr_tbi_phy.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gc_crc_gen.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gc_moving_average.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gc_extend_pulse.vhd
@@ -837,10 +833,10 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/co
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gc_arbitrated_mux.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gc_pulse_synchronizer.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/common/gc_frequency_meter.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/genram_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/fabric/xwb_fabric_sink.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/memory_loader_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/generic_shiftreg_fifo.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wishbone_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/wr_mini_nic.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/altera/generic_async_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/altera/generic_simple_dpram.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/genrams/altera/generic_dpram.vhd
@@ -865,8 +861,8 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wi
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_async_rx.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_async_tx.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/uart_baud_gen.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/simple_uart_wb.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/wb_simple_uart.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_uart/xwb_simple_uart.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wb_vic/vic_prio_enc.vhd
@@ -903,30 +899,25 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wi
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_eic.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_fifo_async.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_fifo_sync.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/modules/wishbone/wbgen2/wbgen2_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/altera_reconfig.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/altera_pcie_serdes.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/altera_pcie_core.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/altera_pcie.vhd
+set_global_assignment -name VHDL_FILE ../../../modules/wr_mini_nic/minic_wb_slave.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_32to64.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_64to32.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_altera.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_tlp.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_wb.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/pcie_wb_pkg.vhd
-set_global_assignment -name VERILOG_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/ip_compiler_for_pci_express-library/altpcie_rs_serdes.v
+set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/flash/altera_flash_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/flash/altera_spi.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/flash/flash_top.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/general-cores/platform/altera/flash/altera_flash_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_checksum.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_cfg_fifo.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/etherbone_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_hdr_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_internals_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_commit_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_eth_rx.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_eth_tx.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_ethernet_slave.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_fifo.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_hdr_pkg.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_internals_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_checksum.vhd
+set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_cfg_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_pass_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_raw_slave.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_slave_fsm.vhd
@@ -936,12 +927,13 @@ set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_sl
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_tag_fifo.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_tx_mux.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_wbm_fifo.vhd
-set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/etherbone_pkg.vhd
+set_global_assignment -name VHDL_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_slave_core/eb_slave_core.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb_pkg.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb.vhd
 set_global_assignment -name VHDL_FILE ../../../ip_cores/etherbone-core/hdl/eb_usb_core/ez_usb_fifos.vhd
 set_global_assignment -name SDC_FILE ../../../top/gsi_scu/wr_core_demo/scu_top.sdc
-set_global_assignment -name SDC_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/altera_pcie.sdc
-
+set_global_assignment -name QIP_FILE ../../../platform/altera/wr_arria2_phy/wr_arria2_phy.qip
+set_global_assignment -name QIP_FILE ../../../ip_cores/general-cores/platform/altera/wb_pcie/arria2_pcie.qip
+set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:scu.tcl"
 
