@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-03-16
+-- Last update: 2013-06-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -657,4 +657,7 @@ begin  -- rtl
   end process;
 
   link_ok_o <= link_ok and synced;
+
+  serdes_loopen_o <= mdio_mcr_loopback;
+
 end rtl;
