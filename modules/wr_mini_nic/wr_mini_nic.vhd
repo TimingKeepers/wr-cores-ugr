@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-07-26
--- Last update: 2012-08-28
+-- Last update: 2013-05-13
 -- Platform   : FPGA-generic
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -1060,7 +1060,9 @@ begin  -- behavioral
       else
         -- Make sure the timestamp is written to the FIFO only once.
 
-        if(txtsu_stb_i = '1' and txtsu_ack_int = '0') then
+        if(regs_out.mcr_tx_start_o = '1') then
+          regs_in.mcr_tx_ts_ready_i <= '0';
+        elsif(txtsu_stb_i = '1') then
           regs_in.mcr_tx_ts_ready_i <= '1';
           regs_in.tsr0_valid_i <= not txtsu_tsincorrect_i;
           regs_in.tsr0_fid_i   <= txtsu_frame_id_i;
@@ -1068,8 +1070,6 @@ begin  -- behavioral
           regs_in.tsr1_tsval_i <= txtsu_tsval_i;
           txtsu_ack_int        <= '1';
         else
-          -- clear the TS ready flag when a transmission begins
-          regs_in.mcr_tx_ts_ready_i <= regs_in.mcr_tx_ts_ready_i and regs_in.mcr_tx_idle_i;
           txtsu_ack_int <= '0';
         end if;
       end if;
