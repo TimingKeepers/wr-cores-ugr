@@ -6,7 +6,7 @@
 -- Author     : Grzegorz Daniluk
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-08-11
--- Last update: 2012-12-04
+-- Last update: 2013-05-13
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -53,25 +53,24 @@ entity xwrf_mux is
     mux_snk_i   : in  t_wrf_sink_in_array(g_muxed_ports-1 downto 0);
     --
     mux_class_i : in  t_wrf_mux_class(g_muxed_ports-1 downto 0)
-  );
+    );
 end xwrf_mux;
 
 architecture behaviour of xwrf_mux is
 
   function f_hot_to_bin(x : std_logic_vector(g_muxed_ports-1 downto 0))
     return integer is
-      variable ret : std_logic_vector(f_log2_size(g_muxed_ports)-1 downto 0);
+    variable rv : integer;
   begin
-    ret := (others => '0');
-
+    rv := 0;
     -- if there are few ones set in _x_ then the least significant will be
     -- translated to bin
     for i in g_muxed_ports-1 downto 0 loop
       if x(i) = '1' then
-        ret := std_logic_vector(to_unsigned(i, f_log2_size(g_muxed_ports)));
+        rv := i;
       end if;
     end loop;
-    return to_integer(unsigned(ret));
+    return rv;
   end function;
 
   function f_match_class(port_mask, pkt_mask : std_logic_vector(7 downto 0)) return std_logic is
@@ -90,7 +89,7 @@ architecture behaviour of xwrf_mux is
   type   t_mux is (MUX_SEL, MUX_TRANSFER);
   signal mux        : t_mux;
   signal mux_cycs   : std_logic_vector(g_muxed_ports-1 downto 0);
-  signal mux_rrobin : unsigned(f_log2_size(g_muxed_ports)-1 downto 0);
+  signal mux_rrobin : std_logic_vector(g_muxed_ports-1 downto 0);
   signal mux_select : std_logic_vector(g_muxed_ports-1 downto 0);
 
   --==================================--
@@ -118,38 +117,31 @@ begin
     mux_cycs(I) <= mux_snk_i(I).cyc;
   end generate;
 
-  process(clk_sys_i)
-    variable sel : integer range 0 to g_muxed_ports-1;
+  p_mux : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if(rst_n_i = '0') then
-        mux_rrobin <= (others => '0');
-        mux        <= MUX_SEL;
+      if (rst_n_i = '0') then
+        mux_rrobin(0)                        <= '1';
+        mux_rrobin(g_muxed_ports-1 downto 1) <= (others => '0');
+        mux                                  <= MUX_SEL;
       else
-        case(mux) is
+        case mux is
           when MUX_SEL =>
-            mux_select <= (others => '0');
-            if(to_integer(unsigned(mux_cycs)) /= 0) then
-              --one of the fabric masters wants to send sth, check with one
-              for i in 0 to g_muxed_ports-1 loop
-                if(i+to_integer(mux_rrobin) > g_muxed_ports-1) then
-                  sel := i+to_integer(mux_rrobin) - g_muxed_ports;
-                else
-                  sel := i+to_integer(mux_rrobin);
-                end if;
-                if(mux_cycs(sel) = '1') then
-                 exit;
-               end if;
-              end loop;
-              mux_select(sel) <= '1';
-              mux             <= MUX_TRANSFER;
+            if (unsigned(mux_cycs and mux_rrobin) /= 0)then
+              mux_select <= mux_cycs and mux_rrobin;
+              mux        <= MUX_TRANSFER;
+            else
+              mux_select <= (others => '0');
+              mux_rrobin <= mux_rrobin(0) & mux_rrobin(g_muxed_ports-1 downto 1);
             end if;
+
           when MUX_TRANSFER =>
-            if(mux_snk_i(sel).cyc = '0') then  --cycle end
-              mux_rrobin <= to_unsigned(sel, f_log2_size(g_muxed_ports))+1;
+            if(unsigned(mux_cycs and mux_select) = 0) then  --cycle end
+              mux_rrobin <= mux_rrobin(0) & mux_rrobin(g_muxed_ports-1 downto 1);
               mux        <= MUX_SEL;
             end if;
         end case;
+
       end if;
     end if;
   end process;
@@ -196,10 +188,10 @@ begin
         demux           <= DMUX_WAIT;
       else
         case demux is
-          ---------------------------------------------------------------
-          --State DMUX_WAIT: Wait for the WRF cycle to start and then 
-          --                 wait for the STATUS word
-          ---------------------------------------------------------------
+                                        ---------------------------------------------------------------
+                                        --State DMUX_WAIT: Wait for the WRF cycle to start and then
+                                        --                 wait for the STATUS word
+                                        ---------------------------------------------------------------
           when DMUX_WAIT =>
             dmux_select     <= (others => '0');
             dmux_snd_stat   <= (others => '0');
@@ -211,9 +203,9 @@ begin
               demux           <= DMUX_STATUS;
             end if;
 
-          ---------------------------------------------------------------
-          --State DMUX_STATUS: Send Status word to appropriate interface
-          ---------------------------------------------------------------
+                                        ---------------------------------------------------------------
+                                        --State DMUX_STATUS: Send Status word to appropriate interface
+                                        ---------------------------------------------------------------
           when DMUX_STATUS =>
             ep_stall_mask <= '1';
 
@@ -230,10 +222,10 @@ begin
               demux <= DMUX_PAYLOAD;
             end if;
 
-          ---------------------------------------------------------------
-          --State DMUX_PAYLOAD: Just wait here till the end of the 
-          --                    current transfer
-          ---------------------------------------------------------------
+                                        ---------------------------------------------------------------
+                                        --State DMUX_PAYLOAD: Just wait here till the end of the
+                                        --                    current transfer
+                                        ---------------------------------------------------------------
           when DMUX_PAYLOAD =>
             dmux_snd_stat <= (others => '0');
             ep_stall_mask <= '0';
@@ -253,10 +245,10 @@ begin
                    '0';
 
   -- dmux_others signal says for given interface I if any other interface was
-  -- also matched to packet class 
+  -- also matched to packet class
   dmux_others(0) <= '0';
   GEN_DMUX_OTHERS : for I in 1 to g_muxed_ports-1 generate
-      dmux_others(I) <= or_reduce(dmux_select(I-1 downto 0));
+    dmux_others(I) <= or_reduce(dmux_select(I-1 downto 0));
   end generate;
 
 
@@ -280,10 +272,10 @@ begin
 
 
   ep_snk_o.ack <= ep_snk_i.cyc and ep_snk_i.stb and not ep_snk_out_stall when(dmux_sel_zero = '1') else
-                      mux_src_i(f_hot_to_bin(dmux_select)).ack;
+                  mux_src_i(f_hot_to_bin(dmux_select)).ack;
 
   ep_snk_o.err <= '0' when(dmux_sel_zero = '1') else
-                      mux_src_i(f_hot_to_bin(dmux_select)).err;
+                  mux_src_i(f_hot_to_bin(dmux_select)).err;
 
   ep_snk_out_stall <= '1' when(ep_stall_mask = '1') else
                       '0' when(dmux_sel_zero = '1') else
