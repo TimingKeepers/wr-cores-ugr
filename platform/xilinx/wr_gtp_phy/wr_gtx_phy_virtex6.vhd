@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2010-11-18
--- Last update: 2012-07-18
+-- Last update: 2013-06-04
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ architecture rtl of wr_gtx_phy_virtex6 is
 
   signal trig0, trig1, trig2, trig3 : std_logic_vector(31 downto 0);
   signal gtx_rst                    : std_logic;
-  signal gtx_loopback               : std_logic_vector(2 downto 0) := "000";
+  signal gtx_loopback               : std_logic_vector(2 downto 0);
   signal gtx_reset_done             : std_logic;
   signal gtx_pll_lockdet            : std_logic;
   signal rst_synced                 : std_logic;
@@ -271,6 +271,9 @@ architecture rtl of wr_gtx_phy_virtex6 is
 begin  -- rtl
 
   tx_enc_err_o <= '0';
+
+  -- Near-end PMA loopback if loopen_i active
+  gtx_loopback <= "010" when loopen_i = '1' else "000";
 
   p_gen_reset : process(clk_ref_i)
   begin
