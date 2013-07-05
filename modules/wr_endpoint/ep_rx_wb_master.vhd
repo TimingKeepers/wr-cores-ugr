@@ -31,7 +31,8 @@ use work.wr_fabric_pkg.all;
 
 entity ep_rx_wb_master is
   generic(
-    g_ignore_ack: boolean := true);
+    g_ignore_ack   : boolean := true;
+    g_cyc_on_stall : boolean := false);
   port (
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
@@ -62,7 +63,13 @@ architecture behavioral of ep_rx_wb_master is
 
 begin  -- behavioral
   
-  snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0' and snk_fab_i.sof = '0' and enter_idle = '0') else '0';
+  gen_cyc_on_stall: if g_cyc_on_stall = true generate
+    snk_dreq_o <= '1' when ((src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0' and snk_fab_i.sof = '0' and enter_idle = '0') or state = IDLE) else '0';
+  end generate;
+
+  gen_nocyc_on_stall: if g_cyc_on_stall = false generate
+    snk_dreq_o <= '1' when (src_wb_i.stall = '0' and state /= FINISH_CYCLE and snk_fab_i.eof = '0' and snk_fab_i.error = '0' and snk_fab_i.sof = '0' and enter_idle = '0') else '0';
+  end generate;
 
   p_count_acks : process(clk_sys_i)
   begin
@@ -94,7 +101,7 @@ begin  -- behavioral
       else
         case state is
           when IDLE =>
-enter_idle <= '0';
+            enter_idle <= '0';
             src_out_int.adr <= snk_fab_i.addr;
             src_out_int.dat <= snk_fab_i.data;
 
@@ -115,7 +122,7 @@ enter_idle <= '0';
 
             if(src_wb_i.err = '1') then
               state <= IDLE;
-	    enter_idle <= '1';
+	            enter_idle <= '1';
               src_out_int.cyc <= '0';
               src_out_int.stb <= '0';
             elsif(snk_fab_i.error = '1') then

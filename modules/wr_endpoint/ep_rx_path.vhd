@@ -203,7 +203,8 @@ architecture behavioral of ep_rx_path is
 
   component ep_rx_wb_master
     generic (
-      g_ignore_ack : boolean);
+      g_ignore_ack   : boolean;
+      g_cyc_on_stall : boolean := false);
     port (
       clk_sys_i  : in  std_logic;
       rst_n_i    : in  std_logic;
