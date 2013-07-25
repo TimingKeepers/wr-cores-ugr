@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2012-07-09
+-- Last update: 2013-07-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 -- Struct'ized version of wr_softpll_ng.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2012 CERN
+-- Copyright (c) 2012-2013 CERN
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
@@ -40,6 +40,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.wishbone_pkg.all;
+use work.softpll_pkg.all;
 
 entity xwr_softpll_ng is
   generic(
@@ -55,12 +56,6 @@ entity xwr_softpll_ng is
     g_num_ref_inputs : integer := 1;
     g_num_outputs    : integer := 1;
 
--- When true, an additional period detector is provided, measuring the
--- frequency offset between the DDMTD clock and a chosen reference input clock.
--- The feature is not required by the current version of the SoftPLL servo
--- algorithm, but is kept for testing/debugging purposes.
-    g_with_period_detector : boolean := false;
-
 -- When true, an additional FIFO is instantiated, providing a realtime record
 -- of user-selectable SoftPLL parameters (e.g. tag values, phase error, DAC drive).
 -- These values can be read by "spll_dbg_proxy" daemon for further analysis.
@@ -71,12 +66,6 @@ entity xwr_softpll_ng is
 -- (e.g. GPSDO/Cesium 10 MHz)
     g_with_ext_clock_input : boolean := false;
 
--- When true, the SoftPLL can undersample measured signals by dividing the DMTD
--- clock by a progammable ratio, so that one can perform phase shift
--- measurements of clocks with frequencies different than the base rate of the
--- DMTD oscillator.
-    g_with_undersampling : boolean := false;
-
 -- When true, DDMTD inputs are reverse (so that the DDMTD offset clocks is
 -- being sampled by the measured clock). This is functionally equivalent to
 -- "direct" operation, but may improve FPGA timing/routability.
@@ -85,16 +74,10 @@ entity xwr_softpll_ng is
 -- Divides the DDMTD clock inputs by 2, removing the "CLOCK_DEDICATED_ROUTE"
 -- errors under ISE tools, at the cost of bandwidth reduction. Use with care.
     g_divide_input_by_2 : boolean := false;
-
--- Bang Bang phase detector parameters:
--- reference divider
-    g_bb_ref_divider : integer := 1;
-
--- feedback divider
-    g_bb_feedback_divider : integer := 1;
-
--- phase error measurement gating
-    g_bb_log2_gating : integer := 10;
+    
+-- Configuration of all output channels (phase detector type & dividers). See
+-- softpll_pkg.vhd for details.
+    g_channels_config : t_softpll_channel_config_array := c_softpll_default_channel_config;
 
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity : t_wishbone_address_granularity := BYTE
@@ -144,22 +127,16 @@ end xwr_softpll_ng;
 
 architecture wrapper of xwr_softpll_ng is
 
-  
-
   component wr_softpll_ng
     generic (
       g_tag_bits             : integer;
       g_num_ref_inputs       : integer;
       g_num_outputs          : integer;
-      g_with_period_detector : boolean;
       g_with_debug_fifo      : boolean;
       g_with_ext_clock_input : boolean;
-      g_with_undersampling   : boolean;
       g_reverse_dmtds        : boolean;
       g_divide_input_by_2    : boolean;
-      g_bb_ref_divider       : integer;
-      g_bb_feedback_divider  : integer;
-      g_bb_log2_gating       : integer;
+      g_channels_config      : t_softpll_channel_config_array;
       g_interface_mode       : t_wishbone_interface_mode;
       g_address_granularity  : t_wishbone_address_granularity);
     port (
@@ -201,14 +178,10 @@ begin  -- behavioral
       g_num_ref_inputs       => g_num_ref_inputs,
       g_num_outputs          => g_num_outputs,
       g_with_debug_fifo      => g_with_debug_fifo,
-      g_with_period_detector => g_with_period_detector,
-      g_with_undersampling   => g_with_undersampling,
       g_with_ext_clock_input => g_with_ext_clock_input,
       g_reverse_dmtds        => g_reverse_dmtds,
       g_divide_input_by_2    => g_divide_input_by_2,
-      g_bb_ref_divider       => g_bb_ref_divider,
-      g_bb_feedback_divider  => g_bb_feedback_divider,
-      g_bb_log2_gating       => g_bb_log2_gating
+      g_channels_config      => g_channels_config
       )
     port map (
       clk_sys_i       => clk_sys_i,

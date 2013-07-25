@@ -4,9 +4,9 @@
 -------------------------------------------------------------------------------
 -- File       : wr_core.vhd
 -- Author     : Grzegorz Daniluk
--- Company    : Elproma Elektronika, CERN BE-CO-HT
+-- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2013-02-19
+-- Last update: 2013-02-08
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -59,6 +59,7 @@ use work.wishbone_pkg.all;
 use work.endpoint_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.sysc_wbgen2_pkg.all;
+use work.softpll_pkg.all;
 
 
 entity xwr_core is
@@ -76,7 +77,9 @@ entity xwr_core is
     g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity       : t_wishbone_address_granularity := WORD;
-    g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
+    g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
+    g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
+    g_softpll_enable_debugger   : boolean                        := false
     );
   port(
     ---------------------------------------------------------------------------
@@ -189,11 +192,11 @@ entity xwr_core is
     tm_link_up_o         : out std_logic;
     -- DAC Control
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
-    tm_dac_wr_o          : out std_logic;
+    tm_dac_wr_o          : out std_logic_vector(g_aux_clks-1 downto 0);
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i : in  std_logic := '0';
+    tm_clk_aux_lock_en_i : in  std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
     -- Aux clock locked flag
-    tm_clk_aux_locked_o  : out std_logic;
+    tm_clk_aux_locked_o  : out std_logic_vector(g_aux_clks-1 downto 0);
     -- Timecode output
     tm_time_valid_o      : out std_logic;
     tm_tai_o             : out std_logic_vector(39 downto 0);
@@ -210,136 +213,6 @@ entity xwr_core is
 end xwr_core;
 
 architecture struct of xwr_core is
-
-  component wr_core is
-    generic(
-      g_simulation                : integer                        := 0;
-      g_phys_uart                 : boolean                        := true;
-      g_virtual_uart              : boolean                        := false;
-      g_with_external_clock_input : boolean                        := false;
-      g_aux_clks                  : integer                        := 1;
-      g_rx_buffer_size            : integer                        := 12;
-      g_dpram_initf               : string                         := "";
-      g_dpram_size                : integer                        := 16384;  --in 32-bit words
-      g_interface_mode            : t_wishbone_interface_mode      := CLASSIC;
-      g_address_granularity       : t_wishbone_address_granularity := WORD;
-      g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb);
-    port(
-      clk_sys_i  : in std_logic;
-      clk_dmtd_i : in std_logic;
-      clk_ref_i  : in std_logic;
-      clk_aux_i  : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
-      clk_ext_i  : in std_logic;
-      pps_ext_i  : in std_logic;
-      rst_n_i    : in std_logic;
-
-      dac_hpll_load_p1_o : out std_logic;
-      dac_hpll_data_o    : out std_logic_vector(15 downto 0);
-      dac_dpll_load_p1_o : out std_logic;
-      dac_dpll_data_o    : out std_logic_vector(15 downto 0);
-
-      phy_ref_clk_i      : in  std_logic;
-      phy_tx_data_o      : out std_logic_vector(7 downto 0);
-      phy_tx_k_o         : out std_logic;
-      phy_tx_disparity_i : in  std_logic;
-      phy_tx_enc_err_i   : in  std_logic;
-      phy_rx_data_i      : in  std_logic_vector(7 downto 0);
-      phy_rx_rbclk_i     : in  std_logic;
-      phy_rx_k_i         : in  std_logic;
-      phy_rx_enc_err_i   : in  std_logic;
-      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
-      phy_rst_o          : out std_logic;
-      phy_loopen_o       : out std_logic;
-
-      led_act_o  : out std_logic;
-      led_link_o : out std_logic;
-      scl_o      : out std_logic;
-      scl_i      : in  std_logic;
-      sda_o      : out std_logic;
-      sda_i      : in  std_logic;
-      sfp_scl_o  : out std_logic;
-      sfp_scl_i  : in  std_logic;
-      sfp_sda_o  : out std_logic;
-      sfp_sda_i  : in  std_logic;
-      sfp_det_i  : in  std_logic;
-      btn1_i     : in  std_logic;
-      btn2_i     : in  std_logic;
-
-      uart_rxd_i : in  std_logic;
-      uart_txd_o : out std_logic;
-
-      owr_pwren_o : out std_logic_vector(1 downto 0);
-      owr_en_o    : out std_logic_vector(1 downto 0);
-      owr_i       : in  std_logic_vector(1 downto 0);
-
-      wb_adr_i   : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
-      wb_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
-      wb_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0);
-      wb_sel_i   : in  std_logic_vector(c_wishbone_address_width/8-1 downto 0);
-      wb_we_i    : in  std_logic;
-      wb_cyc_i   : in  std_logic;
-      wb_stb_i   : in  std_logic;
-      wb_ack_o   : out std_logic;
-      wb_err_o   : out std_logic;
-      wb_rty_o   : out std_logic;
-      wb_stall_o : out std_logic;
-
-      aux_adr_o   : out std_logic_vector(c_wishbone_address_width-1 downto 0)   := (others => '0');
-      aux_dat_o   : out std_logic_vector(c_wishbone_data_width-1 downto 0)      := (others => '0');
-      aux_dat_i   : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
-      aux_sel_o   : out std_logic_vector(c_wishbone_address_width/8-1 downto 0) := (others => '0');
-      aux_we_o    : out std_logic                                               := '0';
-      aux_cyc_o   : out std_logic                                               := '0';
-      aux_stb_o   : out std_logic                                               := '0';
-      aux_ack_i   : in  std_logic;
-      aux_stall_i : in  std_logic;
-
-
-      ext_snk_adr_i   : in  std_logic_vector(1 downto 0)  := "00";
-      ext_snk_dat_i   : in  std_logic_vector(15 downto 0) := x"0000";
-      ext_snk_sel_i   : in  std_logic_vector(1 downto 0)  := "00";
-      ext_snk_cyc_i   : in  std_logic                     := '0';
-      ext_snk_we_i    : in  std_logic                     := '0';
-      ext_snk_stb_i   : in  std_logic                     := '0';
-      ext_snk_ack_o   : out std_logic;
-      ext_snk_err_o   : out std_logic;
-      ext_snk_stall_o : out std_logic;
-
-      ext_src_adr_o   : out std_logic_vector(1 downto 0);
-      ext_src_dat_o   : out std_logic_vector(15 downto 0);
-      ext_src_sel_o   : out std_logic_vector(1 downto 0);
-      ext_src_cyc_o   : out std_logic;
-      ext_src_stb_o   : out std_logic;
-      ext_src_we_o    : out std_logic;
-      ext_src_ack_i   : in  std_logic := '1';
-      ext_src_err_i   : in  std_logic := '0';
-      ext_src_stall_i : in  std_logic := '0';
-
-      txtsu_port_id_o      : out std_logic_vector(4 downto 0);
-      txtsu_frame_id_o     : out std_logic_vector(15 downto 0);
-      txtsu_ts_value_o     : out std_logic_vector(31 downto 0);
-      txtsu_ts_incorrect_o : out std_logic;
-      txtsu_stb_o          : out std_logic;
-      txtsu_ack_i          : in  std_logic;
-
-      tm_link_up_o          : out std_logic;
-      tm_dac_value_o        : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o           : out std_logic;
-      tm_clk_aux_lock_en_i  : in  std_logic;
-      tm_clk_aux_locked_o   : out std_logic;
-      tm_time_valid_o       : out std_logic;
-      tm_tai_o              : out std_logic_vector(39 downto 0);
-      tm_cycles_o           : out std_logic_vector(27 downto 0);
-      pps_p_o               : out std_logic;
-      pps_led_o             : out std_logic;
-
-      dio_o       : out std_logic_vector(3 downto 0);
-      rst_aux_n_o : out std_logic;
-
-      link_ok_o : out std_logic
-      );
-  end component;
-
 begin
 
   WRPC : wr_core
@@ -354,7 +227,9 @@ begin
       g_dpram_size                => g_dpram_size,
       g_interface_mode            => g_interface_mode,
       g_address_granularity       => g_address_granularity,
-      g_aux_sdb                   => g_aux_sdb)
+      g_aux_sdb                   => g_aux_sdb,
+      g_softpll_channels_config   => g_softpll_channels_config,
+      g_softpll_enable_debugger   => g_softpll_enable_debugger)
     port map(
       clk_sys_i  => clk_sys_i,
       clk_dmtd_i => clk_dmtd_i,
@@ -451,16 +326,16 @@ begin
       txtsu_stb_o          => timestamps_o.stb,
       txtsu_ack_i          => timestamps_ack_i,
 
-      tm_link_up_o                => tm_link_up_o,
-      tm_dac_value_o              => tm_dac_value_o,
-      tm_dac_wr_o                 => tm_dac_wr_o,
-      tm_clk_aux_lock_en_i        => tm_clk_aux_lock_en_i,
-      tm_clk_aux_locked_o         => tm_clk_aux_locked_o,
-      tm_time_valid_o             => tm_time_valid_o,
-      tm_tai_o                    => tm_tai_o,
-      tm_cycles_o                 => tm_cycles_o,
-      pps_p_o                     => pps_p_o,
-      pps_led_o                   => pps_led_o,
+      tm_link_up_o         => tm_link_up_o,
+      tm_dac_value_o       => tm_dac_value_o,
+      tm_dac_wr_o          => tm_dac_wr_o,
+      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
+      tm_clk_aux_locked_o  => tm_clk_aux_locked_o,
+      tm_time_valid_o      => tm_time_valid_o,
+      tm_tai_o             => tm_tai_o,
+      tm_cycles_o          => tm_cycles_o,
+      pps_p_o              => pps_p_o,
+      pps_led_o            => pps_led_o,
 
       dio_o       => dio_o,
       rst_aux_n_o => rst_aux_n_o,

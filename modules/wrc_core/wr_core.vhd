@@ -3,9 +3,9 @@
 -------------------------------------------------------------------------------
 -- File       : wr_core.vhd
 -- Author     : Grzegorz Daniluk
--- Company    : Elproma Elektronika, CERN BE-CO-HT
+-- Company    : Elproma
 -- Created    : 2011-02-02
--- Last update: 2013-03-19
+-- Last update: 2013-03-20
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -66,6 +66,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 library work;
 use work.wrcore_pkg.all;
@@ -74,6 +75,7 @@ use work.wishbone_pkg.all;
 use work.endpoint_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.sysc_wbgen2_pkg.all;
+use work.softpll_pkg.all;
 
 entity wr_core is
   generic(
@@ -90,7 +92,9 @@ entity wr_core is
     g_dpram_size                : integer                        := 90112/4;  --in 32-bit words
     g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity       : t_wishbone_address_granularity := WORD;
-    g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb
+    g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
+    g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
+    g_softpll_enable_debugger   : boolean                        := false
     );
   port(
     ---------------------------------------------------------------------------
@@ -241,11 +245,11 @@ entity wr_core is
     tm_link_up_o         : out std_logic;
     -- DAC Control
     tm_dac_value_o       : out std_logic_vector(23 downto 0);
-    tm_dac_wr_o          : out std_logic;
+    tm_dac_wr_o          : out std_logic_vector(g_aux_clks-1 downto 0);
     -- Aux clock lock enable
-    tm_clk_aux_lock_en_i : in  std_logic := '0';
+    tm_clk_aux_lock_en_i : in  std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
     -- Aux clock locked flag
-    tm_clk_aux_locked_o  : out std_logic;
+    tm_clk_aux_locked_o  : out std_logic_vector(g_aux_clks-1 downto 0);
     -- Timecode output
     tm_time_valid_o      : out std_logic;
     tm_tai_o             : out std_logic_vector(39 downto 0);
@@ -498,19 +502,13 @@ begin
       g_with_ext_clock_input => g_with_external_clock_input,
       g_reverse_dmtds        => false,
       g_divide_input_by_2    => true,
-      g_with_undersampling   => false,
-      g_with_period_detector => false,
-      g_with_debug_fifo      => true,
-
-      g_bb_ref_divider      => 8,
-      g_bb_feedback_divider => 50,
-      g_bb_log2_gating      => 13,
-
-      g_tag_bits            => 22,
-      g_interface_mode      => PIPELINED,
-      g_address_granularity => BYTE,
-      g_num_ref_inputs      => 1,
-      g_num_outputs         => 1 + g_aux_clks)
+      g_with_debug_fifo      => g_softpll_enable_debugger,
+      g_tag_bits             => 22,
+      g_interface_mode       => PIPELINED,
+      g_address_granularity  => BYTE,
+      g_num_ref_inputs       => 1,
+      g_num_outputs          => 1 + g_aux_clks,
+      g_channels_config      => g_softpll_channels_config)
     port map(
       clk_sys_i => clk_sys_i,
       rst_n_i   => rst_net_n,
@@ -548,16 +546,26 @@ begin
   clk_fb(0)                       <= clk_ref_i;
   clk_fb(g_aux_clks downto 1)     <= clk_aux_i;
   out_enable(0)                   <= '1';
-  out_enable(g_aux_clks downto 1) <= (others => tm_clk_aux_lock_en_i);
+  out_enable(g_aux_clks downto 1) <= tm_clk_aux_lock_en_i;
 
   dac_dpll_data_o    <= dac_dpll_data;
   dac_dpll_load_p1_o <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel = x"0") else '0';
 
   tm_dac_value_o <= x"00" & dac_dpll_data;
-  tm_dac_wr_o    <= '1' when (dac_dpll_load_p1 = '1' and dac_dpll_sel = x"1") else '0';
+
+  p_decode_dac_writes : process(dac_dpll_load_p1, dac_dpll_sel)
+  begin
+    for i in 0 to g_aux_clks-1 loop
+      if dac_dpll_sel = std_logic_vector(to_unsigned(i+1, 4)) then
+        tm_dac_wr_o(i) <= dac_dpll_load_p1;
+      else
+        tm_dac_wr_o(i) <= '0';
+      end if;
+    end loop;  -- i
+  end process;
 
   locked_spll : if g_aux_clks > 0 generate
-    tm_clk_aux_locked_o <= spll_out_locked(1);  -- !!! what if more than one clock?! FIXME
+    tm_clk_aux_locked_o <= spll_out_locked(g_aux_clks downto 1);
   end generate;
 
   softpll_irq <= spll_wb_out.int;

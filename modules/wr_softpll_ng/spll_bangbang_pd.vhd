@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-06-14
--- Last update: 2012-04-16
+-- Last update: 2013-03-19
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -32,9 +32,6 @@ use work.gencores_pkg.all;
 entity spll_bangbang_pd is
 
   generic(
-    g_log2_gating      : integer;
-    g_feedback_divider : integer;
-    g_ref_divider      : integer;
     g_error_bits       : integer
     );
   port (
@@ -56,6 +53,14 @@ entity spll_bangbang_pd is
     rst_n_fbck_i   : in std_logic;
     rst_n_sysclk_i : in std_logic;
 
+-------------------------------------------------------------------------------
+-- Configuration
+-------------------------------------------------------------------------------
+
+    cfg_div_ref_i: in std_logic_vector(5 downto 0);
+    cfg_div_fb_i: in std_logic_vector(5 downto 0);
+    cfg_gating_i: in std_logic_vector(3 downto 0);
+    
 -------------------------------------------------------------------------------
 -- I/O
 -------------------------------------------------------------------------------
@@ -79,7 +84,7 @@ end spll_bangbang_pd;
 architecture rtl of spll_bangbang_pd is
 
   
-  signal gate_counter : unsigned(g_log2_gating downto 0);
+  signal gate_counter : unsigned(15 downto 0);
   signal gate_p       : std_logic;
 
   signal ph_sreg_delay : std_logic_vector(4 downto 0);
@@ -99,8 +104,8 @@ architecture rtl of spll_bangbang_pd is
 
 
   -- divider counters
-  signal div_ctr_fbck : unsigned(15 downto 0);
-  signal div_ctr_ref  : unsigned(15 downto 0);
+  signal div_ctr_fbck : unsigned(5 downto 0);
+  signal div_ctr_ref  : unsigned(5 downto 0);
 
   -- disable RAM extraction (XST is trying to implement the phase detector in a
   -- RAM)
@@ -139,7 +144,7 @@ begin  -- rtl
 
 
         -- the divider itself
-        if (div_ctr_ref = g_ref_divider) then
+        if (div_ctr_ref = unsigned(cfg_div_ref_i)) then
           div_ctr_ref <= to_unsigned(1, div_ctr_ref'length);
           pd_in_ref   <= not pd_in_ref;
         else
@@ -159,7 +164,7 @@ begin  -- rtl
         div_ctr_fbck <= to_unsigned(1, div_ctr_fbck'length);
         pd_in_fbck   <= '0';
       else
-        if (div_ctr_fbck = g_feedback_divider) then
+        if (div_ctr_fbck = unsigned(cfg_div_fb_i)) then
           div_ctr_fbck <= to_unsigned(1, div_ctr_fbck'length);
           pd_in_fbck   <= not pd_in_fbck;  -- divide the clock :)
         else
@@ -263,8 +268,10 @@ begin  -- rtl
 -- decodes the PD_GATE field from PCR register and generates the gating pulse
 -- on gate_p.
   phase_gating_decode : process (gate_counter)
+    variable decoded_gating : integer;
   begin
-    if(gate_counter(gate_counter'length-1) = '1') then
+    decoded_gating := to_integer(unsigned(cfg_gating_i));
+    if(gate_counter(decoded_gating) = '1') then
       gate_p <= '1';
     else
       gate_p <= '0';

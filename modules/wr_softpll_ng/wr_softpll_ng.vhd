@@ -6,7 +6,7 @@
 -- Author     : Tomasz Włostowski
 -- Company    : CERN BE-CO-HT
 -- Created    : 2011-01-29
--- Last update: 2013-03-20
+-- Last update: 2013-07-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -18,7 +18,7 @@
 -- The rest of the magic is done in the software.
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2012 CERN
+-- Copyright (c) 2012-2013 CERN
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
@@ -44,6 +44,7 @@ use ieee.numeric_std.all;
 
 use work.gencores_pkg.all;
 use work.wishbone_pkg.all;
+use work.softpll_pkg.all;
 use work.spll_wbgen2_pkg.all;
 
 entity wr_softpll_ng is
@@ -60,12 +61,6 @@ entity wr_softpll_ng is
     g_num_ref_inputs : integer := 1;
     g_num_outputs    : integer := 1;
 
--- When true, an additional period detector is provided, measuring the
--- frequency offset between the DDMTD clock and a chosen reference input clock.
--- The feature is not required by the current version of the SoftPLL servo
--- algorithm, but is kept for testing/debugging purposes.
-    g_with_period_detector : boolean := false;
-
 -- When true, an additional FIFO is instantiated, providing a realtime record
 -- of user-selectable SoftPLL parameters (e.g. tag values, phase error, DAC drive).
 -- These values can be read by "spll_dbg_proxy" daemon for further analysis.
@@ -76,30 +71,19 @@ entity wr_softpll_ng is
 -- (e.g. GPSDO/Cesium 10 MHz)
     g_with_ext_clock_input : boolean := false;
 
--- When true, the SoftPLL can undersample measured signals by dividing the DMTD
--- clock by a progammable ratio, so that one can perform phase shift
--- measurements of clocks with frequencies different than the base rate of the
--- DMTD oscillator.
-    g_with_undersampling : boolean := false;
-
--- When true, DDMTD inputs are reverse (so that the DDMTD offset clocks is
+-- When true, DDMTD inputs are reversed (so that the DDMTD offset clocks is
 -- being sampled by the measured clock). This is functionally equivalent to
 -- "direct" operation, but may improve FPGA timing/routability.
     g_reverse_dmtds : boolean := true;
 
 -- Divides the DDMTD clock inputs by 2, removing the "CLOCK_DEDICATED_ROUTE"
--- errors under ISE tools, at the cost of bandwidth reduction. Use with care.
+-- errors under ISE tools, at the cost of bandwidth reduction. Advanced option
+-- use with care.
     g_divide_input_by_2 : boolean := false;
 
--- Bang Bang phase detector parameters:
--- reference divider
-    g_bb_ref_divider : integer := 1;
-
--- feedback divider
-    g_bb_feedback_divider : integer := 1;
-
--- phase error measurement gating
-    g_bb_log2_gating : integer := 10;
+-- Configuration of all output channels (phase detector type & dividers). See
+-- softpll_pkg.vhd for details.
+    g_channels_config : t_softpll_channel_config_array := c_softpll_default_channel_config;
 
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity : t_wishbone_address_granularity := WORD
@@ -173,13 +157,9 @@ architecture rtl of wr_softpll_ng is
   constant c_DBG_FIFO_COALESCE  : integer := 100;
   constant c_BB_ERROR_BITS      : integer := 16;
 
-
   component spll_bangbang_pd
     generic (
-      g_log2_gating      : integer;
-      g_feedback_divider : integer;
-      g_ref_divider      : integer;
-      g_error_bits       : integer);
+      g_error_bits : integer);
     port (
       clk_ref_i      : in  std_logic;
       clk_fb_i       : in  std_logic;
@@ -187,6 +167,9 @@ architecture rtl of wr_softpll_ng is
       rst_n_refclk_i : in  std_logic;
       rst_n_fbck_i   : in  std_logic;
       rst_n_sysclk_i : in  std_logic;
+      cfg_div_ref_i  : in  std_logic_vector(5 downto 0);
+      cfg_div_fb_i   : in  std_logic_vector(5 downto 0);
+      cfg_gating_i   : in  std_logic_vector(3 downto 0);
       sync_p_i       : in  std_logic;
       sync_en_i      : in  std_logic;
       sync_done_o    : out std_logic;
@@ -199,8 +182,7 @@ architecture rtl of wr_softpll_ng is
   component dmtd_with_deglitcher
     generic (
       g_counter_bits      : natural;
-      g_divide_input_by_2 : boolean;
-      g_reverse : boolean);
+      g_divide_input_by_2 : boolean);
     port (
       rst_n_dmtdclk_i      : in  std_logic;
       rst_n_sysclk_i       : in  std_logic;
@@ -220,38 +202,25 @@ architecture rtl of wr_softpll_ng is
       tag_stb_p1_o         : out std_logic);
   end component;
 
-  component spll_period_detect
-    generic (
-      g_num_ref_inputs : integer);
-    port (
-      clk_ref_i        : in  std_logic_vector(g_num_ref_inputs-1 downto 0);
-      clk_dmtd_i       : in  std_logic;
-      clk_sys_i        : in  std_logic;
-      rst_n_dmtdclk_i  : in  std_logic;
-      rst_n_sysclk_i   : in  std_logic;
-      freq_err_o       : out std_logic_vector(11 downto 0);
-      freq_err_stb_p_o : out std_logic;
-      in_sel_i         : in  std_logic_vector(4 downto 0));
-  end component;
-
   component spll_wb_slave
+    generic (
+      g_with_debug_fifo : integer);
     port (
-      clk_sys_i            : in  std_logic;
-      rst_n_i              : in  std_logic;
-      wb_adr_i             : in  std_logic_vector(4 downto 0);
-      wb_dat_i             : in  std_logic_vector(31 downto 0);
-      wb_dat_o             : out std_logic_vector(31 downto 0);
-      wb_cyc_i             : in  std_logic;
-      wb_sel_i             : in  std_logic_vector(3 downto 0);
-      wb_stb_i             : in  std_logic;
-      wb_we_i              : in  std_logic;
-      wb_ack_o             : out std_logic;
-      wb_int_o             : out std_logic;
-      wb_stall_o           : out std_logic;
-      tag_hpll_rd_period_o : out std_logic;
-      irq_tag_i            : in  std_logic;
-      regs_i               : in  t_SPLL_in_registers;
-      regs_o               : out t_SPLL_out_registers);
+      rst_n_i    : in  std_logic;
+      clk_sys_i  : in  std_logic;
+      wb_adr_i   : in  std_logic_vector(4 downto 0);
+      wb_dat_i   : in  std_logic_vector(31 downto 0);
+      wb_dat_o   : out std_logic_vector(31 downto 0);
+      wb_cyc_i   : in  std_logic;
+      wb_sel_i   : in  std_logic_vector(3 downto 0);
+      wb_stb_i   : in  std_logic;
+      wb_we_i    : in  std_logic;
+      wb_ack_o   : out std_logic;
+      wb_stall_o : out std_logic;
+      wb_int_o   : out std_logic;
+      irq_tag_i  : in  std_logic;
+      regs_i     : in  t_spll_in_registers;
+      regs_o     : out t_spll_out_registers);
   end component;
 
   procedure f_rr_arbitrate (
@@ -319,14 +288,44 @@ architecture rtl of wr_softpll_ng is
     end if;
   end f_pick;
 
+  function f_pick (
+    cond     : boolean;
+    if_true  : integer;
+    if_false : integer
+    ) return integer is
+  begin
+    if(cond) then
+      return if_true;
+    else
+      return if_false;
+    end if;
+  end f_pick;
+
+  function resize(x : std_logic_vector; new_length : integer) return std_logic_vector is
+    variable tmp : std_logic_vector(new_length-1 downto 0);
+  begin
+    tmp                       := (others => '0');
+    tmp (x'length-1 downto 0) := x;
+    return tmp;
+  end resize;
+
+  type t_out_channel_bb_config is record
+    div_ref : std_logic_vector(5 downto 0);
+    div_fb  : std_logic_vector(5 downto 0);
+    gating  : std_logic_vector(3 downto 0);
+  end record;
+
   type t_tag_array is array (0 to f_num_total_channels-1) of std_logic_vector(g_tag_bits-1 downto 0);
+
+  type t_phase_error_array is array(0 to g_num_outputs-1) of std_logic_vector(c_BB_ERROR_BITS-1 downto 0);
+
+  type t_out_channel_bb_config_array is array (0 to g_num_outputs-1) of t_out_channel_bb_config;
 
   signal tags, tags_masked                          : t_tag_array;
   signal tags_grant_p, tags_p, tags_req, tags_grant : std_logic_vector(f_num_total_channels-1 downto 0);
   signal tag_muxed                                  : std_logic_vector(g_tag_bits-1 downto 0);
   signal tag_src, tag_src_pre                       : std_logic_vector (5 downto 0);
   signal tag_valid, tag_valid_pre                   : std_logic;
-
 
   signal rst_n_refclk  : std_logic;
   signal rst_n_extclk  : std_logic;
@@ -336,8 +335,7 @@ architecture rtl of wr_softpll_ng is
 
   signal deglitch_thr_slv : std_logic_vector(15 downto 0);
 
-  signal tag_hpll_rd_period_ack : std_logic;
-  signal irq_tag                : std_logic;
+  signal irq_tag : std_logic;
 
   signal dmtd_freq_err       : std_logic_vector(11 downto 0);
   signal dmtd_freq_err_stb_p : std_logic;
@@ -353,90 +351,39 @@ architecture rtl of wr_softpll_ng is
 
   signal wb_irq_out : std_logic;
 
-  component BUFG
-    port (
-      O : out std_logic;
-      I : in  std_logic);
-  end component;
-
   signal resized_addr : std_logic_vector(c_wishbone_address_width-1 downto 0);
   signal wb_out       : t_wishbone_slave_out;
   signal wb_in        : t_wishbone_slave_in;
   signal regs_in      : t_SPLL_out_registers;
   signal regs_out     : t_SPLL_in_registers;
 
-  signal per_clk_ref : std_logic_vector(g_num_ref_inputs downto 0);
-
-  signal dmtd_gating_cnt   : unsigned(5 downto 0);
-  signal clk_dmtd_en_gated : std_logic;
-  signal clk_dmtd_en_ref   : std_logic_vector(31 downto 0);
-  signal clk_dmtd_gate_sel : std_logic_vector(31 downto 0);
-
   -- Debug FIFO signals
   signal dbg_fifo_almostfull   : std_logic;
   signal dbg_seq_id            : unsigned(15 downto 0);
   signal dbg_fifo_permit_write : std_logic;
 
+  -- Temporary vectors for DDMTD clock selection (straight/reversed)
+  signal dmtd_ref_clk_in, dmtd_ref_clk_dmtd : std_logic_vector(g_num_ref_inputs-1 downto 0);
+  signal dmtd_fb_clk_in, dmtd_fb_clk_dmtd   : std_logic_vector(g_num_outputs-1 downto 0);
+
   signal bb_sync_en, bb_sync_done : std_logic;
   signal ext_ref_present          : std_logic;
   signal fb_resync_out            : std_logic_vector(g_num_outputs-1 downto 0);
 
-  signal ref_resync_start_p       : std_logic_vector(31 downto 0);
-  signal fb_resync_start_p        : std_logic_vector(15 downto 0);
+  signal ref_resync_start_p : std_logic_vector(31 downto 0);
+  signal fb_resync_start_p  : std_logic_vector(15 downto 0);
+
+  signal rst_n_bb_ref : std_logic_vector(g_num_outputs-1 downto 0);
+  signal rst_n_bb_fb  : std_logic_vector(g_num_outputs-1 downto 0);
+
+
+  signal bb_chx_phase_err                              : t_phase_error_array;
+  signal bb_chx_phase_err_wrap, bb_chx_phase_err_stb_p : std_logic_vector(g_num_outputs-1 downto 0);
+
+  signal bb_config    : t_out_channel_bb_config_array;
+  signal bb_det_reset : std_logic_vector(g_num_outputs-1 downto 0);
   
 begin  -- rtl
-
-
-
-
-  -- DMTD Gating counter. Gates the DMTD clock enable for the DDMTDs
-  -- effectively dividing its frequency by the gating count. This allows for
-  -- sampling clocks of frequencies lower than 125 / 62.5 MHz, for example the
-  -- 10 MHz external timing reference.
-  p_gen_dmtd_gating : process(clk_dmtd_i)
-  begin
-    if rising_edge(clk_dmtd_i) then
-      if rst_n_dmtdclk = '0' then
-        dmtd_gating_cnt   <= (others => '0');
-        clk_dmtd_en_gated <= '0';
-      else
-        if(std_logic_vector(dmtd_gating_cnt) = regs_in.dccr_gate_div_o) then
-          dmtd_gating_cnt   <= (others => '0');
-          clk_dmtd_en_gated <= '1';
-        else
-          dmtd_gating_cnt   <= dmtd_gating_cnt + 1;
-          clk_dmtd_en_gated <= '0';
-        end if;
-      end if;
-    end if;
-  end process;
-
-
--- selects full speed or gated mode for the reference channels
-  gen_ref_channels_clk_enables : for i in 0 to g_num_ref_inputs-1 generate
-
-    p_gating_register : process(clk_sys_i)
-    begin
-      if rising_edge(clk_sys_i) then
-        if(regs_in.rcger_gate_sel_wr_o = '1') then
-          clk_dmtd_gate_sel(i) <= regs_in.rcger_gate_sel_o(i);
-        end if;
-      end if;
-    end process;
-
-    p_select_dmtd_gating_chx : process(clk_dmtd_i)
-    begin
-      if rising_edge(clk_dmtd_i) then
-        if(clk_dmtd_gate_sel(i) = '1') then
-          clk_dmtd_en_ref(i) <= clk_dmtd_en_gated;
-        else
-          clk_dmtd_en_ref(i) <= '1';
-        end if;
-      end if;
-    end process;
-    
-  end generate gen_ref_channels_clk_enables;
-
 
   resized_addr(6 downto 0)                          <= wb_adr_i;
   resized_addr(c_wishbone_address_width-1 downto 7) <= (others => '0');
@@ -476,24 +423,25 @@ begin  -- rtl
       ppulse_o => open);
 
 
-  --gen_with_single_dmtd : if(c_use_multi_dmtd = false) generate
 
   gen_ref_dmtds : for i in 0 to g_num_ref_inputs-1 generate
+
+    dmtd_ref_clk_in(i)   <= f_pick(g_reverse_dmtds, clk_dmtd_i, clk_ref_i(i));
+    dmtd_ref_clk_dmtd(i) <= f_pick(g_reverse_dmtds, clk_ref_i(i), clk_dmtd_i);
 
     DMTD_REF : dmtd_with_deglitcher
       generic map (
         g_counter_bits      => g_tag_bits,
-        g_divide_input_by_2 => g_divide_input_by_2,
-        g_reverse => g_reverse_dmtds)
+        g_divide_input_by_2 => g_divide_input_by_2)
       port map (
         rst_n_dmtdclk_i => rst_n_dmtdclk,
         rst_n_sysclk_i  => rst_n_i,
 
-        clk_dmtd_i    => clk_dmtd_i,
-        clk_dmtd_en_i => '1',           --clk_dmtd_en_ref(i),
+        clk_dmtd_i    => dmtd_ref_clk_dmtd(i),
+        clk_dmtd_en_i => '1',
 
         clk_sys_i => clk_sys_i,
-        clk_in_i  => clk_ref_i(i),
+        clk_in_i  => dmtd_ref_clk_in(i),
 
         resync_done_o    => regs_out.crr_in_i(i),
         resync_start_p_i => ref_resync_start_p(i),
@@ -512,39 +460,108 @@ begin  -- rtl
 
   gen_feedback_dmtds : for i in 0 to g_num_outputs-1 generate
 
-    DMTD_FB : dmtd_with_deglitcher
-      generic map (
-        g_counter_bits      => g_tag_bits,
-        g_divide_input_by_2 => g_divide_input_by_2,
-        g_reverse => g_reverse_dmtds)
-      port map (
-        rst_n_dmtdclk_i => rst_n_dmtdclk,
-        rst_n_sysclk_i  => rst_n_i,
+    gen_output_pd_ddmtd : if(g_channels_config(i) = CH_DDMTD or i = 0) generate
+      
+      dmtd_fb_clk_in(i)   <= f_pick(g_reverse_dmtds, clk_dmtd_i, clk_fb_i(i));
+      dmtd_fb_clk_dmtd(i) <= f_pick(g_reverse_dmtds, clk_fb_i(i), clk_dmtd_i);
 
-        clk_dmtd_i      => clk_dmtd_i,
-        clk_dmtd_en_i   => '1',
+      DMTD_FB : dmtd_with_deglitcher
+        generic map (
+          g_counter_bits      => g_tag_bits,
+          g_divide_input_by_2 => g_divide_input_by_2)
+        port map (
+          rst_n_dmtdclk_i => rst_n_dmtdclk,
+          rst_n_sysclk_i  => rst_n_i,
+          clk_dmtd_i      => dmtd_fb_clk_dmtd(i),
+          clk_dmtd_en_i   => '1',
 
-        clk_sys_i => clk_sys_i,
-        clk_in_i  => clk_fb_i(i),
+          clk_sys_i => clk_sys_i,
+          clk_in_i  => dmtd_fb_clk_in(i),
 
-        resync_done_o    => regs_out.crr_out_i(i),
-        resync_start_p_i => fb_resync_start_p(i),
-        resync_p_a_i     => fb_resync_out(0),
-        resync_p_o       => fb_resync_out(i),
+          resync_done_o    => regs_out.crr_out_i(i),
+          resync_start_p_i => fb_resync_start_p(i),
+          resync_p_a_i     => fb_resync_out(0),
+          resync_p_o       => fb_resync_out(i),
 
-        tag_o        => tags(i+g_num_ref_inputs),
-        tag_stb_p1_o => tags_p(i+g_num_ref_inputs),
-        shift_en_i   => '0',
-        shift_dir_i  => '0',
+          tag_o        => tags(i+g_num_ref_inputs),
+          tag_stb_p1_o => tags_p(i+g_num_ref_inputs),
+          shift_en_i   => '0',
+          shift_dir_i  => '0',
 
-        deglitch_threshold_i => deglitch_thr_slv,
-        dbg_dmtdout_o        => open);
+          deglitch_threshold_i => deglitch_thr_slv,
+          dbg_dmtdout_o        => open);
 
+      regs_out.occr_out_det_type_i(i) <= '0';
+
+    end generate gen_output_pd_ddmtd;
+
+
+    gen_output_pd_bb : if (g_channels_config(i) = CH_BANGBANG and i /= 0) generate
+
+      p_dividers_config : process(clk_sys_i)
+      begin
+        if rising_edge(clk_sys_i) then
+          if(regs_in.aux_cr_aux_sel_o = std_logic_vector(to_unsigned(i, 3)) and regs_in.aux_cr_aux_sel_wr_o = '1') then
+            bb_config(i).div_ref <= regs_in.aux_cr_div_ref_o;
+            bb_config(i).div_fb  <= regs_in.aux_cr_div_fb_o;
+            bb_config(i).gating  <= regs_in.aux_cr_gate_o;
+          end if;
+        end if;
+      end process;
+
+      bb_det_reset(i) <= rst_n_i and ocer_int(i);
+
+      U_sync_rst_ref : gc_sync_ffs
+        generic map (
+          g_sync_edge => "positive")
+        port map (
+          clk_i    => clk_fb_i(0),  --ref_i(g_channels_config(i).ref_input),
+          rst_n_i  => '1',
+          data_i   => bb_det_reset(i),
+          synced_o => rst_n_bb_ref(i));
+
+      U_sync_rst_fb : gc_sync_ffs
+        generic map (
+          g_sync_edge => "positive")
+        port map (
+          clk_i    => clk_fb_i(i),
+          rst_n_i  => '1',
+          data_i   => bb_det_reset(i),
+          synced_o => rst_n_bb_fb(i));
+
+      U_BB_Detect : spll_bangbang_pd
+        generic map (
+          g_error_bits => c_BB_ERROR_BITS)
+        port map (
+-- note: bb detectors can be referenced only to the local 125 MHz oscillator
+          clk_ref_i      => clk_fb_i(0),
+          clk_fb_i       => clk_fb_i(i),
+          clk_sys_i      => clk_sys_i,
+          rst_n_refclk_i => rst_n_bb_ref(i),
+          rst_n_fbck_i   => rst_n_bb_fb(i),
+          rst_n_sysclk_i => rst_n_i,
+
+          cfg_div_ref_i => bb_config(i).div_ref,
+          cfg_div_fb_i  => bb_config(i).div_fb,
+          cfg_gating_i  => bb_config(i).gating,
+
+          sync_p_i      => sync_p_i,
+          sync_en_i     => '1',
+          sync_done_o   => open,
+          err_o         => bb_chx_phase_err(i),
+          err_wrap_o    => bb_chx_phase_err_wrap(i),
+          err_stb_o     => bb_chx_phase_err_stb_p(i),
+          ref_present_o => open);
+
+      tags(i+g_num_ref_inputs)(c_BB_ERROR_BITS downto 0) <= bb_chx_phase_err_wrap(i) & bb_chx_phase_err(i);
+      tags_p(i+g_num_ref_inputs)                         <= bb_chx_phase_err_stb_p(i);
+
+      regs_out.occr_out_det_type_i(i) <= '1';
+      
+    end generate gen_output_pd_bb;
   end generate gen_feedback_dmtds;
 
-
-  gen_bb_detector : if(g_with_ext_clock_input) generate
-
+  gen_with_ext_clock_input : if(g_with_ext_clock_input) generate
     
     U_sync_rst_ext : gc_sync_ffs
       generic map (
@@ -583,12 +600,9 @@ begin  -- rtl
         synced_o => regs_out.eccr_align_done_i);
 
     
-    U_BB_Detect : spll_bangbang_pd
+    U_Ext_BB_Detect : spll_bangbang_pd
       generic map (
-        g_log2_gating      => g_bb_log2_gating,
-        g_feedback_divider => g_bb_feedback_divider,
-        g_ref_divider      => g_bb_ref_divider,
-        g_error_bits       => c_BB_ERROR_BITS)
+        g_error_bits => c_BB_ERROR_BITS)
       port map (
         clk_ref_i      => clk_ext_i,
         clk_fb_i       => clk_fb_i(0),
@@ -596,6 +610,9 @@ begin  -- rtl
         rst_n_refclk_i => rst_n_i,
         rst_n_fbck_i   => rst_n_fb,
         rst_n_sysclk_i => rst_n_i,
+        cfg_div_ref_i  => std_logic_vector(to_unsigned(c_softpll_ext_div_ref, 6)),
+        cfg_div_fb_i   => std_logic_vector(to_unsigned(c_softpll_ext_div_fb, 6)),
+        cfg_gating_i   => std_logic_vector(to_unsigned(c_softpll_ext_log2_gating, 4)),
         sync_p_i       => sync_p_i,
         sync_en_i      => bb_sync_en,
         sync_done_o    => bb_sync_done,
@@ -609,18 +626,19 @@ begin  -- rtl
 
     regs_out.eccr_ext_supported_i   <= '1';
     regs_out.eccr_ext_ref_present_i <= ext_ref_present;
-  end generate gen_bb_detector;
+  end generate gen_with_ext_clock_input;
 
 
 
-  gen_without_bb_detector : if(not g_with_ext_clock_input) generate
+  gen_without_ext_clock_input : if(not g_with_ext_clock_input) generate
     regs_out.eccr_ext_supported_i <= '0';
     bb_phase_err_stb_p            <= '0';
-  end generate gen_without_bb_detector;
-
+  end generate gen_without_ext_clock_input;
 
 
   U_WB_SLAVE : spll_wb_slave
+    generic map (
+      g_with_debug_fifo => f_pick(g_with_debug_fifo, 1, 0))
     port map (
       clk_sys_i  => clk_sys_i,
       rst_n_i    => rst_n_i,
@@ -634,8 +652,6 @@ begin  -- rtl
       wb_ack_o   => wb_out.ack,
       wb_int_o   => wb_irq_out,
       wb_stall_o => open,
-
-      tag_hpll_rd_period_o => tag_hpll_rd_period_ack,
 
       regs_o => regs_in,
       regs_i => regs_out,
@@ -652,59 +668,6 @@ begin  -- rtl
       ref_resync_start_p(i) <= regs_in.crr_in_load_o and regs_in.crr_in_o(i);
     end loop;  -- i
   end process;
-  
-  wb_irq_o <= wb_irq_out;
-
-  gen_with_period_detector : if(g_with_period_detector) generate
-    
-    per_clk_ref(g_num_ref_inputs-1 downto 0) <= clk_ref_i;  -- and g_period_detector_ref_mask(g_num_ref_inputs-1 downto 0);
-    per_clk_ref(g_num_ref_inputs)            <= clk_fb_i(0);
-
-    -- Frequency/Period detector (to speed up locking)
-    U_Period_Detector : spll_period_detect
-      generic map (
-        g_num_ref_inputs => g_num_ref_inputs + 1)
-      port map (
-        clk_ref_i        => per_clk_ref,
-        clk_dmtd_i       => clk_dmtd_i,
-        clk_sys_i        => clk_sys_i,
-        rst_n_dmtdclk_i  => rst_n_dmtdclk,
-        rst_n_sysclk_i   => rst_n_i,
-        freq_err_o       => dmtd_freq_err,
-        freq_err_stb_p_o => dmtd_freq_err_stb_p,
-        in_sel_i         => regs_in.csr_per_sel_o(4 downto 0));
-
-    
-    p_collect_tags_hpll : process(clk_sys_i)
-    begin
-      if rising_edge(clk_sys_i) then
-        if(rst_n_i = '0') then
-          regs_out.per_hpll_valid_i <= '0';
-          regs_out.per_hpll_error_i <= (others => '0');
-          
-        else
-
-          if(dmtd_freq_err_stb_p = '1')then
-            regs_out.per_hpll_error_i(11 downto 0)  <= dmtd_freq_err;
-            regs_out.per_hpll_error_i(15 downto 12) <= (others => dmtd_freq_err(dmtd_freq_err'left));
-          end if;
-
-          if(dmtd_freq_err_stb_p = '1' and regs_in.csr_per_en_o = '1') then
-            regs_out.per_hpll_valid_i <= '1';
-          elsif(tag_hpll_rd_period_ack = '1' or regs_in.csr_per_en_o = '0') then
-            regs_out.per_hpll_valid_i <= '0';
-          end if;
-        end if;
-      end if;
-    end process;
-
-  end generate gen_with_period_detector;
-
-  gen_without_period_detector : if(g_with_period_detector = false) generate
-    regs_out.per_hpll_valid_i <= '0';
-  end generate gen_without_period_detector;
-
-
 
   p_ocer_rcer_regs : process(clk_sys_i)
   begin
@@ -728,7 +691,7 @@ begin  -- rtl
   regs_out.ocer_i(g_num_outputs-1 downto 0)    <= ocer_int;
   regs_out.rcer_i(g_num_ref_inputs-1 downto 0) <= rcer_int;
 
-  p_latch_tags_hpll : process(clk_sys_i)
+  p_latch_tags : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_i = '0') then
@@ -794,8 +757,6 @@ begin  -- rtl
 
         tag_valid <= tag_valid_pre;
 
-
-
         tag_src_pre <= f_onehot_decode(tags_grant_p);
         tag_src     <= tag_src_pre;
 
@@ -820,7 +781,7 @@ begin  -- rtl
 
   out_locked_o <= regs_in.occr_out_lock_o(g_num_outputs-1 downto 0);
 
-  irq_tag <= '1' when regs_out.per_hpll_valid_i = '1' or regs_in.trr_wr_empty_o = '0' else '0';
+  irq_tag <= not regs_in.trr_wr_empty_o;
 
   deglitch_thr_slv <= regs_in.deglitch_thr_o;
 
@@ -893,7 +854,7 @@ begin  -- rtl
 
   regs_out.csr_n_ref_i <= std_logic_vector(to_unsigned(g_num_ref_inputs, regs_out.csr_n_ref_i'length));
   regs_out.csr_n_out_i <= std_logic_vector(to_unsigned(g_num_outputs, regs_out.csr_n_out_i'length));
-  
+
   dac_dmtd_load_o <= regs_in.dac_hpll_wr_o;
   dac_dmtd_data_o <= regs_in.dac_hpll_o;
 
@@ -901,4 +862,7 @@ begin  -- rtl
   dac_out_sel_o  <= regs_in.dac_main_dac_sel_o;
   dac_out_load_o <= regs_in.dac_main_value_wr_o;
 
+  wb_irq_o <= wb_irq_out;
+
+  
 end rtl;

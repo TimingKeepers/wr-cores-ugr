@@ -9,16 +9,15 @@ peripheral {
 			name = "SPLL Control/Status Register";
 			prefix = "CSR";
 			
+			field {
+		         align = 8;
+		         name = "Unused (kept for software compatibility).";
+		         prefix = "UNUSED0";
+		         size = 6;
+		         type = CONSTANT;
+				 value = 0;
+		      };
 
-      field {
-         align = 8;
-         name = "Period detector reference select";
-         prefix = "PER_SEL";
-         size = 6;
-         type = SLV;
-         access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
-      };
 
 			field {
 				 align = 8;
@@ -41,11 +40,11 @@ peripheral {
 			};
 
       field {
-         name = "Enable Period Measurement";
-         prefix = "PER_EN";
+         name = "Debug queue supported";
+         prefix = "DBG_SUPPORTED";
          type = BIT;
-         access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
+         access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
       };
 	 };
 
@@ -110,37 +109,8 @@ peripheral {
 
    };
   
-
----------------------------------------------
--- DMTD gating/undersampling configuration
----------------------------------------------
 	 reg {
-			name = "DMTD Clock Control Register";
-			prefix = "DCCR";
-			
-      field {
-         name = "DMTD Clock Undersampling Divider";
-         prefix = "GATE_DIV";
-         size = 6;
-         type = SLV;
-         access_bus = READ_WRITE;
-				 access_dev = READ_ONLY;
-      };
-	 };
-
-   reg {
-      name = "Reference Channel Undersampling Enable Register";
-      prefix = "RCGER";
-      
-      field {
-         name = "Reference Channel Undersampling Enable";
-         prefix = "GATE_SEL";
-         size = 32;
-         type = PASS_THROUGH;
-      };
-   };
-
-	 reg {
+			align = 4; 
 			name = "Output Channel Control Register";
 			prefix = "OCCR";
 
@@ -162,10 +132,20 @@ peripheral {
 				 access_bus = READ_WRITE;
 				 access_dev = READ_ONLY;
 			};
+
+      field {
+				 name = "Output Channel Phase Detector Type";
+         description = "Phase detector type used by corresponding output: 0 = DDMTD, 1 = BangBang";
+				 prefix = "OUT_DET_TYPE";
+				 type = SLV;
+				 size = 8;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
 	 };
 	 
 	 reg {
-			name = "Reference Channel Enable Register";
+			name = "Reference Channel Tagging Enable Register";
 			prefix = "RCER";
 			
 			field {
@@ -181,7 +161,7 @@ peripheral {
 	 };
 
 	 reg {
-			name = "Output Channel Enable Register";
+			name = "Output Channel Tagging Enable Register";
 			prefix = "OCER";
 			
 			field {
@@ -196,32 +176,8 @@ peripheral {
 			};
 	 };
 
-
-	 reg {
-			name = "HPLL Period Error";
-			prefix = "PER_HPLL";
-			field {
-				 name = "Period error value";
-         prefix = "ERROR";
-				 type = SLV;
-				 size = 16;
-				 access_bus = READ_ONLY;
-				 access_dev = WRITE_ONLY;
-				 ack_read = "tag_hpll_rd_period_o";
-			};
-
-
-			field {
-         name = "Period Error Valid";
-         prefix = "VALID";
-         type = BIT;
-				 access_bus = READ_ONLY;
-				 access_dev = WRITE_ONLY;
-      };
-
-	 };
-
-	 reg {
+   reg {
+			align = 8;
 			name = "Helper DAC Output";
 			prefix = "DAC_HPLL";
 			
@@ -253,7 +209,7 @@ peripheral {
 	 }; 
 
 	 reg {
-			name = "Deglitcher threshold";
+			name = "DDMTD Deglitcher threshold";
 			prefix = "DEGLITCH_THR";
 			
 			field {
@@ -318,11 +274,13 @@ peripheral {
       };
    };
 
-	 fifo_reg {
+  	 fifo_reg {
 			name = "Debug FIFO Register - Host side";		
 			prefix = "DFR_HOST";
 			direction = CORE_TO_BUS;		 		 
       size = 8192;
+
+      optional = "g_with_debug_fifo";
 
 			flags_dev = {FIFO_FULL, FIFO_EMPTY, FIFO_COUNT};
 			flags_bus = {FIFO_FULL, FIFO_EMPTY, FIFO_COUNT};
@@ -372,6 +330,42 @@ peripheral {
 				 type = BIT;
 			};
 	 };
+
+ reg {
+      name = "Aux clock configuration register";
+      prefix = "AUX_CR";
+
+      field {
+         name = "Aux output select";
+         prefix = "AUX_SEL";
+         size = 3;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB reference divider";
+         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
+         prefix = "DIV_REF";
+         size = 6;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB feedback divider";
+         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
+         prefix = "DIV_FB";
+         size = 6;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB gating frequency select";
+         description = "BB detector output gating frequency. GATE = log2(period in clk_ref cycles).";
+         prefix = "GATE";
+         size = 4;
+         type = PASS_THROUGH;
+      };
+   };
 
 
 
