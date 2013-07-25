@@ -9,6 +9,15 @@ peripheral {
 			name = "SPLL Control/Status Register";
 			prefix = "CSR";
 			
+			field {
+		         align = 8;
+		         name = "Unused (kept for software compatibility).";
+		         prefix = "UNUSED0";
+		         size = 6;
+		         type = CONSTANT;
+				 value = 0;
+		      };
+
 
 			field {
 				 align = 8;
@@ -101,6 +110,7 @@ peripheral {
    };
   
 	 reg {
+			align = 4; 
 			name = "Output Channel Control Register";
 			prefix = "OCCR";
 
@@ -167,6 +177,7 @@ peripheral {
 	 };
 
    reg {
+			align = 8;
 			name = "Helper DAC Output";
 			prefix = "DAC_HPLL";
 			
@@ -263,43 +274,7 @@ peripheral {
       };
    };
 
-   reg {
-      name = "Aux clock configuration register";
-      prefix = "AUX_CR";
-
-      field {
-         name = "Aux output select";
-         prefix = "AUX_SEL";
-         size = 3;
-         type = PASS_THROUGH;
-      };
-
-      field {
-         name = "BB reference divider";
-         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
-         prefix = "DIV_REF";
-         size = 6;
-         type = PASS_THROUGH;
-      };
-
-      field {
-         name = "BB feedback divider";
-         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
-         prefix = "DIV_FB";
-         size = 6;
-         type = PASS_THROUGH;
-      };
-
-      field {
-         name = "BB gating frequency select";
-         description = "BB detector output gating frequency. GATE = log2(period in clk_ref cycles).";
-         prefix = "GATE";
-         size = 4;
-         type = PASS_THROUGH;
-      };
-   };
-
-	 fifo_reg {
+  	 fifo_reg {
 			name = "Debug FIFO Register - Host side";		
 			prefix = "DFR_HOST";
 			direction = CORE_TO_BUS;		 		 
@@ -355,6 +330,42 @@ peripheral {
 				 type = BIT;
 			};
 	 };
+
+ reg {
+      name = "Aux clock configuration register";
+      prefix = "AUX_CR";
+
+      field {
+         name = "Aux output select";
+         prefix = "AUX_SEL";
+         size = 3;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB reference divider";
+         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
+         prefix = "DIV_REF";
+         size = 6;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB feedback divider";
+         description = "Reference clock division factor. Applicable only for aux channels with BB phase detector.";
+         prefix = "DIV_FB";
+         size = 6;
+         type = PASS_THROUGH;
+      };
+
+      field {
+         name = "BB gating frequency select";
+         description = "BB detector output gating frequency. GATE = log2(period in clk_ref cycles).";
+         prefix = "GATE";
+         size = 4;
+         type = PASS_THROUGH;
+      };
+   };
 
 
 
