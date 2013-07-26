@@ -192,6 +192,22 @@ peripheral {
          clock = "refclk_i";
       };
 
+			field {
+				name = "Set seconds counter";
+				description = "write 1: set seconds counter to the value stored in ADJ_UTCLO and ADJ_UTCHI. Nanoseconds counter stays unchanged.\
+                       write 0: no effect";
+				prefix = "SEC_SET";
+				type = MONOSTABLE;
+			};
+
+			field {
+				name = "Set nanoseconds counter";
+				description = "write 1: set nanoseconds counter to the value stored in ADJ_NSEC. Seconds counter stays unchanged.\
+                       write 0: no effect";
+				prefix = "NSEC_SET";
+				type = MONOSTABLE;
+			};
+
 	 };
 
 };

@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-09-02
--- Last update: 2012-08-08
+-- Last update: 2013-07-26
 -- Platform   : FPGA-generics
 -- Standard   : VHDL
 -------------------------------------------------------------------------------
@@ -110,7 +110,9 @@ architecture behavioral of wr_pps_gen is
       ppsg_escr_sync_i       : in  std_logic;
       ppsg_escr_sync_load_o  : out std_logic;
       ppsg_escr_pps_valid_o  : out std_logic;
-      ppsg_escr_tm_valid_o   : out std_logic);
+      ppsg_escr_tm_valid_o   : out std_logic;
+    	ppsg_escr_sec_set_o    : out std_logic;
+    	ppsg_escr_nsec_set_o   : out std_logic);
   end component;
 
 
@@ -138,6 +140,8 @@ architecture behavioral of wr_pps_gen is
   signal ppsg_escr_sync_load : std_logic;
   signal ppsg_escr_sync_in   : std_logic;
   signal ppsg_escr_sync_out  : std_logic;
+	signal ppsg_escr_sec_set	 : std_logic;
+	signal ppsg_escr_nsec_set	 : std_logic;
 
   signal ppsg_escr_pps_valid : std_logic;
   signal ppsg_escr_tm_valid  : std_logic;
@@ -385,7 +389,7 @@ begin  -- behavioral
         end if;
 
 -- got SET TIME command - load the counter with new value
-        if(ppsg_cr_cnt_set_p = '1' or ext_sync_p = '1') then
+        if(ppsg_cr_cnt_set_p = '1' or ext_sync_p = '1' or ppsg_escr_nsec_set = '1') then
           cntr_nsec        <= adj_nsec;
           adjust_done_nsec <= '1';
           ns_overflow      <= '0';
@@ -456,7 +460,7 @@ begin  -- behavioral
         adjust_in_progress_utc <= '0';
       elsif(ppsg_cr_cnt_en = '1') then
 
-        if(ppsg_cr_cnt_set_p = '1') then
+        if(ppsg_cr_cnt_set_p = '1' or ppsg_escr_sec_set = '1') then
           cntr_utc        <= adj_utc;
           adjust_done_utc <= '1';
         elsif(cntr_adjust_p = '1') then
@@ -555,7 +559,9 @@ begin  -- behavioral
       ppsg_adj_utchi_o       => ppsg_adj_utchi,
       ppsg_adj_utchi_wr_o    => ppsg_adj_utchi_wr,
       ppsg_escr_pps_valid_o  => ppsg_escr_pps_valid,
-      ppsg_escr_tm_valid_o   => ppsg_escr_tm_valid);
+      ppsg_escr_tm_valid_o   => ppsg_escr_tm_valid,
+			ppsg_escr_sec_set_o		 => ppsg_escr_sec_set,
+			ppsg_escr_nsec_set_o	 => ppsg_escr_nsec_set);
 
 -- start the adjustment upon write of 1 to CNT_ADJ bit
   cntr_adjust_p <= ppsg_cr_cnt_adj_load and ppsg_cr_cnt_adj_o;
