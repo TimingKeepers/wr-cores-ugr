@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
--- Last update: 2013-04-24
+-- Last update: 2013-07-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL '93
 -------------------------------------------------------------------------------
@@ -215,10 +215,12 @@ begin  -- rtl
   gen_reverse : if(g_reverse = true) generate
 
     assert (not g_divide_input_by_2) report "dmtd_with_deglitcher: g_reverse implies g_divide_input_by_2 == false" severity failure;
-    
-    p_the_dmtd_itself : process(clk_in_i)
+
+    clk_in <= clk_in_i;
+
+    p_the_dmtd_itself : process(clk_in)
     begin
-      if rising_edge(clk_in_i) then
+      if rising_edge(clk_in) then
         clk_i_d0 <= clk_dmtd_i;
         clk_i_d1 <= clk_i_d0;
       end if;

@@ -633,9 +633,10 @@ NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
 # PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 ##Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/07
-INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds[0].DMTD_FB/clk_in" TNM = skew_limit;
-INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds[1].DMTD_FB/clk_in" TNM = skew_limit;
-INST "U_WR_CORE/WRPC/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds[0].DMTD_REF/clk_in" TNM = skew_limit;
+
+INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds*/clk_in" TNM = skew_limit;
+INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds*/clk_in" TNM = skew_limit;
+
 TIMESPEC TS_ = FROM "skew_limit" TO "FFS" 1 ns DATAPATHONLY;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/08
 INST "U_WR_CORE/WRPC/U_Endpoint/U_Wrapped_Endpoint/U_PCS_1000BASEX/gen_8bit.U_RX_PCS/timestamp_trigger_p_a_o" TNM = rx_ts_trig;
