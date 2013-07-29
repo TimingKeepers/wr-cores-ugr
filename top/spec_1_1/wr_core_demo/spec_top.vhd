@@ -689,7 +689,7 @@ begin
 
       tm_dac_value_o       => open,
       tm_dac_wr_o          => open,
-      tm_clk_aux_lock_en_i => '0',
+      tm_clk_aux_lock_en_i => (others=>'0'),
       tm_clk_aux_locked_o  => open,
       tm_time_valid_o      => open,
       tm_tai_o             => open,
