@@ -198,6 +198,7 @@ peripheral {
                        write 0: no effect";
 				prefix = "SEC_SET";
 				type = MONOSTABLE;
+         clock = "refclk_i";
 			};
 
 			field {
@@ -206,6 +207,7 @@ peripheral {
                        write 0: no effect";
 				prefix = "NSEC_SET";
 				type = MONOSTABLE;
+         clock = "refclk_i";
 			};
 
 	 };
