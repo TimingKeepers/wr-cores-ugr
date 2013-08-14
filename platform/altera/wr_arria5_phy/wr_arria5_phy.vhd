@@ -50,7 +50,7 @@ use work.disparity_gen_pkg.all;
 entity wr_arria5_phy is
   generic (
     g_tx_latch_edge : std_logic := '1';
-    g_rx_latch_edge : std_logic := '1');
+    g_rx_latch_edge : std_logic := '0');
   port (
     clk_reconf_i : in  std_logic; -- 50 MHz
     clk_pll_i    : in  std_logic; -- feeds transmitter PLL
