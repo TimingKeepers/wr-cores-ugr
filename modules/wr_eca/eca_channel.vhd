@@ -103,12 +103,10 @@ architecture rtl of eca_channel is
   subtype t_queue_index    is std_logic_vector(c_queue_index_bits   -1 downto 0);
   subtype t_table_lo_index is std_logic_vector(c_table_lo_index_bits-1 downto 0);
   subtype t_counter        is std_logic_vector(c_counter_bits       -1 downto 0);
-  subtype t_queue_data     is std_logic_vector(c_table_lo_index_bits   downto 0);
   
   type t_table_index_array    is array(natural range <>) of t_table_index;
   type t_queue_index_array    is array(natural range <>) of t_queue_index;
   type t_table_lo_index_array is array(natural range <>) of t_table_lo_index;
-  type t_queue_data_array     is array(natural range <>) of t_queue_data;
   
   constant c_free_last_index : t_free_index := (others => '1');
   constant c_last_time       : t_time       := (others => '1');
@@ -145,11 +143,9 @@ architecture rtl of eca_channel is
   signal q_scan_valid     : std_logic_vector      (c_scanners-1 downto 0);
   signal q_scan_time      : t_queue_index_array   (c_scanners-1 downto 0);
   signal q_scan_index     : t_table_lo_index_array(c_scanners-1 downto 0);
-  signal q_scan_data      : t_queue_data_array    (c_scanners-1 downto 0);
   signal q_dispatch_valid : std_logic_vector      (c_scanners-1 downto 0);
   signal q_dispatch_time  : t_queue_index_array   (c_scanners-1 downto 0);
   signal q_dispatch_index : t_table_lo_index_array(c_scanners-1 downto 0);
-  signal q_dispatch_data  : t_queue_data_array    (c_scanners-1 downto 0);
   
   -- TableS signals
   signal ts_manage_write : std_logic_vector      (c_scanners-1 downto 0);
@@ -242,31 +238,23 @@ architecture rtl of eca_channel is
   
 begin
 
-  -- Write conflicts can happen.
-  -- However, because c_table_lo_index_bits < c_queue_index_bits, any conflict
+  -- Write conflicts could happen, but we eliminate the race with a hazard guard.
+  -- Futhermore, because c_table_lo_index_bits < c_queue_index_bits, any conflict
   --          will be rewritten before the Q rolls over.
   Qx : for table_hi_idx in 0 to c_scanners-1 generate
   
-    q_scan_data(table_hi_idx)(t_table_lo_index'range)  <= q_scan_index(table_hi_idx);
-    q_scan_data(table_hi_idx)(t_table_lo_index'length) <= '1';
-    q_dispatch_index(table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'range);
-    q_dispatch_valid(table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'length);
-    
-    Q : eca_tdp
+    Q : eca_flags
       generic map(
         g_addr_bits => c_queue_index_bits,
-        g_data_bits => c_table_lo_index_bits+1)
+        g_data_bits => c_table_lo_index_bits)
       port map(
-        a_clk_i   => clk_i,
-        a_addr_i  => q_scan_time    (table_hi_idx),
-        aw_en_i   => q_scan_valid   (table_hi_idx),
-        aw_data_i => q_scan_data    (table_hi_idx),
-        ar_data_o => open,
-        b_clk_i   => clk_i,
-        b_addr_i  => q_dispatch_time(table_hi_idx),
-        bw_en_i   => '1',
-        bw_data_i => (others => '0'),
-        br_data_o => q_dispatch_data(table_hi_idx));
+        clk_i    => clk_i,
+        a_addr_i => q_scan_time (table_hi_idx),
+        a_en_i   => q_scan_valid(table_hi_idx),
+        a_data_i => q_scan_index(table_hi_idx),
+        b_addr_i => q_dispatch_time (table_hi_idx),
+        b_full_o => q_dispatch_valid(table_hi_idx),
+        b_data_o => q_dispatch_index(table_hi_idx));
     
   end generate;
   
@@ -510,7 +498,7 @@ begin
         manage_index <= counter(manage_index'range);
       elsif dispatch_manage_kill = '1' then
         manage_index <= dispatch_manage_index;
-      elsif manage_free = '1' then -- new-data bypass for old-data memory
+      elsif manage_free = '1' then -- new-data bypass
         manage_index <= manage_freed;
       else
         manage_index <= fr_manage_alloc;

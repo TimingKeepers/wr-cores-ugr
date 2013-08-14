@@ -201,30 +201,24 @@ package eca_pkg is
   end component;
   
   -- Registers its inputs. Async outputs. 
-  -- When aw_en_i=1, ar_data_o returns old data (not aw_data_i).
-  -- When a_clk_i=b_clk_i, aw_en_i=1, bw_en_i=0, and a_addr_i=b_addr_i,
-  --  then br_data_o returns old data (not aw_data_i).
-  -- When a_clk_i /= b_clk_i, aw_en_i=1, bw_en_i=0, and a_addr_i=b_addr_i,
-  --   then br_data_o is undefined.
-  -- When aw_en_i=bw_en_i=1 and a_addr_i=b_addr_i, the cell is corrupted.
-  -- !!! unsupported by Arria5. Fuck. !!!
-  component eca_tdp is
+  component eca_flags is
     generic(
       g_addr_bits : natural := 8;
       g_data_bits : natural := 8);
     port(
-      a_clk_i   : in  std_logic;
-      a_addr_i  : in  std_logic_vector(g_addr_bits-1 downto 0);
-      aw_en_i   : in  std_logic;
-      aw_data_i : in  std_logic_vector(g_data_bits-1 downto 0);
-      ar_data_o : out std_logic_vector(g_data_bits-1 downto 0);
+      clk_i    : in  std_logic;
       
-      b_clk_i   : in  std_logic;
-      b_addr_i  : in  std_logic_vector(g_addr_bits-1 downto 0);
-      bw_en_i   : in  std_logic;
-      bw_data_i : in  std_logic_vector(g_data_bits-1 downto 0);
-      br_data_o : out std_logic_vector(g_data_bits-1 downto 0));
+      -- Port A: random access store/fill
+      a_addr_i : in  std_logic_vector(g_addr_bits-1 downto 0);
+      a_en_i   : in  std_logic;
+      a_data_i : in  std_logic_vector(g_data_bits-1 downto 0);
+      
+      -- Port B: sequential read/clear
+      b_addr_i : in  std_logic_vector(g_addr_bits-1 downto 0);
+      b_full_o : out std_logic;
+      b_data_o : out std_logic_vector(g_data_bits-1 downto 0));
   end component;
+
   
   -- Expects registers for inputs. Async outputs.
   -- c1_o is available after 1 cycle (2 once registered)

@@ -7,7 +7,7 @@ files = [
   "eca_pkg.vhd",
   "eca_sdp.vhd",
   "eca_search.vhd",
-  "eca_tdp.vhd",
+  "eca_flags.vhd",
   "eca_walker.vhd",
   "eca_wb_channel.vhd",
   "eca_wb_event.vhd",
