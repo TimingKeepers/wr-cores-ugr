@@ -36,6 +36,7 @@
 -- Revisions  :
 -- Date        Version  Author    Description
 -- 2013-03-12  1.0      terpstra  Rewrote using deterministic mode
+-- 2013-08-22  1.1      terpstra  Now runs on arria5 hardware
 -------------------------------------------------------------------------------
 
 
@@ -50,11 +51,10 @@ use work.disparity_gen_pkg.all;
 entity wr_arria5_phy is
   generic (
     g_tx_latch_edge : std_logic := '1';
-    g_rx_latch_edge : std_logic := '0');
+    g_rx_latch_edge : std_logic := '1');
   port (
     clk_reconf_i : in  std_logic; -- 50 MHz
     clk_pll_i    : in  std_logic; -- feeds transmitter PLL
-    clk_cru_i    : in  std_logic; -- trains data recovery clock
     clk_sys_i    : in  std_logic; -- Used to reset the core
     rstn_sys_i   : in  std_logic; -- must last >= 1us
     locked_o     : out std_logic; -- Is the rx_rbclk valid? (clk_sys domain)
@@ -113,7 +113,7 @@ architecture rtl of wr_arria5_phy is
       phy_mgmt_writedata          : in  std_logic_vector(31 downto 0);
       tx_ready                    : out std_logic;
       rx_ready                    : out std_logic;
-      pll_ref_clk                 : in  std_logic_vector(1 downto 0);
+      pll_ref_clk                 : in  std_logic_vector(0 downto 0);
       tx_serial_data              : out std_logic_vector(0 downto 0);
       tx_bitslipboundaryselect    : in  std_logic_vector(4 downto 0);
       pll_locked                  : out std_logic_vector(0 downto 0);
@@ -157,7 +157,9 @@ architecture rtl of wr_arria5_phy is
   signal tx_ready      : std_logic;
   signal reconfig_busy : std_logic;
   
-  signal sys_locked : std_logic_vector(2 downto 0);
+  signal sys_locked     : std_logic_vector(2 downto 0);
+  signal sys_drop_count : unsigned(9 downto 0);
+  signal sys_drop       : std_logic;
   
   signal tx_8b10b_rstn : std_logic_vector(2 downto 0); -- tx domain
   signal rx_8b10b_rstn : std_logic_vector(2 downto 0); -- rx domain
@@ -204,12 +206,11 @@ begin
       phy_mgmt_read               => '0',
       phy_mgmt_readdata           => open,
       phy_mgmt_waitrequest        => open,
-      phy_mgmt_write              => '1',
+      phy_mgmt_write              => '0',
       phy_mgmt_writedata          => (others => '0'),
       tx_ready                    => tx_ready,
       rx_ready                    => rx_ready,
       pll_ref_clk(0)              => clk_pll_i,
-      pll_ref_clk(1)              => clk_cru_i,
       tx_serial_data(0)           => pad_txp_o,
       tx_bitslipboundaryselect    => (others => '0'),
       pll_locked(0)               => pll_locked,
@@ -248,10 +249,24 @@ begin
   p_lock : process(clk_sys_i, rstn_sys_i) is
   begin
     if rstn_sys_i = '0' then
-      sys_locked <= (others => '0');
+      sys_locked     <= (others => '0');
+      sys_drop_count <= (others => '1');
+      sys_drop       <= '1';
     elsif rising_edge(clk_sys_i) then
-      sys_locked(sys_locked'left) <= pll_locked and rx_ready and tx_ready and not reconfig_busy;
+      
+      if drop_link_i = '1' then
+        sys_drop_count <= (others => '1');
+        sys_drop       <= '1';
+      else
+        sys_drop_count <= sys_drop_count - 1;
+        if sys_drop_count = 0 then
+          sys_drop <= '0';
+        end if;
+      end if;
+      
+      sys_locked(sys_locked'left) <= pll_locked and tx_ready and not reconfig_busy;
       sys_locked(sys_locked'left-1 downto 0) <= sys_locked(sys_locked'left downto 1);
+        
     end if;
   end process;
   
@@ -259,7 +274,7 @@ begin
   p_pll_reset : process(clk_pll_i) is
   begin
     if rising_edge(clk_pll_i) then
-      tx_8b10b_rstn <= (rstn_sys_i and not tx_ready) & tx_8b10b_rstn(tx_8b10b_rstn'left downto 1);
+      tx_8b10b_rstn <= (not sys_drop and tx_ready) & tx_8b10b_rstn(tx_8b10b_rstn'left downto 1);
     end if;
   end process;
   
@@ -268,7 +283,7 @@ begin
   p_rx_reset : process(clk_rx) is
   begin
     if rising_edge(clk_rx) then
-      rx_8b10b_rstn <= (rstn_sys_i and not rx_ready) & rx_8b10b_rstn(rx_8b10b_rstn'left downto 1);
+      rx_8b10b_rstn <= (not sys_drop and rx_ready) & rx_8b10b_rstn(rx_8b10b_rstn'left downto 1);
     end if;
   end process;
   

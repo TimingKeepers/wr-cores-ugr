@@ -1,5 +1,5 @@
 -- megafunction wizard: %Deterministic Latency PHY v12.1%
--- Retrieval info: <instance entity-name="altera_xcvr_det_latency" version="12.1" >
+-- Retrieval info: <instance entity-name="altera_xcvr_det_latency" version="13.0" >
 -- Retrieval info: 	<generic name="device_family" value="Arria V" />
 -- Retrieval info: 	<generic name="operation_mode" value="Duplex" />
 -- Retrieval info: 	<generic name="lanes" value="1" />
@@ -9,6 +9,7 @@
 -- Retrieval info: 	<generic name="data_rate" value="1.25 Gbps" />
 -- Retrieval info: 	<generic name="gui_base_data_rate" value="1228.8 Mbps" />
 -- Retrieval info: 	<generic name="gui_pll_refclk_freq" value="125.0 MHz" />
+-- Retrieval info: 	<generic name="en_cdrref_support" value="0" />
 -- Retrieval info: 	<generic name="gui_pll_feedback_path" value="true" />
 -- Retrieval info: 	<generic name="use_double_data_mode" value="DEPRECATED" />
 -- Retrieval info: 	<generic name="word_aligner_mode" value="manual" />
@@ -20,7 +21,7 @@
 -- Retrieval info: 	<generic name="gui_use_status" value="false" />
 -- Retrieval info: 	<generic name="gui_pll_reconfig_enable_pll_reconfig" value="false" />
 -- Retrieval info: 	<generic name="gui_pll_reconfig_pll_count" value="1" />
--- Retrieval info: 	<generic name="gui_pll_reconfig_refclk_count" value="2" />
+-- Retrieval info: 	<generic name="gui_pll_reconfig_refclk_count" value="1" />
 -- Retrieval info: 	<generic name="gui_pll_reconfig_main_pll_index" value="0" />
 -- Retrieval info: 	<generic name="gui_pll_reconfig_cdr_pll_refclk_sel" value="1" />
 -- Retrieval info: 	<generic name="gui_pll_reconfig_pll0_pll_type" value="CMU" />
