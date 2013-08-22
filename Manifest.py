@@ -14,5 +14,5 @@ modules =  {"local" :
 												"modules/wr_tlu",
 												"modules/wrc_core",
 												"platform"],
-                      "git" : "git://ohwr.org/hdl-core-lib/general-cores.git"
+											"git" : "git://ohwr.org/hdl-core-lib/general-cores.git::proposed_master"
 						}
