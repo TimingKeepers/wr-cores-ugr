@@ -22,7 +22,14 @@ package wr_altera_pkg is
     port(
       inclk0 : in  std_logic := '0'; -- 125 MHz
       c0     : out std_logic;        -- 125 MHz
-      locked : out std_logic);
+      c1     : out std_logic;        -- 200 MHz
+      c2     : out std_logic;        --  25 MHz
+      locked : out std_logic;
+      scanclk            : in  std_logic;
+      phasecounterselect : in  std_logic_vector(3 downto 0);
+      phasestep          : in  std_logic;
+      phaseupdown        : in  std_logic;
+      phasedone          : out std_logic);
   end component;
 
   component ref_pll5 is  -- arria5
@@ -57,6 +64,18 @@ package wr_altera_pkg is
     port(
       inclk  : in std_logic;
       outclk : out std_logic);
+  end component;
+  
+  component altera_butis is
+    port(
+      clk_ref_i   : in  std_logic;
+      clk_25m_i   : in  std_logic;
+      clk_scan_i  : in  std_logic;
+      locked_i    : in  std_logic;
+      pps_i       : in  std_logic; -- ref_clk
+      phasedone_i : in  std_logic;
+      phasesel_o  : out std_logic_vector(3 downto 0);
+      phasestep_o : out std_logic);
   end component;
   
   component wr_arria2_phy
