@@ -3,35 +3,62 @@ use ieee.std_logic_1164.all;
 
 package wr_altera_pkg is
 
-  component dmtd_pll
-    port
-      (
-        inclk0 : in  std_logic := '0'; -- 20   MHz
-        c0     : out std_logic;        -- 62.5 MHz
-        locked : out std_logic
-        );
+  component dmtd_pll is  -- arria2
+    port(
+      inclk0 : in  std_logic := '0'; -- 20   MHz
+      c0     : out std_logic;        -- 62.5 MHz
+      locked : out std_logic);
   end component;
 
-  component ref_pll
-    port
-      (
-        inclk0 : in  std_logic := '0'; -- 125 MHz
-        c0     : out std_logic;        -- 125 MHz
-        locked : out std_logic
-        );
+  component dmtd_pll5 is -- arria5
+    port(
+      refclk   : in  std_logic := 'X'; -- 20   MHz
+      outclk_0 : out std_logic;        -- 62.5 MHz
+      rst      : in  std_logic := 'X';
+      locked   : out std_logic);
+  end component;
+  
+  component ref_pll is   -- arria2
+    port(
+      inclk0 : in  std_logic := '0'; -- 125 MHz
+      c0     : out std_logic;        -- 125 MHz
+      locked : out std_logic);
   end component;
 
-  component sys_pll
-    port
-      (
-        inclk0 : in  std_logic := '0'; -- 125   MHz
-        c0     : out std_logic;        --  62.5 MHz
-        c1     : out std_logic;        --  50   MHz
-        c2     : out std_logic;        --  20   MHz
-        locked : out std_logic
-        );
+  component ref_pll5 is  -- arria5
+    port(
+      refclk   : in  std_logic := 'X'; -- 125 MHz
+      outclk_0 : out std_logic;        -- 125 MHz
+      rst      : in  std_logic := 'X';
+      locked   : out std_logic);
+  end component;
+  
+  component sys_pll is   -- arria2
+    port(
+      inclk0 : in  std_logic := '0'; -- 125   MHz
+      c0     : out std_logic;        --  62.5 MHz
+      c1     : out std_logic;        --  50   MHz
+      c2     : out std_logic;        --  20   MHz
+      locked : out std_logic);
   end component;
 
+  component sys_pll5 is  -- arria5
+    port(
+      refclk   : in  std_logic := 'X'; -- 125   MHz
+      outclk_0 : out std_logic;        --  62.5 MHz
+      outclk_1 : out std_logic;        --  20   MHz
+      outclk_2 : out std_logic;        -- 100   MHz
+      outclk_3 : out std_logic;        -- 100   MHz
+      rst      : in  std_logic := 'X';
+      locked   : out std_logic);
+  end component;
+
+  component dual_region5
+    port(
+      inclk  : in std_logic;
+      outclk : out std_logic);
+  end component;
+  
   component wr_arria2_phy
     generic (
       g_tx_latch_edge : std_logic := '1';
@@ -61,11 +88,10 @@ package wr_altera_pkg is
   component wr_arria5_phy is
     generic (
       g_tx_latch_edge : std_logic := '1';
-      g_rx_latch_edge : std_logic := '0');
+      g_rx_latch_edge : std_logic := '1');
     port (
       clk_reconf_i   : in  std_logic;
       clk_pll_i      : in  std_logic;
-      clk_cru_i      : in  std_logic;
       clk_sys_i      : in  std_logic;
       rstn_sys_i     : in  std_logic;
       locked_o       : out std_logic;
