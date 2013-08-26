@@ -1,4 +1,4 @@
-set files { arria5_phy arria5_phy_reconf arria5_rxclkout }
+set files { arria5_phy arria5_phy_reconf }
 
 set dir [file dirname [info script]]
 post_message "Testing for megawizard regeneration in $dir:$files"

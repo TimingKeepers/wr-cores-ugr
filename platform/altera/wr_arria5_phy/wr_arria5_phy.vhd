@@ -47,21 +47,22 @@ use ieee.numeric_std.all;
 library work;
 use work.gencores_pkg.all;
 use work.disparity_gen_pkg.all;
+use work.altera_networks_pkg.all;
 
 entity wr_arria5_phy is
   generic (
     g_tx_latch_edge : std_logic := '1';
     g_rx_latch_edge : std_logic := '1');
   port (
-    clk_reconf_i : in  std_logic; -- 50 MHz
-    clk_pll_i    : in  std_logic; -- feeds transmitter PLL
-    clk_sys_i    : in  std_logic; -- Used to reset the core
+    clk_reconf_i : in  std_logic; -- 100 MHz
+    clk_phy_i    : in  std_logic; -- feeds transmitter CMU and CRU
+    clk_sys_i    : in  std_logic; -- qualifies rstn, locked, drop_link
     rstn_sys_i   : in  std_logic; -- must last >= 1us
     locked_o     : out std_logic; -- Is the rx_rbclk valid? (clk_sys domain)
     loopen_i     : in  std_logic;  -- local loopback enable (Tx->Rx), active hi
     drop_link_i  : in  std_logic; -- Kill the link?
 
-    -- clocked by clk_pll_i
+    tx_clk_i       : in  std_logic;  -- clock used for TX data; MUST HAVE FIXED PHASE wrt. clk_phy_i
     tx_data_i      : in  std_logic_vector(7 downto 0);   -- data input (8 bits, not 8b10b-encoded)
     tx_k_i         : in  std_logic;  -- 1 when tx_data_i contains a control code, 0 when it's a data byte
     tx_disparity_o : out std_logic;  -- disparity of the currently transmitted 8b10b code (1 = plus, 0 = minus).
@@ -80,12 +81,6 @@ end wr_arria5_phy;
 
 architecture rtl of wr_arria5_phy is
 
-  component arria5_rxclkout
-    port(
-      inclk  : in  std_logic;
-      outclk : out std_logic);
-  end component;
-  
   component arria5_phy_reconf
     port(
       reconfig_busy             : out std_logic;
@@ -149,9 +144,10 @@ architecture rtl of wr_arria5_phy is
       out_10b_o : out std_logic_vector(9 downto 0));
   end component;
 
-  signal clk_rx_gxb    : std_logic; -- pre clkctrl
-  signal clk_rx        : std_logic; -- global clock
-  signal clk_tx        : std_logic; -- local  clock
+  signal clk_rx_gxb    : std_logic; -- external fabric
+  signal clk_rx        : std_logic; -- regional clock
+  signal clk_tx_gxb    : std_logic; -- external fabric
+  signal clk_tx        : std_logic; -- regional clock
   signal pll_locked    : std_logic;
   signal rx_ready      : std_logic;
   signal tx_ready      : std_logic;
@@ -170,17 +166,23 @@ architecture rtl of wr_arria5_phy is
   signal tx_disp_pipe                : std_logic_vector (2 downto 0);
   signal rx_bitslipboundaryselectout : std_logic_vector (4 downto 0);
   signal rx_gxb_dataout              : std_logic_vector (9 downto 0); -- signal out of GXB
-  signal rx_glbl_dataout             : std_logic_vector (9 downto 0); -- globally clocked register
-  signal tx_enc_datain               : std_logic_vector (9 downto 0); -- registered encoder output (clk_pll_i)
-  signal tx_gxb_datain               : std_logic_vector (9 downto 0); -- clock transfer register   (clk_tx)
+  signal rx_reg_dataout              : std_logic_vector (9 downto 0); -- regional clocked FPGA register (clk_rx)
+  signal tx_enc_datain               : std_logic_vector (9 downto 0); -- registered encoder output      (tx_clk_i)
+  signal tx_reg_datain               : std_logic_vector (9 downto 0); -- regional clocked FPGA register (clk_tx)
   
 begin
 
   rx_rbclk_o <= clk_rx;
-  U_RxClkout : arria5_rxclkout
+  
+  U_RxClkout : single_region
     port map (
       inclk  => clk_rx_gxb,
       outclk => clk_rx);
+  
+  U_TxClk : single_region
+    port map (
+      inclk  => clk_tx_gxb,
+      outclk => clk_tx);
   
   -- Altera PHY calibration block
   U_Reconf : arria5_phy_reconf
@@ -210,15 +212,15 @@ begin
       phy_mgmt_writedata          => (others => '0'),
       tx_ready                    => tx_ready,
       rx_ready                    => rx_ready,
-      pll_ref_clk(0)              => clk_pll_i,
+      pll_ref_clk(0)              => clk_phy_i,
       tx_serial_data(0)           => pad_txp_o,
       tx_bitslipboundaryselect    => (others => '0'),
       pll_locked(0)               => pll_locked,
       rx_serial_data(0)           => pad_rxp_i,
       rx_bitslipboundaryselectout => rx_bitslipboundaryselectout,
-      tx_clkout(0)                => clk_tx,
+      tx_clkout(0)                => clk_tx_gxb,
       rx_clkout(0)                => clk_rx_gxb,
-      tx_parallel_data            => tx_gxb_datain,
+      tx_parallel_data            => tx_reg_datain,
       rx_parallel_data            => rx_gxb_dataout,
       reconfig_from_xcvr          => xcvr_to_reconfig,
       reconfig_to_xcvr            => reconfig_to_xcvr);
@@ -226,7 +228,7 @@ begin
   -- Encode the TX data
   encoder : enc_8b10b
     port map(
-      clk_i     => clk_pll_i,
+      clk_i     => tx_clk_i,
       rst_n_i   => tx_8b10b_rstn(0),
       ctrl_i    => tx_k_i,
       in_8b_i   => tx_data_i,
@@ -239,7 +241,7 @@ begin
     port map(
       clk_i       => clk_rx,
       rst_n_i     => rx_8b10b_rstn(0),
-      in_10b_i    => rx_glbl_dataout,
+      in_10b_i    => rx_reg_dataout,
       ctrl_o      => rx_k_o,
       code_err_o  => rx_enc_err_o,
       rdisp_err_o => open,
@@ -271,9 +273,9 @@ begin
   end process;
   
   -- Generate reset for 8b10b encoder
-  p_pll_reset : process(clk_pll_i) is
+  p_pll_reset : process(tx_clk_i) is
   begin
-    if rising_edge(clk_pll_i) then
+    if rising_edge(tx_clk_i) then
       tx_8b10b_rstn <= (not sys_drop and tx_ready) & tx_8b10b_rstn(tx_8b10b_rstn'left downto 1);
     end if;
   end process;
@@ -289,24 +291,22 @@ begin
   
   -- The disparity should be delayed for WR
   tx_disparity_o <= tx_disp_pipe(2);
-  p_delay_disp : process(clk_pll_i)
+  p_delay_disp : process(tx_clk_i)
   begin
-    if rising_edge(clk_pll_i) then
+    if rising_edge(tx_clk_i) then
       tx_disp_pipe(1) <= tx_disp_pipe(0);
       tx_disp_pipe(2) <= tx_disp_pipe(1);
     end if;
   end process;
   
-  -- Cross clock domain from pll_clk_i to tx_clk
-  -- These clocks are in phase copies of each other.
-  -- Ensure that clk_tx has GLOBAL_SIGNAL OFF
-  --  set_instance_assignment -name GLOBAL_SIGNAL OFF \
-  --    -from wr_gxb_phy_arriaii:wr_gxb_phy_arriaii_1|arria_phy:U_The_PHY|arria_phy_alt4gxb:arria_phy_alt4gxb_component|tx_clkout_int_wire[0] \
-  --    -to   wr_gxb_phy_arriaii:wr_gxb_phy_arriaii_1|tx_gxb_datain[*]
+  -- Cross clock domain from tx_clk_i to clk_tx
+  -- These clocks should have fixed phase relationship.
+  -- The tx_clk_i is from a PLL off of clk_phy_i
+  -- The clk_tx is from the CMU transceiver off of clk_phy_i;
   p_tx_path : process(clk_tx) is
   begin
     if clk_tx'event and clk_tx = g_tx_latch_edge then
-      tx_gxb_datain <= tx_enc_datain;
+      tx_reg_datain <= tx_enc_datain;
     end if;
   end process;
   
@@ -314,7 +314,7 @@ begin
   p_rx_path : process(clk_rx) is
   begin
     if clk_rx'event and clk_rx = g_rx_latch_edge then
-      rx_glbl_dataout <= rx_gxb_dataout;
+      rx_reg_dataout <= rx_gxb_dataout;
     end if;
   end process;
   
