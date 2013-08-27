@@ -1,4 +1,4 @@
-set files { sys_pll5 ref_pll5 dmtd_pll5 dual_region5 }
+set files { sys_pll5 ref_pll5 dmtd_pll5 }
 
 set dir [file dirname [info script]]
 post_message "Testing for megawizard regeneration in $dir:$files"

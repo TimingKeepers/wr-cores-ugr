@@ -67,12 +67,6 @@ package wr_altera_pkg is
       locked   : out std_logic);
   end component;
 
-  component dual_region5
-    port(
-      inclk  : in std_logic;
-      outclk : out std_logic);
-  end component;
-  
   component altera_butis is
     generic(
       g_select_bits : natural := 4;

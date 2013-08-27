@@ -25,6 +25,3 @@ sys_pll5.spd
 sys_pll5.vhd
 sys_pll5/
 sys_pll5_sim/
-dual_region5.cmp
-dual_region5.qip
-dual_region5.vhd
