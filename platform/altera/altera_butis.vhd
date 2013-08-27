@@ -48,6 +48,10 @@ use work.gencores_pkg.all;
 use work.disparity_gen_pkg.all;
 
 entity altera_butis is
+  generic(
+    g_select_bits : natural := 4;
+    g_200_sel     : natural := 3;
+    g_25_sel      : natural := 4);
   port(
     clk_ref_i   : in  std_logic;
     clk_25m_i   : in  std_logic;
@@ -55,7 +59,7 @@ entity altera_butis is
     locked_i    : in  std_logic;
     pps_i       : in  std_logic; -- ref_clk
     phasedone_i : in  std_logic;
-    phasesel_o  : out std_logic_vector(3 downto 0);
+    phasesel_o  : out std_logic_vector(g_select_bits-1 downto 0);
     phasestep_o : out std_logic);
 end altera_butis;
 
@@ -97,12 +101,11 @@ architecture rtl of altera_butis is
   signal prime       : std_logic;
   signal shift_count : unsigned(5 downto 0);
   signal fail_count  : unsigned(4 downto 0);
-  signal phasesel    : std_logic_vector(3 downto 0);
+  signal phasesel    : std_logic_vector(g_select_bits-1 downto 0);
   signal phasestep   : std_logic;
   
-  constant phase_125m : std_logic_vector(3 downto 0) := "0010";
-  constant phase_200m : std_logic_vector(3 downto 0) := "0011";
-  constant phase_25m  : std_logic_vector(3 downto 0) := "0100";
+  constant phase_200m : std_logic_vector(g_select_bits-1 downto 0) := std_logic_vector(to_unsigned(g_200_sel, g_select_bits));
+  constant phase_25m  : std_logic_vector(g_select_bits-1 downto 0) := std_logic_vector(to_unsigned(g_25_sel,  g_select_bits));
   constant phasesteps : unsigned(5 downto 0) := (others => '1'); -- 64*125ps = 8ns
   
   -- We ensure timing between these nodes via the state machine

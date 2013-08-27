@@ -67,6 +67,10 @@ package wr_altera_pkg is
   end component;
   
   component altera_butis is
+    generic(
+      g_select_bits : natural := 4;
+      g_200_sel     : natural := 3;
+      g_25_sel      : natural := 4);
     port(
       clk_ref_i   : in  std_logic;
       clk_25m_i   : in  std_logic;
@@ -74,7 +78,7 @@ package wr_altera_pkg is
       locked_i    : in  std_logic;
       pps_i       : in  std_logic; -- ref_clk
       phasedone_i : in  std_logic;
-      phasesel_o  : out std_logic_vector(3 downto 0);
+      phasesel_o  : out std_logic_vector(g_select_bits-1 downto 0);
       phasestep_o : out std_logic);
   end component;
   
