@@ -34,10 +34,17 @@ package wr_altera_pkg is
 
   component ref_pll5 is  -- arria5
     port(
-      refclk   : in  std_logic := 'X'; -- 125 MHz
-      outclk_0 : out std_logic;        -- 125 MHz
-      rst      : in  std_logic := 'X';
-      locked   : out std_logic);
+      refclk     : in  std_logic := 'X'; -- 125 MHz
+      outclk_0   : out std_logic;        -- 125 MHz
+      outclk_1   : out std_logic;        -- 200 MHz
+      outclk_2   : out std_logic;        --  25 MHz
+      rst        : in  std_logic := 'X';
+      locked     : out std_logic;
+      scanclk    : in  std_logic;
+      cntsel     : in  std_logic_vector(4 downto 0);
+      phase_en   : in  std_logic;
+      updn       : in  std_logic;
+      phase_done : out std_logic);
   end component;
   
   component sys_pll is   -- arria2
