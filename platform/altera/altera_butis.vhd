@@ -86,7 +86,7 @@ architecture rtl of altera_butis is
   signal toggle_25m  : std_logic;
   signal clk25_shift : std_logic_vector(4 downto 0);
   signal clk25_reg   : std_logic_vector(4 downto 0);
-  signal pps_count    : unsigned(2 downto 0);
+  signal pps_count    : unsigned(3 downto 0);
   signal r_pps        : std_logic;
   
   signal saw_rise, saw_rise1, saw_rise2 : std_logic;
@@ -95,12 +95,12 @@ architecture rtl of altera_butis is
   signal clk25_scan2 : std_logic_vector(4 downto 0);
   signal rst         : std_logic_vector(2 downto 0);
   signal rst0        : std_logic;
-   
-  type t_state is (IDLE, PRIME_TRAP, SHIFT_125P, WAIT_READY, DONE_125P);
+  
+  type t_state is (IDLE, PRIME_TRAP, WAIT_TRAP1, WAIT_TRAP2, SHIFT_125P, WAIT_LOW, WAIT_HIGH, DONE_125P);
   signal state       : t_state   := IDLE;
   signal prime       : std_logic;
   signal shift_count : unsigned(5 downto 0);
-  signal fail_count  : unsigned(4 downto 0);
+  signal fail_count  : unsigned(4 downto 0); -- 1 bit more than pps_count
   signal phasesel    : std_logic_vector(g_select_bits-1 downto 0);
   signal phasestep   : std_logic;
   
@@ -131,7 +131,7 @@ begin
       
       r_pps <= pps_i;
       if (pps_i = '1' and r_pps = '0') or pps_count = 0 then
-        pps_count <= to_unsigned(4, pps_count'length);
+        pps_count <= to_unsigned(9, pps_count'length);
       else
         pps_count <= pps_count - 1;
       end if;
@@ -205,18 +205,30 @@ begin
           
         when PRIME_TRAP =>
           prime <= '1';
+          state <= WAIT_TRAP1;
+	
+        -- take some time to let the synchronizers clear
+        when WAIT_TRAP1 =>
+          state <= WAIT_TRAP2;
+        
+        when WAIT_TRAP2 =>
+          prime <= '0';
           state <= SHIFT_125P;
         
         when SHIFT_125P => -- shift 125ps
           phasestep <= '1';
-          prime <= '0';
-          state <= WAIT_READY;
+          state <= WAIT_LOW;
             
-        when WAIT_READY =>
-          if saw_rise2 = '1' and saw_fall2 = '1' then
+        when WAIT_LOW =>
+          if saw_fall2 = '1' then
             phasestep <= '0';
-            state <= DONE_125P;
+            state <= WAIT_HIGH;
           end if;
+	
+	when WAIT_HIGH =>
+	  if saw_rise2 = '1' then
+            state <= DONE_125P;
+	  end if;
         
         when DONE_125P =>
           if shift_count = 0 then
