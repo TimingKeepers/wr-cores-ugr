@@ -165,7 +165,8 @@ architecture behavioral of wb_timestamp_latch is
   -- tm latch registers
   signal tm_fifo_in               : t_tm_array;
   signal tm_fifo_out              : t_tm_array;
-  signal sa_time0						 : t_time;
+  signal sa_time0, r_sa_time0		 : t_time;
+  signal corrected_time, r_corrected_time : t_time;	
   signal sa_time0_reg_LO			 : t_word;	
   signal subnano						 : t_word_array;
   
@@ -237,14 +238,37 @@ architecture behavioral of wb_timestamp_latch is
 
 begin  -- behavioral
 
-	   T0 : eca_wr_time
+	   T1 : eca_wr_time
     port map(
       clk_i    => ref_clk_i,
       tai_i    => tm_tai_i,
       cycles_i => tm_cycles_i,
       time_o   => sa_time0);
 	 
+	 
+	  timeQ : eca_offset
+    generic map(
+      g_data_bits => 64,
+      g_parts     => 4,
+      g_offset    => 5)
+    port map(
+      clk_i  => ref_clk_i,
+      a_i    => r_sa_time0,
+      c1_o   => open,
+      x2_o   => corrected_time,
+      c2_o   => open);
 
+	 sub_time_delay : process (ref_clk_i)
+    begin  -- 
+      if ref_clk_i'event and ref_clk_i = '1' then  -- rising clock edge
+        r_sa_time0 			<= sa_time0;
+		  r_corrected_time 	<= corrected_time;
+      end if;
+    end process sub_time_delay;
+	 
+	 
+	 
+	 
 -------------------------------------------------------------------------------
 -- BEGIN TRIGGER CHANNEL GENERATE
 -------------------------------------------------------------------------------
@@ -328,6 +352,8 @@ begin  -- behavioral
         rd_almost_full_o  => open,
         rd_count_o        => rd_count(i));
 
+		  
+		  
      latch : process (ref_clk_i)
     begin  -- process latch
       if ref_clk_i'event and ref_clk_i = '1' then  -- rising clock edge
@@ -343,7 +369,8 @@ begin  -- behavioral
             if((trigger_edge_ref_clk(i) = '0' and triggers_neg_edge_synced(i) = '1')
                or ((trigger_edge_ref_clk(i) = '1') and (triggers_pos_edge_synced(i) = '1'))) then
               we(i) <= '1';
-              tm_fifo_in(i) <= std_logic_vector(unsigned(sa_time0)-3) & subnano(i); --sub_cap_delay(sa_time0, tm_cycles_i);
+				  
+              tm_fifo_in(i) <= r_corrected_time & subnano(i);
             end if;
           end if;
           ---------------------------------------------------------------------
