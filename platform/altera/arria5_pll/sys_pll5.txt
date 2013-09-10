@@ -1,11 +1,11 @@
 -- megafunction wizard: %Altera PLL v13.0%
 -- Retrieval info: <instance entity-name="altera_pll" version="13.0" >
 -- Retrieval info: 	<generic name="device_family" value="Arria V" />
--- Retrieval info: 	<generic name="gui_device_speed_grade" value="5_H3" />
+-- Retrieval info: 	<generic name="gui_device_speed_grade" value="5_H4" />
 -- Retrieval info: 	<generic name="gui_pll_mode" value="Integer-N PLL" />
 -- Retrieval info: 	<generic name="gui_reference_clock_frequency" value="125.0" />
 -- Retrieval info: 	<generic name="gui_channel_spacing" value="0.0" />
--- Retrieval info: 	<generic name="gui_operation_mode" value="direct" />
+-- Retrieval info: 	<generic name="gui_operation_mode" value="source synchronous" />
 -- Retrieval info: 	<generic name="gui_feedback_clock" value="Global Clock" />
 -- Retrieval info: 	<generic name="gui_fractional_cout" value="32" />
 -- Retrieval info: 	<generic name="gui_dsm_out_sel" value="1st_order" />
@@ -43,9 +43,9 @@
 -- Retrieval info: 	<generic name="gui_divide_factor_c3" value="1" />
 -- Retrieval info: 	<generic name="gui_actual_output_clock_frequency3" value="0 MHz" />
 -- Retrieval info: 	<generic name="gui_ps_units3" value="ps" />
--- Retrieval info: 	<generic name="gui_phase_shift3" value="0" />
+-- Retrieval info: 	<generic name="gui_phase_shift3" value="8500" />
 -- Retrieval info: 	<generic name="gui_phase_shift_deg3" value="0" />
--- Retrieval info: 	<generic name="gui_actual_phase_shift3" value="0" />
+-- Retrieval info: 	<generic name="gui_actual_phase_shift3" value="0 ps" />
 -- Retrieval info: 	<generic name="gui_duty_cycle3" value="50" />
 -- Retrieval info: 	<generic name="gui_output_clock_frequency4" value="100.0" />
 -- Retrieval info: 	<generic name="gui_divide_factor_c4" value="1" />
