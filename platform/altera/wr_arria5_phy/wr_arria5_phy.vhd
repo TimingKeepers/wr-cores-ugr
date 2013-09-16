@@ -52,7 +52,7 @@ use work.altera_networks_pkg.all;
 entity wr_arria5_phy is
   generic (
     g_tx_latch_edge : std_logic := '1';
-    g_rx_latch_edge : std_logic := '1');
+    g_rx_latch_edge : std_logic := '0');
   port (
     clk_reconf_i : in  std_logic; -- 100 MHz
     clk_phy_i    : in  std_logic; -- feeds transmitter CMU and CRU
@@ -153,7 +153,6 @@ architecture rtl of wr_arria5_phy is
   signal tx_ready      : std_logic;
   signal reconfig_busy : std_logic;
   
-  signal sys_locked     : std_logic_vector(2 downto 0);
   signal sys_drop_count : unsigned(9 downto 0);
   signal sys_drop       : std_logic;
   
@@ -247,11 +246,10 @@ begin
       rdisp_err_o => open,
       out_8b_o    => rx_data_o);
   
-  locked_o <= sys_locked(0);
+  locked_o <= pll_locked and tx_ready and not reconfig_busy;
   p_lock : process(clk_sys_i, rstn_sys_i) is
   begin
     if rstn_sys_i = '0' then
-      sys_locked     <= (others => '0');
       sys_drop_count <= (others => '1');
       sys_drop       <= '1';
     elsif rising_edge(clk_sys_i) then
@@ -266,9 +264,6 @@ begin
         end if;
       end if;
       
-      sys_locked(sys_locked'left) <= pll_locked and tx_ready and not reconfig_busy;
-      sys_locked(sys_locked'left-1 downto 0) <= sys_locked(sys_locked'left downto 1);
-        
     end if;
   end process;
   

@@ -125,7 +125,7 @@ package wr_altera_pkg is
   component wr_arria5_phy is
     generic (
       g_tx_latch_edge : std_logic := '1';
-      g_rx_latch_edge : std_logic := '1');
+      g_rx_latch_edge : std_logic := '0');
     port (
       clk_reconf_i   : in  std_logic;
       clk_phy_i      : in  std_logic;
