@@ -3,6 +3,19 @@ use ieee.std_logic_1164.all;
 
 package wr_altera_pkg is
 
+  component altera_reset is
+    generic(
+      g_plls    : natural;
+      g_clocks  : natural);
+    port(
+      clk_free  : in  std_logic; -- external free running clock
+      rstn_i    : in  std_logic; -- external reset button
+      locked_i  : in  std_logic_vector(g_plls-1 downto 0);
+      pll_rst_o : out std_logic;
+      clocks_i  : in  std_logic_vector(g_clocks-1 downto 0);
+      rstn_o    : out std_logic_vector(g_clocks-1 downto 0));
+  end component;
+  
   component dmtd_pll is  -- arria2
     port(
       inclk0 : in  std_logic := '0'; -- 20   MHz
