@@ -136,7 +136,7 @@ begin
         pps_count <= pps_count - 1;
       end if;
       
-      if pps_count = 1 then
+      if pps_count = 0 then
         clk25_reg <= clk25_shift;
       end if;
     end if;
