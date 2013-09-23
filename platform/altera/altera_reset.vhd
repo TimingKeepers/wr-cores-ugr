@@ -43,54 +43,51 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
+use work.wishbone_pkg.all;
+
 entity altera_reset is
   generic(
-    g_plls    : natural;
-    g_clocks  : natural);
+    g_plls     : natural;
+    g_clocks   : natural;
+    g_areset   : natural := 8;    -- length of pll_arst_o
+    g_stable   : natural := 256); -- duration locked must be stable
   port(
-    clk_free  : in  std_logic; -- external free running clock
-    rstn_i    : in  std_logic; -- external reset button
-    locked_i  : in  std_logic_vector(g_plls-1 downto 0);
-    pll_rst_o : out std_logic;
-    clocks_i  : in  std_logic_vector(g_clocks-1 downto 0);
-    rstn_o    : out std_logic_vector(g_clocks-1 downto 0));
+    clk_free   : in  std_logic; -- external free running clock
+    rstn_i     : in  std_logic; -- external reset button
+    locked_i   : in  std_logic_vector(g_plls-1 downto 0);
+    pll_arst_o : out std_logic; -- reset analog lock
+    pll_srst_o : out std_logic; -- reset digital counters
+    clocks_i   : in  std_logic_vector(g_clocks-1 downto 0);
+    rstn_o     : out std_logic_vector(g_clocks-1 downto 0));
 end altera_reset;
 
 architecture rtl of altera_reset is
 
   constant zeros : std_logic_vector(g_plls-1 downto 0) := (others => '0');
-  constant ones  : std_logic_vector(g_plls-1 downto 0) := (others => '1');
+  constant c_relock : natural := 4;
   
-  subtype t_sync is std_logic_vector(2 downto 0);
+  subtype t_count is unsigned(f_ceil_log2(g_stable)-1 downto 0);
+  subtype t_sync  is std_logic_vector(2 downto 0);
   type t_sync_array is array (natural range <>) of t_sync;
 
   -- async registers
-  signal rstn_trig : std_logic := '0';
   signal lock_loss : std_logic_vector(g_plls-1 downto 0) := (others => '0');
-  signal s_restart : std_logic;
   signal s_locked  : std_logic;
   
   -- clk_free registers
-  signal restart : t_sync := (others => '1');
-  signal locked  : t_sync := (others => '0');
-  signal relock  : std_logic := '1';
-  signal reset   : std_logic := '1';
-  signal count   : unsigned(7 downto 0) := (others => '1');
-  signal stable  : boolean   := false;
+  signal reset   : std_logic := '1';   -- async reset of PLL   (g_areset)
+  signal relock  : std_logic := '1';   -- reset lock_loss trap (c_relock)
+  signal waiting : std_logic := '1';   -- waiting for g_stable (g_stable)
+  signal locked  : t_sync  := (others => '0');
+  signal count   : t_count := to_unsigned(g_areset-1, t_count'length);
+  signal stable  : boolean   := false; -- counter expired
+  
+  -- clocks_i registers
   signal nresets : t_sync_array(g_clocks-1 downto 0) := (others => (others => '0'));
   
 begin
 
-  -- Catch any dip in the rstn line
-  button : process(rstn_i, relock) is
-  begin
-    if relock = '1' then
-      rstn_trig <= '0';
-    elsif falling_edge(rstn_i) then
-      rstn_trig <= '1';
-    end if;
-  end process;
-  
   -- Catch any dips in the PLL lock line
   locks : for i in g_plls-1 downto 0 generate
     lock : process(locked_i(i), relock) is
@@ -103,70 +100,86 @@ begin
     end process;
   end generate;
   
-  -- If any of these lines are true, restart!
-  s_restart <= rstn_trig when lock_loss = zeros else '1';
-  s_locked <= '1' when locked_i = ones else '0';
+  s_locked <= rstn_i when lock_loss = zeros else '0';
   
   -- Reset PLLs and wait till all have locked.
   -- If any PLL loses lock, reset all of them.
   main : process(clk_free) is
   begin
     if rising_edge(clk_free) then
-      restart <= s_restart & restart(restart'left downto 1);
-      locked  <= s_locked  & locked(locked'left downto 1);
-      stable <= count = 0;
+      locked  <= s_locked & locked(locked'left downto 1);
+      stable  <= count = 1;
       
       -- We don't use a traditional state machine here.
       -- This code has to be clk_free glitch safe!
       -- Every case has at most 6 inputs (ie: fits in one 6-LUT)
-      -- (reset, relock, stable, locked(0), restart(0), count(i-1))
+      -- (reset, relock, waiting, stable, locked(0), count(i-1))
       
       if reset = '1' then
         if stable then
-          reset  <= '0';
-          relock <= '1';
-          count  <= (others => '1');
+          reset   <= '0';
+          relock  <= '1';
+          waiting <= '1';
+          count   <= to_unsigned(c_relock-1, t_count'length);
         else
-          reset  <= '1';
-          relock <= '1';
-          count  <= count - 1;
+          reset   <= '1';
+          relock  <= '1';
+          waiting <= '1';
+          count   <= count - 1;
         end if;
       elsif relock = '1' then
         if stable then
-          reset  <= '0';
-          relock <= '0';
-          count  <= (others => '1');
-        elsif locked(0) = '0' then
-          reset  <= '0';
-          relock <= '1';
-          count  <= (others => '1');
+          reset   <= '0';
+          relock  <= '0';
+          waiting <= '1';
+          count   <= to_unsigned(g_stable-1, t_count'length);
         else
-          reset  <= '0';
-          relock <= '1';
-          count  <= count - 1;
+          reset   <= '0';
+          relock  <= '1';
+          waiting <= '1';
+          count   <= count - 1;
+        end if;
+      elsif waiting = '1' then
+        if locked(0) = '0' then
+          reset   <= '0';
+          relock  <= '1';
+          waiting <= '1';
+          count   <= to_unsigned(c_relock-1, t_count'length);
+        elsif stable then
+          reset   <= '0';
+          relock  <= '0';
+          waiting <= '0';
+          count   <= (others => '-');
+        else
+          reset   <= '0';
+          relock  <= '0';
+          waiting <= '1';
+          count   <= count - 1;
         end if;
       else
-        if restart(0) = '1' then
-          reset  <= '1';
-          relock <= '1';
-          count  <= (others => '1');
+        if locked(0) = '0' then
+          reset   <= '1';
+          relock  <= '1';
+          waiting <= '1';
+          count   <= to_unsigned(g_areset-1, t_count'length);
         else
           reset  <= '0';
           relock <= '0';
-          count  <= (others => '1');
+          count  <= (others => '0');
         end if;
       end if;
     end if;
   end process;
   
-  pll_rst_o <= reset;
+  pll_arst_o <= reset;
+  pll_srst_o <= waiting;
   
   -- Generate per-clock reset lines
   syncs : for i in g_clocks-1 downto 0 generate
     rstn_o(i) <= nresets(i)(0);
-    sync : process(relock, clocks_i(i)) is
+    sync : process(waiting, clocks_i(i)) is
     begin
-      if relock = '1' then
+      if waiting = '1' then
         nresets(i) <= (others => '0');
       elsif rising_edge(clocks_i(i)) then
         nresets(i) <= '1' & nresets(i)(t_sync'left downto 1);

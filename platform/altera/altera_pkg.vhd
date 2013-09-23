@@ -6,14 +6,17 @@ package wr_altera_pkg is
   component altera_reset is
     generic(
       g_plls    : natural;
-      g_clocks  : natural);
+      g_clocks  : natural;
+      g_areset  : natural := 8;    -- length of pll_arst_o
+      g_stable  : natural := 256); -- duration locked must be stable
     port(
-      clk_free  : in  std_logic; -- external free running clock
-      rstn_i    : in  std_logic; -- external reset button
-      locked_i  : in  std_logic_vector(g_plls-1 downto 0);
-      pll_rst_o : out std_logic;
-      clocks_i  : in  std_logic_vector(g_clocks-1 downto 0);
-      rstn_o    : out std_logic_vector(g_clocks-1 downto 0));
+      clk_free   : in  std_logic; -- external free running clock
+      rstn_i     : in  std_logic; -- external reset button
+      locked_i   : in  std_logic_vector(g_plls-1 downto 0);
+      pll_arst_o : out std_logic;
+      pll_srst_o : out std_logic;
+      clocks_i   : in  std_logic_vector(g_clocks-1 downto 0);
+      rstn_o     : out std_logic_vector(g_clocks-1 downto 0));
   end component;
   
   component dmtd_pll is  -- arria2
