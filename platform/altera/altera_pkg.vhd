@@ -15,9 +15,10 @@ package wr_altera_pkg is
       g_areset  : natural := 8;    -- length of pll_arst_o
       g_stable  : natural := 256); -- duration locked must be stable
     port(
-      clk_free   : in  std_logic; -- external free running clock
+      clk_free_i : in  std_logic; -- external free running clock
       rstn_i     : in  std_logic; -- external reset button
-      locked_i   : in  std_logic_vector(g_plls-1 downto 0);
+      pll_lock_i : in  std_logic_vector(g_plls-1 downto 0);
+      pll_clk_i  : in  std_logic_vector(g_plls-1 downto 0);
       pll_arst_o : out std_logic;
       pll_srst_o : out std_logic;
       clocks_i   : in  std_logic_vector(g_clocks-1 downto 0);

@@ -53,9 +53,10 @@ entity altera_reset is
     g_areset   : natural := 8;    -- length of pll_arst_o
     g_stable   : natural := 256); -- duration locked must be stable
   port(
-    clk_free   : in  std_logic; -- external free running clock
+    clk_free_i : in  std_logic; -- external free running clock
     rstn_i     : in  std_logic; -- external reset button
-    locked_i   : in  std_logic_vector(g_plls-1 downto 0);
+    pll_lock_i : in  std_logic_vector(g_plls-1 downto 0);
+    pll_clk_i  : in  std_logic_vector(g_plls-1 downto 0);
     pll_arst_o : out std_logic; -- reset analog lock
     pll_srst_o : out std_logic; -- reset digital counters
     clocks_i   : in  std_logic_vector(g_clocks-1 downto 0);
@@ -81,7 +82,11 @@ architecture rtl of altera_reset is
   signal waiting : std_logic := '1';   -- waiting for g_stable (g_stable)
   signal locked  : t_sync  := (others => '0');
   signal count   : t_count := to_unsigned(g_areset-1, t_count'length);
-  signal stable  : boolean   := false; -- counter expired
+  signal stable  : boolean := false; -- counter expired
+  
+  -- clk_pll_i registers
+  signal stopped : std_logic_vector(g_plls-1 downto 0) := (others => '1');
+  signal nreset  : std_logic;
   
   -- clocks_i registers
   signal nresets : t_sync_array(g_clocks-1 downto 0) := (others => (others => '0'));
@@ -90,11 +95,11 @@ begin
 
   -- Catch any dips in the PLL lock line
   locks : for i in g_plls-1 downto 0 generate
-    lock : process(locked_i(i), relock) is
+    lock : process(pll_lock_i(i), relock) is
     begin
       if relock = '1' then
         lock_loss(i) <= '0';
-      elsif falling_edge(locked_i(i)) then
+      elsif falling_edge(pll_lock_i(i)) then
         lock_loss(i) <= '1';
       end if;
     end process;
@@ -104,14 +109,14 @@ begin
   
   -- Reset PLLs and wait till all have locked.
   -- If any PLL loses lock, reset all of them.
-  main : process(clk_free) is
+  main : process(clk_free_i) is
   begin
-    if rising_edge(clk_free) then
+    if rising_edge(clk_free_i) then
       locked  <= s_locked & locked(locked'left downto 1);
       stable  <= count = 1;
       
       -- We don't use a traditional state machine here.
-      -- This code has to be clk_free glitch safe!
+      -- This code has to be clk_free_i glitch safe!
       -- Every case has at most 6 inputs (ie: fits in one 6-LUT)
       -- (reset, relock, waiting, stable, locked(0), count(i-1))
       
@@ -174,12 +179,26 @@ begin
   pll_arst_o <= reset;
   pll_srst_o <= waiting;
   
-  -- Generate per-clock reset lines
-  syncs : for i in g_clocks-1 downto 0 generate
-    rstn_o(i) <= nresets(i)(0);
-    sync : process(waiting, clocks_i(i)) is
+  -- Wait for all PLLs to run
+  stops : for i in g_plls-1 downto 0 generate
+    stop : process(waiting, pll_clk_i(i)) is
     begin
       if waiting = '1' then
+        stopped(i) <= '1';
+      elsif rising_edge(pll_clk_i(i)) then
+        stopped(i) <= '0';
+      end if;
+    end process;
+  end generate;
+  
+  nreset <= '1' when stopped = zeros else '0';
+  
+  -- Generate per-clock reset lines
+  resets : for i in g_clocks-1 downto 0 generate
+    rstn_o(i) <= nresets(i)(0);
+    reset : process(nreset, clocks_i(i)) is
+    begin
+      if nreset = '0' then
         nresets(i) <= (others => '0');
       elsif rising_edge(clocks_i(i)) then
         nresets(i) <= '1' & nresets(i)(t_sync'left downto 1);
