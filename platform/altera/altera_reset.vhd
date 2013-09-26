@@ -65,6 +65,7 @@ end altera_reset;
 
 architecture rtl of altera_reset is
 
+  constant ones  : std_logic_vector(g_plls-1 downto 0) := (others => '1');
   constant zeros : std_logic_vector(g_plls-1 downto 0) := (others => '0');
   constant c_relock : natural := 4;
   
@@ -113,7 +114,7 @@ begin
     end process;
   end generate;
   
-  s_locked <= rstn_i when lock_loss = zeros else '0';
+  s_locked <= rstn_i when (lock_loss = zeros and pll_lock_i = ones) else '0';
   
   -- Reset PLLs and wait till all have locked.
   -- If any PLL loses lock, reset all of them.
