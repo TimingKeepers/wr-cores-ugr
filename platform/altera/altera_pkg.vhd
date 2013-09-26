@@ -27,6 +27,7 @@ package wr_altera_pkg is
   
   component dmtd_pll is  -- arria2
     port(
+      areset : in  std_logic;
       inclk0 : in  std_logic := '0'; -- 20   MHz
       c0     : out std_logic;        -- 62.5 MHz
       locked : out std_logic);
@@ -42,6 +43,7 @@ package wr_altera_pkg is
   
   component ref_pll is   -- arria2
     port(
+      areset : in  std_logic;
       inclk0 : in  std_logic := '0'; -- 125 MHz
       c0     : out std_logic;        -- 125 MHz
       c1     : out std_logic;        -- 200 MHz
@@ -71,6 +73,7 @@ package wr_altera_pkg is
   
   component sys_pll is   -- arria2
     port(
+      areset : in  std_logic;
       inclk0 : in  std_logic := '0'; -- 125   MHz
       c0     : out std_logic;        --  62.5 MHz
       c1     : out std_logic;        --  50   MHz
@@ -129,6 +132,7 @@ package wr_altera_pkg is
       locked_o       : out std_logic;
       loopen_i       : in  std_logic;
       drop_link_i    : in  std_logic;
+      tx_clk_i       : in  std_logic;
       tx_data_i      : in  std_logic_vector(7 downto 0);
       tx_k_i         : in  std_logic;
       tx_disparity_o : out std_logic;
