@@ -67,13 +67,13 @@ end altera_phase;
 
 architecture rtl of altera_phase is
 
-  function f_modulus(vco : natural; output : natural_vector(g_outputs-1 downto 0))
+  function f_modulus(vco : natural; freq : natural_vector)
     return natural_vector
   is
     variable result : natural_vector(g_outputs-1 downto 0);
   begin
     for i in 0 to g_outputs-1 loop
-      result(i) := vco*8/output(i);
+      result(i) := vco*8/freq(i);
     end loop;
     return result;
   end function;
@@ -93,12 +93,17 @@ architecture rtl of altera_phase is
   begin
     if x then return '1'; else return '0'; end if;
   end function;
+  
+  -- Requirements for correctness:
+  --   sync_trap'length = aligned(i)'length
+  --   |PULSE| >= sync_trap'length
 
-  type t_state is (SETUP_REQUEST, PULSE1, PULSE2, WAIT_TRAP);
+  type t_state is (SETUP_REQUEST, PULSE1, PULSE2, PULSE3, WAIT_TRAP);
   subtype t_output is std_logic_vector(g_outputs-1 downto 0);
   type t_output_array is array (natural range <>) of t_output;
   
-  constant c_modulus : natural_vector := f_modulus(g_vco_freq, g_output_freq);
+  constant c_modulus : natural_vector(g_outputs-1 downto 0)
+            := f_modulus(g_vco_freq, g_output_freq);
   constant c_init_phase : phase_offset_vector(g_outputs-1 downto 0)
             := f_init_phase(g_base, c_modulus);
   
@@ -147,6 +152,23 @@ begin
       end loop;
     end if;
   end process;
+  
+  -- state         SETUP_REQUEST  PULSE1  PULSE2-x  WAIT_TRAP
+  -- prime_trap    /------------\
+  --               /            \---------------------------
+  -- phasestep                            /-----------------\
+  --               -----------------------/                 \
+  -- raw_trap      ?????????????????\  /?????????????????????
+  --               ?????????????????\--/?????????????????????
+  -- sync_trap(0)  ????????????????????????????\  /??????????
+  --               ????????????????????????????\--/??????????
+  --
+  -- The waveform used here allows |skew| <= clock period.
+  -- ie: there will be a gap between falling_edge(prime_trap)
+  -- and rising_edge(phasestep) as seen at raw_trap. Because
+  -- phasedone_i is the result of phasestep, it must follow
+  -- that falling_edge(prime_trap) < rising_edge(phasedone_i).
+  -- Therefore, the trap never misses the completion signal.
 
   phasesel_o <= phasesel;
   phasestep_o <= phasestep;
@@ -186,14 +208,15 @@ begin
           prime_trap <= '0';
           phasesel   <= phasesel;
           phasestep  <= '1';
+          state      <= PULSE3;
+        
+        when PULSE3 =>
+          prime_trap <= '0';
+          phasesel   <= phasesel;
+          phasestep  <= '1';
           state      <= WAIT_TRAP;
         
         when WAIT_TRAP =>
-          -- We are always in this state >= sync_trap'length-1 cycles
-          -- When state=PULSE2, phasestep=1 for the first time
-          -- However, phasestep and state might have skew, allowing raw_trap
-          -- to toggle so fast that when PULSE2 already sees raw_trap toggle.
-          -- Unlikely, but let's play it safe; add the -1.
           if sync_trap(0) = '0' then
             prime_trap <= '0';
             phasesel   <= (others => '-');
@@ -237,10 +260,10 @@ begin
       -- It is important that this test fails after the last shift, before SETUP_REQUEST
       -- phase(i)      is set when PULSE1 evaluated
       -- aligned(i)(2) is set when PULSE2
-      -- aligned(i)(1) is set when WAIT_TRAP
+      -- aligned(i)(1) is set when PULSE3
       -- aligned(i)(0) is set when WAIT_TRAP
       -- request       is set when SETUP_REQUEST evaluated (just in time!)
-      -- Require: aligned(i)'length <= sync_trap'length
+      -- Require: PULSEx >= aligned(i)'length
       if aligned(to_integer(output))(0) = '0' then
         request <= '1';
         output  <= output;
