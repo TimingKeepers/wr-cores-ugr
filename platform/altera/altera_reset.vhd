@@ -91,6 +91,14 @@ architecture rtl of altera_reset is
   -- clocks_i registers
   signal nresets : t_sync_array(g_clocks-1 downto 0) := (others => (others => '0'));
   
+  -- We ensure timing between these nodes via the state machine
+  attribute altera_attribute : string;
+  attribute altera_attribute OF rtl : architecture is
+    ("-name SDC_STATEMENT ""set_false_path -from {altera_reset:*|relock}     -to {altera_reset:*|lock_loss*}"";" &
+     "-name SDC_STATEMENT ""set_false_path -from {altera_reset:*|lock_loss*} -to {altera_reset:*|locked*}"";"  &
+     "-name SDC_STATEMENT ""set_false_path -from {altera_reset:*|waiting}    -to {altera_reset:*|stopped*}"";"  &
+     "-name SDC_STATEMENT ""set_false_path -from {altera_reset:*|stopped*}   -to {altera_reset:*|nresets*}""");
+
 begin
 
   -- Catch any dips in the PLL lock line

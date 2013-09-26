@@ -125,8 +125,8 @@ architecture rtl of altera_phase is
   attribute altera_attribute : string;
   attribute altera_attribute OF rtl : architecture is 
     ("-name SDC_STATEMENT ""set_false_path -from {altera_phase:*|prime_trap} -to {altera_phase:*|raw_trap}"";"  &
-     "-name SDC_STATEMENT ""set_false_path -from {altera_phase:*|raw_trap}   -to {altera_phase:*|sync_trap}"";" &
-     "-name SDC_STATEMENT ""set_false_path -from {altera_phase:*|offset_i*}  -to {altera_phase:*|aligned*}"";" &
+     "-name SDC_STATEMENT ""set_false_path -from {altera_phase:*|raw_trap}   -to {altera_phase:*|sync_trap*}"";" &
+     "-name SDC_STATEMENT ""set_false_path                                   -to {altera_phase:*|aligned*}"";" &
      "-name SDC_STATEMENT ""set_false_path -from {altera_phase:*|gen_rstn*}  -to {altera_phase:*|sync_rstn*}""");
 begin
 
