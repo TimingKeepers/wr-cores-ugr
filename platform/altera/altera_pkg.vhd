@@ -10,17 +10,15 @@ package wr_altera_pkg is
 
   component altera_reset is
     generic(
-      g_plls    : natural;
-      g_clocks  : natural;
-      g_areset  : natural := 8;    -- length of pll_arst_o
-      g_stable  : natural := 256); -- duration locked must be stable
+      g_plls    : natural := 4;
+      g_clocks  : natural := 2;
+      g_areset  : natural := 1024;  -- length of pll_arst_o
+      g_stable  : natural := 1024); -- duration locked must be stable
     port(
       clk_free_i : in  std_logic; -- external free running clock
       rstn_i     : in  std_logic; -- external reset button
       pll_lock_i : in  std_logic_vector(g_plls-1 downto 0);
-      pll_clk_i  : in  std_logic_vector(g_plls-1 downto 0);
       pll_arst_o : out std_logic;
-      pll_srst_o : out std_logic;
       clocks_i   : in  std_logic_vector(g_clocks-1 downto 0);
       rstn_o     : out std_logic_vector(g_clocks-1 downto 0));
   end component;
