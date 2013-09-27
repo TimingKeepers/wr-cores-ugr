@@ -125,8 +125,8 @@ package wr_altera_pkg is
       clk_reconf_i   : in  std_logic;
       clk_pll_i      : in  std_logic;
       clk_cru_i      : in  std_logic;
-      clk_sys_i      : in  std_logic;
-      rstn_sys_i     : in  std_logic;
+      clk_free_i     : in  std_logic;
+      rst_i          : in  std_logic;
       locked_o       : out std_logic;
       loopen_i       : in  std_logic;
       drop_link_i    : in  std_logic;
@@ -151,8 +151,6 @@ package wr_altera_pkg is
     port (
       clk_reconf_i   : in  std_logic;
       clk_phy_i      : in  std_logic;
-      clk_sys_i      : in  std_logic;
-      rstn_sys_i     : in  std_logic;
       locked_o       : out std_logic;
       loopen_i       : in  std_logic;
       drop_link_i    : in  std_logic;

@@ -66,9 +66,9 @@ entity wr_arria2_phy is
     clk_reconf_i : in  std_logic; -- 50 MHz
     clk_pll_i    : in  std_logic; -- feeds transmitter PLL
     clk_cru_i    : in  std_logic; -- trains data recovery clock
-    clk_sys_i    : in  std_logic; -- Used to reset the core
-    rstn_sys_i   : in  std_logic; -- must last >= 1us
-    locked_o     : out std_logic; -- Is the rx_rbclk valid? (clk_sys domain)
+    clk_free_i   : in  std_logic; -- Used to reset the core
+    rst_i        : in  std_logic; -- must last >= 1us
+    locked_o     : out std_logic; -- Is the rx_rbclk valid? (clk_free domain)
     loopen_i     : in  std_logic;  -- local loopback enable (Tx->Rx), active hi
     drop_link_i  : in  std_logic; -- Kill the link?
 
@@ -161,16 +161,17 @@ architecture rtl of wr_arria2_phy is
   type t_state is (WAIT_POWER, WAIT_CMU, WAIT_CONFIG, WAIT_LOCK, DONE);
   
   signal rst_state         : t_state := WAIT_POWER;
-  signal rst_delay         : unsigned(8 downto 0) := (others => '1'); -- must span >= 4us
+  signal rst_delay         : unsigned(6 downto 0) := (others => '1'); -- must span >= 4us (128@20MHz=6.4us)
   signal pll_powerdown     : std_logic;
   signal tx_digitalreset   : std_logic; -- sys domain
   signal rx_analogreset    : std_logic; -- sys domain
   signal rx_digitalreset   : std_logic; -- sys domain
   
-  signal sys_pll_locked    : std_logic_vector(2 downto 0);
-  signal sys_reconfig_busy : std_logic_vector(2 downto 0);
-  signal sys_rx_freqlocked : std_logic_vector(2 downto 0);
-  signal sys_drop_link     : std_logic_vector(2 downto 0);
+  signal free_rstn          : std_logic_vector(2 downto 0);
+  signal free_pll_locked    : std_logic_vector(2 downto 0);
+  signal free_reconfig_busy : std_logic_vector(2 downto 0);
+  signal free_rx_freqlocked : std_logic_vector(2 downto 0);
+  signal free_drop_link     : std_logic_vector(2 downto 0);
   
   signal tx_8b10b_rstn : std_logic_vector(2 downto 0); -- tx domain
   signal rx_8b10b_rstn : std_logic_vector(2 downto 0); -- rx domain
@@ -272,105 +273,112 @@ begin
       out_8b_o    => rx_data_o);
   rx_enc_err_o <= rx_enc_err or rx_dump_link(0);
   
-  -- Reset procedure follows Figure 4-4 of Reset Control and Power Down in Arria II Devices
-  p_reset : process(clk_sys_i) is
+  p_sync : process(clk_free_i, rst_i) is
   begin
-    if rising_edge(clk_sys_i) then
+    if rst_i = '1' then
+      free_rstn <= (others => '0');
+    elsif rising_edge(clk_free_i) then
+      free_rstn <= '1' & free_rstn(free_rstn'left downto 1);
+    end if;
+  end process;
+  
+  -- Reset procedure follows Figure 4-4 of Reset Control and Power Down in Arria II Devices
+  p_reset : process(clk_free_i, free_rstn(0)) is
+  begin
+    if free_rstn(0) = '0' then
+      rst_state       <= WAIT_POWER;
+      rst_delay       <= (others => '1');
+      pll_powerdown   <= '1';
+      rx_analogreset  <= '1';
+      locked_o        <= '0';
+      tx_digitalreset <= '1';
+      rx_digitalreset <= '1';
+    elsif rising_edge(clk_free_i) then
       -- Synchronize foreign signals
-      sys_pll_locked    <= pll_locked    & sys_pll_locked   (sys_pll_locked'left    downto 1);
-      sys_reconfig_busy <= reconfig_busy & sys_reconfig_busy(sys_reconfig_busy'left downto 1);
-      sys_rx_freqlocked <= rx_freqlocked & sys_rx_freqlocked(sys_rx_freqlocked'left downto 1);
-      sys_drop_link     <= drop_link_i   & sys_drop_link    (sys_drop_link'left     downto 1);
+      free_pll_locked    <= pll_locked    & free_pll_locked   (free_pll_locked'left    downto 1);
+      free_reconfig_busy <= reconfig_busy & free_reconfig_busy(free_reconfig_busy'left downto 1);
+      free_rx_freqlocked <= rx_freqlocked & free_rx_freqlocked(free_rx_freqlocked'left downto 1);
+      free_drop_link     <= drop_link_i   & free_drop_link    (free_drop_link'left     downto 1);
       
-      if rstn_sys_i = '0' then
-        rst_state       <= WAIT_POWER;
-        rst_delay       <= (others => '1');
-        pll_powerdown   <= '1';
-        rx_analogreset  <= '1';
-        locked_o        <= '0';
-        tx_digitalreset <= '1';
-        rx_digitalreset <= '1';
-      else
-        case rst_state is
-          when WAIT_POWER =>
-            pll_powerdown   <= '1';
-            rx_analogreset  <= '1';
-            locked_o        <= '0';
-            tx_digitalreset <= '1';
-            rx_digitalreset <= '1';
-            
+      case rst_state is
+        when WAIT_POWER =>
+          pll_powerdown   <= '1';
+          rx_analogreset  <= '1';
+          locked_o        <= '0';
+          tx_digitalreset <= '1';
+          rx_digitalreset <= '1';
+          
+          rst_delay <= rst_delay - 1;
+          
+          if rst_delay = 0 then
+            rst_delay <= (others => '1');
+            rst_state <= WAIT_CMU;
+          end if;
+          
+        when WAIT_CMU =>
+          pll_powerdown <= '0';
+          
+          if free_pll_locked(0) = '0' then
+            rst_delay <= (others => '1');
+          else
             rst_delay <= rst_delay - 1;
-            
-            if rst_delay = 0 then
-              rst_delay <= (others => '1');
-              rst_state <= WAIT_CMU;
-            end if;
-            
-          when WAIT_CMU =>
-            pll_powerdown <= '0';
-            
-            if sys_pll_locked(0) = '0' then
-              rst_delay <= (others => '1');
-            else
-              rst_delay <= rst_delay - 1;
-            end if;
-            
-            if rst_delay = 0 then
-              rst_delay <= (others => '1');
-              rst_state <= WAIT_CONFIG;
-            end if;
-            
-          when WAIT_CONFIG =>
-            if sys_reconfig_busy(0) = '1' then
-              rst_delay <= (others => '1');
-            else
-              rst_delay <= rst_delay - 1;
-            end if;
-            
-            if rst_delay = 0 then
-              rst_delay <= (others => '1');
-              rst_state <= WAIT_LOCK;
-            end if;
-            
-            if sys_pll_locked(0) = '0' then
-              rst_delay <= (others => '1');
-              rst_state <= WAIT_POWER;
-            end if;
+          end if;
           
-          when WAIT_LOCK =>
-            rx_analogreset <= '0';
-            
-            if sys_rx_freqlocked(0) = '0' then
-              rst_delay <= (others => '1');
-            else
-              rst_delay <= rst_delay - 1;
-            end if;
-            
-            if rst_delay = 0 then
-              rst_delay <= (others => '1');
-              rst_state <= DONE;
-            end if;
-            
-            if sys_pll_locked(0) = '0' then
-              rst_delay <= (others => '1');
-              rst_state <= WAIT_POWER;
-            end if;
+          if rst_delay = 0 then
+            rst_delay <= (others => '1');
+            rst_state <= WAIT_CONFIG;
+          end if;
           
-          when DONE =>
-            -- RX clock is now locked and safe
-            locked_o <= '1';
-            
-            -- Kill the link upon request
-            tx_digitalreset <= sys_drop_link(0);
-            rx_digitalreset <= sys_drop_link(0);
-            
-            if sys_pll_locked(0) = '0' then
-              rst_delay <= (others => '1');
-              rst_state <= WAIT_POWER;
-            end if;
-            
-        end case;
-      end if;
+        when WAIT_CONFIG =>
+          if free_reconfig_busy(0) = '1' then
+            rst_delay <= (others => '1');
+          else
+            rst_delay <= rst_delay - 1;
+          end if;
+          
+          if rst_delay = 0 then
+            rst_delay <= (others => '1');
+            rst_state <= WAIT_LOCK;
+          end if;
+          
+          if free_pll_locked(0) = '0' then
+            rst_delay <= (others => '1');
+            rst_state <= WAIT_POWER;
+          end if;
+        
+        when WAIT_LOCK =>
+          rx_analogreset <= '0';
+          
+          if free_rx_freqlocked(0) = '0' then
+            rst_delay <= (others => '1');
+          else
+            rst_delay <= rst_delay - 1;
+          end if;
+          
+          if rst_delay = 0 then
+            rst_delay <= (others => '1');
+            rst_state <= DONE;
+          end if;
+          
+          if free_pll_locked(0) = '0' then
+            rst_delay <= (others => '1');
+            rst_state <= WAIT_POWER;
+          end if;
+        
+        when DONE =>
+          -- RX clock is now locked and safe
+          locked_o <= '1';
+          
+          -- Kill the link upon request
+          tx_digitalreset <= free_drop_link(0);
+          rx_digitalreset <= free_drop_link(0);
+          
+          if free_pll_locked(0) = '0' then
+            rst_delay <= (others => '1');
+            rst_state <= WAIT_POWER;
+          end if;
+          
+      end case;
     end if;
   end process;
   

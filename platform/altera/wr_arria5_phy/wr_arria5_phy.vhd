@@ -56,9 +56,7 @@ entity wr_arria5_phy is
   port (
     clk_reconf_i : in  std_logic; -- 100 MHz
     clk_phy_i    : in  std_logic; -- feeds transmitter CMU and CRU
-    clk_sys_i    : in  std_logic; -- qualifies rstn, locked, drop_link
-    rstn_sys_i   : in  std_logic; -- must last >= 1us
-    locked_o     : out std_logic; -- Is the rx_rbclk valid? (clk_sys domain)
+    locked_o     : out std_logic; -- Is the rx_rbclk valid?
     loopen_i     : in  std_logic;  -- local loopback enable (Tx->Rx), active hi
     drop_link_i  : in  std_logic; -- Kill the link?
 
@@ -153,9 +151,6 @@ architecture rtl of wr_arria5_phy is
   signal tx_ready      : std_logic;
   signal reconfig_busy : std_logic;
   
-  signal sys_drop_count : unsigned(9 downto 0);
-  signal sys_drop       : std_logic;
-  
   signal tx_8b10b_rstn : std_logic_vector(2 downto 0); -- tx domain
   signal rx_8b10b_rstn : std_logic_vector(2 downto 0); -- rx domain
   
@@ -247,31 +242,12 @@ begin
       out_8b_o    => rx_data_o);
   
   locked_o <= pll_locked and tx_ready and not reconfig_busy;
-  p_lock : process(clk_sys_i, rstn_sys_i) is
-  begin
-    if rstn_sys_i = '0' then
-      sys_drop_count <= (others => '1');
-      sys_drop       <= '1';
-    elsif rising_edge(clk_sys_i) then
-      
-      if drop_link_i = '1' then
-        sys_drop_count <= (others => '1');
-        sys_drop       <= '1';
-      else
-        sys_drop_count <= sys_drop_count - 1;
-        if sys_drop_count = 0 then
-          sys_drop <= '0';
-        end if;
-      end if;
-      
-    end if;
-  end process;
   
   -- Generate reset for 8b10b encoder
   p_pll_reset : process(tx_clk_i) is
   begin
     if rising_edge(tx_clk_i) then
-      tx_8b10b_rstn <= (not sys_drop and tx_ready) & tx_8b10b_rstn(tx_8b10b_rstn'left downto 1);
+      tx_8b10b_rstn <= (not drop_link_i and tx_ready) & tx_8b10b_rstn(tx_8b10b_rstn'left downto 1);
     end if;
   end process;
   
@@ -280,7 +256,7 @@ begin
   p_rx_reset : process(clk_rx) is
   begin
     if rising_edge(clk_rx) then
-      rx_8b10b_rstn <= (not sys_drop and rx_ready) & rx_8b10b_rstn(rx_8b10b_rstn'left downto 1);
+      rx_8b10b_rstn <= (not drop_link_i and rx_ready) & rx_8b10b_rstn(rx_8b10b_rstn'left downto 1);
     end if;
   end process;
   
