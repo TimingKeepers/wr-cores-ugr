@@ -284,7 +284,7 @@ begin
   p_tx_path1 : process(clk_tx) is
   begin
     if clk_tx'event and clk_tx = g_tx_latch_edge then
-      tx_gxb_datain <= tx_enc_datain;
+      tx_gxb_datain <= tx_reg_datain;
     end if;
   end process;
   
