@@ -162,7 +162,8 @@ architecture rtl of wr_arria5_phy is
   signal rx_gxb_dataout              : std_logic_vector (9 downto 0); -- signal out of GXB
   signal rx_reg_dataout              : std_logic_vector (9 downto 0); -- regional clocked FPGA register (clk_rx)
   signal tx_enc_datain               : std_logic_vector (9 downto 0); -- registered encoder output      (tx_clk_i)
-  signal tx_reg_datain               : std_logic_vector (9 downto 0); -- regional clocked FPGA register (clk_tx)
+  signal tx_reg_datain               : std_logic_vector (9 downto 0); -- transfer register from fabric  (tx_clk_i)
+  signal tx_gxb_datain               : std_logic_vector (9 downto 0); -- transfer register to GXB       (clk_tx)
   
 begin
 
@@ -214,7 +215,7 @@ begin
       rx_bitslipboundaryselectout => rx_bitslipboundaryselectout,
       tx_clkout(0)                => clk_tx_gxb,
       rx_clkout(0)                => clk_rx_gxb,
-      tx_parallel_data            => tx_reg_datain,
+      tx_parallel_data            => tx_gxb_datain,
       rx_parallel_data            => rx_gxb_dataout,
       reconfig_from_xcvr          => xcvr_to_reconfig,
       reconfig_to_xcvr            => reconfig_to_xcvr);
@@ -271,13 +272,19 @@ begin
   end process;
   
   -- Cross clock domain from tx_clk_i to clk_tx
-  -- These clocks should have fixed phase relationship.
-  -- The tx_clk_i is from a PLL off of clk_phy_i
-  -- The clk_tx is from the CMU transceiver off of clk_phy_i;
-  p_tx_path : process(clk_tx) is
+  -- These clocks must be phase aligned
+  -- Registers tx_reg_datain and tx_gxb_datain must be logic locked
+  -- to the same ALM, preferrably directly beside the GXB.
+  p_tx_path0 : process(tx_clk_i) is
+  begin
+    if tx_clk_i'event and tx_clk_i = (not g_tx_latch_edge) then
+      tx_reg_datain <= tx_enc_datain;
+    end if;
+  end process;
+  p_tx_path1 : process(clk_tx) is
   begin
     if clk_tx'event and clk_tx = g_tx_latch_edge then
-      tx_reg_datain <= tx_enc_datain;
+      tx_gxb_datain <= tx_enc_datain;
     end if;
   end process;
   

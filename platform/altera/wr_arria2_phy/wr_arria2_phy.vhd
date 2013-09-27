@@ -192,6 +192,7 @@ architecture rtl of wr_arria2_phy is
   signal rx_glbl_syncstatus          : std_logic;
   
   signal tx_enc_datain               : std_logic_vector (9 downto 0); -- registered encoder output (tx_clk_i)
+  signal tx_reg_datain               : std_logic_vector (9 downto 0); -- clock transfer register   (tx_clk_i)
   signal tx_gxb_datain               : std_logic_vector (9 downto 0); -- clock transfer register   (clk_tx)
   
 begin
@@ -423,11 +424,19 @@ begin
   end process;
   
   -- Cross clock domain from tx_clk_i to tx_clk
-  -- These clocks have a fixed phase relationship.
-  p_tx_path : process(clk_tx) is
+  -- These clocks must be phase aligned
+  -- Registers tx_reg_datain and tx_gxb_datain must be logic locked
+  -- to the same ALM, preferrably directly beside the GXB.
+  p_tx_path0 : process(tx_clk_i) is
+  begin
+    if tx_clk_i'event and tx_clk_i = (not g_tx_latch_edge) then
+      tx_reg_datain <= tx_enc_datain;
+    end if;
+  end process;
+  p_tx_path1 : process(clk_tx) is
   begin
     if clk_tx'event and clk_tx = g_tx_latch_edge then
-      tx_gxb_datain <= tx_enc_datain;
+      tx_gxb_datain <= tx_reg_datain;
     end if;
   end process;
   
