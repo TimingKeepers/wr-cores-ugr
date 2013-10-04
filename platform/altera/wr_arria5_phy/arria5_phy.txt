@@ -12,7 +12,7 @@
 -- Retrieval info: 	<generic name="en_cdrref_support" value="0" />
 -- Retrieval info: 	<generic name="gui_pll_feedback_path" value="true" />
 -- Retrieval info: 	<generic name="use_double_data_mode" value="DEPRECATED" />
--- Retrieval info: 	<generic name="word_aligner_mode" value="deterministic_latency" />
+-- Retrieval info: 	<generic name="word_aligner_mode" value="manual" />
 -- Retrieval info: 	<generic name="gui_tx_bitslip_enable" value="true" />
 -- Retrieval info: 	<generic name="gui_enable_run_length" value="false" />
 -- Retrieval info: 	<generic name="run_length_violation_checking" value="40" />

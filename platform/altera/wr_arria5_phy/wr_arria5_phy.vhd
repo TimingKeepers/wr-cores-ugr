@@ -199,12 +199,12 @@ begin
     port map (
       phy_mgmt_clk                => clk_reconf_i,
       phy_mgmt_clk_reset          => '0',
-      phy_mgmt_address            => (others => '0'),
+      phy_mgmt_address            => "010000101", -- 0x085
       phy_mgmt_read               => '0',
       phy_mgmt_readdata           => open,
       phy_mgmt_waitrequest        => open,
-      phy_mgmt_write              => '0',
-      phy_mgmt_writedata          => (others => '0'),
+      phy_mgmt_write              => '1',
+      phy_mgmt_writedata          => (0 => '1', others => '0'),
       tx_ready                    => tx_ready,
       rx_ready                    => rx_ready,
       pll_ref_clk(0)              => clk_phy_i,
