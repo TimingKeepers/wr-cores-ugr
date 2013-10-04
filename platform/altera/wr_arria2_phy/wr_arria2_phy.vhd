@@ -182,7 +182,6 @@ architecture rtl of wr_arria2_phy is
   
   signal rx_dump_link                : std_logic_vector(6 downto 0); -- Long enough to kill ep_sync_detect
   signal rx_enc_err                  : std_logic;
-  signal tx_disp_pipe                : std_logic_vector (2 downto 0);
   signal rx_bitslipboundaryselectout : std_logic_vector (4 downto 0);
   
   signal rx_gxb_dataout              : std_logic_vector (9 downto 0); -- signal out of GXB
@@ -259,7 +258,7 @@ begin
       ctrl_i    => tx_k_i,
       in_8b_i   => tx_data_i,
       err_o     => tx_enc_err_o,
-      dispar_o  => tx_disp_pipe(0),
+      dispar_o  => tx_disparity_o,
       out_10b_o => tx_enc_datain);
   
   -- Decode the RX data
@@ -410,16 +409,6 @@ begin
       else
         rx_dump_link <= '0' & rx_dump_link(rx_dump_link'left downto 1);
       end if;
-    end if;
-  end process;
-  
-  -- The disparity should be delayed for WR
-  tx_disparity_o <= tx_disp_pipe(2);
-  p_delay_disp : process(tx_clk_i)
-  begin
-    if rising_edge(tx_clk_i) then
-      tx_disp_pipe(1) <= tx_disp_pipe(0);
-      tx_disp_pipe(2) <= tx_disp_pipe(1);
     end if;
   end process;
   

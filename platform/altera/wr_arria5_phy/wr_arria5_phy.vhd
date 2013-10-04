@@ -157,7 +157,6 @@ architecture rtl of wr_arria5_phy is
   signal xcvr_to_reconfig : std_logic_vector(91 downto 0);
   signal reconfig_to_xcvr : std_logic_vector(139 downto 0);
   
-  signal tx_disp_pipe                : std_logic_vector (2 downto 0);
   signal rx_bitslipboundaryselectout : std_logic_vector (4 downto 0);
   signal rx_gxb_dataout              : std_logic_vector (9 downto 0); -- signal out of GXB
   signal rx_reg_dataout              : std_logic_vector (9 downto 0); -- regional clocked FPGA register (clk_rx)
@@ -228,7 +227,7 @@ begin
       ctrl_i    => tx_k_i,
       in_8b_i   => tx_data_i,
       err_o     => tx_enc_err_o,
-      dispar_o  => tx_disp_pipe(0),
+      dispar_o  => tx_disparity_o,
       out_10b_o => tx_enc_datain);
   
   -- Decode the RX data
@@ -258,16 +257,6 @@ begin
   begin
     if rising_edge(clk_rx) then
       rx_8b10b_rstn <= (not drop_link_i and rx_ready) & rx_8b10b_rstn(rx_8b10b_rstn'left downto 1);
-    end if;
-  end process;
-  
-  -- The disparity should be delayed for WR
-  tx_disparity_o <= tx_disp_pipe(2);
-  p_delay_disp : process(tx_clk_i)
-  begin
-    if rising_edge(tx_clk_i) then
-      tx_disp_pipe(1) <= tx_disp_pipe(0);
-      tx_disp_pipe(2) <= tx_disp_pipe(1);
     end if;
   end process;
   
