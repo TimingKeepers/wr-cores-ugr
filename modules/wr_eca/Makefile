@@ -1,20 +1,23 @@
+PREFIX   ?= /usr/local
+EB       ?= ../../ip_cores/etherbone-core/api
+
 CXX      = g++
-CXXFLAGS = -Wall -O2 -I.
+CXXFLAGS = -Wall -O2 -I. -I $(EB)
 TARGETS  = lib/version.h libeca.a eca-ctl eca-table
 
 all:	$(TARGETS)
 
 install:
-	cp eca-ctl eca-table /usr/local/bin
+	cp eca-ctl eca-table $(PREFIX)/bin
 
 clean:
 	rm -f $(TARGETS) *.o lib/*.o git.*
 
 eca-ctl:	eca-ctl.o libeca.a
-	$(CXX) $(CXXFLAGS) -o $@ $^ -letherbone
+	$(CXX) $(CXXFLAGS) -o $@ $^ -L $(EB) -Wl,-rpath,$(PREFIX)/lib -letherbone
 
 eca-table:	eca-table.o libeca.a
-	$(CXX) $(CXXFLAGS) -o $@ $^ -letherbone
+	$(CXX) $(CXXFLAGS) -o $@ $^ -L $(EB) -Wl,-rpath,$(PREFIX)/lib -letherbone
 
 libeca.a:	lib/hw-eca.o lib/hw-stream.o lib/hw-channel.o \
 		lib/load-search.o lib/load-walk.o lib/load-queue.o lib/load-eca.o \
