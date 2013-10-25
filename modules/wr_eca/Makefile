@@ -1,4 +1,5 @@
 PREFIX   ?= /usr/local
+STAGING  ?= 
 EB       ?= ../../ip_cores/etherbone-core/api
 
 CXX      = g++
@@ -8,7 +9,10 @@ TARGETS  = lib/version.h libeca.a eca-ctl eca-table
 all:	$(TARGETS)
 
 install:
-	cp eca-ctl eca-table $(PREFIX)/bin
+	mkdir -p $(STAGING)$(PREFIX)/bin $(STAGING)$(PREFIX)/include $(STAGING)$(PREFIX)/lib
+	cp eca-ctl eca-table $(STAGING)$(PREFIX)/bin
+	cp eca.h $(STAGING)$(PREFIX)/include
+	cp libeca.a $(STAGING)$(PREFIX)/lib
 
 clean:
 	rm -f $(TARGETS) *.o lib/*.o git.*
