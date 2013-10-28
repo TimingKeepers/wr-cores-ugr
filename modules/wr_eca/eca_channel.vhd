@@ -432,7 +432,7 @@ begin
     
     ts_scan_index(table_hi_idx) <= scan_next;
     
-    -- c_o=1 iff    time_Q_i - scan_time > 0  ...   scan_time <= time_Q_i
+    -- c_o=1 iff    time_Q_i - scan_time >= 0  ...   scan_time <= time_Q_i
     ScanCompare : eca_adder
       port map(
         clk_i => clk_i,
