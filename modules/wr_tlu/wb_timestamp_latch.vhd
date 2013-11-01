@@ -13,6 +13,8 @@
 --! 0x014 n..0 channel(n) trigger edge status  (ro)
 --! 0x018 n..0 channel(n) trigger edge set pos (wo)
 --! 0x01C n..0 channel(n) trigger edge set neg (wo)
+--! 0x020 number channels present              (ro)
+--! 0x024 channel depth                        (ro)
 --! 0x100 Current time (Cycle Count)	HiReg
 --! 0x104 Current time (Cycle Count)	LoReg
 
@@ -193,14 +195,17 @@ architecture behavioral of wb_timestamp_latch is
 -------------------------------------------------------------------------------
   --wb registers
 	constant c_REG_STAT		: natural := 0;                      --ro, fifo n..0 status (0 empty, 1 ne)
-	constant c_REG_CLR      : natural := c_REG_STAT        +4;   --wo, Clear channel n..0
-	constant c_REG_ARM      : natural := c_REG_CLR         +4;   --ro, trigger n..0 armed status
-	constant c_REG_ARM_SET  : natural := c_REG_ARM         +4;   --wo, arm trigger n..0
-	constant c_REG_ARM_CLR  : natural := c_REG_ARM_SET     +4;   --wo, disarm trigger n..0
-	constant c_REG_EDG      : natural := c_REG_ARM_CLR     +4;   --ro, trigger n..0 latch edge (1 pos, 0 neg)
-	constant c_REG_EDG_POS  : natural := c_REG_EDG         +4;   --wo, latch trigger n..0 pos
-	constant c_REG_EDG_NEG  : natural := c_REG_EDG_POS     +4;   --wo, latch trigger n..0 neg
-	constant c_REG_T_CUR_HI : natural := 256;                	 --ro, 1 bit per queue pop
+	constant c_REG_CLR      : natural := c_REG_STAT       +4;   --wo, Clear channel n..0
+	constant c_REG_ARM      : natural := c_REG_CLR        +4;   --ro, trigger n..0 armed status
+	constant c_REG_ARM_SET  : natural := c_REG_ARM        +4;   --wo, arm trigger n..0
+	constant c_REG_ARM_CLR  : natural := c_REG_ARM_SET    +4;   --wo, disarm trigger n..0
+	constant c_REG_EDG      : natural := c_REG_ARM_CLR    +4;   --ro, trigger n..0 latch edge (1 pos, 0 neg)
+	constant c_REG_EDG_POS  : natural := c_REG_EDG        +4;   --wo, latch trigger n..0 pos
+	constant c_REG_EDG_NEG  : natural := c_REG_EDG_POS    +4;   --wo, latch trigger n..0 neg
+   constant c_REG_CH_NUM   : natural := c_REG_EDG_NEG    +4;   --ro, number channels present              (ro)
+   constant c_REG_CH_DEPTH : natural := c_REG_CH_NUM     +4;   --ro, channel depth
+	
+   constant c_REG_T_CUR_HI : natural := 256;                	 --ro, 1 bit per queue pop
 	constant c_REG_T_CUR_LO : natural := c_REG_T_CUR_HI    +4;   --ro, 1 bit per queue pop 
 	  
 	constant c_OFFS_1ST_QUE	: natural := 1024;                --
@@ -208,7 +213,7 @@ architecture behavioral of wb_timestamp_latch is
 	constant c_REG_CNT      : natural := c_REG_POP     +4;   --ro, 1 bit per queue pop
 	constant c_REG_T_HI     : natural := c_REG_CNT     +4;   --ro, 1 bit per queue pop
 	constant c_REG_T_LO     : natural := c_REG_T_HI    +4;   --ro, 1 bit per queue pop  
-	constant c_REG_T_SNS    : natural := c_REG_T_LO   +4;   --ro, 1 bit per queue pop
+	constant c_REG_T_SNS    : natural := c_REG_T_LO    +4;   --ro, 1 bit per queue pop
 	  
   --fifo clear is asynchronous
   signal fifo_clear             : channel;
@@ -454,16 +459,19 @@ begin  -- behavioral
             -------------------------------------------------------------------
                case to_integer(address) is
 
-                when c_REG_STAT => wb_slave_o.dat <= pad_4_WB(fifo_data_rdy); wb_slave_o.ack <= '1'; 
-                when c_REG_CLR  => wb_slave_o.ack <= '1';
+                when c_REG_STAT     => wb_slave_o.dat <= pad_4_WB(fifo_data_rdy); wb_slave_o.ack <= '1'; 
+                when c_REG_CLR      => wb_slave_o.ack <= '1';
            
-                when c_REG_ARM => wb_slave_o.dat <= pad_4_WB(trigger_active); wb_slave_o.ack <= '1';
-                when c_REG_ARM_SET => wb_slave_o.ack <= '1';
-                when c_REG_ARM_CLR => wb_slave_o.ack <= '1';
+                when c_REG_ARM      => wb_slave_o.dat <= pad_4_WB(trigger_active); wb_slave_o.ack <= '1';
+                when c_REG_ARM_SET  => wb_slave_o.ack <= '1';
+                when c_REG_ARM_CLR  => wb_slave_o.ack <= '1';
                                
-                when c_REG_EDG  => wb_slave_o.dat <= pad_4_WB(trigger_edge); wb_slave_o.ack <= '1';
-                when c_REG_EDG_POS => wb_slave_o.ack <= '1';
-                when c_REG_EDG_NEG => wb_slave_o.ack <= '1';
+                when c_REG_EDG      => wb_slave_o.dat <= pad_4_WB(trigger_edge); wb_slave_o.ack <= '1';
+                when c_REG_EDG_POS  => wb_slave_o.ack <= '1';
+                when c_REG_EDG_NEG  => wb_slave_o.ack <= '1';
+                when c_REG_CH_NUM   => wb_slave_o.dat <= std_logic_vector(to_unsigned(g_num_triggers,32)); wb_slave_o.ack <= '1';
+                when c_REG_CH_DEPTH => wb_slave_o.dat <= std_logic_vector(to_unsigned(g_fifo_depth,32)); wb_slave_o.ack <= '1';
+
                 when c_REG_T_CUR_HI => wb_slave_o.dat <= sa_time0(63 downto 32);
 										sa_time0_reg_LO <= sa_time0(31 downto 0);
 										wb_slave_o.ack  <= '1';
