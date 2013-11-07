@@ -68,14 +68,16 @@ architecture rtl of wr_eca is
   
   signal sa_stb      : std_logic_vector(g_num_streams-1 downto 0);
   signal sa_event    : t_event_array   (g_num_streams-1 downto 0);
-  signal sa_time     : t_time_array    (g_num_streams-1 downto 0);
   signal sa_param    : t_param_array   (g_num_streams-1 downto 0);
+  signal sa_tef      : t_tef_array     (g_num_streams-1 downto 0);
+  signal sa_time     : t_time_array    (g_num_streams-1 downto 0);
   
   signal sa_full_stb   : std_logic_vector(g_num_streams downto 0);
   signal sa_full_stall : std_logic_vector(g_num_streams downto 0);
   signal sa_full_event : t_event_array   (g_num_streams downto 0);
-  signal sa_full_time  : t_time_array    (g_num_streams downto 0);
   signal sa_full_param : t_param_array   (g_num_streams downto 0);
+  signal sa_full_tef   : t_tef_array     (g_num_streams downto 0);
+  signal sa_full_time  : t_time_array    (g_num_streams downto 0);
   
 begin
 
@@ -96,8 +98,9 @@ begin
       e_stb_i     => sa_full_stb  (0),
       e_stall_o   => sa_full_stall(0),
       e_event_i   => sa_full_event(0),
-      e_time_i    => sa_full_time (0),
       e_param_i   => sa_full_param(0),
+      e_tef_i     => sa_full_tef  (0),
+      e_time_i    => sa_full_time (0),
       e_index_o   => sa_index,
       c_clk_i     => c_clk_i,
       c_rst_n_i   => c_rst_n_i,
@@ -117,8 +120,9 @@ begin
   
   sa_full_stb  (g_num_streams) <= '0';
   sa_full_event(g_num_streams) <= (others => '-');
-  sa_full_time (g_num_streams) <= (others => '-');
   sa_full_param(g_num_streams) <= (others => '-');
+  sa_full_tef  (g_num_streams) <= (others => '-');
+  sa_full_time (g_num_streams) <= (others => '-');
   
   -- Priority access goes to #0
   Sx : for stream in 0 to g_num_streams-1 generate
@@ -134,15 +138,17 @@ begin
         e_stb_o   => sa_stb  (stream),
         e_stall_i => sa_full_stall(stream),
         e_event_o => sa_event(stream),
-        e_time_o  => sa_time (stream),
         e_param_o => sa_param(stream),
+        e_tef_o   => sa_tef  (stream),
+        e_time_o  => sa_time (stream),
         e_index_i => sa_index);
     
     sa_full_stall(stream+1) <= sa_stb  (stream) or                           sa_full_stall(stream);
     sa_full_stb  (stream)   <= sa_stb  (stream) or                           sa_full_stb  (stream+1);
     sa_full_event(stream)   <= sa_event(stream) when sa_stb(stream)='1' else sa_full_event(stream+1);
-    sa_full_time (stream)   <= sa_time (stream) when sa_stb(stream)='1' else sa_full_time (stream+1);
     sa_full_param(stream)   <= sa_param(stream) when sa_stb(stream)='1' else sa_full_param(stream+1);
+    sa_full_tef  (stream)   <= sa_tef  (stream) when sa_stb(stream)='1' else sa_full_tef  (stream+1);
+    sa_full_time (stream)   <= sa_time (stream) when sa_stb(stream)='1' else sa_full_time (stream+1);
   end generate;
   
 end rtl;

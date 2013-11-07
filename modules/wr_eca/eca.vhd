@@ -8,42 +8,51 @@
 --! The register layout is as follows:
 --!
 --! Control registers (all 4-byte values):
---! 0x00 RW: Control
+--! 0x00 RW: ECA Control
 --!   0x00 : 0x01 = disable, 0x2 = flip, 0x80=inspect_table, 0x40=inspect_queue
 --!   0x01 : ASCII ECA Name
 --! 0x04 RW: Table size, Q depth, channels, IDX
 --! 0x08 R : Time1
 --! 0x0C R : Time0
---! 0x10 WR: Search index
---! 0x14 WR: First
---! 0x18 WR: Event1
---! 0x1C WR: Event0
---! 0x20 WR: Walk index
---! 0x24 WR: Next
---! 0x28 WR: Offset1
---! 0x2C WR: Offset0
---! 0x30 WR: Tag
---! 0x34 WR: Channel
---! 0x38 Frequency numerator
---! 0x3C Frequency coefficients
+--! 0x10 RW: Search index
+--! 0x14 RW:  First
+--! 0x18 RW:  Event1
+--! 0x1C RW:  Event0
+--! 0x20 RW: Walk index
+--! 0x24 RW:  Next
+--! 0x28 RW:  Offset1
+--! 0x2C RW:  Offset0
+--! 0x30 RW:  Tag
+--! 0x34 RW:  Channel
+--! 0x38 R : Frequency numerator
+--! 0x3C R : Frequency coefficients
 --!  0x00      : powers of 5
 --!  0x01      : powers of 2
 --!  0x02-0x03 : Frequency divisor
 --!
---! Channels follow back-to-back:
---! 0x00 RW: Control
+--! 0x40 -- reserved --
+--! 0x44 -- reserved --
+--! 0x48 -- reserved --
+--! 0x4C -- reserved --
+--!
+--! 0x50 RW: Channel
+--! 0x54 RW:  Channel Control
 --!   0x00    : 0x01 = disable, 0x02 = freeze, 0x80 = valid
 --!   0x01    : ASCII Channel Name
 --!   0x02-03 : Index ... clock crossing => stall for many cycles
---! 0x04 RW: Fill
+--! 0x58 RW:  Fill
 --!   0x00-01 : Current Queue fill
 --!   0x02-03 : Max fill (can be cleared to 0)
---! 0x08 R : Time1 ... do NOT synchronize; hold index long enough
---! 0x0C R : Time0
---! 0x10 R : Event1
---! 0x14 R : Event0
---! 0x18 R : Tag
---! 0x1C R : Param
+--! 0x5C -- reserved --
+--! 
+--! 0x60 R :  Event1 ... do NOT synchronize; hold index long enough
+--! 0x64 R :  Event0
+--! 0x68 R :  Param1
+--! 0x6C R :  Param0
+--! 0x70 R :  Tag
+--! 0x74 R :  Tef
+--! 0x78 R :  Time0
+--! 0x7C R :  Time1
 --!
 --------------------------------------------------------------------------------
 --! This library is free software; you can redistribute it and/or
@@ -85,8 +94,9 @@ entity eca is
     e_stb_i     : in  std_logic;
     e_stall_o   : out std_logic;
     e_event_i   : in  t_event;
-    e_time_i    : in  t_time;
     e_param_i   : in  t_param;
+    e_tef_i     : in  t_tef;
+    e_time_i    : in  t_time;
     e_index_o   : out std_logic_vector(7 downto 0);
     -- ECA control registers
     c_clk_i     : in  std_logic;
@@ -139,6 +149,7 @@ architecture rtl of eca is
   signal rc_cw_time     : t_time          := (others => '0');
   signal rc_cw_tag      : t_tag           := (others => '0');
   signal rc_cw_channel  : t_channel_index := (others => '0');
+  signal rc_cq_channel  : t_channel_index := (others => '0');
   signal rc_cq_index    : t_qtable_index_array(g_num_channels-1 downto 0) := (others => (others => '0'));
   signal rc_max_fill    : t_queue_index_array (g_num_channels-1 downto 0) := (others => (others => '0'));
   signal rc_cq_drain    : std_logic_vector(g_num_channels-1 downto 0) := (others => '1');
@@ -181,8 +192,9 @@ architecture rtl of eca is
   signal sa_ws_stall : std_logic;
   signal sa_sw_page  : std_logic;
   signal sa_sw_event : t_event;
-  signal sa_sw_time  : t_time;
   signal sa_sw_param : t_param;
+  signal sa_sw_tef   : t_tef;
+  signal sa_sw_time  : t_time;
   signal sa_sw_first : t_event_index;
   
   -- Registers for the action queues
@@ -267,7 +279,7 @@ begin
     variable channel : integer;
   begin
     if rising_edge(c_clk_i) then
-      channel := to_integer(unsigned(c_slave_i.ADR(c_address_bits-1 downto 5)) - 2);
+      channel := to_integer(unsigned(rc_cq_channel));
       
       if c_rst_n_i = '0' then
         rc_cs_page    <= '0';
@@ -286,6 +298,7 @@ begin
         rc_cw_time    <= (others => '0');
         rc_cw_tag     <= (others => '0');
         rc_cw_channel <= (others => '0');
+        rc_cq_channel <= (others => '0');
         rc_cq_index   <= (others => (others => '0'));
         rc_max_fill   <= (others => (others => '0'));
         rc_cq_drain   <= (others => '1');
@@ -305,58 +318,60 @@ begin
           rc_cn_index <= std_logic_vector(unsigned(rc_cn_index) - 1);
         end if;
         
-        if c_slave_i.ADR(c_address_bits-1 downto 6) = c_control_zeros then
-          case to_integer(unsigned(c_slave_i.ADR(5 downto 2))) is
-            when  0 => c_slave_o.DAT(31) <= f_eca_active_high(g_inspect_table);
-                       c_slave_o.DAT(30) <= f_eca_active_high(g_inspect_queue);
-                       c_slave_o.DAT(24) <= not rc_cf_enabled;
-                       c_slave_o.DAT(22 downto 16) <= sc_nc_eca;
-            when  1 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_log_table_size, 8));
-                       c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_log_queue_len,  8));
-                       c_slave_o.DAT(15 downto  8) <= std_logic_vector(to_unsigned(g_num_channels,   8));
-                       c_slave_o.DAT( 7 downto  0) <= rc_ce_idx;
-            when  2 => c_slave_o.DAT <= f_eca_gray_decode(rc0_time_gray(63 downto 32), 1);
-            when  3 => c_slave_o.DAT <= f_eca_gray_decode(rc0_time_gray(31 downto  0), 1);
-            when  4 => c_slave_o.DAT(31) <= rc_cs_active;
-                       c_slave_o.DAT(rc_cs_addr'range) <= rc_cs_addr;
-            when  5 => c_slave_o.DAT(31) <= rc_cs_valid;
-                       c_slave_o.DAT(rc_cs_first'range) <= rc_cs_first;
-            when  6 => c_slave_o.DAT <= rc_cs_event(63 downto 32);
-            when  7 => c_slave_o.DAT <= rc_cs_event(31 downto  0);
-            when  8 => c_slave_o.DAT(31) <= rc_cw_active;
-                       c_slave_o.DAT(rc_cw_addr'range) <= rc_cw_addr;
-            when  9 => c_slave_o.DAT(31) <= rc_cw_valid;
-                       c_slave_o.DAT(rc_cw_next'range) <= rc_cw_next;
-            when 10 => c_slave_o.DAT <= rc_cw_time(63 downto 32);
-            when 11 => c_slave_o.DAT <= rc_cw_time(31 downto  0);
-            when 12 => c_slave_o.DAT(rc_cw_tag'range) <= rc_cw_tag;
-            when 13 => c_slave_o.DAT(rc_cw_channel'range) <= rc_cw_channel;
-            when 14 => c_slave_o.DAT(31 downto  0) <= std_logic_vector(to_unsigned(g_frequency_mul, 32));
-            when 15 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_frequency_5s, 8));
-                       c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_frequency_2s, 8));
-                       c_slave_o.DAT(15 downto  0) <= std_logic_vector(to_unsigned(g_frequency_div, 16));
-            when others => null; -- No other cases
-          end case;
-        else
-          case to_integer(unsigned(c_slave_i.ADR(4 downto 2))) is
-            when 0 => c_slave_o.DAT(31) <= ra_qc_channel(channel).valid; -- Held stable using freeze
-                      c_slave_o.DAT(25) <= rc_cq_freeze(channel);
-                      c_slave_o.DAT(24) <= rc_cq_drain(channel);
-                      c_slave_o.DAT(22 downto 16) <= sc_nc_channel(channel);
-                      c_slave_o.DAT(t_qtable_index'range) <= rc_cq_index(channel);
-            when 1 => c_slave_o.DAT(t_queue_index'length+15 downto 16) <= rc_qc_fill(channel);
-                      c_slave_o.DAT(t_queue_index'range) <= rc_max_fill(channel);
-            -- These all cross clock domain.
-            -- However, they are held unchanging for several cycles due to freeze+stall
-            when 2 => c_slave_o.DAT <= ra_qc_channel(channel).time(63 downto 32);
-            when 3 => c_slave_o.DAT <= ra_qc_channel(channel).time(31 downto  0);
-            when 4 => c_slave_o.DAT <= ra_qc_channel(channel).event(63 downto 32);
-            when 5 => c_slave_o.DAT <= ra_qc_channel(channel).event(31 downto  0);
-            when 6 => c_slave_o.DAT <= ra_qc_channel(channel).tag;
-            when 7 => c_slave_o.DAT <= ra_qc_channel(channel).param;
-            when others => null; -- No other cases
-          end case;
-        end if;
+        case to_integer(unsigned(c_slave_i.ADR(6 downto 2))) is
+          when  0 => c_slave_o.DAT(31) <= f_eca_active_high(g_inspect_table);
+                     c_slave_o.DAT(30) <= f_eca_active_high(g_inspect_queue);
+                     c_slave_o.DAT(24) <= not rc_cf_enabled;
+                     c_slave_o.DAT(22 downto 16) <= sc_nc_eca;
+          when  1 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_log_table_size, 8));
+                     c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_log_queue_len,  8));
+                     c_slave_o.DAT(15 downto  8) <= std_logic_vector(to_unsigned(g_num_channels,   8));
+                     c_slave_o.DAT( 7 downto  0) <= rc_ce_idx;
+          when  2 => c_slave_o.DAT <= f_eca_gray_decode(rc0_time_gray(63 downto 32), 1);
+          when  3 => c_slave_o.DAT <= f_eca_gray_decode(rc0_time_gray(31 downto  0), 1);
+          when  4 => c_slave_o.DAT(31) <= rc_cs_active;
+                     c_slave_o.DAT(rc_cs_addr'range) <= rc_cs_addr;
+          when  5 => c_slave_o.DAT(31) <= rc_cs_valid;
+                     c_slave_o.DAT(rc_cs_first'range) <= rc_cs_first;
+          when  6 => c_slave_o.DAT <= rc_cs_event(63 downto 32);
+          when  7 => c_slave_o.DAT <= rc_cs_event(31 downto  0);
+          when  8 => c_slave_o.DAT(31) <= rc_cw_active;
+                     c_slave_o.DAT(rc_cw_addr'range) <= rc_cw_addr;
+          when  9 => c_slave_o.DAT(31) <= rc_cw_valid;
+                     c_slave_o.DAT(rc_cw_next'range) <= rc_cw_next;
+          when 10 => c_slave_o.DAT <= rc_cw_time(63 downto 32);
+          when 11 => c_slave_o.DAT <= rc_cw_time(31 downto  0);
+          when 12 => c_slave_o.DAT(rc_cw_tag'range) <= rc_cw_tag;
+          when 13 => c_slave_o.DAT(rc_cw_channel'range) <= rc_cw_channel;
+          when 14 => c_slave_o.DAT(31 downto  0) <= std_logic_vector(to_unsigned(g_frequency_mul, 32));
+          when 15 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_frequency_5s, 8));
+                     c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_frequency_2s, 8));
+                     c_slave_o.DAT(15 downto  0) <= std_logic_vector(to_unsigned(g_frequency_div, 16));
+          when 16 | 17 | 18 | 19 => null; -- reserved
+          
+          when 20 => c_slave_o.DAT(rc_cq_channel'range) <= rc_cq_channel;
+          when 21 => c_slave_o.DAT(31) <= ra_qc_channel(channel).valid; -- Held stable using freeze
+                     c_slave_o.DAT(25) <= rc_cq_freeze(channel);
+                     c_slave_o.DAT(24) <= rc_cq_drain(channel);
+                     c_slave_o.DAT(22 downto 16) <= sc_nc_channel(channel);
+                     c_slave_o.DAT(t_qtable_index'range) <= rc_cq_index(channel);
+          when 22 => c_slave_o.DAT(t_queue_index'length+15 downto 16) <= rc_qc_fill(channel);
+                     c_slave_o.DAT(t_queue_index'range) <= rc_max_fill(channel);
+          when 23 => null; -- reserved
+          
+          -- These all cross clock domain.
+          -- However, they are held unchanging for several cycles due to freeze+stall
+          when 24 => c_slave_o.DAT <= ra_qc_channel(channel).event(63 downto 32);
+          when 25 => c_slave_o.DAT <= ra_qc_channel(channel).event(31 downto  0);
+          when 26 => c_slave_o.DAT <= ra_qc_channel(channel).param(63 downto 32);
+          when 27 => c_slave_o.DAT <= ra_qc_channel(channel).param(31 downto  0);
+          when 28 => c_slave_o.DAT <= ra_qc_channel(channel).tag;
+          when 29 => c_slave_o.DAT <= ra_qc_channel(channel).tef;
+          when 30 => c_slave_o.DAT <= ra_qc_channel(channel).time(63 downto 32);
+          when 31 => c_slave_o.DAT <= ra_qc_channel(channel).time(31 downto  0);
+          
+          when others => null; -- No other cases
+        end case;
         
         rc_cs_wen <= '0';
         rc_cw_wen <= '0';
@@ -395,88 +410,91 @@ begin
         end loop;
         
         if c_slave_i.CYC = '1' and c_slave_i.STB = '1' and c_slave_i.WE = '1' and rc_stall(0) = '0' then
-          if c_slave_i.ADR(c_address_bits-1 downto 6) = c_control_zeros then
-            case to_integer(unsigned(c_slave_i.ADR(5 downto 2))) is
-              when  0 => 
-                if c_slave_i.SEL(3) = '1' then
-                  rc_cs_page    <= rc_cs_page xor c_slave_i.DAT(25);
-                  rc_cf_enabled <= not c_slave_i.DAT(24);
+          case to_integer(unsigned(c_slave_i.ADR(6 downto 2))) is
+            when  0 => 
+              if c_slave_i.SEL(3) = '1' then
+                rc_cs_page    <= rc_cs_page xor c_slave_i.DAT(25);
+                rc_cf_enabled <= not c_slave_i.DAT(24);
+              end if;
+            when  1 => rc_ce_idx <= update(rc_ce_idx);
+            when  2 => null; -- Cannot write to Time1
+            when  3 => null; -- Cannot write to Time0
+            when  4 => if c_slave_i.SEL(3) = '1' then rc_cs_active <= c_slave_i.DAT(31); end if;
+                       rc_cs_addr <= update(rc_cs_addr);
+                       rc_stall(2 downto 0) <= (others => '1'); -- wait for rc_cs_* to fill
+            when  5 => if c_slave_i.SEL(3) = '1' then rc_cs_valid  <= c_slave_i.DAT(31); end if;
+                       rc_cs_first <= update(rc_cs_first); 
+                       rc_cs_wen <= not rc_cs_active;
+                       rc_stall(2 downto 0) <= (others => '1'); -- prevent reading old data
+            when  6 => rc_cs_event(63 downto 32) <= update(rc_cs_event(63 downto 32));
+                       rc_cs_wen <= not rc_cs_active;
+                       rc_stall(2 downto 0) <= (others => '1');
+            when  7 => rc_cs_event(31 downto 0) <= update(rc_cs_event(31 downto 0));
+                       rc_cs_wen <= not rc_cs_active;
+                       rc_stall(2 downto 0) <= (others => '1');
+            when  8 => if c_slave_i.SEL(3) = '1' then rc_cw_active <= c_slave_i.DAT(31); end if; 
+                       rc_cw_addr <= update(rc_cw_addr);
+                       rc_stall(2 downto 0) <= (others => '1'); -- wait for rc_cw_* to fill
+            when  9 => if c_slave_i.SEL(3) = '1' then rc_cw_valid <= c_slave_i.DAT(31); end if;
+                       rc_cw_next <= update(rc_cw_next);
+                       rc_cw_wen <= not rc_cw_active;
+                       rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
+            when 10 => rc_cw_time(63 downto 32) <= update(rc_cw_time(63 downto 32));
+                       rc_cw_wen <= not rc_cw_active;
+                       rc_stall(2 downto 0) <= (others => '1');
+            when 11 => rc_cw_time(31 downto 0) <= update(rc_cw_time(31 downto  0));
+                       rc_cw_wen <= not rc_cw_active;
+                       rc_stall(2 downto 0) <= (others => '1');
+            when 12 => rc_cw_tag <= update(rc_cw_tag);
+                       rc_cw_wen <= not rc_cw_active;
+                       rc_stall(2 downto 0) <= (others => '1');
+            when 13 => rc_cw_channel <= update(rc_cw_channel);
+                       rc_cw_wen <= not rc_cw_active;
+                       rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
+            when 14 => null; -- Freq1
+            when 15 => null; -- Freq0
+            when 16 | 17 | 18 | 19 => null; -- reserved
+            
+            when 20 => rc_cq_channel <= update(rc_cq_channel);
+                       rc_stall(2 downto 0) <= (others => '1');
+            when 21 => 
+              if c_slave_i.SEL(3) = '1' then
+                rc_cq_freeze(channel) <= c_slave_i.DAT(25);
+                rc_cq_drain(channel)  <= c_slave_i.DAT(24);
+              end if;
+              
+              for channel_idx in 0 to g_num_channels-1 loop
+                if channel_idx = channel then
+                  rc_cq_index(channel_idx) <= update(rc_cq_index(channel_idx));
                 end if;
-              when  1 => rc_ce_idx <= update(rc_ce_idx);
-              when  2 => null; -- Cannot write to Time1
-              when  3 => null; -- Cannot write to Time0
-              when  4 => if c_slave_i.SEL(3) = '1' then rc_cs_active <= c_slave_i.DAT(31); end if;
-                         rc_cs_addr <= update(rc_cs_addr);
-                         rc_stall(2 downto 0) <= (others => '1'); -- wait for rc_cs_* to fill
-              when  5 => if c_slave_i.SEL(3) = '1' then rc_cs_valid  <= c_slave_i.DAT(31); end if;
-                         rc_cs_first <= update(rc_cs_first); 
-                         rc_cs_wen <= not rc_cs_active;
-                         rc_stall(2 downto 0) <= (others => '1'); -- prevent reading old data
-              when  6 => rc_cs_event(63 downto 32) <= update(rc_cs_event(63 downto 32));
-                         rc_cs_wen <= not rc_cs_active;
-                         rc_stall(2 downto 0) <= (others => '1');
-              when  7 => rc_cs_event(31 downto 0) <= update(rc_cs_event(31 downto 0));
-                         rc_cs_wen <= not rc_cs_active;
-                         rc_stall(2 downto 0) <= (others => '1');
-              when  8 => if c_slave_i.SEL(3) = '1' then rc_cw_active <= c_slave_i.DAT(31); end if; 
-                         rc_cw_addr <= update(rc_cw_addr);
-                         rc_stall(2 downto 0) <= (others => '1'); -- wait for rc_cw_* to fill
-              when  9 => if c_slave_i.SEL(3) = '1' then rc_cw_valid <= c_slave_i.DAT(31); end if;
-                         rc_cw_next <= update(rc_cw_next);
-                         rc_cw_wen <= not rc_cw_active;
-                         rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
-              when 10 => rc_cw_time(63 downto 32) <= update(rc_cw_time(63 downto 32));
-                         rc_cw_wen <= not rc_cw_active;
-                         rc_stall(2 downto 0) <= (others => '1');
-              when 11 => rc_cw_time(31 downto 0) <= update(rc_cw_time(31 downto  0));
-                         rc_cw_wen <= not rc_cw_active;
-                         rc_stall(2 downto 0) <= (others => '1');
-              when 12 => rc_cw_tag <= update(rc_cw_tag);
-                         rc_cw_wen <= not rc_cw_active;
-                         rc_stall(2 downto 0) <= (others => '1');
-              when 13 => rc_cw_channel <= update(rc_cw_channel);
-                         rc_cw_wen <= not rc_cw_active;
-                         rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
-              when 14 => null; -- Freq1
-              when 15 => null; -- Freq0
-              when others => null; -- No other cases
-            end case;
-          else
-            case to_integer(unsigned(c_slave_i.ADR(4 downto 2))) is
-              when 0 => 
-                if c_slave_i.SEL(3) = '1' then
-                  rc_cq_freeze(channel) <= c_slave_i.DAT(25);
-                  rc_cq_drain(channel)  <= c_slave_i.DAT(24);
+              end loop;
+              
+              -- Wait a reallly long time.
+              -- It takes time for rc_cq_index to stabilize as input in a_clk_i
+              -- It takes time for the M9K to spit out the result
+              -- It takes time for the result to stabilize back into c_clk_i
+              rc_stall <= (others => '1');
+                              
+            when 22 => 
+              for channel_idx in 0 to g_num_channels-1 loop
+                if channel_idx = channel then
+                  rc_max_fill(channel_idx) <= update(rc_max_fill(channel_idx));
                 end if;
-                
-                for channel_idx in 0 to g_num_channels-1 loop
-                  if channel_idx = channel then
-                    rc_cq_index(channel_idx) <= update(rc_cq_index(channel_idx));
-                  end if;
-                end loop;
-                
-                -- Wait a reallly long time.
-                -- It takes time for rc_cq_index to stabilize as input in a_clk_i
-                -- It takes time for the M9K to spit out the result
-                -- It takes time for the result to stabilize back into c_clk_i
-                rc_stall <= (others => '1');
-                                
-              when 1 => 
-                for channel_idx in 0 to g_num_channels-1 loop
-                  if channel_idx = channel then
-                    rc_max_fill(channel_idx) <= update(rc_max_fill(channel_idx));
-                  end if;
-                end loop;
-                
-              when 2 => null; -- Time1
-              when 3 => null; -- Time0
-              when 4 => null; -- Event1
-              when 5 => null; -- Event0
-              when 6 => null; -- Tag
-              when 7 => null; -- Param
-              when others => null; -- No other cases
-            end case;
-          end if;
+              end loop;
+            
+            when 23 => null; -- reserved
+            
+            when 24 => null; -- Event1
+            when 25 => null; -- Event0
+            when 26 => null; -- Param1
+            when 27 => null; -- Param0
+            when 28 => null; -- Tag
+            when 29 => null; -- Tef
+            when 30 => null; -- Time1
+            when 31 => null; -- Time0
+            
+            when others => null; -- No other cases
+          end case;
         end if; -- cyc+stb+we+!stall
       end if; -- reset
       
@@ -519,16 +537,18 @@ begin
           sa_qc_inspect(channel_idx).valid;
           
         if g_inspect_queue then
-          ra_qc_channel(channel_idx).time  <= sa_qc_inspect(channel_idx).time;
-          ra_qc_channel(channel_idx).tag   <= sa_qc_inspect(channel_idx).tag;
-          ra_qc_channel(channel_idx).param <= sa_qc_inspect(channel_idx).param;
           ra_qc_channel(channel_idx).event <= sa_qc_inspect(channel_idx).event;
+          ra_qc_channel(channel_idx).param <= sa_qc_inspect(channel_idx).param;
+          ra_qc_channel(channel_idx).tag   <= sa_qc_inspect(channel_idx).tag;
+          ra_qc_channel(channel_idx).tef   <= sa_qc_inspect(channel_idx).tef;
+          ra_qc_channel(channel_idx).time  <= sa_qc_inspect(channel_idx).time;
         else
           ra_qc_channel(channel_idx).valid <= '0';
-          ra_qc_channel(channel_idx).time  <= (others => '0');
-          ra_qc_channel(channel_idx).tag   <= (others => '0');
-          ra_qc_channel(channel_idx).param <= (others => '0');
           ra_qc_channel(channel_idx).event <= (others => '0');
+          ra_qc_channel(channel_idx).param <= (others => '0');
+          ra_qc_channel(channel_idx).tag   <= (others => '0');
+          ra_qc_channel(channel_idx).tef   <= (others => '0');
+          ra_qc_channel(channel_idx).time  <= (others => '0');
         end if;
       end loop;
     end if;
@@ -545,16 +565,18 @@ begin
       e_stall_o  => e_stall_o,
       e_page_i   => ra0_cs_page,
       e_event_i  => e_event_i,
-      e_time_i   => e_time_i,
       e_param_i  => e_param_i,
+      e_tef_i    => e_tef_i,
+      e_time_i   => e_time_i,
       
       w_stb_o    => sa_sw_stb,
       w_stall_i  => sa_ws_stall,
       w_page_o   => sa_sw_page,
       w_first_o  => sa_sw_first,
       w1_event_o => sa_sw_event,
-      w1_time_o  => sa_sw_time,
       w1_param_o => sa_sw_param,
+      w1_tef_o   => sa_sw_tef,
+      w1_time_o  => sa_sw_time,
       
       t_clk_i    =>  c_clk_i,
       t_page_i   => sc_cs_program_page,
@@ -580,8 +602,9 @@ begin
       b_page_i     => sa_sw_page,
       b_first_i    => sa_sw_first,
       b1_event_i   => sa_sw_event,
-      b1_time_i    => sa_sw_time,
       b1_param_i   => sa_sw_param,
+      b1_tef_i     => sa_sw_tef,
+      b1_time_i    => sa_sw_time,
       
       q_channel_o  => sa_wq_channel,
       q_full_i     => sa_qw_full,

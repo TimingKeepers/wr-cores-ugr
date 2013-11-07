@@ -44,16 +44,18 @@ entity eca_search is
     e_stall_o  : out std_logic;
     e_page_i   : in  std_logic;
     e_event_i  : in  t_event;
-    e_time_i   : in  t_time;
     e_param_i  : in  t_param;
+    e_tef_i    : in  t_tef;
+    e_time_i   : in  t_time;
     -- Feed located event rules to the walker
     w_stb_o    : out std_logic;
     w_stall_i  : in  std_logic;
     w_page_o   : out std_logic;
     w_first_o  : out std_logic_vector(g_log_table_size-1 downto 0);
     w1_event_o : out t_event;
-    w1_time_o  : out t_time;
     w1_param_o : out t_param;
+    w1_tef_o   : out t_tef;
+    w1_time_o  : out t_time;
     -- Access the search table
     t_clk_i    : in  std_logic;
     t_page_i   : in  std_logic;
@@ -84,8 +86,9 @@ architecture rtl of eca_search is
   -- Stage 0 registers+signals
   signal r0_page  : std_logic;
   signal r0_event : t_event;
-  signal r0_time  : t_time;
   signal r0_param : t_param;
+  signal r0_tef   : t_tef;
+  signal r0_time  : t_time;
   signal r0_known : t_table_ptr;
   signal r0_try   : t_table_ptr := (others => '0');
   signal r0_state : t_state     := input;
@@ -97,8 +100,9 @@ architecture rtl of eca_search is
   -- Stage 1 registers+signals
   signal r1_page  : std_logic;
   signal r1_event : t_event;
-  signal r1_time  : t_time;
   signal r1_param : t_param;
+  signal r1_tef   : t_tef;
+  signal r1_time  : t_time;
   signal r1_known : t_table_ptr;
   signal r1_try   : t_table_ptr := (others => '0');
   signal r1_state : t_state     := input;
@@ -113,8 +117,9 @@ architecture rtl of eca_search is
   -- Stage 2 registers+signals
   signal r2_page  : std_logic;
   signal r2_event : t_event;
-  signal r2_time  : t_time;
   signal r2_param : t_param;
+  signal r2_tef   : t_tef;
+  signal r2_time  : t_time;
   signal r2_known : t_table_ptr;
   signal r2_try   : t_table_ptr := (others => '0');
   signal r2_state : t_state     := input;
@@ -126,8 +131,9 @@ architecture rtl of eca_search is
   -- Stage 3 registers+signals
   signal r3_page  : std_logic;
   signal r3_event : t_event;
-  signal r3_time  : t_time;
   signal r3_param : t_param;
+  signal r3_tef   : t_tef;
+  signal r3_time  : t_time;
   signal r3_known : t_table_ptr;
   signal r3_try   : t_table_ptr := (others => '0');
   signal r3_state : t_state     := input;
@@ -229,23 +235,25 @@ begin
   --   0: probe                                      => output
   --   1: compare  first   w_stb_o
   --   2: ...              e_stall_o                 => input
-  --   3: less             page/event/time/param     => search
+  --   3: less             page/event/param/tef/time => search
   
   main : process(clk_i) is
   begin
     if rising_edge(clk_i) then
       r0_page  <= r3_page;
       r0_event <= r3_event;
-      r0_time  <= r3_time;
       r0_param <= r3_param;
+      r0_tef   <= r3_tef;
+      r0_time  <= r3_time;
       r0_known <= s3_known;
       r0_try   <= s3_try;
       r0_state <= s3_state;
       
       r1_page  <= r0_page;
       r1_event <= r0_event;
-      r1_time  <= r0_time;
       r1_param <= r0_param;
+      r1_tef   <= r0_tef;
+      r1_time  <= r0_time;
       r1_known <= r0_known;
       -- A boring pipeline-stage: a good place to feed in the reset
       if rst_n_i = '0' then
@@ -263,8 +271,9 @@ begin
       
       r2_page  <= r1_page;
       r2_event <= r1_event;
-      r2_time  <= r1_time;
       r2_param <= r1_param;
+      r2_tef   <= r1_tef;
+      r2_time  <= r1_time;
       r2_known <= r1_known;
       r2_try   <= r1_try;
       r2_state <= s1_state;
@@ -274,8 +283,9 @@ begin
       if e_stb_i = '1' and r2_stall = '0' then
         r3_page  <= e_page_i;
         r3_event <= e_event_i;
-        r3_time  <= e_time_i;
         r3_param <= e_param_i;
+        r3_tef   <= e_tef_i;
+        r3_time  <= e_time_i;
         r3_known <= (others => '0');
         r3_try   <= r2_try;
         r3_state <= search;
@@ -285,8 +295,9 @@ begin
       else
         r3_page  <= r2_page;
         r3_event <= r2_event;
-        r3_time  <= r2_time;
         r3_param <= r2_param;
+        r3_tef   <= r2_tef;
+        r3_time  <= r2_time;
         r3_known <= r2_known;
         r3_try   <= r2_try;
         r3_state <= r2_state;
@@ -310,7 +321,8 @@ begin
   w_page_o  <= r1_page;
   w_first_o <= r1_first;
   w1_event_o <= r2_event;
-  w1_time_o  <= r2_time;
   w1_param_o <= r2_param;
+  w1_tef_o   <= r2_tef;
+  w1_time_o  <= r2_time;
   
 end rtl;

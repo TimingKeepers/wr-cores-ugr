@@ -88,7 +88,7 @@ begin
           r_cyc <= '1';
           r_stb <= '1';
           master_o.adr <= channel_i.tag;
-          master_o.dat <= channel_i.param;
+          master_o.dat <= channel_i.param(31 downto 0);
         end if;
       end if;
     end if;

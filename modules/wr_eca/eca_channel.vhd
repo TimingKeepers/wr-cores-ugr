@@ -46,13 +46,13 @@
 -- There are c_scanners* parallel Scan processes, which partition the table vertically.
 -- A timestamp = "fff..." indicates that the entry is invalid/free.
 --
--- /=============================\
--- | time | time tag param event |
--- | time | time tag param event |
--- |------|                      |
--- | time | time tag param event |
--- | time | time tag param event |
--- \=============================/
+-- /=================================\
+-- | time | event param tag tef time |
+-- | time | event param tag tef time |
+-- |------|                          |
+-- | time | event param tag tef time |
+-- | time | event param tag tef time |
+-- \=================================/
 --                     ^--- Data component of table (td)
 --    ^---- scan components (ts0, ts1); used by scanner0 and scanner1
 
@@ -160,16 +160,18 @@ architecture rtl of eca_channel is
   signal td_manage_write   : std_logic;
   signal td_manage_index   : t_table_index;
   signal td_manage_valid   : std_logic;
-  signal td_manage_time    : t_time;
-  signal td_manage_tag     : t_tag;
-  signal td_manage_param   : t_param;
   signal td_manage_event   : t_event;
+  signal td_manage_param   : t_param;
+  signal td_manage_tag     : t_tag;
+  signal td_manage_tef     : t_tef;
+  signal td_manage_time    : t_time;
   signal td_dispatch_index : t_table_index;
   signal td_dispatch_valid : std_logic;
-  signal td_dispatch_time  : t_time;
-  signal td_dispatch_tag   : t_tag;
-  signal td_dispatch_param : t_param;
   signal td_dispatch_event : t_event;
+  signal td_dispatch_param : t_param;
+  signal td_dispatch_tag   : t_tag;
+  signal td_dispatch_tef   : t_tef;
+  signal td_dispatch_time  : t_time;
   
   -- Free signals
   signal fw_manage_free  : std_logic;
@@ -222,18 +224,20 @@ architecture rtl of eca_channel is
   signal manage_write : std_logic;
   signal manage_valid : std_logic;
   signal manage_index : t_table_index;
-  signal manage_time  : t_time;
-  signal manage_tag   : t_tag;
-  signal manage_param : t_param;
   signal manage_event : t_event;
+  signal manage_param : t_param;
+  signal manage_tag   : t_tag;
+  signal manage_tef   : t_tef;
+  signal manage_time  : t_time;
   
   constant cd_valid_offset : natural := 0;
-  subtype  cd_time_range  is natural range c_time_bits +cd_valid_offset     downto cd_valid_offset     +1;
-  subtype  cd_tag_range   is natural range c_tag_bits  +cd_time_range'left  downto cd_time_range'left  +1;
-  subtype  cd_param_range is natural range c_param_bits+cd_tag_range'left   downto cd_tag_range'left   +1;
-  subtype  cd_event_range is natural range c_event_bits+cd_param_range'left downto cd_param_range'left +1;
-  
-  subtype  cd_data_type is std_logic_vector(cd_event_range);
+  subtype  cd_event_range is natural range c_event_bits+cd_valid_offset     downto cd_valid_offset     +1;
+  subtype  cd_param_range is natural range c_param_bits+cd_event_range'left downto cd_event_range'left +1;
+  subtype  cd_tag_range   is natural range c_tag_bits  +cd_param_range'left downto cd_param_range'left +1;
+  subtype  cd_tef_range   is natural range c_tef_bits  +cd_tag_range'left   downto cd_tag_range'left   +1;
+  subtype  cd_time_range  is natural range c_time_bits +cd_tef_range'left   downto cd_tef_range'left   +1;
+
+  subtype  cd_data_type is std_logic_vector(cd_time_range);
   constant cd_data_bits : natural := cd_data_type'left + 1; --'
   
 begin
@@ -288,17 +292,19 @@ begin
       w_en_i                   => td_manage_write,
       w_addr_i                 => td_manage_index,
       w_data_i(cd_valid_offset)=> td_manage_valid,
-      w_data_i(cd_time_range)  => td_manage_time,
-      w_data_i(cd_tag_range)   => td_manage_tag,
-      w_data_i(cd_param_range) => td_manage_param,
       w_data_i(cd_event_range) => td_manage_event,
+      w_data_i(cd_param_range) => td_manage_param,
+      w_data_i(cd_tag_range)   => td_manage_tag,
+      w_data_i(cd_tef_range)   => td_manage_tef,
+      w_data_i(cd_time_range)  => td_manage_time,
       r_clk_i                  => clk_i,
       r_addr_i                 => td_dispatch_index,
       r_data_o(cd_valid_offset)=> td_dispatch_valid,
-      r_data_o(cd_time_range)  => td_dispatch_time,
-      r_data_o(cd_tag_range)   => td_dispatch_tag,
+      r_data_o(cd_event_range) => td_dispatch_event,
       r_data_o(cd_param_range) => td_dispatch_param,
-      r_data_o(cd_event_range) => td_dispatch_event);
+      r_data_o(cd_tag_range)   => td_dispatch_tag,
+      r_data_o(cd_tef_range)   => td_dispatch_tef,
+      r_data_o(cd_time_range)  => td_dispatch_time);
    
   -- The free queue
   F : eca_sdp
@@ -368,16 +374,18 @@ begin
   td_dispatch_index <= addr_i when freeze_i='1' else dispatch_mux_record.index;
   
   channel_o.valid <= dispatch_valid1;
-  channel_o.time  <= td_dispatch_time;
-  channel_o.tag   <= td_dispatch_tag;
-  channel_o.param <= td_dispatch_param;
   channel_o.event <= td_dispatch_event;
+  channel_o.param <= td_dispatch_param;
+  channel_o.tag   <= td_dispatch_tag;
+  channel_o.tef   <= td_dispatch_tef;
+  channel_o.time  <= td_dispatch_time;
   
   inspect_o.valid <= td_dispatch_valid;
-  inspect_o.time  <= td_dispatch_time;
-  inspect_o.tag   <= td_dispatch_tag;
-  inspect_o.param <= td_dispatch_param;
   inspect_o.event <= td_dispatch_event;
+  inspect_o.param <= td_dispatch_param;
+  inspect_o.tag   <= td_dispatch_tag;
+  inspect_o.tef   <= td_dispatch_tef;
+  inspect_o.time  <= td_dispatch_time;
   
   dispatch_manage_kill  <= dispatch_valid1;
   dispatch_manage_index <= dispatch_index1;
@@ -505,10 +513,11 @@ begin
       end if;
       
       manage_valid <= not drain_i and channel_i.valid;
-      manage_time  <= channel_i.time;
-      manage_tag   <= channel_i.tag;
-      manage_param <= channel_i.param;
       manage_event <= channel_i.event;
+      manage_param <= channel_i.param;
+      manage_tag   <= channel_i.tag;
+      manage_tef   <= channel_i.tef;
+      manage_time  <= channel_i.time;
     end if;
   end process;
   
@@ -532,9 +541,10 @@ begin
   td_manage_write <= manage_write;
   td_manage_index <= manage_index;
   td_manage_valid <= manage_valid;
-  td_manage_time  <= manage_time;
-  td_manage_tag   <= manage_tag;
-  td_manage_param <= manage_param;
   td_manage_event <= manage_event;
+  td_manage_param <= manage_param;
+  td_manage_tag   <= manage_tag;
+  td_manage_tef   <= manage_tef;
+  td_manage_time  <= manage_time;
     
 end rtl;
