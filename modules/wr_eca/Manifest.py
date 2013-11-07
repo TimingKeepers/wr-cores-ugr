@@ -8,6 +8,7 @@ files = [
   "eca_sdp.vhd",
   "eca_search.vhd",
   "eca_flags.vhd",
+  "eca_queue_channel.vhd",
   "eca_walker.vhd",
   "eca_wb_channel.vhd",
   "eca_wb_event.vhd",

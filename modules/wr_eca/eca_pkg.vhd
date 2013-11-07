@@ -180,18 +180,24 @@ package eca_pkg is
   
   -- Put the action into a queue and fire an interrupt to 'tag'
   component eca_queue_channel is
+    generic(
+      g_log_queue_depth  : natural := 8;
+      g_counter_bits     : natural := 24;
+      g_log_clock_factor : natural := 8; -- clocks q, q, i are within 256*
+      a2i_dual_clock     : boolean := true;
+      a2q_dual_clock     : boolean := true);
     port(
       a_clk_i     : in  std_logic;
       a_rst_n_i   : in  std_logic;
       a_channel_i : in  t_channel;
-      q_clk_i     : in  std_logic;
-      q_rst_n_i   : in  std_logic;
-      q_slave_i   : in  t_wishbone_slave_in;
-      q_slave_o   : out t_wishbone_slave_out;
       i_clk_i     : in  std_logic;
       i_rst_n_i   : in  std_logic;
       i_master_o  : out t_wishbone_master_out;
-      i_master_i  : in  t_wishbone_master_in);
+      i_master_i  : in  t_wishbone_master_in;
+      q_clk_i     : in  std_logic;
+      q_rst_n_i   : in  std_logic;
+      q_slave_i   : in  t_wishbone_slave_in;
+      q_slave_o   : out t_wishbone_slave_out);
   end component;
   
   -- Put low bits of param to address tag
