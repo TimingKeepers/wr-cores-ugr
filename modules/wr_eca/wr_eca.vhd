@@ -35,7 +35,8 @@ entity wr_eca is
     g_channel_names  : t_name_array;
     g_log_table_size : natural := 7; -- 128 entries -- condition table
     g_log_queue_len  : natural := 8; -- 256 entries -- action queue size
-    g_num_channels   : natural := 4; -- max 30 due to WB address space
+    g_num_channels   : natural := 4; -- max 256
+    g_log_clock_mult : natural := 4; -- a_clk_i and c_clk_i must be within 16*
     g_num_streams    : natural := 1;
     g_inspect_queue  : boolean := true;
     g_inspect_table  : boolean := true);
@@ -88,6 +89,7 @@ begin
       g_log_table_size => g_log_table_size,
       g_log_queue_len  => g_log_queue_len,
       g_num_channels   => g_num_channels,
+      g_log_clock_mult => g_log_clock_mult,
       g_inspect_queue  => g_inspect_queue,
       g_inspect_table  => g_inspect_table,
       g_frequency_mul  => 1, -- White-Rabbit has 125MHz clock

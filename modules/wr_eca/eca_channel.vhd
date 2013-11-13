@@ -160,6 +160,7 @@ architecture rtl of eca_channel is
   signal td_manage_write   : std_logic;
   signal td_manage_index   : t_table_index;
   signal td_manage_valid   : std_logic;
+  signal td_manage_late    : std_logic;
   signal td_manage_event   : t_event;
   signal td_manage_param   : t_param;
   signal td_manage_tag     : t_tag;
@@ -167,6 +168,7 @@ architecture rtl of eca_channel is
   signal td_manage_time    : t_time;
   signal td_dispatch_index : t_table_index;
   signal td_dispatch_valid : std_logic;
+  signal td_dispatch_late  : std_logic;
   signal td_dispatch_event : t_event;
   signal td_dispatch_param : t_param;
   signal td_dispatch_tag   : t_tag;
@@ -223,6 +225,7 @@ architecture rtl of eca_channel is
   -- Manage table-write registers
   signal manage_write : std_logic;
   signal manage_valid : std_logic;
+  signal manage_late  : std_logic;
   signal manage_index : t_table_index;
   signal manage_event : t_event;
   signal manage_param : t_param;
@@ -231,7 +234,8 @@ architecture rtl of eca_channel is
   signal manage_time  : t_time;
   
   constant cd_valid_offset : natural := 0;
-  subtype  cd_event_range is natural range c_event_bits+cd_valid_offset     downto cd_valid_offset     +1;
+  constant cd_late_offset  : natural := cd_valid_offset+1;
+  subtype  cd_event_range is natural range c_event_bits+cd_late_offset      downto cd_late_offset      +1;
   subtype  cd_param_range is natural range c_param_bits+cd_event_range'left downto cd_event_range'left +1;
   subtype  cd_tag_range   is natural range c_tag_bits  +cd_param_range'left downto cd_param_range'left +1;
   subtype  cd_tef_range   is natural range c_tef_bits  +cd_tag_range'left   downto cd_tag_range'left   +1;
@@ -292,6 +296,7 @@ begin
       w_en_i                   => td_manage_write,
       w_addr_i                 => td_manage_index,
       w_data_i(cd_valid_offset)=> td_manage_valid,
+      w_data_i(cd_late_offset) => td_manage_late,
       w_data_i(cd_event_range) => td_manage_event,
       w_data_i(cd_param_range) => td_manage_param,
       w_data_i(cd_tag_range)   => td_manage_tag,
@@ -300,6 +305,7 @@ begin
       r_clk_i                  => clk_i,
       r_addr_i                 => td_dispatch_index,
       r_data_o(cd_valid_offset)=> td_dispatch_valid,
+      r_data_o(cd_late_offset) => td_dispatch_late,
       r_data_o(cd_event_range) => td_dispatch_event,
       r_data_o(cd_param_range) => td_dispatch_param,
       r_data_o(cd_tag_range)   => td_dispatch_tag,
@@ -321,9 +327,7 @@ begin
       r_addr_i => fr_manage_index,
       r_data_o => fr_manage_alloc);
   
-  counter_next <= 
-    std_logic_vector(unsigned(counter) + 
-                     to_unsigned(1, c_counter_bits));
+  counter_next <= f_eca_add(counter, 1);
   
   Count : process(clk_i)
   begin
@@ -374,6 +378,7 @@ begin
   td_dispatch_index <= addr_i when freeze_i='1' else dispatch_mux_record.index;
   
   channel_o.valid <= dispatch_valid1;
+  channel_o.late  <= td_dispatch_late;
   channel_o.event <= td_dispatch_event;
   channel_o.param <= td_dispatch_param;
   channel_o.tag   <= td_dispatch_tag;
@@ -381,6 +386,7 @@ begin
   channel_o.time  <= td_dispatch_time;
   
   inspect_o.valid <= td_dispatch_valid;
+  inspect_o.late  <= td_dispatch_late;
   inspect_o.event <= td_dispatch_event;
   inspect_o.param <= td_dispatch_param;
   inspect_o.tag   <= td_dispatch_tag;
@@ -402,15 +408,8 @@ begin
       -- scan_index is acyclic
       scan_index(3 downto 1) <= scan_next & scan_index(3 downto 2);
       
-      scan_time_p4 <=
-        std_logic_vector(
-          unsigned(time_i(scan_time_p4'range)) + 
-          to_unsigned(5, scan_time_p4'length));
-      
-      scan_time_m4 <=
-        std_logic_vector(
-          unsigned(time_i(scan_time_m4'range)) + 
-          to_unsigned(2**30-3, scan_time_m4'length));
+      scan_time_p4 <= f_eca_add(time_i(scan_time_p4'range), 5);
+      scan_time_m4 <= f_eca_add(time_i(scan_time_m4'range), -3);
     end if;
   end process;
   
@@ -483,10 +482,10 @@ begin
   manage_flags(0) <= dispatch_manage_kill;
   
   with manage_flags select manage_idx_next <=
-    manage_idx                                 when "00",   -- No alloc, No free
-    std_logic_vector(unsigned(manage_idx) - 1) when "01",   -- No alloc, FREE
-    std_logic_vector(unsigned(manage_idx) + 1) when "10",   -- ALLOC,    No free
-    manage_idx                                 when others; -- ALLOC,    FREE
+    manage_idx                when "00",   -- No alloc, No free
+    f_eca_add(manage_idx, -1) when "01",   -- No alloc, FREE
+    f_eca_add(manage_idx,  1) when "10",   -- ALLOC,    No free
+    manage_idx                when others; -- ALLOC,    FREE
   
   fr_manage_index <= manage_idx_next(c_table_index_bits-1 downto 0);
   fw_manage_free  <= (not channel_i.valid and dispatch_manage_kill) or drain_i;
@@ -513,6 +512,7 @@ begin
       end if;
       
       manage_valid <= not drain_i and channel_i.valid;
+      manage_late  <= channel_i.late;
       manage_event <= channel_i.event;
       manage_param <= channel_i.param;
       manage_tag   <= channel_i.tag;
@@ -541,6 +541,7 @@ begin
   td_manage_write <= manage_write;
   td_manage_index <= manage_index;
   td_manage_valid <= manage_valid;
+  td_manage_late  <= manage_late;
   td_manage_event <= manage_event;
   td_manage_param <= manage_param;
   td_manage_tag   <= manage_tag;

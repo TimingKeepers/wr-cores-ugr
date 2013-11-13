@@ -93,6 +93,7 @@ package eca_pkg is
   
   type t_channel is record
     valid : std_logic;
+    late  : std_logic;
     event : t_event;
     param : t_param;
     tag   : t_tag;
@@ -120,8 +121,9 @@ package eca_pkg is
       g_channel_names  : t_name_array;
       g_log_table_size : natural := 7; -- 128 entries -- condition table
       g_log_queue_len  : natural := 8; -- 256 entries -- action queue size
-      g_num_channels   : natural := 4; -- max 30 due to WB address space
+      g_num_channels   : natural := 4; -- max 256
       g_num_streams    : natural := 1;
+      g_log_clock_mult : natural := 4; -- a_clk_i and c_clk_i must be within 16*
       g_inspect_queue  : boolean := true;
       g_inspect_table  : boolean := true);
     port(
@@ -150,7 +152,8 @@ package eca_pkg is
       g_channel_names  : t_name_array;
       g_log_table_size : natural := 7; -- 128 entries -- condition table
       g_log_queue_len  : natural := 8; -- 256 entries -- action queue size
-      g_num_channels   : natural := 4;  -- max 30 due to WB address space
+      g_num_channels   : natural := 4; -- max 256
+      g_log_clock_mult : natural := 4; -- a_clk_i and c_clk_i must be within 16*
       g_inspect_queue  : boolean := true;
       g_inspect_table  : boolean := true;
       g_frequency_mul  : natural := 1; -- 125MHz = 1*5^9*2^6/1
@@ -226,6 +229,8 @@ package eca_pkg is
   function f_eca_ripple(a, b : std_logic_vector; c : std_logic) return std_logic_vector;
   function f_eca_gray_encode(x : std_logic_vector) return std_logic_vector;
   function f_eca_gray_decode(x : std_logic_vector; step : natural) return std_logic_vector;
+  function f_eca_add(x : std_logic_vector; y : integer) return std_logic_vector;
+  function f_eca_delta(x, previous, current : std_logic_vector) return std_logic_vector;
   
   -- Registers its inputs. Async outputs. 
   -- When r_addr_i=w_addr_i, r_data_o is undefined.
@@ -369,6 +374,7 @@ package eca_pkg is
     port(
       clk_i        : in  std_logic;
       rst_n_i      : in  std_logic;
+      time_Q_i     : in  t_time;
       -- Feed in an index to scan from binary search
       b_stb_i      : in  std_logic;
       b_stall_o    : out std_logic;
@@ -490,4 +496,14 @@ package body eca_pkg is
     end if;
   end f_eca_gray_decode;
 
+  function f_eca_add(x : std_logic_vector; y : integer) return std_logic_vector is
+  begin
+    return std_logic_vector(unsigned(x) + to_unsigned(y, x'length));
+  end function;
+  
+  function f_eca_delta(x, previous, current : std_logic_vector) return std_logic_vector is
+  begin
+    return std_logic_vector(unsigned(x) + (unsigned(current) - unsigned(previous)));
+  end function;
+  
 end eca_pkg;

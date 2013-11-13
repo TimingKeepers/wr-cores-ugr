@@ -87,16 +87,6 @@ architecture rtl of eca_queue_channel is
     return (x and not v_sel) or (v_dat and v_sel);
   end function;
   
-  function f_add(x : std_logic_vector; y : integer) return std_logic_vector is
-  begin
-    return std_logic_vector(unsigned(x) + to_unsigned(y, x'length));
-  end function;
-  
-  function f_delta(x, previous, current : std_logic_vector) return std_logic_vector is
-  begin
-    return std_logic_vector(unsigned(x) + (unsigned(current) - unsigned(previous)));
-  end function;
-  
   subtype c_event_range is natural range c_event_bits-1                  downto 0;
   subtype c_param_range is natural range c_param_bits+c_event_range'left downto c_event_range'left+1;
   subtype c_tag_range   is natural range c_tag_bits  +c_param_range'left downto c_param_range'left+1;
@@ -225,7 +215,7 @@ begin
   end process;
   
   sa_wen <= a_channel_i.valid and not ra_full;
-  sa_widx_next <= f_add(ra_widx, 1) when sa_wen='1' else ra_widx;
+  sa_widx_next <= f_eca_add(ra_widx, 1) when sa_wen='1' else ra_widx;
   
   sa_data(c_event_range) <= a_channel_i.event;
   sa_data(c_param_range) <= a_channel_i.param;
@@ -240,7 +230,7 @@ begin
       ra_widx       <= (others => '0');
       ra_widx_gray0 <= (others => '0');
     elsif rising_edge(a_clk_i) then
-      ra_full       <= f_eca_active_high(sa_widx_next = f_add(ra_ridx, -1));
+      ra_full       <= f_eca_active_high(sa_widx_next = f_eca_add(ra_ridx, -1));
       ra_widx       <= sa_widx_next;
       ra_widx_gray0 <= f_eca_gray_encode(ra_widx);
     end if;
@@ -253,7 +243,7 @@ begin
       ra_drops_gray0 <= (others => '0');
     elsif rising_edge(a_clk_i) then
       if (a_channel_i.valid and ra_full) = '1' then
-        ra_drops <= f_add(ra_drops, 1);
+        ra_drops <= f_eca_add(ra_drops, 1);
       end if;
       ra_drops_gray0 <= f_eca_gray_encode(ra_drops);
     end if;
@@ -293,7 +283,7 @@ begin
   
   si_iidx_next <= 
     ri_iidx when (ri_cyc or ri_dropped or ri_empty) = '1'
-    else f_add(ri_iidx, 1);
+    else f_eca_add(ri_iidx, 1);
   
   i_master : process(i_clk_i, i_rst_n_i) is
   begin
@@ -403,7 +393,7 @@ begin
       rq_queued <= std_logic_vector(unsigned(rq_iidx) - unsigned(rq_ridx));
       rq_empty <= f_eca_active_high(rq_iidx = rq_ridx);
       
-      rq_dropped <= f_delta(rq_dropped, rq_drops_done, rq_drops_todo);
+      rq_dropped <= f_eca_delta(rq_dropped, rq_drops_done, rq_drops_todo);
       rq_drops_done <= rq_drops_todo;
       
       case to_integer(unsigned(q_slave_i.adr(5 downto 2))) is
@@ -432,7 +422,7 @@ begin
         case to_integer(unsigned(q_slave_i.adr(5 downto 2))) is
           when  0 => 
             if (q_slave_i.sel(0) and q_slave_i.dat(0) and not rq_empty) = '1' then
-              rq_ridx  <= f_add(rq_ridx, 1);
+              rq_ridx  <= f_eca_add(rq_ridx, 1);
               rq_stall <= '1';
             end if;
           when 1 =>

@@ -33,17 +33,18 @@
 --! 0x40 -- reserved --
 --! 0x44 -- reserved --
 --! 0x48 -- reserved --
---! 0x4C -- reserved --
 --!
---! 0x50 RW: Channel
---! 0x54 RW:  Channel Control
---!   0x00    : 0x01 = disable, 0x02 = freeze, 0x80 = valid
+--! 0x4C RW: Select
+--!   0x01    : Channel #
+--!   0x02-03 : Buffer Index
+--! 0x50 RW:  Channel Control
+--!   0x00    : 0x01 = disable, 0x02 = freeze, 0x40 = late, 0x80 = valid
 --!   0x01    : ASCII Channel Name
---!   0x02-03 : Index ... clock crossing => stall for many cycles
---! 0x58 RW:  Fill
+--! 0x54 RW:  Fill
 --!   0x00-01 : Current Queue fill
 --!   0x02-03 : Max fill (can be cleared to 0)
---! 0x5C -- reserved --
+--! 0x58 RW: Total actions counter
+--! 0x5C RW: Late  actions counter
 --! 
 --! 0x60 R :  Event1 ... do NOT synchronize; hold index long enough
 --! 0x64 R :  Event0
@@ -82,7 +83,8 @@ entity eca is
     g_channel_names  : t_name_array;
     g_log_table_size : natural := 7;  -- 128 entries -- condition table
     g_log_queue_len  : natural := 8;  -- 256 entries -- action queue size
-    g_num_channels   : natural := 4;  -- max 30 due to WB address space
+    g_num_channels   : natural := 4;  -- max 256
+    g_log_clock_mult : natural := 4; -- a_clk_i and c_clk_i must be within 16*
     g_inspect_queue  : boolean := true;
     g_inspect_table  : boolean := true;
     g_frequency_mul  : natural := 1; -- 125MHz = 1*5^9*2^6/1
@@ -119,6 +121,7 @@ architecture rtl of eca is
   constant c_address_bits  : natural := f_ceil_log2(g_num_channels+2) + 5;
   constant c_all_name_bits : natural := (g_num_channels+1)*7;
   constant c_control_zeros : std_logic_vector(c_address_bits-1 downto 6) := (others => '0');
+  constant c_counter_bits  : natural := 32;
   
   subtype t_search_index  is std_logic_vector(g_log_table_size   downto 0);
   subtype t_event_index   is std_logic_vector(g_log_table_size-1 downto 0);
@@ -126,11 +129,14 @@ architecture rtl of eca is
   subtype t_qtable_index  is std_logic_vector(g_log_queue_len-1  downto 0);
   subtype t_channel_index is std_logic_vector(c_channel_bits-1   downto 0);
   subtype t_all_name      is std_logic_vector(c_all_name_bits-1  downto 0);
+  subtype t_counter       is std_logic_vector(c_counter_bits-1   downto 0);
+  subtype t_counter_cross is std_logic_vector(g_log_clock_mult   downto 0);
   
-  type t_queue_index_array  is array(natural range <>) of t_queue_index;
-  type t_qtable_index_array is array(natural range <>) of t_qtable_index;
-  type t_ascii_array        is array(natural range <>) of t_ascii;
-  type t_all_name_array     is array(63 downto 0) of t_all_name;
+  type t_queue_index_array   is array(natural range <>) of t_queue_index;
+  type t_counter_array       is array(natural range <>) of t_counter;
+  type t_counter_cross_array is array(natural range <>) of t_counter_cross;
+  type t_ascii_array         is array(natural range <>) of t_ascii;
+  type t_all_name_array      is array(63 downto 0) of t_all_name;
   
   -- Registers:
   signal rc_cs_page     : std_logic       := '0';
@@ -150,7 +156,7 @@ architecture rtl of eca is
   signal rc_cw_tag      : t_tag           := (others => '0');
   signal rc_cw_channel  : t_channel_index := (others => '0');
   signal rc_cq_channel  : t_channel_index := (others => '0');
-  signal rc_cq_index    : t_qtable_index_array(g_num_channels-1 downto 0) := (others => (others => '0'));
+  signal rc_cq_index    : t_qtable_index  := (others => '0');
   signal rc_max_fill    : t_queue_index_array (g_num_channels-1 downto 0) := (others => (others => '0'));
   signal rc_cq_drain    : std_logic_vector(g_num_channels-1 downto 0) := (others => '1');
   signal rc_cq_freeze   : std_logic_vector(g_num_channels-1 downto 0) := (others => '1');
@@ -218,29 +224,33 @@ architecture rtl of eca is
   signal rc1_time_gray    : t_time;
   signal rc0_time_gray    : t_time;
   
+  -- Wide counters, crossed using smaller counters
+  signal ra_qc_valid             : std_logic_vector(g_num_channels-1 downto 0);
+  signal ra_qc_valid_cross       : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal ra_qc_valid_cross_gray  : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc1_qc_valid_cross_gray : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc0_qc_valid_cross_gray : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc_qc_valid_cross       : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc_qc_valid_done        : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc_valid_count          : t_counter_array(g_num_channels-1 downto 0);
+  signal ra_qc_late              : std_logic_vector(g_num_channels-1 downto 0);
+  signal ra_qc_late_cross        : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal ra_qc_late_cross_gray   : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc1_qc_late_cross_gray  : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc0_qc_late_cross_gray  : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc_qc_late_cross        : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc_qc_late_done         : t_counter_cross_array(g_num_channels-1 downto 0);
+  signal rc_late_count           : t_counter_array(g_num_channels-1 downto 0);
+  
   impure function update(x : std_logic_vector) return std_logic_vector is
-    alias    y : std_logic_vector(x'length-1 downto 0) is x;
-    variable o : std_logic_vector(x'length-1 downto 0);
+    variable v_sel : std_logic_vector(x'range);
+    variable v_dat : std_logic_vector(x'range);
   begin
-    if y'length >= 8 then
-      for i in (y'length/8)-1 downto 0 loop
-        if c_slave_i.SEL(i) = '1' then
-          o(i*8+7 downto i*8) := c_slave_i.DAT(i*8+7 downto i*8);
-        else
-          o(i*8+7 downto i*8) := y(i*8+7 downto i*8);
-        end if;
-      end loop;
-    end if;
-    
-    if y'length mod 8 > 0 then
-      if c_slave_i.SEL(y'length/8) = '1' then
-        o(y'length-1 downto (y'length/8)*8) := c_slave_i.DAT(y'length-1 downto (y'length/8)*8);
-      else
-        o(y'length-1 downto (y'length/8)*8) := y(y'length-1 downto (y'length/8)*8);
-      end if;
-    end if;
-    
-    return o;
+    for i in x'range loop
+      v_sel(i) := c_slave_i.sel((i-x'low) / 8);
+      v_dat(i) := c_slave_i.dat(i-x'low);
+    end loop;
+    return (x and not v_sel) or (v_dat and v_sel);
   end update;
   
   function f_all_names return t_all_name_array is
@@ -299,12 +309,14 @@ begin
         rc_cw_tag     <= (others => '0');
         rc_cw_channel <= (others => '0');
         rc_cq_channel <= (others => '0');
-        rc_cq_index   <= (others => (others => '0'));
+        rc_cq_index   <= (others => '0');
         rc_max_fill   <= (others => (others => '0'));
         rc_cq_drain   <= (others => '1');
         rc_cq_freeze  <= (others => '1');
         rc_ce_idx     <= (others => '0');
         rc_cn_index   <= (others => '1');
+        rc_valid_count<= (others => (others => '0'));
+        rc_late_count <= (others => (others => '0'));
         rc_stall      <= (others => '1');
         
         c_slave_o.DAT <= (others => '0');
@@ -315,7 +327,7 @@ begin
         rc_stall <= '0' & rc_stall(rc_stall'length-1 downto 1);
         
         if c_slave_i.CYC = '1' and c_slave_i.STB = '1' then
-          rc_cn_index <= std_logic_vector(unsigned(rc_cn_index) - 1);
+          rc_cn_index <= f_eca_add(rc_cn_index, -1);
         end if;
         
         case to_integer(unsigned(c_slave_i.ADR(6 downto 2))) is
@@ -347,17 +359,19 @@ begin
           when 15 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_frequency_5s, 8));
                      c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_frequency_2s, 8));
                      c_slave_o.DAT(15 downto  0) <= std_logic_vector(to_unsigned(g_frequency_div, 16));
-          when 16 | 17 | 18 | 19 => null; -- reserved
+          when 16 | 17 | 18 => null; -- reserved
           
-          when 20 => c_slave_o.DAT(rc_cq_channel'range) <= rc_cq_channel;
-          when 21 => c_slave_o.DAT(31) <= ra_qc_channel(channel).valid; -- Held stable using freeze
+          when 19 => c_slave_o.DAT(rc_cq_channel'left+16 downto rc_cq_channel'right+16) <= rc_cq_channel;
+                     c_slave_o.DAT(rc_cq_index'range) <= rc_cq_index;
+          when 20 => c_slave_o.DAT(31) <= ra_qc_channel(channel).valid;
+                     c_slave_o.DAT(30) <= ra_qc_channel(channel).late;
                      c_slave_o.DAT(25) <= rc_cq_freeze(channel);
                      c_slave_o.DAT(24) <= rc_cq_drain(channel);
                      c_slave_o.DAT(22 downto 16) <= sc_nc_channel(channel);
-                     c_slave_o.DAT(t_qtable_index'range) <= rc_cq_index(channel);
-          when 22 => c_slave_o.DAT(t_queue_index'length+15 downto 16) <= rc_qc_fill(channel);
+          when 21 => c_slave_o.DAT(t_queue_index'length+15 downto 16) <= rc_qc_fill(channel);
                      c_slave_o.DAT(t_queue_index'range) <= rc_max_fill(channel);
-          when 23 => null; -- reserved
+          when 22 => c_slave_o.DAT(t_counter'range) <= rc_valid_count(channel);
+          when 23 => c_slave_o.DAT(t_counter'range) <= rc_late_count(channel);
           
           -- These all cross clock domain.
           -- However, they are held unchanging for several cycles due to freeze+stall
@@ -402,11 +416,19 @@ begin
           rc_cw_wen <= '1';
         end if;
         
-        -- Record maximum fill
+        -- Update counter crossings
         for channel_idx in 0 to g_num_channels-1 loop
           if unsigned(rc_max_fill(channel_idx)) < unsigned(rc_qc_fill(channel_idx)) then
             rc_max_fill(channel_idx) <= rc_qc_fill(channel_idx);
           end if;
+          rc_valid_count(channel_idx) <= 
+            f_eca_delta(rc_valid_count(channel_idx), 
+                        rc_qc_valid_done(channel_idx), 
+                        rc_qc_valid_cross(channel_idx));
+          rc_late_count(channel_idx) <= 
+            f_eca_delta(rc_late_count(channel_idx), 
+                        rc_qc_late_done(channel_idx), 
+                        rc_qc_late_cross(channel_idx));
         end loop;
         
         if c_slave_i.CYC = '1' and c_slave_i.STB = '1' and c_slave_i.WE = '1' and rc_stall(0) = '0' then
@@ -453,36 +475,46 @@ begin
                        rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
             when 14 => null; -- Freq1
             when 15 => null; -- Freq0
-            when 16 | 17 | 18 | 19 => null; -- reserved
+            when 16 | 17 | 18 => null; -- reserved
             
-            when 20 => rc_cq_channel <= update(rc_cq_channel);
-                       rc_stall(2 downto 0) <= (others => '1');
-            when 21 => 
-              if c_slave_i.SEL(3) = '1' then
-                rc_cq_freeze(channel) <= c_slave_i.DAT(25);
-                rc_cq_drain(channel)  <= c_slave_i.DAT(24);
+            when 19 => 
+              if c_slave_i.SEL(2) = '1' then
+                rc_cq_channel <= c_slave_i.DAT(rc_cq_channel'left+16 downto rc_cq_channel'right+16);
               end if;
-              
-              for channel_idx in 0 to g_num_channels-1 loop
-                if channel_idx = channel then
-                  rc_cq_index(channel_idx) <= update(rc_cq_index(channel_idx));
-                end if;
-              end loop;
+              rc_cq_index <= update(rc_cq_index);
               
               -- Wait a reallly long time.
               -- It takes time for rc_cq_index to stabilize as input in a_clk_i
               -- It takes time for the M9K to spit out the result
               -- It takes time for the result to stabilize back into c_clk_i
               rc_stall <= (others => '1');
-                              
-            when 22 => 
+              
+            when 20 => 
+              if c_slave_i.SEL(3) = '1' then
+                rc_cq_freeze(channel) <= c_slave_i.DAT(25);
+                rc_cq_drain(channel)  <= c_slave_i.DAT(24);
+              end if;
+              
+            when 21 => 
               for channel_idx in 0 to g_num_channels-1 loop
                 if channel_idx = channel then
                   rc_max_fill(channel_idx) <= update(rc_max_fill(channel_idx));
                 end if;
               end loop;
             
-            when 23 => null; -- reserved
+            when 22 =>
+              for channel_idx in 0 to g_num_channels-1 loop
+                if channel_idx = channel then
+                  rc_valid_count(channel_idx) <= update(rc_valid_count(channel_idx));
+                end if;
+              end loop;
+              
+            when 23 =>
+              for channel_idx in 0 to g_num_channels-1 loop
+                if channel_idx = channel then
+                  rc_late_count(channel_idx) <= update(rc_late_count(channel_idx));
+                end if;
+              end loop;
             
             when 24 => null; -- Event1
             when 25 => null; -- Event0
@@ -497,19 +529,10 @@ begin
           end case;
         end if; -- cyc+stb+we+!stall
       end if; -- reset
-      
-      rc1_qc_fill_gray <= ra_qc_fill_gray;
-      rc0_qc_fill_gray <= rc1_qc_fill_gray;
-      for channel_idx in 0 to g_num_channels-1 loop
-        rc_qc_fill(channel_idx) <= f_eca_gray_decode(rc0_qc_fill_gray(channel_idx), 1);
-      end loop;
-      
-      rc1_time_gray <= ra_time_gray;
-      rc0_time_gray <= rc1_time_gray;
     end if;
   end process;
   
-  a2c : process(a_clk_i) is
+  a_a2c : process(a_clk_i) is
   begin
     if rising_edge(a_clk_i) then
       -- No reset; logic is acyclic
@@ -530,11 +553,14 @@ begin
       ra_time_gray(31 downto  0) <= f_eca_gray_encode(a_time_i(31 downto  0));
       
       for channel_idx in 0 to g_num_channels-1 loop
-        -- 
         ra_qc_channel(channel_idx).valid <= 
           f_eca_active_high(g_inspect_queue) and
           ra0_cq_freeze(channel_idx) and
           sa_qc_inspect(channel_idx).valid;
+        ra_qc_channel(channel_idx).late <= 
+          f_eca_active_high(g_inspect_queue) and
+          ra0_cq_freeze(channel_idx) and
+          sa_qc_inspect(channel_idx).late;
           
         if g_inspect_queue then
           ra_qc_channel(channel_idx).event <= sa_qc_inspect(channel_idx).event;
@@ -550,7 +576,49 @@ begin
           ra_qc_channel(channel_idx).tef   <= (others => '0');
           ra_qc_channel(channel_idx).time  <= (others => '0');
         end if;
+        
+        ra_qc_valid(channel_idx) <= sa_wq_channel(channel_idx).valid and not sa_wq_channel(channel_idx).late;
+        ra_qc_late(channel_idx)  <= sa_wq_channel(channel_idx).valid and     sa_wq_channel(channel_idx).late;
+      
+        if ra_qc_valid(channel_idx) = '1' then
+          ra_qc_valid_cross(channel_idx) <= f_eca_add(ra_qc_valid_cross(channel_idx), 1);
+        end if;
+        if ra_qc_late(channel_idx) = '1' then
+          ra_qc_late_cross(channel_idx)  <= f_eca_add(ra_qc_late_cross(channel_idx), 1);
+        end if;
+        
+        ra_qc_valid_cross_gray(channel_idx) <= f_eca_gray_encode(ra_qc_valid_cross(channel_idx));
+        ra_qc_late_cross_gray(channel_idx)  <= f_eca_gray_encode(ra_qc_late_cross(channel_idx));
       end loop;
+    end if;
+  end process;
+  
+  c_a2c : process(c_clk_i) is
+  begin
+    if rising_edge(c_clk_i) then
+      rc1_qc_fill_gray <= ra_qc_fill_gray;
+      rc0_qc_fill_gray <= rc1_qc_fill_gray;
+      for channel_idx in 0 to g_num_channels-1 loop
+        rc_qc_fill(channel_idx) <= f_eca_gray_decode(rc0_qc_fill_gray(channel_idx), 1);
+      end loop;
+      
+      rc1_time_gray <= ra_time_gray;
+      rc0_time_gray <= rc1_time_gray;
+      
+      rc1_qc_valid_cross_gray <= ra_qc_valid_cross_gray;
+      rc0_qc_valid_cross_gray <= rc1_qc_valid_cross_gray;
+      rc1_qc_late_cross_gray <= ra_qc_late_cross_gray;
+      rc0_qc_late_cross_gray <= rc1_qc_late_cross_gray;
+      
+      for channel_idx in 0 to g_num_channels-1 loop
+        rc_qc_valid_cross(channel_idx) <= f_eca_gray_decode(rc0_qc_valid_cross_gray(channel_idx), 1);
+        rc_qc_late_cross(channel_idx)  <= f_eca_gray_decode(rc0_qc_late_cross_gray(channel_idx), 1);
+      end loop;
+      
+      -- We use the difference between done and cross to increase the counter in process 'wb'
+      
+      rc_qc_valid_done <= rc_qc_valid_cross;
+      rc_qc_late_done <= rc_qc_late_cross;
     end if;
   end process;
   
@@ -596,6 +664,7 @@ begin
     port map(
       clk_i        => a_clk_i,
       rst_n_i      => ra0_cf_enabled,
+      time_Q_i     => ra_aq_time_Q,
       
       b_stb_i      => sa_sw_stb,
       b_stall_o    => sa_ws_stall,
@@ -656,7 +725,7 @@ begin
         rst_n_i   =>  a_rst_n_i,
         drain_i   => ra0_cq_drain (channel_idx),
         freeze_i  => ra0_cq_freeze(channel_idx),
-        addr_i    => rc_cq_index  (channel_idx), -- cross clock domains, but held stable
+        addr_i    => rc_cq_index, -- crosses clock domains, but held stable
         fill_o    => sa_qc_fill   (channel_idx),
         full_o    => sa_qw_full   (channel_idx),
         time_i    =>  a_time_i,
