@@ -1,5 +1,5 @@
--- megafunction wizard: %Deterministic Latency PHY v12.1%
--- Retrieval info: <instance entity-name="altera_xcvr_det_latency" version="13.0" >
+-- megafunction wizard: %Deterministic Latency PHY v13.1%
+-- Retrieval info: <instance entity-name="altera_xcvr_det_latency" version="13.1" >
 -- Retrieval info: 	<generic name="device_family" value="Arria V" />
 -- Retrieval info: 	<generic name="operation_mode" value="Duplex" />
 -- Retrieval info: 	<generic name="lanes" value="1" />

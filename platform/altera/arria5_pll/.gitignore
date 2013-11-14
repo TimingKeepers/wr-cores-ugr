@@ -5,6 +5,7 @@ dmtd_pll5.qip
 dmtd_pll5.sip
 dmtd_pll5.spd
 dmtd_pll5.vhd
+dmtd_pll5_sim.f
 dmtd_pll5/
 dmtd_pll5_sim/
 ref_pll5.bsf
@@ -14,6 +15,7 @@ ref_pll5.qip
 ref_pll5.sip
 ref_pll5.spd
 ref_pll5.vhd
+ref_pll5_sim.f
 ref_pll5/
 ref_pll5_sim/
 sys_pll5.bsf
@@ -23,5 +25,6 @@ sys_pll5.qip
 sys_pll5.sip
 sys_pll5.spd
 sys_pll5.vhd
+sys_pll5_sim.f
 sys_pll5/
 sys_pll5_sim/
