@@ -1,10 +1,10 @@
-/** @file load-walk.cpp
- *  @brief Load the walk table
+/** @file load-table.cpp
+ *  @brief Load the condition table
  *  @author Wesley W. Terpstra <w.terpstra@gsi.de>
  *
  *  Copyright (C) 2013 GSI Helmholtz Centre for Heavy Ion Research GmbH 
  *
- *  Grab the contents of the walker component of the condition table.
+ *  Grab the contents of the condition table from the ECA.
  *
  *******************************************************************************
  *  This library is free software; you can redistribute it and/or
@@ -33,25 +33,69 @@
 
 namespace GSI_ECA {
 
-status_t ECA::loadWalk(Device dev, bool active, std::vector<WalkEntry>& table) {
+static status_t loadSearch(ECA* eca, bool active, std::vector<SearchEntry>& table) {
   Cycle cycle;
+  eb_address_t address;
   eb_status_t status;
-  eb_data_t   index,  next;
-  eb_data_t   delay1, delay0;
-  eb_data_t   tag,    channel;
-  int done;
+  eb_data_t   index,  first;
+  eb_data_t   event1, event0;
   
-  if (!inspect_table) {
+  if (!eca->inspect_table) {
     table.clear();
     return EB_OK;
   }
   
-  table.resize(table_size);
+  table.resize(eca->table_size*2); /* Two entries for every table entry */
   
+  address = eca->address;
+  for (unsigned i = 0; i < table.size(); ++i) {
+    SearchEntry& se = table[i];
+    
+    if ((status = cycle.open(eca->device)) != EB_OK)
+      return status;
+    
+    index = (active?0x80000000UL:0) + i;
+    cycle.write(address + ECA_SEARCH, EB_DATA32, index);
+    cycle.read (address + ECA_FIRST,  EB_DATA32, &first);
+    cycle.read (address + ECA_EVENT1, EB_DATA32, &event1);
+    cycle.read (address + ECA_EVENT0, EB_DATA32, &event0);
+    
+    if ((status = cycle.close()) != EB_OK)
+      return status;
+    
+    se.event = event1;
+    se.event <<= 32;
+    se.event |= event0;
+    if ((first >> 31) != 0) {
+      se.first = first & 0x7FFF;
+    } else {
+      se.first = -1;
+    }
+  }
+  
+  return EB_OK;
+}
+
+static status_t loadWalk(ECA* eca, bool active, std::vector<WalkEntry>& table) {
+  Cycle cycle;
+  eb_address_t address;
+  eb_status_t status;
+  eb_data_t   index,  next;
+  eb_data_t   delay1, delay0;
+  eb_data_t   tag,    channel;
+  
+  if (!eca->inspect_table) {
+    table.clear();
+    return EB_OK;
+  }
+  
+  table.resize(eca->table_size);
+  
+  address = eca->address;
   for (unsigned i = 0; i < table.size(); ++i) {
     WalkEntry& we = table[i];
     
-    if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
+    if ((status = cycle.open(eca->device)) != EB_OK)
       return status;
     
     index = (active?0x80000000UL:0) + i;
@@ -61,12 +105,9 @@ status_t ECA::loadWalk(Device dev, bool active, std::vector<WalkEntry>& table) {
     cycle.read (address + ECA_DELAY0, EB_DATA32, &delay0);
     cycle.read (address + ECA_TAG,    EB_DATA32, &tag);
     cycle.read (address + ECA_CHANNEL,EB_DATA32, &channel);
-    cycle.close();
     
-    done = 0;
-    while (!done) dev.socket().run();
-    if (done < 0) return done;
-    if (done == 2) return EB_FAIL;
+    if ((status = cycle.close()) != EB_OK)
+      return status;
     
     we.offset = delay1;
     we.offset <<= 32;
@@ -80,6 +121,23 @@ status_t ECA::loadWalk(Device dev, bool active, std::vector<WalkEntry>& table) {
       we.next = -1;
     }
   }
+  
+  return EB_OK;
+}
+
+status_t ECA::load(bool active, Table& table) {
+  status_t status;
+  std::vector<SearchEntry> se;
+  std::vector<WalkEntry> we;
+  
+  if ((status = loadSearch(this, active, se)) != EB_OK)
+    return status;
+  
+  if ((status = loadWalk(this, active, we)) != EB_OK)
+    return status;
+  
+  if (table.impl->decompile(se, we) > 0)
+    return EB_FAIL;
   
   return EB_OK;
 }

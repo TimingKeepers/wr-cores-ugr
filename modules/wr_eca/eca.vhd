@@ -11,7 +11,11 @@
 --! 0x00 RW: ECA Control
 --!   0x00 : 0x01 = disable, 0x2 = flip, 0x80=inspect_table, 0x40=inspect_queue
 --!   0x01 : ASCII ECA Name
---! 0x04 RW: Table size, Q depth, channels, IDX
+--! 0x04 RW: ECA params
+--!   0x04 : log(table size)
+--!   0x05 : log(queue depth)
+--!   0x06 : number of channels
+--!   0x07 : index of ECA
 --! 0x08 R : Time1
 --! 0x0C R : Time0
 --! 0x10 RW: Search index
@@ -35,7 +39,7 @@
 --! 0x48 -- reserved --
 --!
 --! 0x4C RW: Select
---!   0x01    : Channel #
+--!   0x00-01 : Channel #
 --!   0x02-03 : Buffer Index
 --! 0x50 RW:  Channel Control
 --!   0x00    : 0x01 = disable, 0x02 = freeze, 0x40 = late, 0x80 = valid
@@ -43,7 +47,7 @@
 --! 0x54 RW:  Fill
 --!   0x00-01 : Current Queue fill
 --!   0x02-03 : Max fill (can be cleared to 0)
---! 0x58 RW: Total actions counter
+--! 0x58 RW: Valid actions counter
 --! 0x5C RW: Late  actions counter
 --! 
 --! 0x60 R :  Event1 ... do NOT synchronize; hold index long enough
@@ -52,8 +56,8 @@
 --! 0x6C R :  Param0
 --! 0x70 R :  Tag
 --! 0x74 R :  Tef
---! 0x78 R :  Time0
---! 0x7C R :  Time1
+--! 0x78 R :  Time1
+--! 0x7C R :  Time0
 --!
 --------------------------------------------------------------------------------
 --! This library is free software; you can redistribute it and/or

@@ -26,6 +26,7 @@
 #define ECA_HW_H
 
 #include <etherbone.h>
+#include <map>
 
 #define GSI_VENDOR_ID	0x651
 #define ECA_DEVICE_ID	0x8752bf44U
@@ -54,23 +55,74 @@
 #define ECA_FREQ_5S	0x3C
 #define ECA_FREQ_2S	0x3D
 #define ECA_FREQ_DIV	0x3E
-#define ECA_END		0x40
 
-#define ECAQ_CTL	0x00
-#define ECAQ_NAME	0x01
-#define ECAQ_INDEX	0x02
-#define ECAQ_FILL	0x04
-#define ECAQ_MAX_FILL	0x06
-#define ECAQ_TIME1	0x08
-#define ECAQ_TIME0	0x0C
-#define ECAQ_EVENT1	0x10
-#define ECAQ_EVENT0	0x14
-#define ECAQ_TAG	0x18
-#define ECAQ_PARAM	0x1C
-#define ECAQ_END	0x20
+#define ECAQ_SELECT	0x4C
+#define ECAQ_CHANNEL	0x4C
+#define ECAQ_INDEX	0x4E
+#define ECAQ_CTL	0x50
+#define ECAQ_NAME	0x51
+#define ECAQ_FILL	0x54
+#define ECAQ_MAX_FILL	0x56
+#define ECAQ_VALID	0x58
+#define ECAQ_LATE	0x5C
+
+#define ECAQ_EVENT1	0x60
+#define ECAQ_EVENT0	0x64
+#define ECAQ_PARAM1	0x68
+#define ECAQ_PARAM0	0x6C
+#define ECAQ_TAG	0x70
+#define ECAQ_TEF	0x74
+#define ECAQ_TIME1	0x78
+#define ECAQ_TIME0	0x7C
 
 namespace GSI_ECA {
-extern void eca_cycle_done(int* done, etherbone::Device dev, etherbone::Operation op, eb_status_t status);
+
+/* Hardware condition search table fields */
+struct SearchEntry {
+  Event event;
+  Index first; /* -1 if end-of-list */
+};
+
+/* Hardware condition walk table fields */
+struct WalkEntry {
+  Time    offset;
+  Tag     tag;
+  Index   next; /* -1 if end-of-list */
+  Channel channel;
+};
+
+/* A useful intermediate format for the condition table */
+struct Table::Impl {
+  public:
+    /* Returns the number of conflicting records overwritten by this new record */
+    int add   (const TableEntry& te);
+    int add   (Event begin, Event end, Time, Channel, Tag);
+    /* Returns the number of records removed/modified */
+    int remove(const TableEntry& te); /* ignores tag */
+    int remove(Event begin, Event end, Time, Channel);
+    
+    /* Convert it to user-friendly form */
+    void get(std::vector<TableEntry>& te) const;
+    /* Bulk load it from user-friendly table; returns count of conflicting records */
+    int set(const std::vector<TableEntry>& t);
+    
+    /* Bulk load it from hardware tables; returns count of conflicting records */
+    int decompile(const std::vector<SearchEntry>& s, const std::vector<WalkEntry>& w);
+    /* Compile it for loading to hardware */
+    void compile(std::vector<SearchEntry>& s, std::vector<WalkEntry>& w) const;
+    
+  protected:
+    struct EventRange {
+      Event end; /* [key, end] */
+      Tag   tag;
+    };
+    typedef std::map<Event, EventRange> EventFilter;
+    typedef std::map<Time, EventFilter> TableActions;
+    typedef std::vector<TableActions>   ChannelMap;
+    
+    ChannelMap data;
+};
+
 }
 
 #endif

@@ -33,27 +33,23 @@
 
 namespace GSI_ECA {
 
-status_t EventStream::send(Device dev, Event event, Time time, Param param) {
+status_t EventStream::send(EventEntry e) {
   Cycle cycle;
   eb_status_t status;
-  int done;
   
-  if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
+  if ((status = cycle.open(eca->device)) != EB_OK)
     return status;
   
-  cycle.write(address, EB_DATA32, event >> 32);
-  cycle.write(address, EB_DATA32, event & UINT32_C(0xFFFFFFFF));
-  cycle.write(address, EB_DATA32, time >> 32);
-  cycle.write(address, EB_DATA32, time & UINT32_C(0xFFFFFFFF));
-  cycle.write(address, EB_DATA32, param);
-  cycle.close();
+  cycle.write(address, EB_DATA32, e.event >> 32);
+  cycle.write(address, EB_DATA32, e.event & UINT32_C(0xFFFFFFFF));
+  cycle.write(address, EB_DATA32, e.param >> 32);
+  cycle.write(address, EB_DATA32, e.param & UINT32_C(0xFFFFFFFF));
+  cycle.write(address, EB_DATA32, 0); // reserved
+  cycle.write(address, EB_DATA32, e.tef   & UINT32_C(0xFFFFFFFF));
+  cycle.write(address, EB_DATA32, e.time  >> 32);
+  cycle.write(address, EB_DATA32, e.time  & UINT32_C(0xFFFFFFFF));
   
-  done = 0;
-  while (!done) dev.socket().run();
-  if (done < 0) return done;
-  if (done == 2) return EB_FAIL;
-  
-  return EB_OK;
+  return cycle.close();
 }
 
 }

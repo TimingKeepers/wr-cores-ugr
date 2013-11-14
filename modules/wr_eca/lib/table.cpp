@@ -1,4 +1,4 @@
-/** @file program-table.cpp
+/** @file table.cpp
  *  @brief Convert to/from user-facing condition table
  *  @author Wesley W. Terpstra <w.terpstra@gsi.de>
  *
@@ -39,7 +39,35 @@
 
 namespace GSI_ECA {
 
-int ReverseTable::add(Event begin, Event end, Time offset, Channel channel, Tag tag) {
+Table::Table() :
+  impl(new Impl) {
+}
+
+Table::~Table() {
+  delete impl;
+}
+
+Table::Table(const Table& table) 
+  : impl(new Impl(*table.impl)) {
+}
+
+int Table::add(const TableEntry& te) {
+  return impl->add(te);
+}
+
+int Table::del(const TableEntry& te) {
+  return impl->remove(te);
+}
+
+int Table::set(const std::vector<TableEntry>& vect) {
+  return impl->set(vect);
+}
+
+void Table::get(std::vector<TableEntry>& vect) const {
+  return impl->get(vect);
+}
+
+int Table::Impl::add(Event begin, Event end, Time offset, Channel channel, Tag tag) {
   int out = 0;
   
   if (end < begin) return out;
@@ -96,7 +124,7 @@ int ReverseTable::add(Event begin, Event end, Time offset, Channel channel, Tag 
   return out;
 }
 
-int ReverseTable::remove(Event begin, Event end, Time offset, Channel channel) {
+int Table::Impl::remove(Event begin, Event end, Time offset, Channel channel) {
   int out = 0;
   
   if (end < begin) return out;
@@ -165,7 +193,7 @@ static Event eca_encode_mask(uint8_t event_bits) {
 }  
 
 
-int ReverseTable::add(const TableEntry& te) {
+int Table::Impl::add(const TableEntry& te) {
   Event mask  = eca_encode_mask(te.event_bits);
   Event begin = te.event & ~mask;
   Event end   = begin | mask;
@@ -173,7 +201,7 @@ int ReverseTable::add(const TableEntry& te) {
   return add(begin, end, te.offset, te.channel, te.tag);
 }
 
-int ReverseTable::remove(const TableEntry& te) {
+int Table::Impl::remove(const TableEntry& te) {
   Event mask  = eca_encode_mask(te.event_bits);
   Event begin = te.event & ~mask;
   Event end   = begin | mask;
@@ -181,7 +209,7 @@ int ReverseTable::remove(const TableEntry& te) {
   return remove(begin, end, te.offset, te.channel);
 }
 
-int ReverseTable::load(const std::vector<TableEntry>& t) {
+int Table::Impl::set(const std::vector<TableEntry>& t) {
   int count = 0;
   
   for (unsigned ti = 0; ti < t.size(); ++ti) {
@@ -191,7 +219,7 @@ int ReverseTable::load(const std::vector<TableEntry>& t) {
   return count;
 }
 
-int ReverseTable::load(const std::vector<SearchEntry>& s, const std::vector<WalkEntry>& w) {
+int Table::Impl::decompile(const std::vector<SearchEntry>& s, const std::vector<WalkEntry>& w) {
   int count = 0;
   
   Event last = ((Event)-1);
@@ -233,8 +261,8 @@ static unsigned eca_decode_mask(Event mask) {
   return count;
 }
 
-std::vector<TableEntry> ReverseTable::reverse() const {
-  std::vector<TableEntry> result;
+void Table::Impl::get(std::vector<TableEntry>& result) const {
+  result.clear();
   
   for (unsigned c = 0; c < data.size(); ++c) {
     const TableActions& ta = data[c];
@@ -295,11 +323,11 @@ std::vector<TableEntry> ReverseTable::reverse() const {
   }
   
   sort(result.begin(), result.end(), sort_event_bits_offset_channel);
-  return result;
 }
 
-void ReverseTable::compile(std::vector<SearchEntry>& s, std::vector<WalkEntry>& w) const {
-  std::vector<TableEntry> t(reverse());
+void Table::Impl::compile(std::vector<SearchEntry>& s, std::vector<WalkEntry>& w) const {
+  std::vector<TableEntry> t;
+  get(t);
   
   s.clear();
   w.clear();

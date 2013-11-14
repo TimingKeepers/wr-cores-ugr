@@ -62,7 +62,7 @@ static void help(void) {
   fprintf(stderr, "  reset            reset the channel's max_full counter\n");
   fprintf(stderr, "  inspect          display the contents of a frozen channel\n");
   fprintf(stderr, "\n");
-  fprintf(stderr, "  send <event> <time> <param>     write to an event stream\n");
+  fprintf(stderr, "  send <event> <param> <tef> <time>  write to an event stream\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Report ECA hardware+software bugs to <w.terpstra@gsi.de>\n");
   fprintf(stderr, "Version %"PRIx32" (%s). Licensed under the LGPL v3.\n",
@@ -91,8 +91,8 @@ static void render_eca(unsigned i, const ECA& eca) {
   
   for (unsigned c = 0; c < eca.channels.size(); ++c) {
     const ActionChannel& ac = eca.channels[c];
-    printf("  Channel #%d %s %3d/%3d \"%s\"\n", 
-           c, ac.draining?"draining":ac.frozen?"frozen  ":"active  ", ac.fill, ac.max_fill, ac.name.c_str());
+    printf("  Channel #%d %s %3d/%3d %10d %10d \"%s\"\n", 
+           c, ac.draining?"draining":ac.frozen?"frozen  ":"active  ", ac.fill, ac.max_fill, ac.valid, ac.late, ac.name.c_str());
   }
   for (unsigned s = 0; s < eca.streams.size(); ++s) {
     const EventStream& es = eca.streams[s];
@@ -107,35 +107,35 @@ static void render_eca(unsigned i, const ECA& eca) {
   }
 }
 
-static void dump_queue(Device device, unsigned i, ECA& eca, unsigned c) {
+static void dump_queue(ECA& eca, ActionChannel& channel) {
   eb_status_t status;
   std::vector<ActionEntry> queue;
   
   if (!quiet) {
     printf("ECA #%d \"%s\" (0x%"EB_ADDR_FMT"), Channel #%d \"%s\"\n",
-           i, eca.name.c_str(), eca.address, c, eca.channels[c].name.c_str());
+           eca.index, eca.name.c_str(), eca.address, channel.index, channel.name.c_str());
     if (numeric) {
-      printf("-------------------------------------------------------------------\n");
-      printf("Execution timestamp      EventID             Tag         Param\n");
-      printf("-------------------------------------------------------------------\n");
+      printf("----------------------------------------------------------------------------------\n");
+      printf("EventID             Param               Tag         Tef         Execution Time\n");
+      printf("----------------------------------------------------------------------------------\n");
     } else {
-      printf("-------------------------------------------------------------------------\n");
-      printf("Execution timestamp (TAI)      EventID             Tag         Param\n");
-      printf("-------------------------------------------------------------------------\n");
+      printf("---------------------------------------------------------------------------------------------\n");
+      printf("EventID             Param               Tag         Tef         Execution Time (TAI)\n");
+      printf("---------------------------------------------------------------------------------------------\n");
     }
   }
   
-  if ((status = eca.loadQueue(device, c, queue)) != EB_OK)
-    die(status, "ECA::loadQueue");
+  if ((status = channel.load(queue)) != EB_OK)
+    die(status, "ActionChannel::load");
   
   for (unsigned i = 0; i < queue.size(); ++i) {
     ActionEntry& ae = queue[i];
     if (numeric) {
-      printf("time:0x%016"PRIx64"  0x%016"PRIx64"  0x%08"PRIx32"  0x%08"PRIx32"\n", 
-            ae.time, ae.event, ae.tag, ae.param);
+      printf("0x%016"PRIx64"  0x%016"PRIx64"  0x%08"PRIx32"  0x%08"PRIx32"  0x%016"PRIx64"\n", 
+            ae.event, ae.param, ae.tag, ae.tef, ae.time);
     } else {
-      printf("%s  0x%016"PRIx64"  0x%08"PRIx32"  0x%08"PRIx32"\n", 
-            eca.date(ae.time).c_str(), ae.event, ae.tag, ae.param);
+      printf("0x%016"PRIx64"  0x%016"PRIx64"  0x%08"PRIx32"  0x%08"PRIx32"  %s\n", 
+            ae.event, ae.param, ae.tag, ae.tef, eca.date(ae.time).c_str());
     }
   }
 }
@@ -148,8 +148,10 @@ int main(int argc, char** argv) {
   eb_address_t eca_addr = 0;
   bool eca_addr_set = false;
   eb_status_t status;
-  uint64_t event = 0, time = 0;
-  uint32_t param = 0;
+  Event event = 0;
+  Time time = 0;
+  Tef tef = 0;
+  Param param = 0;
   
   program = argv[0];
   error = 0;
@@ -226,12 +228,12 @@ int main(int argc, char** argv) {
   }
   
   if (strcasecmp(command, "send") == 0) {
-    if (optind+5 > argc) {
-      fprintf(stderr, "%s: expecting exactly three arguments: send <event> <time> <param>\n", program);
+    if (optind+6 > argc) {
+      fprintf(stderr, "%s: expecting exactly four arguments: send <event> <param> <tef> <time>\n", program);
       return 1;
     }
-    if (optind+5 < argc) {
-      fprintf(stderr, "%s: unexpected extra arguments -- '%s'\n", program, argv[optind+5]);
+    if (optind+6 < argc) {
+      fprintf(stderr, "%s: unexpected extra arguments -- '%s'\n", program, argv[optind+6]);
       return 1;
     }
   } else {
@@ -257,7 +259,7 @@ int main(int argc, char** argv) {
   }
   
   std::vector<ECA> ecas;
-  if ((status = ECA::load(device, ecas)) != EB_OK) die(status, "ECA::load");
+  if ((status = ECA::probe(device, ecas)) != EB_OK) die(status, "ECA::probe");
   
   if (ecas.empty()) {
     fprintf(stderr, "%s: no ECA units found\n", program);
@@ -298,6 +300,16 @@ int main(int argc, char** argv) {
     return 1;
   }
   
+  /* Select default channel */
+  if (channel_id == -1 && ecas[eca_id].channels.size() == 1) {
+    channel_id = 0;
+  }
+  
+  /* Select default stream */
+  if (stream_id == -1 && ecas[eca_id].streams.size() == 1) {
+    stream_id = 0;
+  }
+  
   if (channel_id != -1 && channel_id >= (int)ecas[eca_id].channels.size()) {
     fprintf(stderr, "%s: channel id -c '%d' is out of range; max=%d\n", program, channel_id, (int)ecas[eca_id].channels.size()-1);
     return 1;
@@ -318,7 +330,7 @@ int main(int argc, char** argv) {
       printf("Enabling ECA #%d \"%s\" (0x%"EB_ADDR_FMT")\n",
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address);
     }
-    if ((status = ecas[eca_id].disable(device, false)) != EB_OK)
+    if ((status = ecas[eca_id].disable(false)) != EB_OK)
       die(status, "ECA::disable(false)");
   }
   
@@ -332,7 +344,7 @@ int main(int argc, char** argv) {
       printf("Disabling ECA #%d \"%s\" (0x%"EB_ADDR_FMT")\n",
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address);
     }
-    if ((status = ecas[eca_id].disable(device, true)) != EB_OK)
+    if ((status = ecas[eca_id].disable(true)) != EB_OK)
       die(status, "ECA::disable(true)");
   } else if (!strcasecmp(command, "status")) {
     if (eca_id == -1) {
@@ -356,9 +368,9 @@ int main(int argc, char** argv) {
              channel_id, ecas[eca_id].channels[channel_id].name.c_str(),
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address);
     }
-    if ((status = ecas[eca_id].channels[channel_id].drain(device, false)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].drain(false)) != EB_OK)
       die(status, "ActionChannel::drain(false)");
-    if ((status = ecas[eca_id].channels[channel_id].freeze(device, false)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].freeze(false)) != EB_OK)
       die(status, "ActionChannel::freeze(false)");
   }
   
@@ -373,9 +385,9 @@ int main(int argc, char** argv) {
              channel_id, ecas[eca_id].channels[channel_id].name.c_str(),
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address);
     }
-    if ((status = ecas[eca_id].channels[channel_id].drain(device, false)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].drain(false)) != EB_OK)
       die(status, "ActionChannel::drain(false)");
-    if ((status = ecas[eca_id].channels[channel_id].freeze(device, true)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].freeze(true)) != EB_OK)
       die(status, "ActionChannel::freeze(true)");
   }
   
@@ -390,9 +402,9 @@ int main(int argc, char** argv) {
              channel_id, ecas[eca_id].channels[channel_id].name.c_str(),
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address);
     }
-    if ((status = ecas[eca_id].channels[channel_id].drain(device, true)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].drain(true)) != EB_OK)
       die(status, "ActionChannel::drain(true)");
-    if ((status = ecas[eca_id].channels[channel_id].freeze(device, true)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].freeze(true)) != EB_OK)
       die(status, "ActionChannel::freeze(true)");
   }
   
@@ -407,7 +419,7 @@ int main(int argc, char** argv) {
              channel_id, ecas[eca_id].channels[channel_id].name.c_str(),
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address);
     }
-    if ((status = ecas[eca_id].channels[channel_id].reset(device)) != EB_OK)
+    if ((status = ecas[eca_id].channels[channel_id].reset()) != EB_OK)
       die(status, "ActionChannel::reset()");
   }
   
@@ -425,7 +437,7 @@ int main(int argc, char** argv) {
       fprintf(stderr, "%s: channel #%d must be frozen to be inspected\n", program, channel_id);
       return 1;
     }
-    dump_queue(device, eca_id, ecas[eca_id], channel_id);
+    dump_queue(ecas[eca_id], ecas[eca_id].channels[channel_id]);
   }
   
   /* -------------------------------------------------------------------- */
@@ -441,33 +453,40 @@ int main(int argc, char** argv) {
       return 1;
     }
     
-    if (argv[optind+3][0] == '+') {
-      double off = strtod(&argv[optind+3][1], &value_end);
-      if (*value_end != 0) {
-        fprintf(stderr, "%s: invalid time -- '%s'\n", program, argv[optind+3]);
+    param = strtoull(argv[optind+3], &value_end, 0);
+    if (*value_end != 0) {
+      fprintf(stderr, "%s: invalid param -- '%s'\n", program, argv[optind+3]);
+      return 1;
+    }
+    
+    tef = strtoull(argv[optind+4], &value_end, 0);
+    if (*value_end != 0) {
+      fprintf(stderr, "%s: invalid tef -- '%s'\n", program, argv[optind+4]);
+      return 1;
+    }
+    
+    if (argv[optind+5][0] == '+') {
+      double off = strtod(&argv[optind+5][1], &value_end);
+      if (*value_end != 0 && (value_end[0] != 's' && value_end[1] != 0)) {
+        fprintf(stderr, "%s: invalid time -- '%s'\n", program, argv[optind+5]);
         return 1;
       }
       time = ecas[eca_id].time + ecas[eca_id].delay(off);
     } else {
-      time = strtoull(argv[optind+3], &value_end, 0);
+      time = strtoull(argv[optind+5], &value_end, 0);
       if (*value_end != 0) {
-        fprintf(stderr, "%s: invalid time -- '%s'\n", program, argv[optind+3]);
+        fprintf(stderr, "%s: invalid time -- '%s'\n", program, argv[optind+5]);
         return 1;
       }
     }
     
-    param = strtoul(argv[optind+4], &value_end, 0);
-    if (*value_end != 0) {
-      fprintf(stderr, "%s: invalid param -- '%s'\n", program, argv[optind+4]);
-      return 1;
-    }
     if (verbose) {
-      printf("Sending to Stream #%d (0x%"EB_ADDR_FMT") on ECA #%d \"%s\" (0x%"EB_ADDR_FMT"): 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx32"\n",
+      printf("Sending to Stream #%d (0x%"EB_ADDR_FMT") on ECA #%d \"%s\" (0x%"EB_ADDR_FMT"): 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx32" 0x%"PRIx64"\n",
              stream_id, ecas[eca_id].streams[stream_id].address,
              eca_id, ecas[eca_id].name.c_str(), ecas[eca_id].address,
-             event, time, param);
+             event, param, tef, time);
     }
-    if ((status = ecas[eca_id].streams[stream_id].send(device, event, time, param)) != EB_OK)
+    if ((status = ecas[eca_id].streams[stream_id].send(EventEntry(event, param, tef, time))) != EB_OK)
       die(status, "EventStream::send");
   }
   

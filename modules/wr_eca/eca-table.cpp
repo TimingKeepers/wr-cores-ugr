@@ -67,8 +67,10 @@ static void die(eb_status_t status, const char* what) {
   exit(1);
 }
 
-static void dump(const ECA& eca, const ReverseTable& rt) {
-  std::vector<TableEntry> t = rt.reverse();
+static void dump(const ECA& eca, const Table& table) {
+  std::vector<TableEntry> t;
+  table.get(t);
+
   
   if (!quiet) {
     if (numeric) {
@@ -94,6 +96,7 @@ static void dump(const ECA& eca, const ReverseTable& rt) {
     }
   }
 
+#if 0
   if (verbose) {
     if (numeric) {
       printf("--------------------------------------------------------------\n");
@@ -108,6 +111,7 @@ static void dump(const ECA& eca, const ReverseTable& rt) {
     printf("Table usage: %d/%d search and %d/%d walk\n",
            (int)st.size(), (int)eca.table_size*2, (int)wt.size(), (int)eca.table_size);
   }
+#endif
 }
 
 int main(int argc, char** argv) {
@@ -220,7 +224,7 @@ int main(int argc, char** argv) {
   }
   
   std::vector<ECA> ecas;
-  if ((status = ECA::load(device, ecas)) != EB_OK) die(status, "ECA::load");
+  if ((status = ECA::probe(device, ecas)) != EB_OK) die(status, "ECA::load");
   
   if (ecas.empty()) {
     fprintf(stderr, "%s: no ECA units found\n", program);
@@ -289,9 +293,7 @@ int main(int argc, char** argv) {
     te.channel = channel;
   }
   
-  std::vector<SearchEntry> st;
-  std::vector<WalkEntry> wt;
-  ReverseTable rt;
+  Table table;
   
   if (!strcasecmp(command, "dump")) {
     if (verbose) {
@@ -299,13 +301,10 @@ int main(int argc, char** argv) {
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.loadSearch(device, false, st)) != EB_OK)
-      die(status, "ECA::loadSearch(inactive)");
-    if ((status = eca.loadWalk(device, false, wt)) != EB_OK)
-      die(status, "ECA::loadWalk(inactive)");
+    if ((status = eca.load(false, table)) != EB_OK)
+      die(status, "ECA::load(inactive)");
     
-    rt.load(st, wt);
-    dump(eca, rt);
+    dump(eca, table);
   } 
   
   if (!strcasecmp(command, "dump-active")) {
@@ -314,13 +313,10 @@ int main(int argc, char** argv) {
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.loadSearch(device, true, st)) != EB_OK)
-      die(status, "ECA::loadSearch(active)");
-    if ((status = eca.loadWalk(device, true, wt)) != EB_OK)
-      die(status, "ECA::loadWalk(active)");
+    if ((status = eca.load(true, table)) != EB_OK)
+      die(status, "ECA::load(active)");
     
-    rt.load(st, wt);
-    dump(eca, rt);
+    dump(eca, table);
   }
   
   if (!strcasecmp(command, "flip-active")) {
@@ -329,24 +325,19 @@ int main(int argc, char** argv) {
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.flipTables(device)) != EB_OK)
+    if ((status = eca.flipTables()) != EB_OK)
       die(status, "ECA::flipTables");
   }
   
   if (!strcasecmp(command, "flush")) {
-    rt.compile(st, wt); /* rt is empty */
-    
     if (verbose) {
-      printf("Table usage now %d/%d search and %d/%d walk\n",
-             (int)st.size(), (int)eca.table_size*2, (int)wt.size(), (int)eca.table_size);
       printf("Flushing inactive table on ECA #%d \"%s\" (0x%"EB_ADDR_FMT"):\n",
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.programSearch(device, st)) != EB_OK)
-      die(status, "ECA::programSearch");
-    if ((status = eca.programWalk(device, wt)) != EB_OK)
-      die(status, "ECA::programWalk");
+    /* table is empty */
+    if ((status = eca.store(table)) != EB_OK)
+      die(status, "ECA::store");
   } 
   
   if (!strcasecmp(command, "add")) {
@@ -361,30 +352,23 @@ int main(int argc, char** argv) {
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.loadSearch(device, false, st)) != EB_OK)
-      die(status, "ECA::loadSearch(inactive)");
-    if ((status = eca.loadWalk(device, false, wt)) != EB_OK)
-      die(status, "ECA::loadWalk(inactive)");
+    if ((status = eca.load(false, table)) != EB_OK)
+      die(status, "ECA::load(inactive)");
     
-    rt.load(st, wt);
-    if ((error = rt.add(te)) > 0) {
+    if (table.add(te) > 0) {
       fprintf(stderr, "%s: new rule has a tag conflict with existing overlapping rules\n", program);
       return 1;
     }
     
-    rt.compile(st, wt); /* Do the hard work */
-    
     if (verbose) {
-      printf("Table usage now %d/%d search and %d/%d walk\n",
-             (int)st.size(), (int)eca.table_size*2, (int)wt.size(), (int)eca.table_size);
+//      printf("Table usage now %d/%d search and %d/%d walk\n",
+//             searchs, (int)eca.table_size*2, walks, (int)eca.table_size);
       printf("Programming inactive table on ECA #%d \"%s\" (0x%"EB_ADDR_FMT"):\n",
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.programSearch(device, st)) != EB_OK)
-      die(status, "ECA::programSearch");
-    if ((status = eca.programWalk(device, wt)) != EB_OK)
-      die(status, "ECA::programWalk");
+    if ((status = eca.store(table)) != EB_OK)
+      die(status, "ECA::program");
   }
   
   if (!strcasecmp(command, "del")) {
@@ -393,30 +377,23 @@ int main(int argc, char** argv) {
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.loadSearch(device, false, st)) != EB_OK)
-      die(status, "ECA::loadSearch(inactive)");
-    if ((status = eca.loadWalk(device, false, wt)) != EB_OK)
-      die(status, "ECA::loadWalk(inactive)");
+    if ((status = eca.load(false, table)) != EB_OK)
+      die(status, "ECA::load(inactive)");
     
-    rt.load(st, wt);
-    if ((error = rt.remove(te)) == 0) {
+    if ((error = table.del(te)) == 0) {
       fprintf(stderr, "%s: no rules were removed\n", program);
       return 1;
     }
     
-    rt.compile(st, wt); /* Do the hard work */
-    
     if (verbose) {
-      printf("Table usage now %d/%d search and %d/%d walk\n",
-             (int)st.size(), (int)eca.table_size*2, (int)wt.size(), (int)eca.table_size);
+//      printf("Table usage now %d/%d search and %d/%d walk\n",
+//             (int)st.size(), (int)eca.table_size*2, (int)wt.size(), (int)eca.table_size);
       printf("Programming inactive table on ECA #%d \"%s\" (0x%"EB_ADDR_FMT"):\n",
              eca_id, eca.name.c_str(), eca.address);
     }
     
-    if ((status = eca.programSearch(device, st)) != EB_OK)
-      die(status, "ECA::programSearch");
-    if ((status = eca.programWalk(device, wt)) != EB_OK)
-      die(status, "ECA::programWalk");
+    if ((status = eca.store(table)) != EB_OK)
+      die(status, "ECA::program");
   }
   
   device.close();
