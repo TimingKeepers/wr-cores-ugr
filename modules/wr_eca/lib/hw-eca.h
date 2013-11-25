@@ -56,14 +56,15 @@
 #define ECA_FREQ_2S	0x3D
 #define ECA_FREQ_DIV	0x3E
 
-#define ECAQ_SELECT	0x4C
-#define ECAQ_CHANNEL	0x4C
-#define ECAQ_INDEX	0x4E
-#define ECAQ_CTL	0x50
-#define ECAQ_NAME	0x51
-#define ECAQ_FILL	0x54
-#define ECAQ_MAX_FILL	0x56
-#define ECAQ_VALID	0x58
+#define ECAQ_SELECT	0x48
+#define ECAQ_CHANNEL	0x48
+#define ECAQ_INDEX	0x4A
+#define ECAQ_CTL	0x4C
+#define ECAQ_NAME	0x4D
+#define ECAQ_FILL	0x50
+#define ECAQ_MAX_FILL	0x52
+#define ECAQ_VALID	0x54
+#define ECAQ_CONFLICT	0x58
 #define ECAQ_LATE	0x5C
 
 #define ECAQ_EVENT1	0x60

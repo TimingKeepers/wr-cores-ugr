@@ -18,7 +18,7 @@
 --! 0x10 R  : Queued actions
 --! 0x14 RW : Dropped actions
 --! 0x18 -- reserved --
---! 0x1C -- reserved --
+--! 0x1C R  : flags (0x1=late, 0x2=conflict)
 --! 0x20 R  : Event1
 --! 0x24 R  : Event0
 --! 0x28 R  : Param1
@@ -87,7 +87,9 @@ architecture rtl of eca_queue_channel is
     return (x and not v_sel) or (v_dat and v_sel);
   end function;
   
-  subtype c_event_range is natural range c_event_bits-1                  downto 0;
+  constant c_conflict_bit : natural := 0;
+  constant c_late_bit     : natural := c_conflict_bit+1;
+  subtype c_event_range is natural range c_event_bits+c_late_bit         downto c_late_bit+1;
   subtype c_param_range is natural range c_param_bits+c_event_range'left downto c_event_range'left+1;
   subtype c_tag_range   is natural range c_tag_bits  +c_param_range'left downto c_param_range'left+1;
   subtype c_tef_range   is natural range c_tef_bits  +c_tag_range'left   downto c_tag_range'left  +1;
@@ -165,6 +167,8 @@ architecture rtl of eca_queue_channel is
   signal rq_stall_n     : unsigned(g_log_clock_factor downto 0);
   
   signal sq_data        : t_data;
+  signal sq_conflict    : std_logic;
+  signal sq_late        : std_logic;
   signal sq_event       : t_event;
   signal sq_param       : t_param;
   signal sq_tag         : t_tag;
@@ -217,11 +221,13 @@ begin
   sa_wen <= a_channel_i.valid and not ra_full;
   sa_widx_next <= f_eca_add(ra_widx, 1) when sa_wen='1' else ra_widx;
   
-  sa_data(c_event_range) <= a_channel_i.event;
-  sa_data(c_param_range) <= a_channel_i.param;
-  sa_data(c_tag_range)   <= a_channel_i.tag;
-  sa_data(c_tef_range)   <= a_channel_i.tef;
-  sa_data(c_time_range)  <= a_channel_i.time;
+  sa_data(c_conflict_bit) <= a_channel_i.conflict;
+  sa_data(c_late_bit)     <= a_channel_i.late;
+  sa_data(c_event_range)  <= a_channel_i.event;
+  sa_data(c_param_range)  <= a_channel_i.param;
+  sa_data(c_tag_range)    <= a_channel_i.tag;
+  sa_data(c_tef_range)    <= a_channel_i.tef;
+  sa_data(c_time_range)   <= a_channel_i.time;
   
   a_fifo : process(a_clk_i, a_rst_n_i) is
   begin
@@ -353,11 +359,13 @@ begin
     end if;
   end process;
   
-  sq_event <= sq_data(c_event_range);
-  sq_param <= sq_data(c_param_range);
-  sq_tag   <= sq_data(c_tag_range);
-  sq_tef   <= sq_data(c_tef_range);
-  sq_time  <= sq_data(c_time_range);
+  sq_conflict <= sq_data(c_conflict_bit);
+  sq_late     <= sq_data(c_late_bit);
+  sq_event    <= sq_data(c_event_range);
+  sq_param    <= sq_data(c_param_range);
+  sq_tag      <= sq_data(c_tag_range);
+  sq_tef      <= sq_data(c_tef_range);
+  sq_time     <= sq_data(c_time_range);
   
   q_slave_o.stall <= rq_stall;
   q_slave_o.err <= '0';
@@ -405,7 +413,8 @@ begin
         when  4 => q_slave_o.dat(rq_queued'range)   <= std_logic_vector(rq_queued);
         when  5 => q_slave_o.dat(rq_dropped'range)  <= std_logic_vector(rq_dropped);
         when  6 => null; -- reserved
-        when  7 => null; -- reserved
+        when  7 => q_slave_o.dat(0) <= sq_late;
+                   q_slave_o.dat(1) <= sq_conflict;
         -- Protect clock crossing (rq_widx updates well after memory written)
         when  8 => q_slave_o.dat <= sq_event(63 downto 32);
         when  9 => q_slave_o.dat <= sq_event(31 downto  0);
@@ -438,7 +447,7 @@ begin
           when  4 => null; -- queued (RO)
           when  5 => rq_dropped <= f_update(rq_dropped);
           when  6 => null; -- reserved
-          when  7 => null; -- reserved
+          when  7 => null; -- Flags  (RO)
           when  8 => null; -- Event1 (RO)
           when  9 => null; -- Event0 (RO)
           when 10 => null; -- Param1 (RO)

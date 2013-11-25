@@ -41,6 +41,7 @@ status_t ActionChannel::refresh() {
   eb_data_t ctl;
   eb_data_t d_fill;
   eb_data_t d_valid;
+  eb_data_t d_conflict;
   eb_data_t d_late;
   
   if ((status = cycle.open(eca->device)) != EB_OK)
@@ -48,10 +49,11 @@ status_t ActionChannel::refresh() {
   
   address = eca->address;
   cycle.write(address + ECAQ_SELECT, EB_DATA32, index << 16);
-  cycle.read(address + ECAQ_CTL,   EB_DATA32, &ctl);
-  cycle.read(address + ECAQ_FILL,  EB_DATA32, &d_fill);
-  cycle.read(address + ECAQ_VALID, EB_DATA32, &d_valid);
-  cycle.read(address + ECAQ_LATE,  EB_DATA32, &d_late);
+  cycle.read(address + ECAQ_CTL,      EB_DATA32, &ctl);
+  cycle.read(address + ECAQ_FILL,     EB_DATA32, &d_fill);
+  cycle.read(address + ECAQ_VALID,    EB_DATA32, &d_valid);
+  cycle.read(address + ECAQ_CONFLICT, EB_DATA32, &d_conflict);
+  cycle.read(address + ECAQ_LATE,     EB_DATA32, &d_late);
   
   if ((status = cycle.close()) != EB_OK)
     return status;
@@ -60,8 +62,9 @@ status_t ActionChannel::refresh() {
   frozen   = ((ctl >> 24) & 0x02) != 0;
   fill     = (d_fill >> 16) & 0xFFFF;
   max_fill = (d_fill >>  0) & 0xFFFF;
-  valid    = d_valid & 0xFFFFFFFF;
-  late     = d_late  & 0xFFFFFFFF;
+  valid    = d_valid    & 0xFFFFFFFF;
+  conflict = d_conflict & 0xFFFFFFFF;
+  late     = d_late     & 0xFFFFFFFF;
   
   return EB_OK;
 }

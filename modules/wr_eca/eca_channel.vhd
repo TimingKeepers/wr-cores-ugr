@@ -377,21 +377,23 @@ begin
   
   td_dispatch_index <= addr_i when freeze_i='1' else dispatch_mux_record.index;
   
-  channel_o.valid <= dispatch_valid1;
-  channel_o.late  <= td_dispatch_late;
-  channel_o.event <= td_dispatch_event;
-  channel_o.param <= td_dispatch_param;
-  channel_o.tag   <= td_dispatch_tag;
-  channel_o.tef   <= td_dispatch_tef;
-  channel_o.time  <= td_dispatch_time;
+  channel_o.valid    <= dispatch_valid1;
+  channel_o.conflict <= '0'; -- !!!;
+  channel_o.late     <= td_dispatch_late;
+  channel_o.event    <= td_dispatch_event;
+  channel_o.param    <= td_dispatch_param;
+  channel_o.tag      <= td_dispatch_tag;
+  channel_o.tef      <= td_dispatch_tef;
+  channel_o.time     <= td_dispatch_time;
   
-  inspect_o.valid <= td_dispatch_valid;
-  inspect_o.late  <= td_dispatch_late;
-  inspect_o.event <= td_dispatch_event;
-  inspect_o.param <= td_dispatch_param;
-  inspect_o.tag   <= td_dispatch_tag;
-  inspect_o.tef   <= td_dispatch_tef;
-  inspect_o.time  <= td_dispatch_time;
+  inspect_o.valid    <= td_dispatch_valid;
+  inspect_o.conflict <= '0';
+  inspect_o.late     <= td_dispatch_late;
+  inspect_o.event    <= td_dispatch_event;
+  inspect_o.param    <= td_dispatch_param;
+  inspect_o.tag      <= td_dispatch_tag;
+  inspect_o.tef      <= td_dispatch_tef;
+  inspect_o.time     <= td_dispatch_time;
   
   dispatch_manage_kill  <= dispatch_valid1;
   dispatch_manage_index <= dispatch_index1;

@@ -92,13 +92,14 @@ package eca_pkg is
   subtype t_time  is std_logic_vector(c_time_bits-1  downto 0);
   
   type t_channel is record
-    valid : std_logic;
-    late  : std_logic;
-    event : t_event;
-    param : t_param;
-    tag   : t_tag;
-    tef   : t_tef;
-    time  : t_time; -- high bit set if late
+    valid    : std_logic;
+    conflict : std_logic;
+    late     : std_logic;
+    event    : t_event;
+    param    : t_param;
+    tag      : t_tag;
+    tef      : t_tef;
+    time     : t_time;
   end record t_channel;
   
   type t_name          is array(63 downto 0)      of t_ascii;

@@ -376,13 +376,14 @@ begin
       c2_o    => open);
   
   channels : for i in 0 to g_num_channels-1 generate
-    q_channel_o(i).valid <= r1_a_validv(i) and not r_stall;
-    q_channel_o(i).late  <= s1_a_late;
-    q_channel_o(i).event <= r1_a_event;
-    q_channel_o(i).param <= r1_a_param;
-    q_channel_o(i).tag   <= r1_a_tag;
-    q_channel_o(i).tef   <= r1_a_tef;
-    q_channel_o(i).time  <= s1_a_action_time;
+    q_channel_o(i).valid    <= r1_a_validv(i) and not r_stall;
+    q_channel_o(i).conflict <= '0'; -- conflicts only happen after sorting in channel
+    q_channel_o(i).late     <= s1_a_late;
+    q_channel_o(i).event    <= r1_a_event;
+    q_channel_o(i).param    <= r1_a_param;
+    q_channel_o(i).tag      <= r1_a_tag;
+    q_channel_o(i).tef      <= r1_a_tef;
+    q_channel_o(i).time     <= s1_a_action_time;
   end generate;
   
 end rtl;

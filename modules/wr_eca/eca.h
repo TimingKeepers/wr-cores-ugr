@@ -118,7 +118,8 @@ struct ActionChannel {
   bool         frozen;   /* Queue is frozen;       nothing enters/exits */
   uint16_t     fill;     /* Current number of entries in the queue */
   uint16_t     max_fill; /* Maximum entries in the queue since reset */
-  uint32_t     valid;    /* How many valid actions have been sent */
+  uint32_t     valid;    /* How many valid actions have been sent (includes late+conflict) */
+  uint32_t     conflict; /* How many conflicting actions have been sent */
   uint32_t     late;     /* How many late  actions have been sent */
   
   /* ------------------------------------------------------------------- */

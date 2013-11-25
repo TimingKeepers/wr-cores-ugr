@@ -148,6 +148,7 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
   eb_data_t freq1, freq0;
   eb_data_t fill;
   eb_data_t valid;
+  eb_data_t conflict;
   eb_data_t late;
   eb_data_t id;
   
@@ -206,9 +207,10 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
       cycle.write(eca.address + ECAQ_SELECT, EB_DATA32, c << 16);
       for (unsigned j = 0; j < 64; ++j)
         cycle.read(eca.address + ECAQ_CTL, EB_DATA32, &name[j]);
-      cycle.read(eca.address + ECAQ_FILL,  EB_DATA32, &fill);
-      cycle.read(eca.address + ECAQ_VALID, EB_DATA32, &valid);
-      cycle.read(eca.address + ECAQ_LATE,  EB_DATA32, &late);
+      cycle.read(eca.address + ECAQ_FILL,     EB_DATA32, &fill);
+      cycle.read(eca.address + ECAQ_VALID,    EB_DATA32, &valid);
+      cycle.read(eca.address + ECAQ_CONFLICT, EB_DATA32, &conflict);
+      cycle.read(eca.address + ECAQ_LATE,     EB_DATA32, &late);
       
       if ((status = cycle.close()) != EB_OK)
         return status;
@@ -218,8 +220,9 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
       ac.frozen   = ((name[0] >> 24) & 0x02) != 0;
       ac.fill     = (fill >> 16) & 0xFFFF;
       ac.max_fill = (fill >>  0) & 0xFFFF;
-      ac.valid    = valid & 0xFFFFFFFF;
-      ac.late     = late  & 0xFFFFFFFF;
+      ac.valid    = valid    & 0xFFFFFFFF;
+      ac.conflict = conflict & 0xFFFFFFFF;
+      ac.late     = late     & 0xFFFFFFFF;
       
       eca.channels.push_back(ac);
     }
