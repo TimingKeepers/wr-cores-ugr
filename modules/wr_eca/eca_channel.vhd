@@ -102,19 +102,22 @@ architecture rtl of eca_channel is
   subtype t_table_index    is std_logic_vector(c_table_index_bits   -1 downto 0);
   subtype t_queue_index    is std_logic_vector(c_queue_index_bits   -1 downto 0);
   subtype t_table_lo_index is std_logic_vector(c_table_lo_index_bits-1 downto 0);
+  subtype t_scan_data      is std_logic_vector(c_table_lo_index_bits   downto 0);
   subtype t_counter        is std_logic_vector(c_counter_bits       -1 downto 0);
   
   type t_table_index_array    is array(natural range <>) of t_table_index;
   type t_queue_index_array    is array(natural range <>) of t_queue_index;
   type t_table_lo_index_array is array(natural range <>) of t_table_lo_index;
+  type t_scan_data_array      is array(natural range <>) of t_scan_data;
   
   constant c_free_last_index : t_free_index := (others => '1');
   constant c_last_time       : t_time       := (others => '1');
   
   -- Select a valid record from an array
   type t_mux_record is record
-    valid : std_logic;
-    index : t_table_index;
+    valid     : std_logic;
+    index     : t_table_index;
+    violation : std_logic;
   end record t_mux_record;
   type t_mux_record_array is array(natural range <>) of t_mux_record;
   
@@ -140,12 +143,16 @@ architecture rtl of eca_channel is
   end f_mux_select;
   
   -- Queue signals
-  signal q_scan_valid     : std_logic_vector      (c_scanners-1 downto 0);
-  signal q_scan_time      : t_queue_index_array   (c_scanners-1 downto 0);
-  signal q_scan_index     : t_table_lo_index_array(c_scanners-1 downto 0);
-  signal q_dispatch_valid : std_logic_vector      (c_scanners-1 downto 0);
-  signal q_dispatch_time  : t_queue_index_array   (c_scanners-1 downto 0);
-  signal q_dispatch_index : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_scan_valid         : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_scan_time          : t_queue_index_array   (c_scanners-1 downto 0);
+  signal q_scan_index         : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_scan_violation     : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_scan_data          : t_scan_data_array     (c_scanners-1 downto 0);
+  signal q_dispatch_valid     : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_dispatch_time      : t_queue_index_array   (c_scanners-1 downto 0);
+  signal q_dispatch_index     : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_dispatch_violation : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_dispatch_data      : t_scan_data_array     (c_scanners-1 downto 0);
   
   -- TableS signals
   signal ts_manage_write : std_logic_vector      (c_scanners-1 downto 0);
@@ -187,10 +194,12 @@ architecture rtl of eca_channel is
   signal counter_next : t_counter;
   
   -- Dispatch registers
-  signal dispatch_valid2 : std_logic_vector      (c_scanners-1 downto 0);
-  signal dispatch_index2 : t_table_lo_index_array(c_scanners-1 downto 0);
-  signal dispatch_valid1 : std_logic;
-  signal dispatch_index1 : t_table_index;
+  signal dispatch_valid2     : std_logic_vector      (c_scanners-1 downto 0);
+  signal dispatch_index2     : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal dispatch_violation2 : std_logic_vector      (c_scanners-1 downto 0);
+  signal dispatch_valid1     : std_logic;
+  signal dispatch_index1     : t_table_index;
+  signal dispatch_violation1 : std_logic;
   
   -- Dispatch signals
   signal dispatch_manage_kill  : std_logic;
@@ -254,15 +263,20 @@ begin
     Q : eca_flags
       generic map(
         g_addr_bits => c_queue_index_bits,
-        g_data_bits => c_table_lo_index_bits)
+        g_data_bits => t_scan_data'length)
       port map(
         clk_i    => clk_i,
-        a_addr_i => q_scan_time (table_hi_idx),
-        a_en_i   => q_scan_valid(table_hi_idx),
-        a_data_i => q_scan_index(table_hi_idx),
+        a_addr_i => q_scan_time     (table_hi_idx),
+        a_en_i   => q_scan_valid    (table_hi_idx),
+        a_data_i => q_scan_data     (table_hi_idx),
         b_addr_i => q_dispatch_time (table_hi_idx),
         b_full_o => q_dispatch_valid(table_hi_idx),
-        b_data_o => q_dispatch_index(table_hi_idx));
+        b_data_o => q_dispatch_data (table_hi_idx));
+    
+    q_scan_data         (table_hi_idx)(t_table_lo_index'length) <= q_scan_violation(table_hi_idx);
+    q_scan_data         (table_hi_idx)(t_table_lo_index'range)  <= q_scan_index    (table_hi_idx);
+    q_dispatch_violation(table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'length);
+    q_dispatch_index    (table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'range);
     
   end generate;
   
@@ -349,11 +363,13 @@ begin
   begin
     if rising_edge(clk_i) then
       -- No reset; logic is acyclic
-      dispatch_valid2 <= q_dispatch_valid;
-      dispatch_index2 <= q_dispatch_index;
+      dispatch_valid2     <= q_dispatch_valid;
+      dispatch_index2     <= q_dispatch_index;
+      dispatch_violation2 <= q_dispatch_violation;
       -- Block output when draining or frozen
-      dispatch_valid1 <= dispatch_mux_record.valid and not (drain_i or freeze_i);
-      dispatch_index1 <= dispatch_mux_record.index;
+      dispatch_valid1     <= dispatch_mux_record.valid and not (drain_i or freeze_i);
+      dispatch_index1     <= dispatch_mux_record.index;
+      dispatch_violation1 <= dispatch_mux_record.violation;
     end if;
   end process;
 
@@ -372,13 +388,14 @@ begin
       dispatch_mux_records(table_hi_idx).index(c_table_index_bits-1 downto c_table_lo_index_bits) <=
         std_logic_vector(to_unsigned(table_hi_idx, c_table_hi_index_bits));
     end generate;
+    dispatch_mux_records(table_hi_idx).violation <= dispatch_violation2(table_hi_idx);
   end generate;
   dispatch_mux_record <= f_mux_select(dispatch_mux_records);
   
   td_dispatch_index <= addr_i when freeze_i='1' else dispatch_mux_record.index;
   
   channel_o.valid    <= dispatch_valid1;
-  channel_o.conflict <= '0'; -- !!!;
+  channel_o.conflict <= dispatch_violation1 and not td_dispatch_late;
   channel_o.late     <= td_dispatch_late;
   channel_o.event    <= td_dispatch_event;
   channel_o.param    <= td_dispatch_param;
@@ -449,6 +466,23 @@ begin
         b_i   => scan_time_n(table_hi_idx),
         c_i   => '1',
         c1_o  => scan_lesseq(table_hi_idx),
+        x2_o  => open,
+        c2_o  => open);
+    
+    -- This is used to detect conflicts where two actions happen at once.
+    -- We already tested for a late arriving event in the eca_walker.
+    -- The only possible reason an action could be late if it arrived on time 
+    -- is if there was a conflict.
+    -- If there was a conflict, then the scanner will see it at least twice
+    -- before it reachs the dispatcher again. Thus we can be pretty sloppy
+    -- and just compare the current time and the target time.
+    ScanViolation : eca_adder
+      port map(
+        clk_i => clk_i,
+        a_i   => time_i,
+        b_i   => scan_time_n(table_hi_idx),
+        c_i   => '1',
+        c1_o  => q_scan_violation(table_hi_idx),
         x2_o  => open,
         c2_o  => open);
     
