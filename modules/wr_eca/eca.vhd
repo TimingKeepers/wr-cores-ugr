@@ -7,15 +7,18 @@
 --! This entity ties all the ECA components together under Wishbone control.
 --! The register layout is as follows:
 --!
---! Control registers (all 4-byte values):
---! 0x00 RW: ECA Control
---!   0x00 : 0x01 = disable, 0x2 = flip, 0x80=inspect_table, 0x40=inspect_queue
---!   0x01 : ASCII ECA Name
---! 0x04 RW: ECA params
---!   0x04 : log(table size)
---!   0x05 : log(queue depth)
---!   0x06 : number of channels
---!   0x07 : index of ECA
+--! Wishbone registers (all 4-byte values):
+--!
+--! 0x00 RW: ECA params
+--!  0   R : log(table size)
+--!  1   R : log(queue depth)
+--!  2   R : number of channels
+--!  3   RW: index of ECA
+--! 0x04 RW: ECA Control
+--!  0   R : Feature bits; 1=inspect_table, 2=inspect_queue
+--!  1   R : ASCII ECA Name
+--!  2    W: Clear control bits
+--!  3   RW: Set   control bits; 1=disable, 2=interrupt enable, 4=flip(toggle only)
 --! 0x08 R : Time1
 --! 0x0C R : Time0
 --! 0x10 RW: Search index
@@ -30,25 +33,27 @@
 --! 0x34 RW:  Channel
 --! 0x38 R : Frequency numerator
 --! 0x3C R : Frequency coefficients
---!  0x00      : powers of 5
---!  0x01      : powers of 2
---!  0x02-0x03 : Frequency divisor
+--!  0   R : powers of 5
+--!  1   R : powers of 2
+--!  2-3 R : Frequency divisor
 --!
---! 0x40 -- reserved --
---! 0x44 -- reserved --
+--! 0x40 RW:  Channel+Record Select
+--!  0-1 R :  Channel #
+--!  2-3 R :  Record Index
+--! 0x44 RW:  Channel Control
+--!  0   R :  Record status; 1=valid, 2=late
+--!  1   R :  ASCII Channel Name
+--!  2    W:  Clear control bits
+--!  3   RW:  Set   control bits; 1=draining, 2=frozen, 4=interrupt mask
+--! 0x48 RW:  Interrupt address
+--! 0x4C -- reserved --
 --!
---! 0x48 RW: Select
---!   0x00-01 : Channel #
---!   0x02-03 : Buffer Index
---! 0x4C RW:  Channel Control
---!   0x00    : 0x01 = disable, 0x02 = freeze, 0x40 = late, 0x80 = valid
---!   0x01    : ASCII Channel Name
 --! 0x50 RW:  Fill
---!   0x00-01 : Current Queue fill
---!   0x02-03 : Max fill (can be cleared to 0)
---! 0x54 RW: Valid    actions counter (includes conflict+late)
---! 0x58 RW: Conflict actions counter
---! 0x5C RW: Late     actions counter
+--!   0x0-1:  Current Channel fill
+--!   0x2-3:  Max fill (can be cleared to 0)
+--! 0x54 RW:  Valid    actions counter (includes conflict+late)
+--! 0x58 RW:  Conflict actions counter
+--! 0x5C RW:  Late     actions counter
 --! 
 --! 0x60 R :  Event1 ... do NOT synchronize; hold index long enough
 --! 0x64 R :  Event0
@@ -80,6 +85,8 @@ use ieee.numeric_std.all;
 
 use work.wishbone_pkg.all;
 use work.eca_pkg.all;
+use work.gencores_pkg.all;
+use work.wb_irq_pkg.all;
 
 entity eca is
   generic(
@@ -113,7 +120,12 @@ entity eca is
     a_clk_i     : in  std_logic;
     a_rst_n_i   : in  std_logic;
     a_time_i    : in  t_time;
-    a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
+    a_channel_o : out t_channel_array(g_num_channels-1 downto 0);
+    -- Interrupts that report failure conditions
+    i_clk_i     : in  std_logic;
+    i_rst_n_i   : in  std_logic;
+    i_master_i  : in  t_wishbone_master_in;
+    i_master_o  : out t_wishbone_master_out);
 end eca;
 
 architecture rtl of eca is
@@ -167,6 +179,9 @@ architecture rtl of eca is
   signal rc_ce_idx      : std_logic_vector(7 downto 0)                := (others => '0');
   signal rc_cn_index    : std_logic_vector(5 downto 0)                := (others => '1');
   signal rc_stall       : std_logic_vector(9 downto 0)                := (others => '1');
+  signal rc_ci_enable   : std_logic := '0';
+  signal rc_ci_mask     : std_logic_vector(g_num_channels-1 downto 0) := (others => '0');
+  signal rc_ci_dest     : t_wishbone_address_array(g_num_channels-1 downto 0) := (others => (others => '0'));
   
   -- Registers fed from c_clk_i => a_clk_i
   signal ra1_cs_page    : std_logic;
@@ -177,6 +192,14 @@ architecture rtl of eca is
   signal ra0_cq_drain   : std_logic_vector(g_num_channels-1 downto 0);
   signal ra1_cq_freeze  : std_logic_vector(g_num_channels-1 downto 0);
   signal ra0_cq_freeze  : std_logic_vector(g_num_channels-1 downto 0);
+  
+  -- Registers fed from c_clk_i => i_clk_i
+  signal rc_ci_ready : std_logic_vector(g_num_channels-1 downto 0);
+  signal sc_ci_clear : std_logic_vector(g_num_channels-1 downto 0);
+  signal sc_ci_send  : std_logic_vector(g_num_channels-1 downto 0);
+  
+  -- Signals between c_clk_i => i_clk_i
+  signal si_interrupt : std_logic_vector(g_num_channels-1 downto 0);
   
   -- Signals between name and control
   signal sc_nc_record   : t_all_name;
@@ -265,6 +288,15 @@ architecture rtl of eca is
     return (x and not v_sel) or (v_dat and v_sel);
   end update;
   
+  impure function toggle(x : std_logic; i : natural) return std_logic is
+    variable v_set : std_logic := c_slave_i.dat(i+0) and c_slave_i.sel(0);
+    variable v_clr : std_logic := c_slave_i.dat(i+8) and c_slave_i.sel(1);
+  begin
+    return ((not v_set) and (not v_clr) and (    x)) or -- unmodified
+           ((    v_set) and (    v_clr) and (not x)) or -- toggled
+           ((    v_set) and (not v_clr));               -- set
+  end toggle;
+  
   function f_all_names return t_all_name_array is
     variable result : t_all_name_array;
   begin
@@ -328,6 +360,9 @@ begin
         rc_ce_idx     <= (others => '0');
         rc_cn_index   <= (others => '1');
         rc_stall      <= (others => '1');
+        rc_ci_enable  <= '0';
+        rc_ci_mask    <= (others => '0');
+        rc_ci_dest    <= (others => (others => '0'));
         
         rc_valid_count    <= (others => (others => '0'));
         rc_late_count     <= (others => (others => '0'));
@@ -345,14 +380,15 @@ begin
         end if;
         
         case to_integer(unsigned(c_slave_i.ADR(6 downto 2))) is
-          when  0 => c_slave_o.DAT(31) <= f_eca_active_high(g_inspect_table);
-                     c_slave_o.DAT(30) <= f_eca_active_high(g_inspect_queue);
-                     c_slave_o.DAT(24) <= not rc_cf_enabled;
-                     c_slave_o.DAT(22 downto 16) <= sc_nc_eca;
-          when  1 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_log_table_size, 8));
+          when  0 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_log_table_size, 8));
                      c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_log_queue_len,  8));
                      c_slave_o.DAT(15 downto  8) <= std_logic_vector(to_unsigned(g_num_channels,   8));
                      c_slave_o.DAT( 7 downto  0) <= rc_ce_idx;
+          when  1 => c_slave_o.DAT(24) <= f_eca_active_high(g_inspect_table);
+                     c_slave_o.DAT(25) <= f_eca_active_high(g_inspect_queue);
+                     c_slave_o.DAT(22 downto 16) <= sc_nc_eca;
+                     c_slave_o.DAT(1) <= rc_ci_enable;
+                     c_slave_o.DAT(0) <= not rc_cf_enabled;
           when  2 => c_slave_o.DAT <= f_eca_gray_decode(rc0_time_gray(63 downto 32), 1);
           when  3 => c_slave_o.DAT <= f_eca_gray_decode(rc0_time_gray(31 downto  0), 1);
           when  4 => c_slave_o.DAT(31) <= rc_cs_active;
@@ -373,18 +409,20 @@ begin
           when 15 => c_slave_o.DAT(31 downto 24) <= std_logic_vector(to_unsigned(g_frequency_5s, 8));
                      c_slave_o.DAT(23 downto 16) <= std_logic_vector(to_unsigned(g_frequency_2s, 8));
                      c_slave_o.DAT(15 downto  0) <= std_logic_vector(to_unsigned(g_frequency_div, 16));
-          when 16 | 17 => null; -- reserved
           
-          when 18 => c_slave_o.DAT(rc_cq_channel'left+16 downto rc_cq_channel'right+16) <= rc_cq_channel;
+          when 16 => c_slave_o.DAT(rc_cq_channel'left+16 downto rc_cq_channel'right+16) <= rc_cq_channel;
                      c_slave_o.DAT(rc_cq_index'range) <= rc_cq_index;
-          when 19 => c_slave_o.DAT(31) <= ra_qc_channel(channel).valid;
-                     c_slave_o.DAT(30) <= ra_qc_channel(channel).late;
+          when 17 => c_slave_o.DAT(24) <= ra_qc_channel(channel).valid;
+                     c_slave_o.DAT(25) <= ra_qc_channel(channel).late;
                      -- conflict is always '0' because this can only be determined on execution
                      -- inspecting the channel happens before the action is sorted
-                     -- c_slave_o.DAT(29) <= ra_qc_channel(channel).conflict;
-                     c_slave_o.DAT(25) <= rc_cq_freeze(channel);
-                     c_slave_o.DAT(24) <= rc_cq_drain(channel);
+                     -- c_slave_o.DAT(26) <= ra_qc_channel(channel).conflict;
                      c_slave_o.DAT(22 downto 16) <= sc_nc_channel(channel);
+                     c_slave_o.DAT(2) <= rc_ci_mask(channel);
+                     c_slave_o.DAT(1) <= rc_cq_freeze(channel);
+                     c_slave_o.DAT(0) <= rc_cq_drain(channel);
+          when 18 => c_slave_o.DAT(t_wishbone_address'range) <= rc_ci_dest(channel);
+          when 19 => null; -- reserved
           when 20 => c_slave_o.DAT(t_queue_index'length+15 downto 16) <= rc_qc_fill(channel);
                      c_slave_o.DAT(t_queue_index'range) <= rc_max_fill(channel);
           when 21 => c_slave_o.DAT(t_counter'range) <= rc_valid_count(channel);
@@ -455,12 +493,11 @@ begin
         
         if c_slave_i.CYC = '1' and c_slave_i.STB = '1' and c_slave_i.WE = '1' and rc_stall(0) = '0' then
           case to_integer(unsigned(c_slave_i.ADR(6 downto 2))) is
-            when  0 => 
-              if c_slave_i.SEL(3) = '1' then
-                rc_cs_page    <= rc_cs_page xor c_slave_i.DAT(25);
-                rc_cf_enabled <= not c_slave_i.DAT(24);
-              end if;
-            when  1 => rc_ce_idx <= update(rc_ce_idx);
+            when  0 => rc_ce_idx <= update(rc_ce_idx);
+            when  1 => 
+              rc_cs_page <= rc_cs_page xor (c_slave_i.DAT(2) and c_slave_i.SEL(0));
+              rc_cf_enabled <= not toggle(not rc_cf_enabled,  0);
+              rc_ci_enable <= toggle(rc_ci_enable, 1);
             when  2 => null; -- Cannot write to Time1
             when  3 => null; -- Cannot write to Time0
             when  4 => if c_slave_i.SEL(3) = '1' then rc_cs_active <= c_slave_i.DAT(31); end if;
@@ -497,9 +534,8 @@ begin
                        rc_stall(3 downto 0) <= (others => '1'); -- extra cycle for validity check
             when 14 => null; -- Freq1
             when 15 => null; -- Freq0
-            when 16 | 17 => null; -- reserved
             
-            when 18 => 
+            when 16 => 
               if c_slave_i.SEL(2) = '1' then
                 rc_cq_channel <= c_slave_i.DAT(rc_cq_channel'left+16 downto rc_cq_channel'right+16);
               end if;
@@ -511,11 +547,23 @@ begin
               -- It takes time for the result to stabilize back into c_clk_i
               rc_stall <= (others => '1');
               
-            when 19 => 
-              if c_slave_i.SEL(3) = '1' then
-                rc_cq_freeze(channel) <= c_slave_i.DAT(25);
-                rc_cq_drain(channel)  <= c_slave_i.DAT(24);
-              end if;
+            when 17 => 
+              for channel_idx in 0 to g_num_channels-1 loop
+                if channel_idx = channel then
+                  rc_ci_mask  (channel_idx) <= toggle(rc_ci_mask  (channel_idx), 2);
+                  rc_cq_freeze(channel_idx) <= toggle(rc_cq_freeze(channel_idx), 1);
+                  rc_cq_drain (channel_idx) <= toggle(rc_cq_drain (channel_idx), 0);
+                end if;
+              end loop;
+            
+            when 18 =>
+              for channel_idx in 0 to g_num_channels-1 loop
+                if channel_idx = channel then
+                  rc_ci_dest(channel_idx) <= update(rc_ci_dest(channel_idx));
+                end if;
+              end loop;
+              
+            when 19 => -- reserved
               
             when 20 => 
               for channel_idx in 0 to g_num_channels-1 loop
@@ -663,6 +711,50 @@ begin
       rc_qc_late_done <= rc_qc_late_cross;
     end if;
   end process;
+  
+  interrupts : for channel_idx in 0 to g_num_channels-1 generate
+  
+    gen : process(c_clk_i) is
+    begin
+      if rising_edge(c_clk_i) then
+        if rc_qc_late_cross    (channel_idx) /= rc_qc_late_done    (channel_idx) or
+           rc_qc_conflict_cross(channel_idx) /= rc_qc_conflict_done(channel_idx) then
+          rc_ci_ready(channel_idx) <= rc_ci_enable and rc_ci_mask(channel_idx);
+        end if;
+        
+        if sc_ci_send(channel_idx) = '1' then
+          rc_ci_ready(channel_idx) <= '0';
+        end if;
+      end if;
+    end process;
+    
+    sc_ci_send(channel_idx) <= rc_ci_ready(channel_idx) and sc_ci_clear(channel_idx);
+    
+    sync : gc_pulse_synchronizer2
+      port map(
+        clk_in_i    => c_clk_i,
+        rst_in_n_i  => c_rst_n_i,
+        clk_out_i   => i_clk_i,
+        rst_out_n_i => i_rst_n_i,
+        d_ready_o   => sc_ci_clear(channel_idx),
+        d_p_i       => sc_ci_send (channel_idx),
+        q_p_o       => si_interrupt(channel_idx));
+  
+  end generate;
+  
+  irq : irqm_core
+    generic map(
+      g_channels => g_num_channels)
+    port map(
+      clk_i         => i_clk_i,
+      rst_n_i       => i_rst_n_i,
+      irq_master_o  => i_master_o,
+      irq_master_i  => i_master_i,
+      msi_dst_array => rc_ci_dest, -- guarded by rc_ci_mask
+      msi_msg_array => (others => (others => '0')),
+      en_i          => '1',
+      mask_i        => (others => '1'),
+      irq_i         => si_interrupt);
   
   search : eca_search
     generic map(

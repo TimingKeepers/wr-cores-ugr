@@ -32,13 +32,23 @@
 #define ECA_DEVICE_ID	0x8752bf44U
 #define ECAE_DEVICE_ID	0x8752bf45U
 
-#define ECA_CTL		0x00
-#define ECA_NAME	0x01
-#define ECA_INFO	0x04
-#define ECA_TABLE_SIZE	0x04
-#define ECA_QUEUE_SIZE	0x05
-#define ECA_NUM_CHANNELS 0x06
-#define ECA_INDEX	0x07
+#define ECA_FEATURE_INSPECT_TABLE 0x1
+#define ECA_FEATURE_INSPECT_QUEUE 0x2
+
+#define ECA_CTL_DISABLE		0x01
+#define ECA_CTL_INT_ENABLE	0x02
+#define ECA_CTL_FLIP		0x04
+
+#define ECA_INFO	0x00
+#define ECA_TABLE_SIZE	0x00
+#define ECA_QUEUE_SIZE	0x01
+#define ECA_NUM_CHANNELS 0x02
+#define ECA_INDEX	0x03
+#define ECA_CTL		0x04
+#define ECA_FEATURE	0x04
+#define ECA_NAME	0x05
+#define ECA_CTL_CLEAR	0x06
+#define ECA_CTL_SET	0x07
 #define ECA_TIME1	0x08
 #define ECA_TIME0	0x0C
 #define ECA_SEARCH	0x10
@@ -56,11 +66,22 @@
 #define ECA_FREQ_2S	0x3D
 #define ECA_FREQ_DIV	0x3E
 
-#define ECAQ_SELECT	0x48
-#define ECAQ_CHANNEL	0x48
-#define ECAQ_INDEX	0x4A
-#define ECAQ_CTL	0x4C
-#define ECAQ_NAME	0x4D
+#define ECAQ_STATUS_VALID	0x01
+#define ECAQ_STATUS_LATE	0x02
+
+#define ECAQ_CTL_DRAIN		0x01
+#define ECAQ_CTL_FREEZE		0x02
+#define ECAQ_CTL_INT_MASK	0x04
+
+#define ECAQ_SELECT	0x40
+#define ECAQ_CHANNEL	0x40
+#define ECAQ_INDEX	0x42
+#define ECAQ_CTL	0x44
+#define ECAQ_STATUS	0x44
+#define ECAQ_NAME	0x45
+#define ECAQ_CTL_CLEAR	0x46
+#define ECAQ_CTL_SET	0x47
+#define ECAQ_INT_DEST	0x48
 #define ECAQ_FILL	0x50
 #define ECAQ_MAX_FILL	0x52
 #define ECAQ_VALID	0x54

@@ -56,7 +56,12 @@ entity wr_eca is
     a_rst_n_i   : in  std_logic;
     a_tai_i     : in  std_logic_vector(39 downto 0);
     a_cycles_i  : in  std_logic_vector(27 downto 0);
-    a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
+    a_channel_o : out t_channel_array(g_num_channels-1 downto 0);
+    -- Interrupts that report failure conditions
+    i_clk_i     : in  std_logic;
+    i_rst_n_i   : in  std_logic;
+    i_master_i  : in  t_wishbone_master_in;
+    i_master_o  : out t_wishbone_master_out);
 end wr_eca;
 
 architecture rtl of wr_eca is
@@ -111,7 +116,11 @@ begin
       a_clk_i     => a_clk_i,
       a_rst_n_i   => a_rst_n_i,
       a_time_i    => sa_time0,
-      a_channel_o => a_channel_o);
+      a_channel_o => a_channel_o,
+      i_clk_i     => i_clk_i,
+      i_rst_n_i   => i_rst_n_i,
+      i_master_i  => i_master_i,
+      i_master_o  => i_master_o);
 
   T0 : eca_wr_time
     port map(

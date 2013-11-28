@@ -146,6 +146,7 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
   eb_data_t sizes;
   eb_data_t time1, time0;
   eb_data_t freq1, freq0;
+  eb_data_t dest;
   eb_data_t fill;
   eb_data_t valid;
   eb_data_t conflict;
@@ -178,9 +179,10 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
     
     eca.name = eca_extract_name(name);
     
-    eca.inspect_table = ((name[0] >> 24) & 0x80) != 0;
-    eca.inspect_queue = ((name[0] >> 24) & 0x40) != 0;
-    eca.disabled      = ((name[0] >> 24) & 0x01) != 0;
+    eca.inspect_table = ((name[0] >> 24) & ECA_FEATURE_INSPECT_TABLE) != 0;
+    eca.inspect_queue = ((name[0] >> 24) & ECA_FEATURE_INSPECT_QUEUE) != 0;
+    eca.disabled      = (name[0] & ECA_CTL_DISABLE)    != 0;
+    eca.interrupts    = (name[0] & ECA_CTL_INT_ENABLE) != 0;
     
     eca.table_size = 1 << ((sizes >> 24) & 0xff);
     eca.queue_size = 1 << ((sizes >> 16) & 0xff);
@@ -207,6 +209,7 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
       cycle.write(eca.address + ECAQ_SELECT, EB_DATA32, c << 16);
       for (unsigned j = 0; j < 64; ++j)
         cycle.read(eca.address + ECAQ_CTL, EB_DATA32, &name[j]);
+      cycle.read(eca.address + ECAQ_INT_DEST, EB_DATA32, &dest);
       cycle.read(eca.address + ECAQ_FILL,     EB_DATA32, &fill);
       cycle.read(eca.address + ECAQ_VALID,    EB_DATA32, &valid);
       cycle.read(eca.address + ECAQ_CONFLICT, EB_DATA32, &conflict);
@@ -215,14 +218,16 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
       if ((status = cycle.close()) != EB_OK)
         return status;
       
-      ac.name     = eca_extract_name(name);
-      ac.draining = ((name[0] >> 24) & 0x01) != 0;
-      ac.frozen   = ((name[0] >> 24) & 0x02) != 0;
-      ac.fill     = (fill >> 16) & 0xFFFF;
-      ac.max_fill = (fill >>  0) & 0xFFFF;
-      ac.valid    = valid    & 0xFFFFFFFF;
-      ac.conflict = conflict & 0xFFFFFFFF;
-      ac.late     = late     & 0xFFFFFFFF;
+      ac.name       = eca_extract_name(name);
+      ac.draining   = (name[0] & ECAQ_CTL_DRAIN)    != 0;
+      ac.frozen     = (name[0] & ECAQ_CTL_FREEZE)   != 0;
+      ac.int_enable = (name[0] & ECAQ_CTL_INT_MASK) != 0;
+      ac.int_dest   = dest;
+      ac.fill       = (fill >> 16) & 0xFFFF;
+      ac.max_fill   = (fill >>  0) & 0xFFFF;
+      ac.valid      = valid    & 0xFFFFFFFF;
+      ac.conflict   = conflict & 0xFFFFFFFF;
+      ac.late       = late     & 0xFFFFFFFF;
       
       eca.channels.push_back(ac);
     }

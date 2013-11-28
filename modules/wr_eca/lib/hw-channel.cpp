@@ -39,6 +39,7 @@ status_t ActionChannel::refresh() {
   eb_status_t status;
   eb_address_t address;
   eb_data_t ctl;
+  eb_data_t d_dest;
   eb_data_t d_fill;
   eb_data_t d_valid;
   eb_data_t d_conflict;
@@ -50,6 +51,7 @@ status_t ActionChannel::refresh() {
   address = eca->address;
   cycle.write(address + ECAQ_SELECT, EB_DATA32, index << 16);
   cycle.read(address + ECAQ_CTL,      EB_DATA32, &ctl);
+  cycle.read(address + ECAQ_INT_DEST, EB_DATA32, &d_dest);
   cycle.read(address + ECAQ_FILL,     EB_DATA32, &d_fill);
   cycle.read(address + ECAQ_VALID,    EB_DATA32, &d_valid);
   cycle.read(address + ECAQ_CONFLICT, EB_DATA32, &d_conflict);
@@ -58,14 +60,41 @@ status_t ActionChannel::refresh() {
   if ((status = cycle.close()) != EB_OK)
     return status;
   
-  draining = ((ctl >> 24) & 0x01) != 0;
-  frozen   = ((ctl >> 24) & 0x02) != 0;
-  fill     = (d_fill >> 16) & 0xFFFF;
-  max_fill = (d_fill >>  0) & 0xFFFF;
-  valid    = d_valid    & 0xFFFFFFFF;
-  conflict = d_conflict & 0xFFFFFFFF;
-  late     = d_late     & 0xFFFFFFFF;
+  draining   = (ctl & ECAQ_CTL_DRAIN)    != 0;
+  frozen     = (ctl & ECAQ_CTL_FREEZE)   != 0;
+  int_enable = (ctl & ECAQ_CTL_INT_MASK) != 0;
+  int_dest   = d_dest;
+  fill       = (d_fill >> 16) & 0xFFFF;
+  max_fill   = (d_fill >>  0) & 0xFFFF;
+  valid      = d_valid    & 0xFFFFFFFF;
+  conflict   = d_conflict & 0xFFFFFFFF;
+  late       = d_late     & 0xFFFFFFFF;
   
+  return EB_OK;
+}
+
+status_t ActionChannel::reset() {
+  Cycle cycle;
+  eb_address_t address;
+  eb_status_t status;
+  
+  if ((status = cycle.open(eca->device)) != EB_OK)
+    return status;
+  
+  address = eca->address;
+  cycle.write(address + ECAQ_SELECT,   EB_DATA32|EB_BIG_ENDIAN, index << 16);
+  cycle.write(address + ECAQ_FILL,     EB_DATA32|EB_BIG_ENDIAN, 0);
+  cycle.write(address + ECAQ_VALID,    EB_DATA32|EB_BIG_ENDIAN, 0);
+  cycle.write(address + ECAQ_CONFLICT, EB_DATA32|EB_BIG_ENDIAN, 0);
+  cycle.write(address + ECAQ_LATE,     EB_DATA32|EB_BIG_ENDIAN, 0);
+  
+  if ((status = cycle.close()) != EB_OK)
+    return status;
+  
+  max_fill = 0;
+  valid    = 0;
+  conflict = 0;
+  late     = 0;
   return EB_OK;
 }
 
@@ -79,9 +108,9 @@ status_t ActionChannel::freeze(bool freeze) {
     return status;
   
   address = eca->address;
-  ctl = (draining?0x1:0) | (freeze?0x2:0);
-  cycle.write(address + ECAQ_SELECT, EB_DATA16|EB_BIG_ENDIAN, index);
-  cycle.write(address + ECAQ_CTL, EB_DATA8|EB_BIG_ENDIAN, ctl);
+  ctl = freeze?(ECAQ_CTL_FREEZE):(ECAQ_CTL_FREEZE<<8);
+  cycle.write(address + ECAQ_SELECT, EB_DATA32|EB_BIG_ENDIAN, index << 16);
+  cycle.write(address + ECAQ_CTL,    EB_DATA32|EB_BIG_ENDIAN, ctl);
   
   if ((status = cycle.close()) != EB_OK)
     return status;
@@ -100,9 +129,9 @@ status_t ActionChannel::drain(bool drain) {
     return status;
   
   address = eca->address;
-  ctl = (drain?0x1:0) | (frozen?0x2:0);
-  cycle.write(address + ECAQ_SELECT, EB_DATA16|EB_BIG_ENDIAN, index);
-  cycle.write(address + ECAQ_CTL, EB_DATA8|EB_BIG_ENDIAN, ctl);
+  ctl = drain?(ECAQ_CTL_DRAIN):(ECAQ_CTL_DRAIN<<8);
+  cycle.write(address + ECAQ_SELECT, EB_DATA32|EB_BIG_ENDIAN, index << 16);
+  cycle.write(address + ECAQ_CTL,    EB_DATA32|EB_BIG_ENDIAN, ctl);
   
   if ((status = cycle.close()) != EB_OK)
     return status;
@@ -111,7 +140,7 @@ status_t ActionChannel::drain(bool drain) {
   return EB_OK;
 }
 
-status_t ActionChannel::reset() {
+status_t ActionChannel::hook(bool enable, uint32_t dest) {
   Cycle cycle;
   eb_address_t address;
   eb_status_t status;
@@ -119,12 +148,22 @@ status_t ActionChannel::reset() {
   if ((status = cycle.open(eca->device)) != EB_OK)
     return status;
   
+  /* Clear the interrupt, set the address, possibly re-enable interrupt */
   address = eca->address;
-  cycle.write(address + ECAQ_SELECT, EB_DATA16|EB_BIG_ENDIAN, index);
-  cycle.write(address + ECAQ_FILL,  EB_DATA32|EB_BIG_ENDIAN, 0);
-  cycle.write(address + ECAQ_VALID, EB_DATA32|EB_BIG_ENDIAN, 0);
-  cycle.write(address + ECAQ_LATE,  EB_DATA32|EB_BIG_ENDIAN, 0);
-  return cycle.close();
+  cycle.write(address + ECAQ_SELECT,   EB_DATA32|EB_BIG_ENDIAN, index << 16);
+  cycle.write(address + ECAQ_CTL,      EB_DATA32|EB_BIG_ENDIAN, ECAQ_CTL_INT_MASK<<8);
+  cycle.write(address + ECAQ_INT_DEST, EB_DATA32|EB_BIG_ENDIAN, dest);
+  if (enable) {
+    cycle.write(address + ECAQ_CTL,    EB_DATA32|EB_BIG_ENDIAN, ECAQ_CTL_INT_MASK);
+  }
+  
+  if ((status = cycle.close()) != EB_OK)
+    return status;
+  
+  int_enable = enable;
+  int_dest   = dest;
+  
+  return EB_OK;
 }
 
 static bool sort_time(ActionEntry a, ActionEntry b) {
@@ -170,7 +209,7 @@ status_t ActionChannel::load(std::vector<ActionEntry>& table) {
       return status;
     
     /* Is the record invalid? */
-    if (((ctl >> 24) & 0x80) == 0) continue;
+    if (((ctl >> 24) & ECAQ_STATUS_VALID) == 0) continue;
     
     ActionEntry ae;
     
@@ -179,6 +218,9 @@ status_t ActionChannel::load(std::vector<ActionEntry>& table) {
     ae.tag   = tag;
     ae.tef   = tef;
     ae.time  = time1;  ae.time  <<= 32; ae.time  += time0;
+    
+    /* late events have negative timestamps */
+    if (((ctl >> 24) & ECAQ_STATUS_LATE) == 1) ae.time = -ae.time;
     
     table.push_back(ae);
   }

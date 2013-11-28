@@ -184,15 +184,18 @@ status_t ECA::refresh() {
   time = time1;
   time <<= 32;
   time += time0;
-  disabled = ((control>>24)&0x1) != 0;
+  disabled   = (control & ECA_CTL_DISABLE)    != 0;
+  interrupts = (control & ECA_CTL_INT_ENABLE) != 0;
   
   return EB_OK;
 }
 
 status_t ECA::disable(bool d) {
   eb_status_t status;
+  eb_data_t ctl;
   
-  status = device.write(address + ECA_CTL, EB_DATA8|EB_BIG_ENDIAN, d?1:0);
+  ctl = d?(ECA_CTL_DISABLE):(ECA_CTL_DISABLE<<8);
+  status = device.write(address + ECA_CTL, EB_DATA32|EB_BIG_ENDIAN, ctl);
   if (status != EB_OK) return status;
   
   disabled = d;
@@ -200,8 +203,22 @@ status_t ECA::disable(bool d) {
   return EB_OK;
 }
 
+status_t ECA::interrupt(bool i) {
+  eb_status_t status;
+  eb_data_t ctl;
+  
+  ctl = i?(ECA_CTL_INT_ENABLE):(ECA_CTL_INT_ENABLE<<8);
+  status = device.write(address + ECA_CTL, EB_DATA32|EB_BIG_ENDIAN, ctl);
+  if (status != EB_OK) return status;
+  
+  interrupts = i;
+  
+  return EB_OK;
+  
+}
+
 status_t ECA::flipTables() {
-  return device.write(address + ECA_CTL, EB_DATA8|EB_BIG_ENDIAN, 2);
+  return device.write(address + ECA_CTL, EB_DATA32|EB_BIG_ENDIAN, ECA_CTL_FLIP);
 }
 
 }

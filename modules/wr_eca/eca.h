@@ -114,13 +114,15 @@ struct ActionChannel {
   /* ------------------------------------------------------------------- */
   /* Mutable hardware registers; only modify using methods below         */
   /* ------------------------------------------------------------------- */
-  bool         draining; /* Queue is being erased; nothing enters/exits */
-  bool         frozen;   /* Queue is frozen;       nothing enters/exits */
-  uint16_t     fill;     /* Current number of entries in the queue */
-  uint16_t     max_fill; /* Maximum entries in the queue since reset */
-  uint32_t     valid;    /* How many valid actions have been sent (includes late+conflict) */
-  uint32_t     conflict; /* How many conflicting actions have been sent */
-  uint32_t     late;     /* How many late  actions have been sent */
+  bool         draining;   /* Queue is being erased; nothing enters/exits */
+  bool         frozen;     /* Queue is frozen;       nothing enters/exits */
+  bool         int_enable; /* Are interrupts for this channel enabled? */
+  uint32_t     int_dest;   /* Destination for interrupts */
+  uint16_t     fill;       /* Current number of entries in the queue */
+  uint16_t     max_fill;   /* Maximum entries in the queue since reset */
+  uint32_t     valid;      /* How many valid actions have been sent (includes late+conflict) */
+  uint32_t     conflict;   /* How many conflicting actions have been sent */
+  uint32_t     late;       /* How many late  actions have been sent */
   
   /* ------------------------------------------------------------------- */
   /* Access/modify the underlying hardware                               */
@@ -137,6 +139,9 @@ struct ActionChannel {
   /* Toggle queue states */
   status_t freeze(bool freeze);
   status_t drain (bool drain);
+  
+  /* Hook/unhook interrupt handling */
+  status_t hook(bool enable, uint32_t address);
   
   /* Grab the contents from a frozen channel */
   status_t load(std::vector<ActionEntry>& queue);
@@ -200,8 +205,9 @@ struct ECA {
   /* Mutable hardware registers; only modify using methods below         */
   /* ------------------------------------------------------------------- */
   
-  Time time;      /* Time as of the last refresh */
-  bool disabled;  /* When disabled, incoming events are dropped */
+  Time time;       /* Time as of the last refresh */
+  bool disabled;   /* When disabled, incoming events are dropped */
+  bool interrupts; /* Gnerate interrupts? See also ActionChannel.int_enable */
   
   /* ------------------------------------------------------------------- */
   /* Translate hardware parameters into software-friendly form           */
@@ -233,8 +239,9 @@ struct ECA {
   
   status_t refresh(); /* refresh time+disabled */
   
-  status_t disable(bool disabled); /* Enable/disable the ECA unit */
-  status_t flipTables();                /* Atomicly flip inactive and active tables  */
+  status_t disable  (bool disabled);   /* Enable/disable the ECA unit */
+  status_t interrupt(bool interrupts); /* Enable/disable interrupts */
+  status_t flipTables();               /* Atomicly flip inactive and active tables  */
   
   /* Load/store the condition table */
   status_t load(bool active, Table& table);

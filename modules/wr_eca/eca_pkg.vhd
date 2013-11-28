@@ -143,7 +143,12 @@ package eca_pkg is
       a_rst_n_i   : in  std_logic; -- Hold for at least 10 cycles
       a_tai_i     : in  std_logic_vector(39 downto 0);
       a_cycles_i  : in  std_logic_vector(27 downto 0);
-      a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
+      a_channel_o : out t_channel_array(g_num_channels-1 downto 0);
+      -- Interrupts that report failure conditions
+      i_clk_i     : in  std_logic;
+      i_rst_n_i   : in  std_logic;
+      i_master_i  : in  t_wishbone_master_in;
+      i_master_o  : out t_wishbone_master_out);
   end component;
   
   -- Raw Event-Condition-Action Unit
@@ -179,7 +184,12 @@ package eca_pkg is
       a_clk_i     : in  std_logic;
       a_rst_n_i   : in  std_logic;
       a_time_i    : in  t_time;
-      a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
+      a_channel_o : out t_channel_array(g_num_channels-1 downto 0);
+      -- Interrupts that report failure conditions
+      i_clk_i     : in  std_logic;
+      i_rst_n_i   : in  std_logic;
+      i_master_i  : in  t_wishbone_master_in;
+      i_master_o  : out t_wishbone_master_out);
   end component;
   
   -- Put the action into a queue and fire an interrupt to 'tag'
