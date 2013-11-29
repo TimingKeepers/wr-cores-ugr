@@ -166,75 +166,59 @@ double ECA::delay(uint64_t seconds) const {
   return out;
 }
 
-status_t ECA::refresh(Device dev) {
+status_t ECA::refresh() {
   Cycle cycle;
   eb_status_t status;
   eb_data_t control;
   eb_data_t time1, time0;
-  int done;
   
-  if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
   cycle.read(address + ECA_CTL,   EB_DATA32, &control);
   cycle.read(address + ECA_TIME1, EB_DATA32, &time1);
   cycle.read(address + ECA_TIME0, EB_DATA32, &time0);
-  cycle.close();
   
-  done = 0;
-  while (!done) dev.socket().run();
-  if (done < 0) return done;
-  if (done == 2) return EB_FAIL;
+  if ((status = cycle.close()) != EB_OK) return status;
   
   time = time1;
   time <<= 32;
   time += time0;
-  disabled = ((control>>24)&0x1) != 0;
+  disabled   = (control & ECA_CTL_DISABLE)    != 0;
+  interrupts = (control & ECA_CTL_INT_ENABLE) != 0;
   
   return EB_OK;
 }
 
-status_t ECA::disable(Device dev, bool d) {
-  Cycle cycle;
-  eb_data_t data;
+status_t ECA::disable(bool d) {
   eb_status_t status;
-  int done;
+  eb_data_t ctl;
   
-  if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
-    return status;
-  
-  data = d?1:0;
-  cycle.write(address + ECA_CTL, EB_DATA8|EB_BIG_ENDIAN, data);
-  cycle.close();
-  
-  done = 0;
-  while (!done) dev.socket().run();
-  if (done < 0) return done;
-  if (done == 2) return EB_FAIL;
+  ctl = d?(ECA_CTL_DISABLE):(ECA_CTL_DISABLE<<8);
+  status = device.write(address + ECA_CTL, EB_DATA32|EB_BIG_ENDIAN, ctl);
+  if (status != EB_OK) return status;
   
   disabled = d;
+  
   return EB_OK;
 }
 
-status_t ECA::flipTables(Device dev) {
-  Cycle cycle;
-  eb_data_t data;
+status_t ECA::interrupt(bool i) {
   eb_status_t status;
-  int done;
+  eb_data_t ctl;
   
-  if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
-    return status;
+  ctl = i?(ECA_CTL_INT_ENABLE):(ECA_CTL_INT_ENABLE<<8);
+  status = device.write(address + ECA_CTL, EB_DATA32|EB_BIG_ENDIAN, ctl);
+  if (status != EB_OK) return status;
   
-  data = 2;
-  cycle.write(address + ECA_CTL, EB_DATA8|EB_BIG_ENDIAN, data);
-  cycle.close();
-  
-  done = 0;
-  while (!done) dev.socket().run();
-  if (done < 0) return done;
-  if (done == 2) return EB_FAIL;
+  interrupts = i;
   
   return EB_OK;
+  
+}
+
+status_t ECA::flipTables() {
+  return device.write(address + ECA_CTL, EB_DATA32|EB_BIG_ENDIAN, ECA_CTL_FLIP);
 }
 
 }

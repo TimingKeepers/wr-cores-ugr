@@ -4,9 +4,9 @@
 --!
 --! Copyright (C) 2013 GSI Helmholtz Centre for Heavy Ion Research GmbH 
 --!
---! Feed chunks of 5 words in from the Wishbone clock domain.
---! If the queue cannot fit 5 words, spit out errors until cycle end.
---! If a cycle terminates without writing 5 words, discard partial write.
+--! Feed chunks of 8 words in from the Wishbone clock domain.
+--! If the queue cannot fit 8 words, spit out errors until cycle end.
+--! If a cycle terminates without writing 8 words, discard partial write.
 --!
 --------------------------------------------------------------------------------
 --! This library is free software; you can redistribute it and/or
@@ -41,8 +41,9 @@ entity eca_wb_event is
    e_stb_o   : out std_logic;
    e_stall_i : in  std_logic;
    e_event_o : out t_event;
-   e_time_o  : out t_time;
    e_param_o : out t_param;
+   e_tef_o   : out t_tef;
+   e_time_o  : out t_time;
    e_index_i : in  std_logic_vector(7 downto 0));
 end eca_wb_event;
 
@@ -52,13 +53,13 @@ architecture rtl of eca_wb_event is
   attribute altera_attribute of rtl : architecture is "-name AUTO_SHIFT_REGISTER_RECOGNITION OFF";
   
   -- We track two kinds of pointers:
-  --   Event pointers count completed writes of 5 words
+  --   Event pointers count completed writes of 8 words
   --   Word pointers are indexes into the FIFO
   --
   -- At any point in time, these event pointer relationships hold:
-  --    re_sent <= re_ready <= rw_ready <= rw_limit <= rw_sent+4
+  --    re_sent <= re_ready <= rw_ready <= rw_limit <= rw_sent+7
   -- where re_ready is an old value of rw_ready; behind only by clock-crossing delay
-  --   and rw_limit is an old value of rw_sent+4; behind by 1 clock cycle
+  --   and rw_limit is an old value of rw_sent+7; behind by 1 clock cycle
   --   and rw_sent  is an old value of re_sent;  behind only by clock-crossing delay
   
   constant c_addr1_bits : natural := 5;
@@ -67,7 +68,7 @@ architecture rtl of eca_wb_event is
   subtype t_addr1 is unsigned(c_addr1_bits-1 downto 0);
   subtype t_addr5 is unsigned(c_addr5_bits-1 downto 0);
   
-  type t_state is (S0, S1, S2, S3, S4, SERR);
+  type t_state is (S0, S1, S2, S3, S4, S5, S6, S7, SERR);
   
   -- Registers in clock domain w_clk_i
   signal rw_ready_gray : t_addr5;
@@ -130,7 +131,7 @@ begin
       rw0_sent_gray <= rw1_sent_gray;
       rw_sent <= unsigned(f_eca_gray_decode(std_logic_vector(rw0_sent_gray), 1));
       
-      rw_limit <= rw_sent + 4;
+      rw_limit <= rw_sent + 7;
       vw_addr1 := rw_addr + 1;
       
       w_slave_o.ACK <= '0';
@@ -179,6 +180,21 @@ begin
                   rw_addr <= vw_addr1;
                   
                 when S4 =>
+                  rw_state <= S5;
+                  w_slave_o.ACK <= '1';
+                  rw_addr <= vw_addr1;
+                  
+                when S5 =>
+                  rw_state <= S6;
+                  w_slave_o.ACK <= '1';
+                  rw_addr <= vw_addr1;
+                  
+                when S6 =>
+                  rw_state <= S7;
+                  w_slave_o.ACK <= '1';
+                  rw_addr <= vw_addr1;
+                  
+                when S7 =>
                   rw_state <= S0;
                   w_slave_o.ACK <= '1';
                   rw_addr <= vw_addr1;
@@ -215,8 +231,9 @@ begin
       
       if e_rst_n_i = '0' then
         e_event_o <= (others => '0');
-        e_time_o  <= (others => '0');
         e_param_o <= (others => '0');
+        e_tef_o   <= (others => '0');
+        e_time_o  <= (others => '0');
         
         re_sent  <= (others => '0');
         re_state <= S0;
@@ -242,17 +259,29 @@ begin
           when S1 =>
             e_event_o(31 downto  0) <= se_data;
             re_state <= S2;
-            
+          
           when S2 =>
-            e_time_o(63 downto 32) <= se_data;
+            e_param_o(63 downto 32) <= se_data;
             re_state <= S3;
-            
+          
           when S3 =>
-            e_time_o(31 downto  0) <= se_data;
-            re_state <= S4;
-            
-          when S4 =>
             e_param_o(31 downto  0) <= se_data;
+            re_state <= S4;
+          
+          when S4 =>
+            -- reserved bits against future changes
+            re_state <= S5;
+          
+          when S5 =>
+            e_tef_o(31 downto  0) <= se_data;
+            re_state <= S6;
+            
+          when S6 =>
+            e_time_o(63 downto 32) <= se_data;
+            re_state <= S7;
+            
+          when S7 =>
+            e_time_o(31 downto  0) <= se_data;
             re_state <= S0;
             
             re_stb <= '1';

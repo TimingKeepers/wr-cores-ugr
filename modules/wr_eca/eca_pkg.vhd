@@ -32,13 +32,13 @@ package eca_pkg is
 
  constant c_eca_sdb : t_sdb_device := (
     abi_class     => x"0000", -- undocumented device
-    abi_ver_major => x"01",
+    abi_ver_major => x"02",
     abi_ver_minor => x"00",
     wbd_endian    => c_sdb_endian_big,
     wbd_width     => x"7", -- 8/16/32-bit port granularity
     sdb_component => (
     addr_first    => x"0000000000000000",
-    addr_last     => x"00000000000003ff",
+    addr_last     => x"000000000000007f",
     product => (
     vendor_id     => x"0000000000000651",
     device_id     => x"8752bf44",
@@ -46,9 +46,9 @@ package eca_pkg is
     date          => x"20130204",
     name          => "ECA_UNIT:CONTROL   ")));
     
- constant c_eca_evt_sdb : t_sdb_device := (
+ constant c_eca_event_sdb : t_sdb_device := (
     abi_class     => x"0000", -- undocumented device
-    abi_ver_major => x"01",
+    abi_ver_major => x"02",
     abi_ver_minor => x"00",
     wbd_endian    => c_sdb_endian_big,
     wbd_width     => x"4", -- 32-bit port granularity
@@ -62,32 +62,55 @@ package eca_pkg is
     date          => x"20130204",
     name          => "ECA_UNIT:EVENTS_IN ")));
 
-  constant c_time_bits  : natural := 64;
+ constant c_eca_queue_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
+    abi_ver_major => x"01",
+    abi_ver_minor => x"00",
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"000000000000003f",
+    product => (
+    vendor_id     => x"0000000000000651",
+    device_id     => x"9bfa4560",
+    version       => x"00000001",
+    date          => x"20131107",
+    name          => "ECA_UNIT:ACTION_QUE")));
+
   constant c_event_bits : natural := 64;
-  constant c_param_bits : natural := 32;
+  constant c_param_bits : natural := 64;
   constant c_tag_bits   : natural := 32;
+  constant c_tef_bits   : natural := 32;
+  constant c_time_bits  : natural := 64;
   
   subtype t_ascii is std_logic_vector(6 downto 0);
-  subtype t_time  is std_logic_vector(c_time_bits-1  downto 0);
   subtype t_event is std_logic_vector(c_event_bits-1 downto 0);
   subtype t_param is std_logic_vector(c_param_bits-1 downto 0);
   subtype t_tag   is std_logic_vector(c_tag_bits-1   downto 0);
+  subtype t_tef   is std_logic_vector(c_tef_bits-1   downto 0);
+  subtype t_time  is std_logic_vector(c_time_bits-1  downto 0);
   
   type t_channel is record
-    valid : std_logic;
-    time  : t_time;
-    tag   : t_tag;
-    param : t_param;
-    event : t_event;
+    valid    : std_logic;
+    conflict : std_logic;
+    late     : std_logic;
+    event    : t_event;
+    param    : t_param;
+    tag      : t_tag;
+    tef      : t_tef;
+    time     : t_time;
   end record t_channel;
   
   type t_name          is array(63 downto 0)      of t_ascii;
   type t_name_array    is array(natural range <>) of t_name;
   type t_channel_array is array(natural range <>) of t_channel;
-  type t_time_array    is array(natural range <>) of t_time;
-  type t_tag_array     is array(natural range <>) of t_tag;
-  type t_param_array   is array(natural range <>) of t_param;
+  
   type t_event_array   is array(natural range <>) of t_event;
+  type t_param_array   is array(natural range <>) of t_param;
+  type t_tag_array     is array(natural range <>) of t_tag;
+  type t_tef_array     is array(natural range <>) of t_tef;
+  type t_time_array    is array(natural range <>) of t_time;
 
   -- Convert a string into a name (aka, pad it)
   function f_name(name : string) return t_name;
@@ -99,8 +122,9 @@ package eca_pkg is
       g_channel_names  : t_name_array;
       g_log_table_size : natural := 7; -- 128 entries -- condition table
       g_log_queue_len  : natural := 8; -- 256 entries -- action queue size
-      g_num_channels   : natural := 4; -- max 30 due to WB address space
+      g_num_channels   : natural := 4; -- max 256
       g_num_streams    : natural := 1;
+      g_log_clock_mult : natural := 4; -- a_clk_i and c_clk_i must be within 16*
       g_inspect_queue  : boolean := true;
       g_inspect_table  : boolean := true);
     port(
@@ -119,7 +143,12 @@ package eca_pkg is
       a_rst_n_i   : in  std_logic; -- Hold for at least 10 cycles
       a_tai_i     : in  std_logic_vector(39 downto 0);
       a_cycles_i  : in  std_logic_vector(27 downto 0);
-      a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
+      a_channel_o : out t_channel_array(g_num_channels-1 downto 0);
+      -- Interrupts that report failure conditions
+      i_clk_i     : in  std_logic;
+      i_rst_n_i   : in  std_logic;
+      i_master_i  : in  t_wishbone_master_in;
+      i_master_o  : out t_wishbone_master_out);
   end component;
   
   -- Raw Event-Condition-Action Unit
@@ -129,7 +158,8 @@ package eca_pkg is
       g_channel_names  : t_name_array;
       g_log_table_size : natural := 7; -- 128 entries -- condition table
       g_log_queue_len  : natural := 8; -- 256 entries -- action queue size
-      g_num_channels   : natural := 4;  -- max 30 due to WB address space
+      g_num_channels   : natural := 4; -- max 256
+      g_log_clock_mult : natural := 4; -- a_clk_i and c_clk_i must be within 16*
       g_inspect_queue  : boolean := true;
       g_inspect_table  : boolean := true;
       g_frequency_mul  : natural := 1; -- 125MHz = 1*5^9*2^6/1
@@ -141,8 +171,9 @@ package eca_pkg is
       e_stb_i     : in  std_logic;
       e_stall_o   : out std_logic;
       e_event_i   : in  t_event;
-      e_time_i    : in  t_time;
       e_param_i   : in  t_param;
+      e_tef_i     : in  t_tef;
+      e_time_i    : in  t_time;
       e_index_o   : out std_logic_vector(7 downto 0);
       -- ECA control registers
       c_clk_i     : in  std_logic;
@@ -153,10 +184,37 @@ package eca_pkg is
       a_clk_i     : in  std_logic;
       a_rst_n_i   : in  std_logic;
       a_time_i    : in  t_time;
-      a_channel_o : out t_channel_array(g_num_channels-1 downto 0));
+      a_channel_o : out t_channel_array(g_num_channels-1 downto 0);
+      -- Interrupts that report failure conditions
+      i_clk_i     : in  std_logic;
+      i_rst_n_i   : in  std_logic;
+      i_master_i  : in  t_wishbone_master_in;
+      i_master_o  : out t_wishbone_master_out);
   end component;
   
-  -- Execute a WB write to address "tag" with data "param"
+  -- Put the action into a queue and fire an interrupt to 'tag'
+  component eca_queue_channel is
+    generic(
+      g_log_queue_depth  : natural := 8;
+      g_counter_bits     : natural := 24;
+      g_log_clock_factor : natural := 8; -- clocks q, q, i are within 256*
+      a2i_dual_clock     : boolean := true;
+      a2q_dual_clock     : boolean := true);
+    port(
+      a_clk_i     : in  std_logic;
+      a_rst_n_i   : in  std_logic;
+      a_channel_i : in  t_channel;
+      i_clk_i     : in  std_logic;
+      i_rst_n_i   : in  std_logic;
+      i_master_o  : out t_wishbone_master_out;
+      i_master_i  : in  t_wishbone_master_in;
+      q_clk_i     : in  std_logic;
+      q_rst_n_i   : in  std_logic;
+      q_slave_i   : in  t_wishbone_slave_in;
+      q_slave_o   : out t_wishbone_slave_out);
+  end component;
+  
+  -- Put low bits of param to address tag
   component eca_wb_channel is
     port(
       clk_i     : in  std_logic;
@@ -166,7 +224,7 @@ package eca_pkg is
       master_i  : in  t_wishbone_master_in);
   end component;
   
-  -- Set bits selected by "tag" to value in "param"
+  -- Set gpio bits on/off as specified in channel_i.tag
   component eca_gpio_channel is
     port(
       clk_i     : in  std_logic;
@@ -182,6 +240,8 @@ package eca_pkg is
   function f_eca_ripple(a, b : std_logic_vector; c : std_logic) return std_logic_vector;
   function f_eca_gray_encode(x : std_logic_vector) return std_logic_vector;
   function f_eca_gray_decode(x : std_logic_vector; step : natural) return std_logic_vector;
+  function f_eca_add(x : std_logic_vector; y : integer) return std_logic_vector;
+  function f_eca_delta(x, previous, current : std_logic_vector) return std_logic_vector;
   
   -- Registers its inputs. Async outputs. 
   -- When r_addr_i=w_addr_i, r_data_o is undefined.
@@ -276,8 +336,9 @@ package eca_pkg is
       e_stb_o   : out std_logic;
       e_stall_i : in  std_logic;
       e_event_o : out t_event;
-      e_time_o  : out t_time;
       e_param_o : out t_param;
+      e_tef_o   : out t_tef;
+      e_time_o  : out t_time;
       e_index_i : in  std_logic_vector(7 downto 0));
   end component;
   
@@ -292,16 +353,18 @@ package eca_pkg is
       e_stall_o  : out std_logic;
       e_page_i   : in  std_logic;
       e_event_i  : in  t_event;
-      e_time_i   : in  t_time;
       e_param_i  : in  t_param;
+      e_tef_i    : in  t_tef;
+      e_time_i   : in  t_time;
       -- Feed located event rules to the walker
       w_stb_o    : out std_logic;
       w_stall_i  : in  std_logic;
       w_page_o   : out std_logic;
       w_first_o  : out std_logic_vector(g_log_table_size-1 downto 0);
       w1_event_o : out t_event;
-      w1_time_o  : out t_time;
       w1_param_o : out t_param;
+      w1_tef_o   : out t_tef;
+      w1_time_o  : out t_time;
       -- Access the search table
       t_clk_i    : in  std_logic;
       t_page_i   : in  std_logic;
@@ -322,14 +385,16 @@ package eca_pkg is
     port(
       clk_i        : in  std_logic;
       rst_n_i      : in  std_logic;
+      time_Q_i     : in  t_time;
       -- Feed in an index to scan from binary search
       b_stb_i      : in  std_logic;
       b_stall_o    : out std_logic;
       b_page_i     : in  std_logic;
       b_first_i    : in  std_logic_vector(g_log_table_size-1 downto 0);
       b1_event_i   : in  t_event;
-      b1_time_i    : in  t_time;
       b1_param_i   : in  t_param;
+      b1_tef_i     : in  t_tef;
+      b1_time_i    : in  t_time;
       -- Outputs for the channel queue
       q_channel_o  : out t_channel_array (g_num_channels-1 downto 0);
       q_full_i     : in  std_logic_vector(g_num_channels-1 downto 0);
@@ -442,4 +507,14 @@ package body eca_pkg is
     end if;
   end f_eca_gray_decode;
 
+  function f_eca_add(x : std_logic_vector; y : integer) return std_logic_vector is
+  begin
+    return std_logic_vector(unsigned(x) + to_unsigned(y, x'length));
+  end function;
+  
+  function f_eca_delta(x, previous, current : std_logic_vector) return std_logic_vector is
+  begin
+    return std_logic_vector(unsigned(x) + (unsigned(current) - unsigned(previous)));
+  end function;
+  
 end eca_pkg;

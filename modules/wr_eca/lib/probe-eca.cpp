@@ -64,6 +64,7 @@ void eca_sdb_search(SearchRecord* record, Device dev, const struct sdb_table* sd
         if (des->device.sdb_component.product.vendor_id == GSI_VENDOR_ID) {
           switch (des->device.sdb_component.product.device_id) {
             case ECAE_DEVICE_ID: {
+              if (des->device.abi_ver_major != 2) break;
               EventStream es;
               es.address       = des->device.sdb_component.addr_first;
               es.sdb_ver_major = des->device.abi_ver_major;
@@ -76,6 +77,7 @@ void eca_sdb_search(SearchRecord* record, Device dev, const struct sdb_table* sd
               break;
             }
             case ECA_DEVICE_ID: {
+              if (des->device.abi_ver_major != 2) break;
               ECA eca;
               eca.address       = des->device.sdb_component.addr_first;
               eca.sdb_ver_major = des->device.abi_ver_major;
@@ -104,22 +106,6 @@ void eca_sdb_search(SearchRecord* record, Device dev, const struct sdb_table* sd
   record->done = 1;
 }
 
-void eca_cycle_done(int* done, Device dev, Operation op, eb_status_t status) {
-  if (status == EB_OK) {
-    *done = 1;
-    for (; !op.is_null(); op = op.next()) {
-      if (op.had_error()) {
-        *done = 2;
-        fprintf(stderr, "Wishbone segfault %s address %"EB_ADDR_FMT"\n",
-                op.is_read()?"reading":"writing", op.address());
-      }
-    }
-  } else {
-    fprintf(stderr, "Etherbone error: %s\n", eb_status(status));
-    *done = status;
-  }
-}
-
 std::string eca_extract_name(eb_data_t* data) {
   char name8[64];
   
@@ -143,17 +129,17 @@ std::string eca_extract_name(eb_data_t* data) {
 }
 
 
-status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
+status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
   /* Phase 1 -- locate ECA units using SDB */
   SearchRecord record;
   record.ecas = &ecas;
   
-  dev.sdb_scan_root(&record, sdb_wrap_function_callback<SearchRecord, eca_sdb_search>);
+  device.sdb_scan_root(&record, sdb_wrap_function_callback<SearchRecord, eca_sdb_search>);
   
   record.done = 0;
   record.status = EB_OK;
   
-  while (!record.done) dev.socket().run();
+  while (!record.done) device.socket().run();
   if (record.status != EB_OK) return record.status;
   
   /* Phase 2a -- Read ECA parameters */
@@ -162,17 +148,22 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
   eb_data_t sizes;
   eb_data_t time1, time0;
   eb_data_t freq1, freq0;
+  eb_data_t dest;
   eb_data_t fill;
+  eb_data_t valid;
+  eb_data_t conflict;
+  eb_data_t late;
   eb_data_t id;
   
   Cycle cycle;
-  int done;
   
   for (unsigned i = 0; i < ecas.size(); ++i) {
     ECA& eca = ecas[i];
     unsigned num_channels;
+    eca.index = i;
+    eca.device = device;
     
-    if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
+    if ((status = cycle.open(device)) != EB_OK)
       return status;
     
     for (unsigned j = 0; j < 64; ++j)
@@ -184,18 +175,16 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
     cycle.read(eca.address + ECA_FREQ_MUL, EB_DATA32, &freq1);
     cycle.read(eca.address + ECA_FREQ_5S,  EB_DATA32, &freq0);
     cycle.write(eca.address + ECA_INDEX, EB_BIG_ENDIAN|EB_DATA8, i); /* set index for matching streams */
-    cycle.close();
     
-    done = 0;
-    while (!done) dev.socket().run();
-    if (done < 0) return done;
-    if (done == 2) return EB_FAIL;
+    if ((status = cycle.close()) != EB_OK)
+      return status;
     
     eca.name = eca_extract_name(name);
     
-    eca.inspect_table = ((name[0] >> 24) & 0x80) != 0;
-    eca.inspect_queue = ((name[0] >> 24) & 0x40) != 0;
-    eca.disabled      = ((name[0] >> 24) & 0x01) != 0;
+    eca.inspect_table = ((name[0] >> 24) & ECA_FEATURE_INSPECT_TABLE) != 0;
+    eca.inspect_queue = ((name[0] >> 24) & ECA_FEATURE_INSPECT_QUEUE) != 0;
+    eca.disabled      = (name[0] & ECA_CTL_DISABLE)    != 0;
+    eca.interrupts    = (name[0] & ECA_CTL_INT_ENABLE) != 0;
     
     eca.table_size = 1 << ((sizes >> 24) & 0xff);
     eca.queue_size = 1 << ((sizes >> 16) & 0xff);
@@ -213,26 +202,36 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
     /* Phase 2b -- Read Channel parameters + names */
     for (unsigned c = 0; c < num_channels; ++c) {
       ActionChannel ac;
-      ac.address = eca.address + ECA_END + c*ECAQ_END;
+      ac.device = eca.device;
+      ac.address = eca.address;
+      ac.index = c;
       
-      if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
+      if ((status = cycle.open(device)) != EB_OK)
         return status;
       
+      cycle.write(eca.address + ECAQ_SELECT, EB_DATA32, c << 16);
       for (unsigned j = 0; j < 64; ++j)
-        cycle.read(ac.address + ECAQ_CTL, EB_DATA32, &name[j]);
-      cycle.read(ac.address + ECAQ_FILL, EB_DATA32, &fill);
-      cycle.close();
+        cycle.read(eca.address + ECAQ_CTL, EB_DATA32, &name[j]);
+      cycle.read(eca.address + ECAQ_INT_DEST, EB_DATA32, &dest);
+      cycle.read(eca.address + ECAQ_FILL,     EB_DATA32, &fill);
+      cycle.read(eca.address + ECAQ_VALID,    EB_DATA32, &valid);
+      cycle.read(eca.address + ECAQ_CONFLICT, EB_DATA32, &conflict);
+      cycle.read(eca.address + ECAQ_LATE,     EB_DATA32, &late);
       
-      done = 0;
-      while (!done) dev.socket().run();
-      if (done < 0) return done;
-      if (done == 2) return EB_FAIL;
+      if ((status = cycle.close()) != EB_OK)
+        return status;
       
-      ac.name     = eca_extract_name(name);
-      ac.draining = ((name[0] >> 24) & 0x01) != 0;
-      ac.frozen   = ((name[0] >> 24) & 0x02) != 0;
-      ac.fill     = (fill >> 16) & 0xFFFF;
-      ac.max_fill = (fill >>  0) & 0xFFFF;
+      ac.name       = eca_extract_name(name);
+      ac.queue_size = eca.inspect_queue?eca.queue_size:0;
+      ac.draining   = (name[0] & ECAQ_CTL_DRAIN)    != 0;
+      ac.frozen     = (name[0] & ECAQ_CTL_FREEZE)   != 0;
+      ac.int_enable = (name[0] & ECAQ_CTL_INT_MASK) != 0;
+      ac.int_dest   = dest;
+      ac.fill       = (fill >> 16) & 0xFFFF;
+      ac.max_fill   = (fill >>  0) & 0xFFFF;
+      ac.valid      = valid    & 0xFFFFFFFF;
+      ac.conflict   = conflict & 0xFFFFFFFF;
+      ac.late       = late     & 0xFFFFFFFF;
       
       eca.channels.push_back(ac);
     }
@@ -245,17 +244,9 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
   for (unsigned s = 0; s < record.streams.size(); ++s) {
     EventStream& es = record.streams[s];
     
-    if ((status = cycle.open(dev, &done, wrap_function_callback<int, eca_cycle_done>)) != EB_OK)
-      return status;
-      
     /* These have to be separate cycles so the crossbar doesn't get stuffed up */
-    cycle.read(es.address, EB_DATA32, &id);
-    cycle.close();
-    
-    done = 0;
-    while (!done) dev.socket().run();
-    if (done < 0) return done;
-    if (done == 2) return EB_FAIL;
+    status = device.read(es.address, EB_DATA32, &id);
+    if (status != EB_OK) return status;
     
     ids[s] = id;
   }
@@ -267,6 +258,7 @@ status_t ECA::load(Device dev, std::vector<ECA>& ecas) {
       /* fprintf(stderr, "Unmatched ECA Event stream; id: %d\n", mid); */
       continue;
     }
+    es.device = ecas[mid].device;
     ecas[mid].streams.push_back(es);
   }
   

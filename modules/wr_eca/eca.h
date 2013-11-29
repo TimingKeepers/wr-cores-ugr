@@ -28,25 +28,40 @@
 #include <etherbone.h>
 #include <string>
 #include <vector>
-#include <map>
 
 namespace GSI_ECA {
 
 using namespace etherbone;
 
-typedef uint64_t Time;
-typedef uint64_t Event;
-typedef uint32_t Tag;
-typedef uint32_t Param;
 typedef uint8_t  Channel;
+typedef uint64_t Event;
 typedef int16_t  Index;
+typedef uint64_t Param;
+typedef uint32_t Tag;
+typedef uint32_t Tef;
+typedef uint64_t Time;
+
+/* An Event sent to the ECA has these fields */
+struct EventEntry {
+  Event event;
+  Param param;
+  Tef   tef;
+  Time  time;
+  
+  EventEntry(Event e = 0, Param p = 0, Tef t = 0, Time i = 0)
+   : event(e), param(p), tef(t), time(i) { }
+};
 
 /* An action queued to be executed has these fields */
 struct ActionEntry {
   Event event;
-  Time  time;
-  Tag   tag;
   Param param;
+  Tag   tag;
+  Tef   tef;
+  Time  time;
+  
+  ActionEntry(Event e = 0, Param p = 0, Tag a = 0, Tef t = 0, Time i = 0)
+   : event(e), param(p), tag(a), tef(t), time(i) { }
 };
 
 /* Software condition table entry fields */
@@ -56,52 +71,33 @@ struct TableEntry {
   Tag     tag;
   Channel channel;
   uint8_t event_bits;
-};
-
-/* Hardware condition search table fields */
-struct SearchEntry {
-  Event event;
-  Index first; /* -1 if end-of-list */
-};
-
-/* Hardware condition walk table fields */
-struct WalkEntry {
-  Time    offset;
-  Tag     tag;
-  Index   next; /* -1 if end-of-list */
-  Channel channel;
-};
-
-/* A useful intermediate format for the condition table */
-struct ReverseTable {
-  public:
-    /* Returns the number of conflicting records overwritten by this new record */
-    int add   (const TableEntry& te);
-    int add   (Event begin, Event end, Time, Channel, Tag);
-    /* Returns the number of records removed/modified */
-    int remove(const TableEntry& te); /* ignores tag */
-    int remove(Event begin, Event end, Time, Channel);
-    
-    /* Convert it to user-friendly form */
-    std::vector<TableEntry> reverse() const;
-    /* Compile it for loading to hardware */
-    void compile(std::vector<SearchEntry>& s, std::vector<WalkEntry>& w) const;
-    
-    /* Bulk load it from user-friendly table; returns count of conflicting records */
-    int load(const std::vector<TableEntry>& t);
-    /* Bulk load it from hardware tables; returns count of conflicting records */
-    int load(const std::vector<SearchEntry>& s, const std::vector<WalkEntry>& w);
   
-  protected:
-    struct EventRange {
-      Event end; /* [key, end] */
-      Tag   tag;
-    };
-    typedef std::map<Event, EventRange> EventFilter;
-    typedef std::map<Time, EventFilter> TableActions;
-    typedef std::vector<TableActions>   ChannelMap;
+  TableEntry(Event e = 0, Time o = 0, Tag t = 0, Channel c = 0, uint8_t b = 0)
+   : event(e), offset(o), tag(t), channel(c), event_bits(b) { }
+};
+
+/* Condition table */
+class Table {
+  private:
+    struct Impl;
+    Impl *impl;
     
-    ChannelMap data;
+  public:
+    Table();
+    Table(const Table& table);
+    ~Table();
+    
+    void swap(Table& table);
+    Table& operator = (Table x);
+    
+    int add(const TableEntry& te); /* Returns # records overwritten (conflict) */
+    int del(const TableEntry& te); /* Returns # records removed/modified */
+    
+    /* Bulk import/export of entries */
+    int  set(const std::vector<TableEntry>& vect);
+    void get(std::vector<TableEntry>& vect) const;
+  
+  friend struct ECA;
 };
 
 /* ======================================================================= */
@@ -111,30 +107,44 @@ struct ActionChannel {
   /* ------------------------------------------------------------------- */
   /* Constant hardware values                                            */
   /* ------------------------------------------------------------------- */
-  eb_address_t address; /* Wishbone base address of channel */
-  std::string  name;    /* Channel instance name */
+  std::string  name;         /* Channel instance name */
+  unsigned     queue_size;   /* Size of the inspectable queue */
   
   /* ------------------------------------------------------------------- */
   /* Mutable hardware registers; only modify using methods below         */
   /* ------------------------------------------------------------------- */
-  bool         draining; /* Queue is being erased; nothing enters/exits */
-  bool         frozen;   /* Queue is frozen;       nothing enters/exits */
-  uint16_t     fill;     /* Current number of entries in the queue */
-  uint16_t     max_fill; /* Maximum entries in the queue since reset */
+  bool         draining;   /* Queue is being erased; nothing enters/exits */
+  bool         frozen;     /* Queue is frozen;       nothing enters/exits */
+  bool         int_enable; /* Are interrupts for this channel enabled? */
+  uint32_t     int_dest;   /* Destination for interrupts */
+  uint16_t     fill;       /* Current number of entries in the queue */
+  uint16_t     max_fill;   /* Maximum entries in the queue since reset */
+  uint32_t     valid;      /* How many valid actions have been sent (includes late+conflict) */
+  uint32_t     conflict;   /* How many conflicting actions have been sent */
+  uint32_t     late;       /* How many late  actions have been sent */
   
   /* ------------------------------------------------------------------- */
   /* Access/modify the underlying hardware                               */
   /* ------------------------------------------------------------------- */
   
+  Device       device;       /* Device which hosts this ECA */
+  eb_address_t address;      /* Wishbone base address */
+  Channel      index;        /* Index of the channel */
+  
   /* Reload drain, freeze, fill, max_fill from hardware. */
-  status_t refresh(Device dev); 
+  status_t refresh(); 
+  /* Clear all counters (max_fill, valid, late) */
+  status_t reset();
   
   /* Toggle queue states */
-  status_t freeze(Device dev, bool freeze);
-  status_t drain (Device dev, bool drain);
+  status_t freeze(bool freeze);
+  status_t drain (bool drain);
   
-  /* Clear the queue max_fill counter back to fill */
-  status_t reset (Device dev);
+  /* Hook/unhook interrupt handling */
+  status_t hook(bool enable, uint32_t address);
+  
+  /* Grab the contents from a frozen channel */
+  status_t load(std::vector<ActionEntry>& queue);
 };
 
 /* ======================================================================= */
@@ -144,8 +154,6 @@ struct EventStream {
   /* ------------------------------------------------------------------- */
   /* Constant hardware values                                            */
   /* ------------------------------------------------------------------- */
-  eb_address_t address;
-  
   uint8_t     sdb_ver_major;
   uint8_t     sdb_ver_minor;
   uint32_t    sdb_version;
@@ -156,8 +164,11 @@ struct EventStream {
   /* Access/modify the underlying hardware                               */
   /* ------------------------------------------------------------------- */
   
+  Device       device;  /* Device which hosts this ECA */
+  eb_address_t address; /* Base address of the event stream */
+  
   /* Send an event to the stream */
-  status_t send(Device dev, Event event, Time time, Param param);
+  status_t send(EventEntry e);
 };
 
 /* ======================================================================= */
@@ -168,7 +179,6 @@ struct ECA {
   /* Constant hardware values                                            */
   /* ------------------------------------------------------------------- */
   
-  eb_address_t address;      /* Wishbone base address */
   std::string  name;         /* ECA instance name */
   
   uint8_t     sdb_ver_major; /* API version; major.minor */
@@ -195,8 +205,9 @@ struct ECA {
   /* Mutable hardware registers; only modify using methods below         */
   /* ------------------------------------------------------------------- */
   
-  Time time;  /* Time as of the last refresh */
-  bool disabled;  /* When disabled, incoming events are dropped */
+  Time time;       /* Time as of the last refresh */
+  bool disabled;   /* When disabled, incoming events are dropped */
+  bool interrupts; /* Gnerate interrupts? See also ActionChannel.int_enable */
   
   /* ------------------------------------------------------------------- */
   /* Translate hardware parameters into software-friendly form           */
@@ -222,23 +233,39 @@ struct ECA {
   /* Access/modify the underlying hardware                               */
   /* ------------------------------------------------------------------- */
   
-  status_t refresh   (Device dev); /* refresh time+disabled */
+  Device       device;       /* Device which hosts this ECA */
+  eb_address_t address;      /* Wishbone base address */
+  unsigned     index;        /* Index of the ECA */
   
-  status_t disable   (Device dev, bool disabled); /* Enable/disable the ECA unit */
-  status_t flipTables(Device dev);                /* Atomicly flip inactive and active tables  */
+  status_t refresh(); /* refresh time+disabled */
   
-  /* Load the H/W representation of the tables */
-  status_t loadQueue    (Device dev, unsigned channel, std::vector<ActionEntry>& queue);
-  status_t loadSearch   (Device dev, bool     active,  std::vector<SearchEntry>& table);
-  status_t loadWalk     (Device dev, bool     active,  std::vector<WalkEntry>&   table);
+  status_t disable  (bool disabled);   /* Enable/disable the ECA unit */
+  status_t interrupt(bool interrupts); /* Enable/disable interrupts */
+  status_t flipTables();               /* Atomicly flip inactive and active tables  */
   
-  /* Program the INACTIVE table */
-  status_t programSearch(Device dev, const std::vector<SearchEntry>& table);
-  status_t programWalk  (Device dev, const std::vector<WalkEntry>&   table);
+  /* Load/store the condition table */
+  status_t load(bool active, Table& table);
+  status_t store(const Table& table);
   
   /* Locate all the ECA units on the bus */
-  static status_t load(Device dev, std::vector<ECA>& ecas);
+  static status_t probe(Device dev, std::vector<ECA>& ecas);
 };
+
+
+/* ======================================================================= */
+/* Inline functions that are not part of the ABI                           */
+/* ======================================================================= */
+
+inline void Table::swap(Table& table) {
+  Impl* tmp = impl;
+  impl = table.impl;
+  table.impl = tmp;
+}
+
+inline Table& Table::operator = (Table x) {
+  swap(x);
+  return *this;
+}
 
 }
 

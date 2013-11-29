@@ -46,13 +46,13 @@
 -- There are c_scanners* parallel Scan processes, which partition the table vertically.
 -- A timestamp = "fff..." indicates that the entry is invalid/free.
 --
--- /=============================\
--- | time | time tag param event |
--- | time | time tag param event |
--- |------|                      |
--- | time | time tag param event |
--- | time | time tag param event |
--- \=============================/
+-- /=================================\
+-- | time | event param tag tef time |
+-- | time | event param tag tef time |
+-- |------|                          |
+-- | time | event param tag tef time |
+-- | time | event param tag tef time |
+-- \=================================/
 --                     ^--- Data component of table (td)
 --    ^---- scan components (ts0, ts1); used by scanner0 and scanner1
 
@@ -102,19 +102,22 @@ architecture rtl of eca_channel is
   subtype t_table_index    is std_logic_vector(c_table_index_bits   -1 downto 0);
   subtype t_queue_index    is std_logic_vector(c_queue_index_bits   -1 downto 0);
   subtype t_table_lo_index is std_logic_vector(c_table_lo_index_bits-1 downto 0);
+  subtype t_scan_data      is std_logic_vector(c_table_lo_index_bits   downto 0);
   subtype t_counter        is std_logic_vector(c_counter_bits       -1 downto 0);
   
   type t_table_index_array    is array(natural range <>) of t_table_index;
   type t_queue_index_array    is array(natural range <>) of t_queue_index;
   type t_table_lo_index_array is array(natural range <>) of t_table_lo_index;
+  type t_scan_data_array      is array(natural range <>) of t_scan_data;
   
   constant c_free_last_index : t_free_index := (others => '1');
   constant c_last_time       : t_time       := (others => '1');
   
   -- Select a valid record from an array
   type t_mux_record is record
-    valid : std_logic;
-    index : t_table_index;
+    valid     : std_logic;
+    index     : t_table_index;
+    violation : std_logic;
   end record t_mux_record;
   type t_mux_record_array is array(natural range <>) of t_mux_record;
   
@@ -140,12 +143,16 @@ architecture rtl of eca_channel is
   end f_mux_select;
   
   -- Queue signals
-  signal q_scan_valid     : std_logic_vector      (c_scanners-1 downto 0);
-  signal q_scan_time      : t_queue_index_array   (c_scanners-1 downto 0);
-  signal q_scan_index     : t_table_lo_index_array(c_scanners-1 downto 0);
-  signal q_dispatch_valid : std_logic_vector      (c_scanners-1 downto 0);
-  signal q_dispatch_time  : t_queue_index_array   (c_scanners-1 downto 0);
-  signal q_dispatch_index : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_scan_valid         : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_scan_time          : t_queue_index_array   (c_scanners-1 downto 0);
+  signal q_scan_index         : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_scan_violation     : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_scan_data          : t_scan_data_array     (c_scanners-1 downto 0);
+  signal q_dispatch_valid     : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_dispatch_time      : t_queue_index_array   (c_scanners-1 downto 0);
+  signal q_dispatch_index     : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal q_dispatch_violation : std_logic_vector      (c_scanners-1 downto 0);
+  signal q_dispatch_data      : t_scan_data_array     (c_scanners-1 downto 0);
   
   -- TableS signals
   signal ts_manage_write : std_logic_vector      (c_scanners-1 downto 0);
@@ -160,16 +167,20 @@ architecture rtl of eca_channel is
   signal td_manage_write   : std_logic;
   signal td_manage_index   : t_table_index;
   signal td_manage_valid   : std_logic;
-  signal td_manage_time    : t_time;
-  signal td_manage_tag     : t_tag;
-  signal td_manage_param   : t_param;
+  signal td_manage_late    : std_logic;
   signal td_manage_event   : t_event;
+  signal td_manage_param   : t_param;
+  signal td_manage_tag     : t_tag;
+  signal td_manage_tef     : t_tef;
+  signal td_manage_time    : t_time;
   signal td_dispatch_index : t_table_index;
   signal td_dispatch_valid : std_logic;
-  signal td_dispatch_time  : t_time;
-  signal td_dispatch_tag   : t_tag;
-  signal td_dispatch_param : t_param;
+  signal td_dispatch_late  : std_logic;
   signal td_dispatch_event : t_event;
+  signal td_dispatch_param : t_param;
+  signal td_dispatch_tag   : t_tag;
+  signal td_dispatch_tef   : t_tef;
+  signal td_dispatch_time  : t_time;
   
   -- Free signals
   signal fw_manage_free  : std_logic;
@@ -183,10 +194,12 @@ architecture rtl of eca_channel is
   signal counter_next : t_counter;
   
   -- Dispatch registers
-  signal dispatch_valid2 : std_logic_vector      (c_scanners-1 downto 0);
-  signal dispatch_index2 : t_table_lo_index_array(c_scanners-1 downto 0);
-  signal dispatch_valid1 : std_logic;
-  signal dispatch_index1 : t_table_index;
+  signal dispatch_valid2     : std_logic_vector      (c_scanners-1 downto 0);
+  signal dispatch_index2     : t_table_lo_index_array(c_scanners-1 downto 0);
+  signal dispatch_violation2 : std_logic_vector      (c_scanners-1 downto 0);
+  signal dispatch_valid1     : std_logic;
+  signal dispatch_index1     : t_table_index;
+  signal dispatch_violation1 : std_logic;
   
   -- Dispatch signals
   signal dispatch_manage_kill  : std_logic;
@@ -221,19 +234,23 @@ architecture rtl of eca_channel is
   -- Manage table-write registers
   signal manage_write : std_logic;
   signal manage_valid : std_logic;
+  signal manage_late  : std_logic;
   signal manage_index : t_table_index;
-  signal manage_time  : t_time;
-  signal manage_tag   : t_tag;
-  signal manage_param : t_param;
   signal manage_event : t_event;
+  signal manage_param : t_param;
+  signal manage_tag   : t_tag;
+  signal manage_tef   : t_tef;
+  signal manage_time  : t_time;
   
   constant cd_valid_offset : natural := 0;
-  subtype  cd_time_range  is natural range c_time_bits +cd_valid_offset     downto cd_valid_offset     +1;
-  subtype  cd_tag_range   is natural range c_tag_bits  +cd_time_range'left  downto cd_time_range'left  +1;
-  subtype  cd_param_range is natural range c_param_bits+cd_tag_range'left   downto cd_tag_range'left   +1;
-  subtype  cd_event_range is natural range c_event_bits+cd_param_range'left downto cd_param_range'left +1;
-  
-  subtype  cd_data_type is std_logic_vector(cd_event_range);
+  constant cd_late_offset  : natural := cd_valid_offset+1;
+  subtype  cd_event_range is natural range c_event_bits+cd_late_offset      downto cd_late_offset      +1;
+  subtype  cd_param_range is natural range c_param_bits+cd_event_range'left downto cd_event_range'left +1;
+  subtype  cd_tag_range   is natural range c_tag_bits  +cd_param_range'left downto cd_param_range'left +1;
+  subtype  cd_tef_range   is natural range c_tef_bits  +cd_tag_range'left   downto cd_tag_range'left   +1;
+  subtype  cd_time_range  is natural range c_time_bits +cd_tef_range'left   downto cd_tef_range'left   +1;
+
+  subtype  cd_data_type is std_logic_vector(cd_time_range);
   constant cd_data_bits : natural := cd_data_type'left + 1; --'
   
 begin
@@ -246,15 +263,20 @@ begin
     Q : eca_flags
       generic map(
         g_addr_bits => c_queue_index_bits,
-        g_data_bits => c_table_lo_index_bits)
+        g_data_bits => t_scan_data'length)
       port map(
         clk_i    => clk_i,
-        a_addr_i => q_scan_time (table_hi_idx),
-        a_en_i   => q_scan_valid(table_hi_idx),
-        a_data_i => q_scan_index(table_hi_idx),
+        a_addr_i => q_scan_time     (table_hi_idx),
+        a_en_i   => q_scan_valid    (table_hi_idx),
+        a_data_i => q_scan_data     (table_hi_idx),
         b_addr_i => q_dispatch_time (table_hi_idx),
         b_full_o => q_dispatch_valid(table_hi_idx),
-        b_data_o => q_dispatch_index(table_hi_idx));
+        b_data_o => q_dispatch_data (table_hi_idx));
+    
+    q_scan_data         (table_hi_idx)(t_table_lo_index'length) <= q_scan_violation(table_hi_idx);
+    q_scan_data         (table_hi_idx)(t_table_lo_index'range)  <= q_scan_index    (table_hi_idx);
+    q_dispatch_violation(table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'length);
+    q_dispatch_index    (table_hi_idx) <= q_dispatch_data(table_hi_idx)(t_table_lo_index'range);
     
   end generate;
   
@@ -288,17 +310,21 @@ begin
       w_en_i                   => td_manage_write,
       w_addr_i                 => td_manage_index,
       w_data_i(cd_valid_offset)=> td_manage_valid,
-      w_data_i(cd_time_range)  => td_manage_time,
-      w_data_i(cd_tag_range)   => td_manage_tag,
-      w_data_i(cd_param_range) => td_manage_param,
+      w_data_i(cd_late_offset) => td_manage_late,
       w_data_i(cd_event_range) => td_manage_event,
+      w_data_i(cd_param_range) => td_manage_param,
+      w_data_i(cd_tag_range)   => td_manage_tag,
+      w_data_i(cd_tef_range)   => td_manage_tef,
+      w_data_i(cd_time_range)  => td_manage_time,
       r_clk_i                  => clk_i,
       r_addr_i                 => td_dispatch_index,
       r_data_o(cd_valid_offset)=> td_dispatch_valid,
-      r_data_o(cd_time_range)  => td_dispatch_time,
-      r_data_o(cd_tag_range)   => td_dispatch_tag,
+      r_data_o(cd_late_offset) => td_dispatch_late,
+      r_data_o(cd_event_range) => td_dispatch_event,
       r_data_o(cd_param_range) => td_dispatch_param,
-      r_data_o(cd_event_range) => td_dispatch_event);
+      r_data_o(cd_tag_range)   => td_dispatch_tag,
+      r_data_o(cd_tef_range)   => td_dispatch_tef,
+      r_data_o(cd_time_range)  => td_dispatch_time);
    
   -- The free queue
   F : eca_sdp
@@ -315,9 +341,7 @@ begin
       r_addr_i => fr_manage_index,
       r_data_o => fr_manage_alloc);
   
-  counter_next <= 
-    std_logic_vector(unsigned(counter) + 
-                     to_unsigned(1, c_counter_bits));
+  counter_next <= f_eca_add(counter, 1);
   
   Count : process(clk_i)
   begin
@@ -339,11 +363,13 @@ begin
   begin
     if rising_edge(clk_i) then
       -- No reset; logic is acyclic
-      dispatch_valid2 <= q_dispatch_valid;
-      dispatch_index2 <= q_dispatch_index;
+      dispatch_valid2     <= q_dispatch_valid;
+      dispatch_index2     <= q_dispatch_index;
+      dispatch_violation2 <= q_dispatch_violation;
       -- Block output when draining or frozen
-      dispatch_valid1 <= dispatch_mux_record.valid and not (drain_i or freeze_i);
-      dispatch_index1 <= dispatch_mux_record.index;
+      dispatch_valid1     <= dispatch_mux_record.valid and not (drain_i or freeze_i);
+      dispatch_index1     <= dispatch_mux_record.index;
+      dispatch_violation1 <= dispatch_mux_record.violation;
     end if;
   end process;
 
@@ -362,22 +388,29 @@ begin
       dispatch_mux_records(table_hi_idx).index(c_table_index_bits-1 downto c_table_lo_index_bits) <=
         std_logic_vector(to_unsigned(table_hi_idx, c_table_hi_index_bits));
     end generate;
+    dispatch_mux_records(table_hi_idx).violation <= dispatch_violation2(table_hi_idx);
   end generate;
   dispatch_mux_record <= f_mux_select(dispatch_mux_records);
   
   td_dispatch_index <= addr_i when freeze_i='1' else dispatch_mux_record.index;
   
-  channel_o.valid <= dispatch_valid1;
-  channel_o.time  <= td_dispatch_time;
-  channel_o.tag   <= td_dispatch_tag;
-  channel_o.param <= td_dispatch_param;
-  channel_o.event <= td_dispatch_event;
+  channel_o.valid    <= dispatch_valid1;
+  channel_o.conflict <= dispatch_violation1 and not td_dispatch_late;
+  channel_o.late     <= td_dispatch_late;
+  channel_o.event    <= td_dispatch_event;
+  channel_o.param    <= td_dispatch_param;
+  channel_o.tag      <= td_dispatch_tag;
+  channel_o.tef      <= td_dispatch_tef;
+  channel_o.time     <= td_dispatch_time;
   
-  inspect_o.valid <= td_dispatch_valid;
-  inspect_o.time  <= td_dispatch_time;
-  inspect_o.tag   <= td_dispatch_tag;
-  inspect_o.param <= td_dispatch_param;
-  inspect_o.event <= td_dispatch_event;
+  inspect_o.valid    <= td_dispatch_valid;
+  inspect_o.conflict <= '0';
+  inspect_o.late     <= td_dispatch_late;
+  inspect_o.event    <= td_dispatch_event;
+  inspect_o.param    <= td_dispatch_param;
+  inspect_o.tag      <= td_dispatch_tag;
+  inspect_o.tef      <= td_dispatch_tef;
+  inspect_o.time     <= td_dispatch_time;
   
   dispatch_manage_kill  <= dispatch_valid1;
   dispatch_manage_index <= dispatch_index1;
@@ -394,15 +427,8 @@ begin
       -- scan_index is acyclic
       scan_index(3 downto 1) <= scan_next & scan_index(3 downto 2);
       
-      scan_time_p4 <=
-        std_logic_vector(
-          unsigned(time_i(scan_time_p4'range)) + 
-          to_unsigned(5, scan_time_p4'length));
-      
-      scan_time_m4 <=
-        std_logic_vector(
-          unsigned(time_i(scan_time_m4'range)) + 
-          to_unsigned(2**30-3, scan_time_m4'length));
+      scan_time_p4 <= f_eca_add(time_i(scan_time_p4'range), 5);
+      scan_time_m4 <= f_eca_add(time_i(scan_time_m4'range), -3);
     end if;
   end process;
   
@@ -443,6 +469,23 @@ begin
         x2_o  => open,
         c2_o  => open);
     
+    -- This is used to detect conflicts where two actions happen at once.
+    -- We already tested for a late arriving event in the eca_walker.
+    -- The only possible reason an action could be late if it arrived on time 
+    -- is if there was a conflict.
+    -- If there was a conflict, then the scanner will see it at least twice
+    -- before it reachs the dispatcher again. Thus we can be pretty sloppy
+    -- and just compare the current time and the target time.
+    ScanViolation : eca_adder
+      port map(
+        clk_i => clk_i,
+        a_i   => time_i,
+        b_i   => scan_time_n(table_hi_idx),
+        c_i   => '1',
+        c1_o  => q_scan_violation(table_hi_idx),
+        x2_o  => open,
+        c2_o  => open);
+    
     q_scan_valid(table_hi_idx) <= scan_lesseq(table_hi_idx) and 
                                   scan_valid1(table_hi_idx) and
                                   not scan_hazard(table_hi_idx);
@@ -475,10 +518,10 @@ begin
   manage_flags(0) <= dispatch_manage_kill;
   
   with manage_flags select manage_idx_next <=
-    manage_idx                                 when "00",   -- No alloc, No free
-    std_logic_vector(unsigned(manage_idx) - 1) when "01",   -- No alloc, FREE
-    std_logic_vector(unsigned(manage_idx) + 1) when "10",   -- ALLOC,    No free
-    manage_idx                                 when others; -- ALLOC,    FREE
+    manage_idx                when "00",   -- No alloc, No free
+    f_eca_add(manage_idx, -1) when "01",   -- No alloc, FREE
+    f_eca_add(manage_idx,  1) when "10",   -- ALLOC,    No free
+    manage_idx                when others; -- ALLOC,    FREE
   
   fr_manage_index <= manage_idx_next(c_table_index_bits-1 downto 0);
   fw_manage_free  <= (not channel_i.valid and dispatch_manage_kill) or drain_i;
@@ -505,10 +548,12 @@ begin
       end if;
       
       manage_valid <= not drain_i and channel_i.valid;
-      manage_time  <= channel_i.time;
-      manage_tag   <= channel_i.tag;
-      manage_param <= channel_i.param;
+      manage_late  <= channel_i.late;
       manage_event <= channel_i.event;
+      manage_param <= channel_i.param;
+      manage_tag   <= channel_i.tag;
+      manage_tef   <= channel_i.tef;
+      manage_time  <= channel_i.time;
     end if;
   end process;
   
@@ -532,9 +577,11 @@ begin
   td_manage_write <= manage_write;
   td_manage_index <= manage_index;
   td_manage_valid <= manage_valid;
-  td_manage_time  <= manage_time;
-  td_manage_tag   <= manage_tag;
-  td_manage_param <= manage_param;
+  td_manage_late  <= manage_late;
   td_manage_event <= manage_event;
+  td_manage_param <= manage_param;
+  td_manage_tag   <= manage_tag;
+  td_manage_tef   <= manage_tef;
+  td_manage_time  <= manage_time;
     
 end rtl;
