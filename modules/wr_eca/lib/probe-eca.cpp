@@ -64,6 +64,7 @@ void eca_sdb_search(SearchRecord* record, Device dev, const struct sdb_table* sd
         if (des->device.sdb_component.product.vendor_id == GSI_VENDOR_ID) {
           switch (des->device.sdb_component.product.device_id) {
             case ECAE_DEVICE_ID: {
+              if (des->device.abi_ver_major != 2) break;
               EventStream es;
               es.address       = des->device.sdb_component.addr_first;
               es.sdb_ver_major = des->device.abi_ver_major;
@@ -76,6 +77,7 @@ void eca_sdb_search(SearchRecord* record, Device dev, const struct sdb_table* sd
               break;
             }
             case ECA_DEVICE_ID: {
+              if (des->device.abi_ver_major != 2) break;
               ECA eca;
               eca.address       = des->device.sdb_component.addr_first;
               eca.sdb_ver_major = des->device.abi_ver_major;
