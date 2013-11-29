@@ -658,9 +658,9 @@ begin
           ra_qc_channel(channel_idx).time  <= (others => '0');
         end if;
         
-        ra_qc_valid(channel_idx)    <= sa_wq_channel(channel_idx).valid;
-        ra_qc_conflict(channel_idx) <= sa_wq_channel(channel_idx).valid and sa_wq_channel(channel_idx).conflict;
-        ra_qc_late(channel_idx)     <= sa_wq_channel(channel_idx).valid and sa_wq_channel(channel_idx).late;
+        ra_qc_valid(channel_idx)    <= sa_qc_channel(channel_idx).valid;
+        ra_qc_conflict(channel_idx) <= sa_qc_channel(channel_idx).valid and sa_qc_channel(channel_idx).conflict;
+        ra_qc_late(channel_idx)     <= sa_qc_channel(channel_idx).valid and sa_qc_channel(channel_idx).late;
       
         if ra_qc_valid(channel_idx) = '1' then
           ra_qc_valid_cross(channel_idx) <= f_eca_add(ra_qc_valid_cross(channel_idx), 1);
