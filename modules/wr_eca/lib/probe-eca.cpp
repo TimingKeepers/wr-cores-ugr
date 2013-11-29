@@ -202,7 +202,8 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
     /* Phase 2b -- Read Channel parameters + names */
     for (unsigned c = 0; c < num_channels; ++c) {
       ActionChannel ac;
-      ac.eca = &eca;
+      ac.device = eca.device;
+      ac.address = eca.address;
       ac.index = c;
       
       if ((status = cycle.open(device)) != EB_OK)
@@ -221,6 +222,7 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
         return status;
       
       ac.name       = eca_extract_name(name);
+      ac.queue_size = eca.inspect_queue?eca.queue_size:0;
       ac.draining   = (name[0] & ECAQ_CTL_DRAIN)    != 0;
       ac.frozen     = (name[0] & ECAQ_CTL_FREEZE)   != 0;
       ac.int_enable = (name[0] & ECAQ_CTL_INT_MASK) != 0;
@@ -256,7 +258,7 @@ status_t ECA::probe(Device device, std::vector<ECA>& ecas) {
       /* fprintf(stderr, "Unmatched ECA Event stream; id: %d\n", mid); */
       continue;
     }
-    es.eca = &ecas[mid];
+    es.device = ecas[mid].device;
     ecas[mid].streams.push_back(es);
   }
   

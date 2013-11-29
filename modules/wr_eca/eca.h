@@ -41,8 +41,6 @@ typedef uint32_t Tag;
 typedef uint32_t Tef;
 typedef uint64_t Time;
 
-struct ECA;
-
 /* An Event sent to the ECA has these fields */
 struct EventEntry {
   Event event;
@@ -109,7 +107,8 @@ struct ActionChannel {
   /* ------------------------------------------------------------------- */
   /* Constant hardware values                                            */
   /* ------------------------------------------------------------------- */
-  std::string  name;    /* Channel instance name */
+  std::string  name;         /* Channel instance name */
+  unsigned     queue_size;   /* Size of the inspectable queue */
   
   /* ------------------------------------------------------------------- */
   /* Mutable hardware registers; only modify using methods below         */
@@ -128,8 +127,9 @@ struct ActionChannel {
   /* Access/modify the underlying hardware                               */
   /* ------------------------------------------------------------------- */
   
-  ECA*    eca;;   /* ECA which contains this channel */
-  Channel index;  /* Index of the channel */
+  Device       device;       /* Device which hosts this ECA */
+  eb_address_t address;      /* Wishbone base address */
+  Channel      index;        /* Index of the channel */
   
   /* Reload drain, freeze, fill, max_fill from hardware. */
   status_t refresh(); 
@@ -164,7 +164,7 @@ struct EventStream {
   /* Access/modify the underlying hardware                               */
   /* ------------------------------------------------------------------- */
   
-  ECA*         eca;     /* Device with this event stream */
+  Device       device;  /* Device which hosts this ECA */
   eb_address_t address; /* Base address of the event stream */
   
   /* Send an event to the stream */

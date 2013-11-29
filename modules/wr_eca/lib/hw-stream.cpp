@@ -37,7 +37,7 @@ status_t EventStream::send(EventEntry e) {
   Cycle cycle;
   eb_status_t status;
   
-  if ((status = cycle.open(eca->device)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
   cycle.write(address, EB_DATA32, e.event >> 32);

@@ -37,7 +37,6 @@ namespace GSI_ECA {
 status_t ActionChannel::refresh() {
   Cycle cycle;
   eb_status_t status;
-  eb_address_t address;
   eb_data_t ctl;
   eb_data_t d_dest;
   eb_data_t d_fill;
@@ -45,10 +44,9 @@ status_t ActionChannel::refresh() {
   eb_data_t d_conflict;
   eb_data_t d_late;
   
-  if ((status = cycle.open(eca->device)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
-  address = eca->address;
   cycle.write(address + ECAQ_SELECT, EB_DATA32, index << 16);
   cycle.read(address + ECAQ_CTL,      EB_DATA32, &ctl);
   cycle.read(address + ECAQ_INT_DEST, EB_DATA32, &d_dest);
@@ -75,13 +73,11 @@ status_t ActionChannel::refresh() {
 
 status_t ActionChannel::reset() {
   Cycle cycle;
-  eb_address_t address;
   eb_status_t status;
   
-  if ((status = cycle.open(eca->device)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
-  address = eca->address;
   cycle.write(address + ECAQ_SELECT,   EB_DATA32|EB_BIG_ENDIAN, index << 16);
   cycle.write(address + ECAQ_FILL,     EB_DATA32|EB_BIG_ENDIAN, 0);
   cycle.write(address + ECAQ_VALID,    EB_DATA32|EB_BIG_ENDIAN, 0);
@@ -101,13 +97,11 @@ status_t ActionChannel::reset() {
 status_t ActionChannel::freeze(bool freeze) {
   Cycle cycle;
   eb_status_t status;
-  eb_address_t address;
   eb_data_t ctl;
   
-  if ((status = cycle.open(eca->device)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
-  address = eca->address;
   ctl = freeze?(ECAQ_CTL_FREEZE):(ECAQ_CTL_FREEZE<<8);
   cycle.write(address + ECAQ_SELECT, EB_DATA32|EB_BIG_ENDIAN, index << 16);
   cycle.write(address + ECAQ_CTL,    EB_DATA32|EB_BIG_ENDIAN, ctl);
@@ -121,14 +115,12 @@ status_t ActionChannel::freeze(bool freeze) {
 
 status_t ActionChannel::drain(bool drain) {
   Cycle cycle;
-  eb_address_t address;
   eb_status_t status;
   eb_data_t ctl;
   
-  if ((status = cycle.open(eca->device)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
-  address = eca->address;
   ctl = drain?(ECAQ_CTL_DRAIN):(ECAQ_CTL_DRAIN<<8);
   cycle.write(address + ECAQ_SELECT, EB_DATA32|EB_BIG_ENDIAN, index << 16);
   cycle.write(address + ECAQ_CTL,    EB_DATA32|EB_BIG_ENDIAN, ctl);
@@ -142,14 +134,12 @@ status_t ActionChannel::drain(bool drain) {
 
 status_t ActionChannel::hook(bool enable, uint32_t dest) {
   Cycle cycle;
-  eb_address_t address;
   eb_status_t status;
   
-  if ((status = cycle.open(eca->device)) != EB_OK)
+  if ((status = cycle.open(device)) != EB_OK)
     return status;
   
   /* Clear the interrupt, set the address, possibly re-enable interrupt */
-  address = eca->address;
   cycle.write(address + ECAQ_SELECT,   EB_DATA32|EB_BIG_ENDIAN, index << 16);
   cycle.write(address + ECAQ_CTL,      EB_DATA32|EB_BIG_ENDIAN, ECAQ_CTL_INT_MASK<<8);
   cycle.write(address + ECAQ_INT_DEST, EB_DATA32|EB_BIG_ENDIAN, dest);
@@ -172,7 +162,6 @@ static bool sort_time(ActionEntry a, ActionEntry b) {
 
 status_t ActionChannel::load(std::vector<ActionEntry>& table) {
   Cycle cycle;
-  eb_address_t address;
   eb_status_t  status;
   eb_data_t    ctl;
   eb_data_t    event1, event0;
@@ -182,15 +171,11 @@ status_t ActionChannel::load(std::vector<ActionEntry>& table) {
   
   table.clear();
   
-  /* Can only probe if inspect_queue is true */
-  if (!eca->inspect_queue) return EB_OK;
-  
   /* If the queue is not frozen, it won't work */
   if (!frozen) return EB_FAIL;
   
-  address = eca->address;
-  for (unsigned i = 0; i < eca->queue_size; ++i) {
-    if ((status = cycle.open(eca->device)) != EB_OK)
+  for (unsigned i = 0; i < queue_size; ++i) {
+    if ((status = cycle.open(device)) != EB_OK)
       return status;
     
     cycle.write(address + ECAQ_SELECT, EB_DATA32|EB_BIG_ENDIAN, (index << 16) | i);
