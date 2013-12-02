@@ -318,9 +318,10 @@ package eca_pkg is
   -- Convert White Rabbit time to ECA time
   component eca_wr_time is
     port(
-      clk_i    : in std_logic;
-      tai_i    : in std_logic_vector(39 downto 0);
-      cycles_i : in std_logic_vector(27 downto 0);
+      clk_i    : in  std_logic;
+      rst_n_i  : in  std_logic;
+      tai_i    : in  std_logic_vector(39 downto 0);
+      cycles_i : in  std_logic_vector(27 downto 0);
       time_o   : out t_time);
   end component;
   

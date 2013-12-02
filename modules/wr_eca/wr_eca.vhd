@@ -125,6 +125,7 @@ begin
   T0 : eca_wr_time
     port map(
       clk_i    => a_clk_i,
+      rst_n_i  => a_rst_n_i,
       tai_i    => a_tai_i,
       cycles_i => a_cycles_i,
       time_o   => sa_time0);

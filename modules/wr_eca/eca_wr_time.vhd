@@ -33,9 +33,10 @@ use work.eca_pkg.all;
 
 entity eca_wr_time is
   port(
-    clk_i    : in std_logic;
-    tai_i    : in std_logic_vector(39 downto 0);
-    cycles_i : in std_logic_vector(27 downto 0);
+    clk_i    : in  std_logic;
+    rst_n_i  : in  std_logic;
+    tai_i    : in  std_logic_vector(39 downto 0);
+    cycles_i : in  std_logic_vector(27 downto 0);
     time_o   : out t_time);
 end eca_wr_time;
 
@@ -62,6 +63,19 @@ architecture rtl of eca_wr_time is
   signal s0_cycles   : boolean;
 begin
 
+  state : process(clk_i, rst_n_i) is
+  begin
+    if rst_n_i = '0' then
+      r0_state <= (1 => '1', others => '0');
+    elsif rising_edge(clk_i) then
+      if r0_state = 0 then
+        r0_state <= to_unsigned(29, r0_state'length);
+      else
+        r0_state <= r0_state-1;
+      end if;
+    end if;
+  end process;
+  
   s0_load   <= r0_state < 3;
   s0_cycles <= r0_state < 6;
 
@@ -99,16 +113,9 @@ begin
       
       r1_cycles <= r0_cycles;
       r2_cycles <= r1_cycles;
-      
-      if r0_state = 0 then
-        r0_state <= to_unsigned(29, r0_state'length);
-      else
-        r0_state <= r0_state-1;
-      end if;
     end if;
   end process;
 
-  
   counter : eca_offset
     generic map(
       g_data_bits => c_time_bits,

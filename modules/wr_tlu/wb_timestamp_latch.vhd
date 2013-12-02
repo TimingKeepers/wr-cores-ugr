@@ -264,6 +264,7 @@ begin  -- behavioral
 	   T1 : eca_wr_time
     port map(
       clk_i    => ref_clk_i,
+      rst_n_i  => ref_rstn_i,
       tai_i    => tm_tai_i,
       cycles_i => tm_cycles_i,
       time_o   => sa_time0);
