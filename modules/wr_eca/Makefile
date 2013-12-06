@@ -10,8 +10,10 @@ EB_LIB ?= -L$(EB) -letherbone
 EB_INC ?= -I$(EB)
 endif
 
-CXX      = g++
-CXXFLAGS = -Wall -O2 -I. $(EB_INC)
+EXTRA_FLAGS ?=
+CXX         ?= g++
+CXXFLAGS    ?= $(EXTRA_FLAGS) -Wall -O2 -I. $(EB_INC)
+
 TARGETS  = lib/version.h libeca.a eca-ctl eca-table
 
 all:	$(TARGETS)
