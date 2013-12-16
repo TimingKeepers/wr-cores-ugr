@@ -79,8 +79,9 @@ architecture behavioral of gtp_bitslide is
   begin
     if(g_simulation /= 0) then
       return 256;
-		else
-			return 524288;
+    else
+      return 524288;
+    end if;
   end f_eval_sync_detect_threshold;
 
   function f_eval_pause_tics return integer is
