@@ -587,6 +587,7 @@ begin
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
       g_simulation          => f_int_to_bool(g_simulation),
+      g_tx_frame_padding    => true,
       g_pcs_16bit           => false,
       g_rx_buffer_size      => g_rx_buffer_size,
       g_with_rx_buffer      => true,

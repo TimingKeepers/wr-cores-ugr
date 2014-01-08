@@ -41,7 +41,8 @@ entity ep_tx_framer is
   generic(
     g_with_vlans       : boolean;
     g_with_timestamper : boolean;
-    g_force_gap_length : integer
+    g_force_gap_length : integer;
+    g_frame_padding    : boolean
     );
 
   port (
@@ -212,6 +213,18 @@ architecture behavioral of ep_tx_framer is
     tmp(26)           := in_o.rty;
     return tmp;
   end f_fabric_2_slv;
+
+  -- frame padding generic
+  function f_frame_padding_thr(x : boolean)
+    return unsigned is
+  begin
+    if(x) then
+      return x"1e";
+    else
+      return x"00";
+    end if;
+  end function;
+  constant c_PAD_THR : unsigned(7 downto 0) := f_frame_padding_thr(g_frame_padding);
   
 begin  -- behavioral
 
@@ -615,7 +628,7 @@ begin  -- behavioral
               if(eof_p1 = '1') then
 
                 if(stored_status.has_crc = '0') then
-                  if(counter < x"1e") then        -- 11-Oct-2013 peterj: padding bugfix
+                  if(counter < c_PAD_THR) then        -- 11-Oct-2013 peterj: padding bugfix
                     state <= TXF_PAD;
                   else
                     state <= TXF_WAIT_CRC;

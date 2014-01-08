@@ -33,6 +33,7 @@ entity xwr_endpoint is
     g_address_granularity : t_wishbone_address_granularity := WORD;
     g_simulation          : boolean                        := false;
     g_tx_force_gap_length : integer                        := 0;
+    g_tx_frame_padding    : boolean                        := false;
     g_pcs_16bit           : boolean                        := false;
     g_rx_buffer_size      : integer                        := 1024;
     g_with_rx_buffer      : boolean                        := true;
@@ -193,6 +194,7 @@ begin
       g_interface_mode      => g_interface_mode,
       g_address_granularity => g_address_granularity,
       g_tx_force_gap_length => g_tx_force_gap_length,
+      g_tx_frame_padding    => g_tx_frame_padding,
 
       g_simulation          => g_simulation,
       g_pcs_16bit           => g_pcs_16bit,

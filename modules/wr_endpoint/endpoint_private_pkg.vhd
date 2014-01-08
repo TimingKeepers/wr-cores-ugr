@@ -180,7 +180,8 @@ package endpoint_private_pkg is
   component ep_tx_framer
     generic (
       g_with_vlans       : boolean;
-      g_with_timestamper : boolean);
+      g_with_timestamper : boolean;
+      g_frame_padding    : boolean);
     port (
       clk_sys_i        : in  std_logic;
       rst_n_i          : in  std_logic;
