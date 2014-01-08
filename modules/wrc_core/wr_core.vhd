@@ -267,6 +267,15 @@ end wr_core;
 
 architecture struct of wr_core is
 
+  function f_int_to_bool(x : integer) return boolean is
+  begin
+    if(x /= 0) then
+      return true;
+    else
+      return false;
+    end if;
+  end f_int_to_bool;
+
   function f_choose_lm32_firmware_file return string is
   begin
     if(g_dpram_initf = "default") then
@@ -577,7 +586,7 @@ begin
     generic map (
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
-      g_simulation          => false,
+      g_simulation          => f_int_to_bool(g_simulation),
       g_pcs_16bit           => false,
       g_rx_buffer_size      => g_rx_buffer_size,
       g_with_rx_buffer      => true,
