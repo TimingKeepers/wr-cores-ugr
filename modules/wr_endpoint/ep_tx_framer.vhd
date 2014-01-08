@@ -478,7 +478,8 @@ begin  -- behavioral
                   when x"4" => q_data <= regs_i.macl_o(31 downto 16);
                   when x"5" => q_data <= regs_i.macl_o(15 downto 0);
                   when x"6" => q_data <= x"8808";
-                  when x"7" => q_data <= tx_pause_delay;
+                  when x"7" => q_data <= x"0001";  -- peterj: IEEE 802.3 Table 31A-1 MAC control codes PAUSE (Annex 31B)
+                  when x"8" => q_data <= tx_pause_delay;
                                state <= TXF_PAD;
                   when others => null;
                 end case;
