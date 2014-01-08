@@ -108,8 +108,6 @@ begin
       regs_i     => regs_i,
       regs_o     => regs_o);
 
-  wb_in.adr(c_wishbone_address_width-1 downto 3) <= (others=>'0');
-
   slave_o.err <= '0';
   slave_o.rty <= '0';
   
