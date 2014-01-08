@@ -130,14 +130,14 @@ architecture behavioral of ep_rx_buffer is
       if(din(17 downto 16) = "10") then  -- some fancy encoding is necessary here
         case cur_addr(1 downto 0) is
           when c_WRF_DATA =>
-            fab.addr <= c_WRF_OOB after 1ns;
+            fab.addr <= c_WRF_OOB after 1 ns;
           when c_WRF_STATUS =>
-            fab.addr <= c_WRF_DATA after 1ns;
-          when others => fab.addr <= c_WRF_DATA after 1ns;
+            fab.addr <= c_WRF_DATA after 1 ns;
+          when others => fab.addr <= c_WRF_DATA after 1 ns;
         end case;
 
       else
-        fab.addr <= cur_addr after 1ns;
+        fab.addr <= cur_addr after 1 ns;
       end if;
 
       fab.dvalid  <= not din(17) or (din(17) and not din(16));
@@ -148,7 +148,7 @@ architecture behavioral of ep_rx_buffer is
 
     else
       fab.bytesel <= '0';
-      fab.addr    <= cur_addr after 1ns;
+      fab.addr    <= cur_addr after 1 ns;
       fab.dvalid  <= '0';
       fab.sof     <= '0';
       fab.eof     <= '0';
