@@ -444,7 +444,7 @@ architecture syn of wr_endpoint is
   signal regs_towb_ep  : t_ep_in_registers;
   signal regs_towb_tsu : t_ep_in_registers;
   signal regs_towb_rpath: t_ep_in_registers;
-
+  signal regs_towb_dmtd: t_ep_in_registers;
 
 -------------------------------------------------------------------------------
 -- flow control signals
@@ -838,7 +838,7 @@ begin
   wb_out.err   <= '0';
   wb_out.int   <= '0';
 
-  regs_towb <= regs_towb_ep or regs_towb_tsu or regs_towb_rpath;
+  regs_towb <= regs_towb_ep or regs_towb_tsu or regs_towb_rpath or regs_towb_dmtd;
 
 
   p_link_activity : process(clk_sys_i)
@@ -882,8 +882,8 @@ begin
 
 
 
-    regs_towb.dmcr_en_i    <= r_dmcr_en;
-    regs_towb.dmcr_n_avg_i <= r_dmcr_n_avg;
+    regs_towb_dmtd.dmcr_en_i    <= r_dmcr_en;
+    regs_towb_dmtd.dmcr_n_avg_i <= r_dmcr_n_avg;
 
     p_dmtd_update : process(clk_sys_i)
     begin
