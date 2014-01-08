@@ -128,7 +128,7 @@ architecture behavioral of ep_tx_framer is
 
 -- general signals
   signal state    : t_tx_framer_state;
-  signal counter  : unsigned(7 downto 0);
+  signal counter  : unsigned(13 downto 0);
   signal tx_ready : std_logic;
 
 -- CRC generator signals
@@ -155,6 +155,7 @@ architecture behavioral of ep_tx_framer is
   signal snk_valid : std_logic;
 
   signal sof_p1, eof_p1, abort_p1, error_p1 : std_logic;
+  signal sof_p1_latch                       : std_logic; -- 11-Oct-2013 peterj: latch sof_p1 since the next wrf-cycle may already have started (and stalled) while the current frame is padded
   signal snk_cyc_d0                         : std_logic;
 
   signal decoded_status : t_wrf_status_reg;
@@ -239,7 +240,7 @@ begin  -- behavioral
 
   end generate gen_with_vlans;
 
-  crc_gen_reset <= '1' when rst_n_i = '0' else ((sof_p1 and (not tx_pause_mode)) or crc_gen_force_reset);
+  crc_gen_reset <= '1' when rst_n_i = '0' else ((sof_p1_latch and (not tx_pause_mode)) or crc_gen_force_reset);
 
   crc_gen_enable <= q_valid and crc_gen_enable_mask;
 
@@ -270,6 +271,21 @@ begin  -- behavioral
         snk_cyc_d0 <= '0';
       else
         snk_cyc_d0 <= snk_i.cyc;
+      end if;
+    end if;
+  end process;
+
+  p_latch_detect_frame : process(clk_sys_i)    -- 11-Oct-2013 peterj: latch sof_p1 since the next wrf-cycle may already have started (and stalled) while the current frame is padded
+  begin
+    if rising_edge(clk_sys_i) then
+      if rst_n_i = '0' then
+        sof_p1_latch <= '0';
+      else
+	    if sof_p1 = '1' then
+          sof_p1_latch <= '1';
+		elsif state = TXF_PAUSE or state = TXF_ADDR then
+          sof_p1_latch <= '0';
+        end if;
       end if;
     end if;
   end process;
@@ -305,7 +321,7 @@ begin  -- behavioral
     p_oob_fsm : process(clk_sys_i)
     begin
       if rising_edge(clk_sys_i) then
-        if (rst_n_i = '0' or sof_p1 = '1') then
+        if (rst_n_i = '0' or sof_p1_latch = '1') then
           oob_state    <= OOB_1;
           oob.valid    <= '0';
           oob.oob_type <= (others => '0');
@@ -402,7 +418,7 @@ begin  -- behavioral
                                         -- Check start-of-frame and send-pause signals and eventually
                                         -- commence frame transmission
 
-              if(pcs_dreq_i = '1' and (sof_p1 = '1' or fc_pause_p_i = '1') and regs_i.ecr_tx_en_o = '1') then
+              if(pcs_dreq_i = '1' and (sof_p1_latch = '1' or fc_pause_p_i = '1') and regs_i.ecr_tx_en_o = '1') then
                                         -- enable writing to PCS FIFO
                 q_sof      <= '1';
                 write_mask <= '1';
@@ -599,7 +615,11 @@ begin  -- behavioral
               if(eof_p1 = '1') then
 
                 if(stored_status.has_crc = '0') then
-                  state <= TXF_WAIT_CRC;
+                  if(counter < x"1e") then        -- 11-Oct-2013 peterj: padding bugfix
+                    state <= TXF_PAD;
+                  else
+                    state <= TXF_WAIT_CRC;
+                  end if;
                 else
                   q_eof   <= '1';
                   counter <= (others => '0');
@@ -617,6 +637,7 @@ begin  -- behavioral
               if(snk_valid = '1' and snk_i.adr = c_WRF_DATA) then
                 q_data     <= snk_i.dat;
                 q_valid    <= '1';
+                counter    <= counter + 1;          -- 11-Oct-2013 peterj: padding bugfix
                 q_bytesel  <= not snk_i.sel(0);  --tx_bytesel_i;
                 write_mask <= snk_i.sel(0);
                 odd_length <= not snk_i.sel(0);  --tx_bytesel_i;
