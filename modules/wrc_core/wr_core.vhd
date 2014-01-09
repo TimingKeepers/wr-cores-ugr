@@ -94,7 +94,8 @@ entity wr_core is
     g_address_granularity       : t_wishbone_address_granularity := WORD;
     g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
     g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
-    g_softpll_enable_debugger   : boolean                        := false
+    g_softpll_enable_debugger   : boolean                        := false;
+    g_pcs_16bit                 : boolean                        := false
     );
   port(
     ---------------------------------------------------------------------------
@@ -133,16 +134,18 @@ entity wr_core is
     -- PHY I/f
     phy_ref_clk_i : in std_logic;
 
-    phy_tx_data_o      : out std_logic_vector(7 downto 0);
+    phy_tx_data_o      : out std_logic_vector(f_pcs_data_width(g_pcs_16bit)-1 downto 0);
     phy_tx_k_o         : out std_logic;
+    phy_tx_k16_o       : out std_logic;
     phy_tx_disparity_i : in  std_logic;
     phy_tx_enc_err_i   : in  std_logic;
 
-    phy_rx_data_i     : in std_logic_vector(7 downto 0);
+    phy_rx_data_i     : in std_logic_vector(f_pcs_data_width(g_pcs_16bit)-1 downto 0);
     phy_rx_rbclk_i    : in std_logic;
     phy_rx_k_i        : in std_logic;
+    phy_rx_k16_i      : in std_logic := '0';
     phy_rx_enc_err_i  : in std_logic;
-    phy_rx_bitslide_i : in std_logic_vector(3 downto 0);
+    phy_rx_bitslide_i : in std_logic_vector(f_pcs_bts_width(g_pcs_16bit)-1 downto 0);
 
     phy_rst_o    : out std_logic;
     phy_loopen_o : out std_logic;
@@ -322,6 +325,11 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   --Endpoint
   -----------------------------------------------------------------------------
+  signal phy_tx_data_int            : std_logic_vector(15 downto 0);
+  signal phy_tx_k_int               : std_logic_vector(1 downto 0);
+  signal phy_rx_data_int            : std_logic_vector(15 downto 0);
+  signal phy_rx_k_int               : std_logic_vector(1 downto 0);
+  signal phy_rx_bitslide_int        : std_logic_vector(4 downto 0);
 
   signal ep_txtsu_port_id           : std_logic_vector(4 downto 0);
   signal ep_txtsu_frame_id          : std_logic_vector(15 downto 0);
@@ -510,7 +518,7 @@ begin
     generic map(
       g_with_ext_clock_input => g_with_external_clock_input,
       g_reverse_dmtds        => false,
-      g_divide_input_by_2    => true,
+      g_divide_input_by_2    => not g_pcs_16bit,
       g_with_debug_fifo      => g_softpll_enable_debugger,
       g_tag_bits             => 22,
       g_interface_mode       => PIPELINED,
@@ -582,13 +590,32 @@ begin
   -----------------------------------------------------------------------------
   -- Endpoint
   -----------------------------------------------------------------------------
+
+  phy_tx_data_o   <= phy_tx_data_int(f_pcs_data_width(g_pcs_16bit)-1 downto 0);
+  phy_tx_k_o      <= phy_tx_k_int(0);
+  phy_rx_k_int(0) <= phy_rx_k_i;
+
+  gen_16bit_phy_if: if g_pcs_16bit generate
+    phy_tx_k16_o        <= phy_tx_k_int(1);
+    phy_rx_data_int     <= phy_rx_data_i;
+    phy_rx_k_int(1)     <= phy_rx_k16_i;
+    phy_rx_bitslide_int <= phy_rx_bitslide_i;
+  end generate;
+
+  gen_8bit_phy_if: if not g_pcs_16bit generate
+    phy_tx_k16_o        <= '0';
+    phy_rx_data_int     <= x"00" & phy_rx_data_i;
+    phy_rx_k_int(1)     <= '0';
+    phy_rx_bitslide_int <= '0' & phy_rx_bitslide_i;
+  end generate;
+
   U_Endpoint : xwr_endpoint
     generic map (
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
       g_simulation          => f_int_to_bool(g_simulation),
       g_tx_frame_padding    => true,
-      g_pcs_16bit           => false,
+      g_pcs_16bit           => g_pcs_16bit,
       g_rx_buffer_size      => g_rx_buffer_size,
       g_with_rx_buffer      => true,
       g_with_flow_control   => false,
@@ -605,23 +632,18 @@ begin
       pps_csync_p1_i => s_pps_csync,
       pps_valid_i    => pps_valid,
 
-      phy_rst_o                     => phy_rst_o,
-      phy_loopen_o                  => phy_loopen_o,
-      phy_ref_clk_i                 => phy_ref_clk_i,
-      phy_tx_data_o(7 downto 0)     => phy_tx_data_o,
-      phy_tx_data_o(15 downto 8)    => dummy(7 downto 0),
-      phy_tx_k_o(0)                 => phy_tx_k_o,
-      phy_tx_k_o(1)                 => dummy(8),
-      phy_tx_disparity_i            => phy_tx_disparity_i,
-      phy_tx_enc_err_i              => phy_tx_enc_err_i,
-      phy_rx_data_i(7 downto 0)     => phy_rx_data_i,
-      phy_rx_data_i(15 downto 8)    => x"00",
-      phy_rx_clk_i                  => phy_rx_rbclk_i,
-      phy_rx_k_i(0)                 => phy_rx_k_i,
-      phy_rx_k_i(1)                 => '0',
-      phy_rx_enc_err_i              => phy_rx_enc_err_i,
-      phy_rx_bitslide_i(3 downto 0) => phy_rx_bitslide_i,
-      phy_rx_bitslide_i(4)          => '0',
+      phy_rst_o          => phy_rst_o,
+      phy_loopen_o       => phy_loopen_o,
+      phy_ref_clk_i      => phy_ref_clk_i,
+      phy_tx_data_o      => phy_tx_data_int,
+      phy_tx_k_o         => phy_tx_k_int,
+      phy_tx_disparity_i => phy_tx_disparity_i,
+      phy_tx_enc_err_i   => phy_tx_enc_err_i,
+      phy_rx_data_i      => phy_rx_data_int,
+      phy_rx_clk_i       => phy_rx_rbclk_i,
+      phy_rx_k_i         => phy_rx_k_int,
+      phy_rx_enc_err_i   => phy_rx_enc_err_i,
+      phy_rx_bitslide_i  => phy_rx_bitslide_int,
 
       src_o => ep_src_out,
       src_i => ep_src_in,

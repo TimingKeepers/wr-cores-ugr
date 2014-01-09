@@ -11,6 +11,25 @@ use work.softpll_pkg.all;
 
 package wrcore_pkg is
 
+  function f_pcs_data_width(pcs_16 : boolean)
+    return integer is
+  begin
+    if (pcs_16) then
+      return 16;
+    else
+      return 8;
+    end if;
+  end function;
+
+  function f_pcs_bts_width(pcs_16 : boolean)
+    return integer is
+  begin
+    if (pcs_16) then
+      return 5;
+    else
+      return 4;
+    end if;
+  end function;
 
   ----------------------------------------------------------------------------- 
   --PPS generator
@@ -296,7 +315,8 @@ package wrcore_pkg is
       g_address_granularity       : t_wishbone_address_granularity := BYTE;
       g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
       g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
-      g_softpll_enable_debugger   : boolean                        := false
+      g_softpll_enable_debugger   : boolean                        := false;
+      g_pcs_16bit                 : boolean                        := false
       );
     port(
       clk_sys_i  : in std_logic;
@@ -313,15 +333,17 @@ package wrcore_pkg is
       dac_dpll_data_o    : out std_logic_vector(15 downto 0);
 
       phy_ref_clk_i      : in  std_logic                    := '0';
-      phy_tx_data_o      : out std_logic_vector(7 downto 0);
+      phy_tx_data_o      : out std_logic_vector(f_pcs_data_width(g_pcs_16bit)-1 downto 0);
       phy_tx_k_o         : out std_logic;
+      phy_tx_k16_o       : out std_logic;
       phy_tx_disparity_i : in  std_logic                    := '0';
       phy_tx_enc_err_i   : in  std_logic                    := '0';
-      phy_rx_data_i      : in  std_logic_vector(7 downto 0) := x"00";
+      phy_rx_data_i      : in std_logic_vector(f_pcs_data_width(g_pcs_16bit)-1 downto 0) := (others=>'0');
       phy_rx_rbclk_i     : in  std_logic                    := '0';
       phy_rx_k_i         : in  std_logic                    := '0';
+      phy_rx_k16_i       : in std_logic                     := '0';
       phy_rx_enc_err_i   : in  std_logic                    := '0';
-      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0) := x"0";
+      phy_rx_bitslide_i  : in std_logic_vector(f_pcs_bts_width(g_pcs_16bit)-1 downto 0) := (others=>'0');
       phy_rst_o          : out std_logic;
       phy_loopen_o       : out std_logic;
 
@@ -395,7 +417,8 @@ package wrcore_pkg is
       g_address_granularity       : t_wishbone_address_granularity := WORD;
       g_aux_sdb                   : t_sdb_device                   := c_wrc_periph3_sdb;
       g_softpll_channels_config   : t_softpll_channel_config_array := c_softpll_default_channel_config;
-      g_softpll_enable_debugger   : boolean                        := false
+      g_softpll_enable_debugger   : boolean                        := false;
+      g_pcs_16bit                 : boolean                        := false
       );
     port(
       ---------------------------------------------------------------------------
@@ -434,16 +457,18 @@ package wrcore_pkg is
       -- PHY I/f
       phy_ref_clk_i : in std_logic;
 
-      phy_tx_data_o      : out std_logic_vector(7 downto 0);
+      phy_tx_data_o      : out std_logic_vector(f_pcs_data_width(g_pcs_16bit)-1 downto 0);
       phy_tx_k_o         : out std_logic;
+      phy_tx_k16_o       : out std_logic;
       phy_tx_disparity_i : in  std_logic := '0';
       phy_tx_enc_err_i   : in  std_logic := '0';
 
-      phy_rx_data_i     : in std_logic_vector(7 downto 0);
+      phy_rx_data_i     : in std_logic_vector(f_pcs_data_width(g_pcs_16bit)-1 downto 0) := (others=>'0');
       phy_rx_rbclk_i    : in std_logic                    := '0';
       phy_rx_k_i        : in std_logic                    := '0';
+      phy_rx_k16_i      : in std_logic                    := '0';
       phy_rx_enc_err_i  : in std_logic                    := '0';
-      phy_rx_bitslide_i : in std_logic_vector(3 downto 0) := x"0";
+      phy_rx_bitslide_i : in std_logic_vector(f_pcs_bts_width(g_pcs_16bit)-1 downto 0) := (others=>'0');
 
       phy_rst_o    : out std_logic;
       phy_loopen_o : out std_logic;

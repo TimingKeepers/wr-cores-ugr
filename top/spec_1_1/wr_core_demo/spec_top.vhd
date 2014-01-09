@@ -625,6 +625,7 @@ begin
       g_virtual_uart              => true,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
+      g_pcs_16bit                 => false,
       g_dpram_initf               => "wrc.ram",
       g_dpram_size                => 90112/4,  --16384,
       g_interface_mode            => PIPELINED,
