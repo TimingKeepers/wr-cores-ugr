@@ -93,9 +93,18 @@ architecture behavioral of gtp_bitslide is
     end if;
   end f_eval_pause_tics;
 
+  function f_max_bts return integer is
+  begin
+    if(g_target = "spartan6") then
+      return 10;
+    else
+      return 20;
+    end if;
+  end f_max_bts;
 
   constant c_pause_tics            : integer := f_eval_pause_tics;
   constant c_sync_detect_threshold : integer := f_eval_sync_detect_threshold;
+  constant c_max_bts               : integer := f_max_bts;
 
 
   type t_bitslide_fsm_state is (S_SYNC_LOST, S_STABILIZE, S_SLIDE, S_PAUSE, S_GOT_SYNC, S_RESET_CDR);
@@ -162,7 +171,11 @@ begin  -- behavioral
           end if;
 
         when S_SLIDE =>
-          cur_slide      <= cur_slide + 1;
+          if (cur_slide < c_max_bts-1) then
+            cur_slide <= cur_slide + 1;
+          else
+            cur_slide <= (others=>'0');
+          end if;
           gtp_rx_slide_o <= '1';
           counter        <= (others => '0');
 
