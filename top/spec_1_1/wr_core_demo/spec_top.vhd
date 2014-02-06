@@ -3,7 +3,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.NUMERIC_STD.all;
 
-use work.gn4124_core_pkg.all;
+-- use work.gn4124_core_pkg.all;
 use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
@@ -146,91 +146,91 @@ architecture rtl of spec_top is
   -- Components declaration
   ------------------------------------------------------------------------------
 
-  component gn4124_core is
-    port(
-      ---------------------------------------------------------
-      -- Control and status
-      rst_n_a_i : in  std_logic;        -- Asynchronous reset from GN4124
-      status_o  : out std_logic_vector(31 downto 0);  -- Core status output
-
-      ---------------------------------------------------------
-      -- P2L Direction
-      --
-      -- Source Sync DDR related signals
-      p2l_clk_p_i  : in  std_logic;     -- Receiver Source Synchronous Clock+
-      p2l_clk_n_i  : in  std_logic;     -- Receiver Source Synchronous Clock-
-      p2l_data_i   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
-      p2l_dframe_i : in  std_logic;     -- Receive Frame
-      p2l_valid_i  : in  std_logic;     -- Receive Data Valid
-      -- P2L Control
-      p2l_rdy_o    : out std_logic;     -- Rx Buffer Full Flag
-      p_wr_req_i   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
-      p_wr_rdy_o   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
-      rx_error_o   : out std_logic;     -- Receive Error
-      vc_rdy_i     : in  std_logic_vector(1 downto 0);  -- Virtual channel ready
-
-      ---------------------------------------------------------
-      -- L2P Direction
-      --
-      -- Source Sync DDR related signals
-      l2p_clk_p_o  : out std_logic;  -- Transmitter Source Synchronous Clock+
-      l2p_clk_n_o  : out std_logic;  -- Transmitter Source Synchronous Clock-
-      l2p_data_o   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
-      l2p_dframe_o : out std_logic;     -- Transmit Data Frame
-      l2p_valid_o  : out std_logic;     -- Transmit Data Valid
-      -- L2P Control
-      l2p_edb_o    : out std_logic;     -- Packet termination and discard
-      l2p_rdy_i    : in  std_logic;     -- Tx Buffer Full Flag
-      l_wr_rdy_i   : in  std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
-      p_rd_d_rdy_i : in  std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
-      tx_error_i   : in  std_logic;     -- Transmit Error
-
-      ---------------------------------------------------------
-      -- Interrupt interface
-      dma_irq_o : out std_logic_vector(1 downto 0);  -- Interrupts sources to IRQ manager
-      irq_p_i   : in  std_logic;  -- Interrupt request pulse from IRQ manager
-      irq_p_o   : out std_logic;  -- Interrupt request pulse to GN4124 GPIO
-
-      ---------------------------------------------------------
-      -- DMA registers wishbone interface (slave classic)
-      dma_reg_clk_i   : in  std_logic;
-      dma_reg_adr_i   : in  std_logic_vector(31 downto 0) := x"00000000";
-      dma_reg_dat_i   : in  std_logic_vector(31 downto 0) := x"00000000";
-      dma_reg_sel_i   : in  std_logic_vector(3 downto 0)  := x"0";
-      dma_reg_stb_i   : in  std_logic                     := '0';
-      dma_reg_we_i    : in  std_logic                     := '0';
-      dma_reg_cyc_i   : in  std_logic                     := '0';
-      dma_reg_dat_o   : out std_logic_vector(31 downto 0);
-      dma_reg_ack_o   : out std_logic;
-      dma_reg_stall_o : out std_logic;
-
-      ---------------------------------------------------------
-      -- CSR wishbone interface (master pipelined)
-      csr_clk_i   : in  std_logic;
-      csr_adr_o   : out std_logic_vector(31 downto 0);
-      csr_dat_o   : out std_logic_vector(31 downto 0);
-      csr_sel_o   : out std_logic_vector(3 downto 0);
-      csr_stb_o   : out std_logic;
-      csr_we_o    : out std_logic;
-      csr_cyc_o   : out std_logic;
-      csr_dat_i   : in  std_logic_vector(31 downto 0);
-      csr_ack_i   : in  std_logic;
-      csr_stall_i : in  std_logic;
-
-      ---------------------------------------------------------
-      -- DMA wishbone interface (master pipelined)
-      dma_clk_i   : in  std_logic;
-      dma_adr_o   : out std_logic_vector(31 downto 0);
-      dma_dat_o   : out std_logic_vector(31 downto 0);
-      dma_sel_o   : out std_logic_vector(3 downto 0);
-      dma_stb_o   : out std_logic;
-      dma_we_o    : out std_logic;
-      dma_cyc_o   : out std_logic;
-      dma_dat_i   : in  std_logic_vector(31 downto 0) := x"00000000";
-      dma_ack_i   : in  std_logic                     := '0';
-      dma_stall_i : in  std_logic                     := '0'
-      );
-  end component;  --  gn4124_core
+ -- component gn4124_core is
+ --   port(
+ --     ---------------------------------------------------------
+ --     -- Control and status
+ --     rst_n_a_i : in  std_logic;        -- Asynchronous reset from GN4124
+ --     status_o  : out std_logic_vector(31 downto 0);  -- Core status output
+ --
+ --     ---------------------------------------------------------
+ --     -- P2L Direction
+ --     --
+ --     -- Source Sync DDR related signals
+ --     p2l_clk_p_i  : in  std_logic;     -- Receiver Source Synchronous Clock+
+ --     p2l_clk_n_i  : in  std_logic;     -- Receiver Source Synchronous Clock-
+ --     p2l_data_i   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
+ --     p2l_dframe_i : in  std_logic;     -- Receive Frame
+ --     p2l_valid_i  : in  std_logic;     -- Receive Data Valid
+ --     -- P2L Control
+ --     p2l_rdy_o    : out std_logic;     -- Rx Buffer Full Flag
+ --     p_wr_req_i   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
+ --     p_wr_rdy_o   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
+ --     rx_error_o   : out std_logic;     -- Receive Error
+ --     vc_rdy_i     : in  std_logic_vector(1 downto 0);  -- Virtual channel ready
+ --
+ --     ---------------------------------------------------------
+ --     -- L2P Direction
+ --     --
+ --     -- Source Sync DDR related signals
+ --    l2p_clk_p_o  : out std_logic;  -- Transmitter Source Synchronous Clock+
+ --     l2p_clk_n_o  : out std_logic;  -- Transmitter Source Synchronous Clock-
+ --     l2p_data_o   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
+ --     l2p_dframe_o : out std_logic;     -- Transmit Data Frame
+ --     l2p_valid_o  : out std_logic;     -- Transmit Data Valid
+ --     -- L2P Control
+ --     l2p_edb_o    : out std_logic;     -- Packet termination and discard
+ --     l2p_rdy_i    : in  std_logic;     -- Tx Buffer Full Flag
+ --     l_wr_rdy_i   : in  std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
+ --     p_rd_d_rdy_i : in  std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
+ --     tx_error_i   : in  std_logic;     -- Transmit Error
+ --
+ --     ---------------------------------------------------------
+ --     -- Interrupt interface
+ --     dma_irq_o : out std_logic_vector(1 downto 0);  -- Interrupts sources to IRQ manager
+ --     irq_p_i   : in  std_logic;  -- Interrupt request pulse from IRQ manager
+ --     irq_p_o   : out std_logic;  -- Interrupt request pulse to GN4124 GPIO
+ --
+ --     ---------------------------------------------------------
+ --     -- DMA registers wishbone interface (slave classic)
+ --     dma_reg_clk_i   : in  std_logic;
+ --     dma_reg_adr_i   : in  std_logic_vector(31 downto 0) := x"00000000";
+ --     dma_reg_dat_i   : in  std_logic_vector(31 downto 0) := x"00000000";
+ --     dma_reg_sel_i   : in  std_logic_vector(3 downto 0)  := x"0";
+ --     dma_reg_stb_i   : in  std_logic                     := '0';
+ --     dma_reg_we_i    : in  std_logic                     := '0';
+ --     dma_reg_cyc_i   : in  std_logic                     := '0';
+ --     dma_reg_dat_o   : out std_logic_vector(31 downto 0);
+ --     dma_reg_ack_o   : out std_logic;
+ --     dma_reg_stall_o : out std_logic;
+ --
+ --     ---------------------------------------------------------
+ --     -- CSR wishbone interface (master pipelined)
+ --     csr_clk_i   : in  std_logic;
+ --     csr_adr_o   : out std_logic_vector(31 downto 0);
+ --     csr_dat_o   : out std_logic_vector(31 downto 0);
+ --     csr_sel_o   : out std_logic_vector(3 downto 0);
+ --     csr_stb_o   : out std_logic;
+ --     csr_we_o    : out std_logic;
+ --     csr_cyc_o   : out std_logic;
+ --     csr_dat_i   : in  std_logic_vector(31 downto 0);
+ --     csr_ack_i   : in  std_logic;
+ --     csr_stall_i : in  std_logic;
+ --
+ --     ---------------------------------------------------------
+ --     -- DMA wishbone interface (master pipelined)
+ --     dma_clk_i   : in  std_logic;
+ --     dma_adr_o   : out std_logic_vector(31 downto 0);
+ --     dma_dat_o   : out std_logic_vector(31 downto 0);
+ --     dma_sel_o   : out std_logic_vector(3 downto 0);
+ --     dma_stb_o   : out std_logic;
+ --     dma_we_o    : out std_logic;
+ --     dma_cyc_o   : out std_logic;
+ --     dma_dat_i   : in  std_logic_vector(31 downto 0) := x"00000000";
+ --     dma_ack_i   : in  std_logic                     := '0';
+ --     dma_stall_i : in  std_logic                     := '0'
+ --     );
+ -- end component;  --  gn4124_core
 
   component spec_reset_gen
     port (
@@ -355,9 +355,9 @@ architecture rtl of spec_top is
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
 
-  signal genum_wb_out    : t_wishbone_master_out;
-  signal genum_wb_in     : t_wishbone_master_in;
-  signal genum_csr_ack_i : std_logic;
+  -- signal genum_wb_out    : t_wishbone_master_out;
+  -- signal genum_wb_in     : t_wishbone_master_in;
+  -- signal genum_csr_ack_i : std_logic;
 
   signal wrc_slave_i : t_wishbone_slave_in;
   signal wrc_slave_o : t_wishbone_slave_out;
@@ -514,87 +514,87 @@ begin
   ------------------------------------------------------------------------------
   -- GN4124 interface
   ------------------------------------------------------------------------------
-  cmp_gn4124_core : gn4124_core
-    port map
-    (
-      ---------------------------------------------------------
-      -- Control and status
-      rst_n_a_i => L_RST_N,
-      status_o  => open,
+  -- cmp_gn4124_core : gn4124_core
+  --  port map
+  --  (
+  --    ---------------------------------------------------------
+  --    -- Control and status
+  --    rst_n_a_i => L_RST_N,
+  --    status_o  => open,
+  --
+  --    ---------------------------------------------------------
+  --    -- P2L Direction
+  --    --
+  --    -- Source Sync DDR related signals
+  --    p2l_clk_p_i  => P2L_CLKp,
+  --    p2l_clk_n_i  => P2L_CLKn,
+  --    p2l_data_i   => P2L_DATA,
+  --    p2l_dframe_i => P2L_DFRAME,
+  --    p2l_valid_i  => P2L_VALID,
+  --    -- P2L Control
+  --    p2l_rdy_o    => P2L_RDY,
+  --    p_wr_req_i   => P_WR_REQ,
+  --    p_wr_rdy_o   => P_WR_RDY,
+  --    rx_error_o   => RX_ERROR,
+  --    vc_rdy_i     => VC_RDY,
+  --
+  --    ---------------------------------------------------------
+  --    -- L2P Direction
+  --    --
+  --    -- Source Sync DDR related signals
+  --    l2p_clk_p_o  => L2P_CLKp,
+  --    l2p_clk_n_o  => L2P_CLKn,
+  --    l2p_data_o   => L2P_DATA,
+  --    l2p_dframe_o => L2P_DFRAME,
+  --    l2p_valid_o  => L2P_VALID,
+  --    -- L2P Control
+  --    l2p_edb_o    => L2P_EDB,
+  --    l2p_rdy_i    => L2P_RDY,
+  --    l_wr_rdy_i   => L_WR_RDY,
+  --    p_rd_d_rdy_i => P_RD_D_RDY,
+  --    tx_error_i   => TX_ERROR,
+  --
+  --    ---------------------------------------------------------
+  --    -- Interrupt interface
+  --    dma_irq_o => open,
+  --    irq_p_i   => '0',
+  --    irq_p_o   => GPIO(0),
+  --
+  --    ---------------------------------------------------------
+  --    -- DMA registers wishbone interface (slave classic)
+  --    dma_reg_clk_i => clk_sys,
+  --
+  --    ---------------------------------------------------------
+  --    -- CSR wishbone interface (master pipelined)
+  --    csr_clk_i   => clk_sys,
+  --    csr_adr_o   => wb_adr,
+  --    csr_dat_o   => genum_wb_out.dat,
+  --    csr_sel_o   => genum_wb_out.sel,
+  --    csr_stb_o   => genum_wb_out.stb,
+  --    csr_we_o    => genum_wb_out.we,
+  --    csr_cyc_o   => genum_wb_out.cyc,
+  --    csr_dat_i   => genum_wb_in.dat,
+  --    csr_ack_i   => genum_csr_ack_i,
+  --    csr_stall_i => genum_wb_in.stall,
+  --
+  --    ---------------------------------------------------------
+  --    -- L2P DMA Interface (Pipelined Wishbone master)
+  --    dma_clk_i => clk_sys
+  --    --dma_adr_o   => dma_adr,
+  --    --dma_dat_o   => dma_dat_o,
+  --    --dma_sel_o   => dma_sel,
+  --    --dma_stb_o   => dma_stb,
+  --    --dma_we_o    => dma_we,
+  --    --dma_cyc_o   => dma_cyc,
+  --    --dma_dat_i   => dma_dat_i,
+  --    --dma_ack_i   => dma_ack,
+  --    --dma_stall_i => dma_stall
+  --    );
 
-      ---------------------------------------------------------
-      -- P2L Direction
-      --
-      -- Source Sync DDR related signals
-      p2l_clk_p_i  => P2L_CLKp,
-      p2l_clk_n_i  => P2L_CLKn,
-      p2l_data_i   => P2L_DATA,
-      p2l_dframe_i => P2L_DFRAME,
-      p2l_valid_i  => P2L_VALID,
-      -- P2L Control
-      p2l_rdy_o    => P2L_RDY,
-      p_wr_req_i   => P_WR_REQ,
-      p_wr_rdy_o   => P_WR_RDY,
-      rx_error_o   => RX_ERROR,
-      vc_rdy_i     => VC_RDY,
-
-      ---------------------------------------------------------
-      -- L2P Direction
-      --
-      -- Source Sync DDR related signals
-      l2p_clk_p_o  => L2P_CLKp,
-      l2p_clk_n_o  => L2P_CLKn,
-      l2p_data_o   => L2P_DATA,
-      l2p_dframe_o => L2P_DFRAME,
-      l2p_valid_o  => L2P_VALID,
-      -- L2P Control
-      l2p_edb_o    => L2P_EDB,
-      l2p_rdy_i    => L2P_RDY,
-      l_wr_rdy_i   => L_WR_RDY,
-      p_rd_d_rdy_i => P_RD_D_RDY,
-      tx_error_i   => TX_ERROR,
-
-      ---------------------------------------------------------
-      -- Interrupt interface
-      dma_irq_o => open,
-      irq_p_i   => '0',
-      irq_p_o   => GPIO(0),
-
-      ---------------------------------------------------------
-      -- DMA registers wishbone interface (slave classic)
-      dma_reg_clk_i => clk_sys,
-
-      ---------------------------------------------------------
-      -- CSR wishbone interface (master pipelined)
-      csr_clk_i   => clk_sys,
-      csr_adr_o   => wb_adr,
-      csr_dat_o   => genum_wb_out.dat,
-      csr_sel_o   => genum_wb_out.sel,
-      csr_stb_o   => genum_wb_out.stb,
-      csr_we_o    => genum_wb_out.we,
-      csr_cyc_o   => genum_wb_out.cyc,
-      csr_dat_i   => genum_wb_in.dat,
-      csr_ack_i   => genum_csr_ack_i,
-      csr_stall_i => genum_wb_in.stall,
-
-      ---------------------------------------------------------
-      -- L2P DMA Interface (Pipelined Wishbone master)
-      dma_clk_i => clk_sys
-      --dma_adr_o   => dma_adr,
-      --dma_dat_o   => dma_dat_o,
-      --dma_sel_o   => dma_sel,
-      --dma_stb_o   => dma_stb,
-      --dma_we_o    => dma_we,
-      --dma_cyc_o   => dma_cyc,
-      --dma_dat_i   => dma_dat_i,
-      --dma_ack_i   => dma_ack,
-      --dma_stall_i => dma_stall
-      );
-
-  genum_csr_ack_i                <= genum_wb_in.ack or genum_wb_in.err;
-  genum_wb_out.adr(1 downto 0)   <= (others => '0');
-  genum_wb_out.adr(18 downto 2)  <= wb_adr(16 downto 0);
-  genum_wb_out.adr(31 downto 19) <= (others => '0');
+  -- genum_csr_ack_i                <= genum_wb_in.ack or genum_wb_in.err;
+  -- genum_wb_out.adr(1 downto 0)   <= (others => '0');
+  -- genum_wb_out.adr(18 downto 2)  <= wb_adr(16 downto 0);
+  -- genum_wb_out.adr(31 downto 19) <= (others => '0');
 
   process(clk_sys, rst)
   begin
@@ -720,7 +720,8 @@ begin
   ---------------------
   masterbar : xwb_crossbar
     generic map (
-      g_num_masters => 2,
+      -- g_num_masters => 2,
+      g_num_masters => 1,
       g_num_slaves  => 1,
       g_registered  => false,
       g_address     => (0 => x"00000000"),
@@ -728,10 +729,12 @@ begin
     port map (
       clk_sys_i   => clk_sys,
       rst_n_i     => local_reset_n,
-      slave_i(0)  => genum_wb_out,
-      slave_i(1)  => etherbone_wb_out,
-      slave_o(0)  => genum_wb_in,
-      slave_o(1)  => etherbone_wb_in,
+      -- slave_i(0)  => genum_wb_out,
+      -- slave_i(1)  => etherbone_wb_out,
+      -- slave_o(0)  => genum_wb_in,
+      -- slave_o(1)  => etherbone_wb_in,
+      slave_i(0) => etherbone_wb_out,
+      slave_o(0) => etherbone_wb_in,
       master_i(0) => wrc_slave_o,
       master_o(0) => wrc_slave_i);
 

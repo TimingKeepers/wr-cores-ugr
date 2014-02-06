@@ -493,7 +493,7 @@ NET "LED_GREEN" IOSTANDARD = "LVCMOS25";
 NET "L_CLKp" TNM_NET = "l_clkp_grp";
 NET "P2L_CLKp" TNM_NET = "p2l_clkp_grp";
 NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
-TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
+#TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 
 
 ########################################################
@@ -612,9 +612,9 @@ NET "uart_txd_o" IOSTANDARD=LVCMOS25;
 #---------------------------------------------------------------------------------------------
 # GN4124
 NET "l_rst_n" TIG;
-NET "cmp_gn4124_core/rst_*" TIG;
+# NET "cmp_gn4124_core/rst_*" TIG;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/01/20
-NET "cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = cmp_gn4124_core/cmp_clk_in/P_clk;
+# NET "cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = cmp_gn4124_core/cmp_clk_in/P_clk;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/02/04
 NET "clk_20m_vcxo_i" TNM_NET = clk_20m_vcxo_i;
 TIMESPEC TS_clk_20m_vcxo_i = PERIOD "clk_20m_vcxo_i" 50 ns HIGH 50%;
