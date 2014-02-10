@@ -336,15 +336,15 @@ architecture rtl of spec_top is
   signal pps     : std_logic;
   signal pps_led : std_logic;
 
-  signal phy_tx_data      : std_logic_vector(7 downto 0);
-  signal phy_tx_k         : std_logic;
+  signal phy_tx_data      : std_logic_vector(15 downto 0);
+  signal phy_tx_k         : std_logic_vector(1 downto 0);
   signal phy_tx_disparity : std_logic;
   signal phy_tx_enc_err   : std_logic;
-  signal phy_rx_data      : std_logic_vector(7 downto 0);
+  signal phy_rx_data      : std_logic_vector(15 downto 0);
   signal phy_rx_rbclk     : std_logic;
-  signal phy_rx_k         : std_logic;
+  signal phy_rx_k         : std_logic_vector(1 downto 0);
   signal phy_rx_enc_err   : std_logic;
-  signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
+  signal phy_rx_bitslide  : std_logic_vector(4 downto 0);
   signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
 
@@ -625,7 +625,7 @@ begin
       g_virtual_uart              => true,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_pcs_16bit                 => false,
+      g_pcs_16bit                 => true,
       g_dpram_initf               => "wrc.ram",
       g_dpram_size                => 90112/4,  --16384,
       g_interface_mode            => PIPELINED,
@@ -646,12 +646,14 @@ begin
 
       phy_ref_clk_i      => clk_125m_pllref,
       phy_tx_data_o      => phy_tx_data,
-      phy_tx_k_o         => phy_tx_k,
+      phy_tx_k_o         => phy_tx_k(0),
+		phy_tx_k16_o		 => phy_tx_k(1),
       phy_tx_disparity_i => phy_tx_disparity,
       phy_tx_enc_err_i   => phy_tx_enc_err,
       phy_rx_data_i      => phy_rx_data,
       phy_rx_rbclk_i     => phy_rx_rbclk,
-      phy_rx_k_i         => phy_rx_k,
+      phy_rx_k_i         => phy_rx_k(0),
+		phy_rx_k16_i		 => phy_rx_k(1),
       phy_rx_enc_err_i   => phy_rx_enc_err,
       phy_rx_bitslide_i  => phy_rx_bitslide,
       phy_rst_o          => phy_rst,
@@ -740,47 +742,34 @@ begin
 
   ---------------------
 
-  U_GTP : wr_gtp_phy_spartan6
+  U_GTP : wr_gtx_phy_kintex7
     generic map (
-      g_enable_ch0 => 0,
-      g_enable_ch1 => 1,
       g_simulation => 0)
     port map (
-      gtp_clk_i => gtp_dedicated_clk,
+      clk_gtx_i  => gtp_dedicated_clk,
 
-      ch0_ref_clk_i      => clk_125m_pllref,
-      ch0_tx_data_i      => x"00",
-      ch0_tx_k_i         => '0',
-      ch0_tx_disparity_o => open,
-      ch0_tx_enc_err_o   => open,
-      ch0_rx_rbclk_o     => open,
-      ch0_rx_data_o      => open,
-      ch0_rx_k_o         => open,
-      ch0_rx_enc_err_o   => open,
-      ch0_rx_bitslide_o  => open,
-      ch0_rst_i          => '1',
-      ch0_loopen_i       => '0',
+		tx_out_clk_o => open,
+      --ref_clk_i      => clk_125m_pllref, SEE, SPARTAN6!!
+      tx_data_i      => phy_tx_data,
+		
+      tx_k_i         => phy_tx_k,
+		
+      tx_disparity_o => phy_tx_disparity,
+      tx_enc_err_o   => phy_tx_enc_err,
+      rx_data_o      => phy_rx_data,
+      rx_rbclk_o     => phy_rx_rbclk,
+		
+      rx_k_o         => phy_rx_k,
+		
+      rx_enc_err_o   => phy_rx_enc_err,
+      rx_bitslide_o  => phy_rx_bitslide,
+      rst_i          => phy_rst,
+      loopen_i       => phy_loopen,
 
-      ch1_ref_clk_i      => clk_125m_pllref,
-      ch1_tx_data_i      => phy_tx_data,
-      ch1_tx_k_i         => phy_tx_k,
-      ch1_tx_disparity_o => phy_tx_disparity,
-      ch1_tx_enc_err_o   => phy_tx_enc_err,
-      ch1_rx_data_o      => phy_rx_data,
-      ch1_rx_rbclk_o     => phy_rx_rbclk,
-      ch1_rx_k_o         => phy_rx_k,
-      ch1_rx_enc_err_o   => phy_rx_enc_err,
-      ch1_rx_bitslide_o  => phy_rx_bitslide,
-      ch1_rst_i          => phy_rst,
-      ch1_loopen_i       => phy_loopen,
-      pad_txn0_o         => open,
-      pad_txp0_o         => open,
-      pad_rxn0_i         => '0',
-      pad_rxp0_i         => '0',
-      pad_txn1_o         => sfp_txn_o,
-      pad_txp1_o         => sfp_txp_o,
-      pad_rxn1_i         => sfp_rxn_i,
-      pad_rxp1_i         => sfp_rxp_i);
+      pad_txn_o         => sfp_txn_o,
+      pad_txp_o         => sfp_txp_o,
+      pad_rxn_i         => sfp_rxn_i,
+      pad_rxp_i         => sfp_rxp_i);
 
   
 
