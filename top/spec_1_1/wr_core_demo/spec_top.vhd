@@ -742,11 +742,11 @@ begin
 
   ---------------------
 
-  U_GTP : wr_gtx_phy_kintex7
+  U_GTP : wr_gth_phy_virtex7
     generic map (
       g_simulation => 0)
     port map (
-      clk_gtx_i  => gtp_dedicated_clk,
+      clk_gth_i  => gtp_dedicated_clk,
 
 		tx_out_clk_o => open,
       --ref_clk_i      => clk_125m_pllref, SEE, SPARTAN6!!
@@ -770,9 +770,6 @@ begin
       pad_txp_o         => sfp_txp_o,
       pad_rxn_i         => sfp_rxn_i,
       pad_rxp_i         => sfp_rxp_i);
-
-  
-
   
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
