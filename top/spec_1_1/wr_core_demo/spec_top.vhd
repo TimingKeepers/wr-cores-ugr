@@ -820,6 +820,7 @@ begin
         OB => dio_n_o(i)
         );
   end generate gen_dio_iobufs;
+  
   U_input_buffer : IBUFDS
     generic map (
       DIFF_TERM => true)

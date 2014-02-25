@@ -103,6 +103,8 @@ port
     RXNOTINTABLE_OUT                        : out  std_logic_vector(1 downto 0);
     --------------- Receive Ports - Comma Detection and Alignment --------------
     RXSLIDE_IN                              : in   std_logic;
+	 RXBYTEISALIGNED_OUT                     : out  std_logic;
+    RXCOMMADET_OUT                          : out  std_logic;
     ------------------- Receive Ports - RX Data Path interface -----------------
     GTRXRESET_IN                            : in   std_logic;
     RXDATA_OUT                              : out  std_logic_vector(15 downto 0);
@@ -636,9 +638,9 @@ begin
         ------------------- Receive Ports - Clock Correction Ports -----------------
         RXCLKCORCNT                     =>      open,
         --------------- Receive Ports - Comma Detection and Alignment --------------
-        RXBYTEISALIGNED                 =>      open,
+        RXBYTEISALIGNED                 =>      RXBYTEISALIGNED_OUT,
         RXBYTEREALIGN                   =>      open,
-        RXCOMMADET                      =>      open,
+        RXCOMMADET                      =>      RXCOMMADET_OUT,
         RXCOMMADETEN                    =>      tied_to_vcc_i,
         RXMCOMMAALIGNEN                 =>      tied_to_ground_i,
         RXPCOMMAALIGNEN                 =>      tied_to_ground_i,

@@ -81,7 +81,7 @@ package wr_xilinx_pkg is
     );
 
   port (
-    clk_gtx_i : in std_logic;
+    clk_gth_i : in std_logic;
 
     tx_out_clk_o : out std_logic;
 
