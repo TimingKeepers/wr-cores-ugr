@@ -40,36 +40,36 @@ entity spec_top is
       L_RST_N : in std_logic;           -- Reset from GN4124 (RSTOUT18_N)
 
       -- General Purpose Interface
-      GPIO : inout std_logic_vector(1 downto 0);  -- GPIO[0] -> GN4124 GPIO8
-                                                  -- GPIO[1] -> GN4124 GPIO9
+--      GPIO : inout std_logic_vector(1 downto 0);  -- GPIO[0] -> GN4124 GPIO8
+--                                                  -- GPIO[1] -> GN4124 GPIO9
 
-      -- PCIe to Local [Inbound Data] - RX
-      P2L_RDY    : out std_logic;       -- Rx Buffer Full Flag
-      P2L_CLKn   : in  std_logic;       -- Receiver Source Synchronous Clock-
-      P2L_CLKp   : in  std_logic;       -- Receiver Source Synchronous Clock+
-      P2L_DATA   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
-      P2L_DFRAME : in  std_logic;       -- Receive Frame
-      P2L_VALID  : in  std_logic;       -- Receive Data Valid
-
-      -- Inbound Buffer Request/Status
-      P_WR_REQ : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
-      P_WR_RDY : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
-      RX_ERROR : out std_logic;                     -- Receive Error
-
-      -- Local to Parallel [Outbound Data] - TX
-      L2P_DATA   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
-      L2P_DFRAME : out std_logic;       -- Transmit Data Frame
-      L2P_VALID  : out std_logic;       -- Transmit Data Valid
-      L2P_CLKn   : out std_logic;  -- Transmitter Source Synchronous Clock-
-      L2P_CLKp   : out std_logic;  -- Transmitter Source Synchronous Clock+
-      L2P_EDB    : out std_logic;       -- Packet termination and discard
-
-      -- Outbound Buffer Status
-      L2P_RDY    : in std_logic;        -- Tx Buffer Full Flag
-      L_WR_RDY   : in std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
-      P_RD_D_RDY : in std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
-      TX_ERROR   : in std_logic;        -- Transmit Error
-      VC_RDY     : in std_logic_vector(1 downto 0);  -- Channel ready
+--      -- PCIe to Local [Inbound Data] - RX
+--      P2L_RDY    : out std_logic;       -- Rx Buffer Full Flag
+--      P2L_CLKn   : in  std_logic;       -- Receiver Source Synchronous Clock-
+--      P2L_CLKp   : in  std_logic;       -- Receiver Source Synchronous Clock+
+--      P2L_DATA   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
+--      P2L_DFRAME : in  std_logic;       -- Receive Frame
+--      P2L_VALID  : in  std_logic;       -- Receive Data Valid
+--
+--      -- Inbound Buffer Request/Status
+--      P_WR_REQ : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
+--      P_WR_RDY : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
+--      RX_ERROR : out std_logic;                     -- Receive Error
+--
+--      -- Local to Parallel [Outbound Data] - TX
+--      L2P_DATA   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
+--      L2P_DFRAME : out std_logic;       -- Transmit Data Frame
+--      L2P_VALID  : out std_logic;       -- Transmit Data Valid
+--      L2P_CLKn   : out std_logic;  -- Transmitter Source Synchronous Clock-
+--      L2P_CLKp   : out std_logic;  -- Transmitter Source Synchronous Clock+
+--      L2P_EDB    : out std_logic;       -- Packet termination and discard
+--
+--      -- Outbound Buffer Status
+--      L2P_RDY    : in std_logic;        -- Tx Buffer Full Flag
+--      L_WR_RDY   : in std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
+--      P_RD_D_RDY : in std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
+--      TX_ERROR   : in std_logic;        -- Transmit Error
+--      VC_RDY     : in std_logic_vector(1 downto 0);  -- Channel ready
 
       -- Font panel LEDs
       LED_RED   : out std_logic;
