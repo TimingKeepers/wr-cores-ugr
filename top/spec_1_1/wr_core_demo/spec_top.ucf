@@ -99,10 +99,10 @@ NET "SFP_MOD_DEF2_b" IOSTANDARD = "LVCMOS18";
 
 #NET "SFP_TX_FAULT_i" LOC = A17;
 #NET "SFP_TX_FAULT_i" IOSTANDARD = "LVCMOS25";
-#
+
 #NET "SFP_TX_DISABLE_o" LOC = F17;
 #NET "SFP_TX_DISABLE_o" IOSTANDARD = "LVCMOS25";
-#
+
 #NET "SFP_LOS_i" LOC = D18;
 #NET "SFP_LOS_i" IOSTANDARD = "LVCMOS25";
 
@@ -161,8 +161,8 @@ NET "BUTTON2_I" IOSTANDARD = "LVCMOS18";
 #NET "CLK0_M2C_N" LOC = F16;
 #NET "CLK0_M2C_N" IOSTANDARD = "LVDS_25";
 
-NET "L_RST_N" LOC = N20;
-NET "L_RST_N" IOSTANDARD = "LVCMOS18";
+#NET "L_RST_N" LOC = N20;
+#NET "L_RST_N" IOSTANDARD = "LVCMOS18";
 
 #NET "L2P_CLKN" LOC = K22;
 #NET "L2P_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
@@ -181,10 +181,10 @@ NET "L_RST_N" IOSTANDARD = "LVCMOS18";
 #NET "L_WR_RDY[1]" LOC = T22;
 #NET "L_WR_RDY[1]" IOSTANDARD = "SSTL18_I";
 
-NET "L_CLKN" LOC = N19;
-NET "L_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
-NET "L_CLKP" LOC = P20;
-NET "L_CLKP" IOSTANDARD = "DIFF_SSTL18_I";
+#NET "L_CLKN" LOC = N19;
+#NET "L_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
+#NET "L_CLKP" LOC = P20;
+#NET "L_CLKP" IOSTANDARD = "DIFF_SSTL18_I";
 
 #NET "P2L_CLKN" LOC = M19;
 #NET "P2L_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
@@ -570,9 +570,9 @@ NET "LED_GREEN" IOSTANDARD = "LVCMOS18";
 #NET "DDR3_DQ14" IOSTANDARD = "LVCMOS15";
 #NET "DDR3_DQ15" LOC = Y1;
 #NET "DDR3_DQ15" IOSTANDARD = "LVCMOS15";
-NET "L_CLKp" TNM_NET = "l_clkp_grp";
-NET "P2L_CLKp" TNM_NET = "p2l_clkp_grp";
-NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
+#NET "L_CLKp" TNM_NET = "l_clkp_grp";
+#NET "P2L_CLKp" TNM_NET = "p2l_clkp_grp";
+#NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
 #TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 
 
@@ -689,7 +689,7 @@ NET "uart_txd_o" IOSTANDARD=LVCMOS25;
 # False Path
 #---------------------------------------------------------------------------------------------
 # GN4124
-NET "l_rst_n" TIG;
+#NET "l_rst_n" TIG;
 # NET "cmp_gn4124_core/rst_*" TIG;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/01/20
 # NET "cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = cmp_gn4124_core/cmp_clk_in/P_clk;
@@ -705,17 +705,18 @@ TIMESPEC TS_fpga_pll_ref_clk_101_p_i = PERIOD "fpga_pll_ref_clk_101_p_i" 8 ns HI
 NET "fpga_pll_ref_clk_101_n_i" TNM_NET = fpga_pll_ref_clk_101_n_i;
 TIMESPEC TS_fpga_pll_ref_clk_101_n_i = PERIOD "fpga_pll_ref_clk_101_n_i" 8 ns HIGH 50%;
 
-PIN "clk_125m_pllref_BUFG.O" CLOCK_DEDICATED_ROUTE = FALSE; 
+#PIN "clk_125m_pllref_BUFG.O" CLOCK_DEDICATED_ROUTE = FALSE; 
+
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/06/09
-NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
-TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
+#NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
+#TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
 # PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 ##Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/07
 
-INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds*/clk_in" TNM = skew_limit;
-INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds*/clk_in" TNM = skew_limit;
+#INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds*/clk_in" TNM = skew_limit;
+#INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds*/clk_in" TNM = skew_limit;
 
-TIMESPEC TS_ = FROM "skew_limit" TO "FFS" 1 ns DATAPATHONLY;
+#TIMESPEC TS_ = FROM "skew_limit" TO "FFS" 1 ns DATAPATHONLY;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/08
-INST "U_WR_CORE/WRPC/U_Endpoint/U_Wrapped_Endpoint/U_PCS_1000BASEX/gen_8bit.U_RX_PCS/timestamp_trigger_p_a_o" TNM = rx_ts_trig;
-TIMESPEC TS_RXTS = FROM "rx_ts_trig" TO "FFS" 1 ns DATAPATHONLY;
+#INST "U_WR_CORE/WRPC/U_Endpoint/U_Wrapped_Endpoint/U_PCS_1000BASEX/gen_8bit.U_RX_PCS/timestamp_trigger_p_a_o" TNM = rx_ts_trig;
+#TIMESPEC TS_RXTS = FROM "rx_ts_trig" TO "FFS" 1 ns DATAPATHONLY;
