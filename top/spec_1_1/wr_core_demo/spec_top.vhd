@@ -34,10 +34,10 @@ entity spec_top is
       fpga_pll_ref_clk_101_n_i : in std_logic;
 
       -- From GN4124 Local bus
-      L_CLKp : in std_logic;  -- Local bus clock (frequency set in GN4124 config registers)
-      L_CLKn : in std_logic;  -- Local bus clock (frequency set in GN4124 config registers)
+--      L_CLKp : in std_logic;  -- Local bus clock (frequency set in GN4124 config registers)
+--      L_CLKn : in std_logic;  -- Local bus clock (frequency set in GN4124 config registers)
 
-      L_RST_N : in std_logic;           -- Reset from GN4124 (RSTOUT18_N)
+--      L_RST_N : in std_logic;           -- Reset from GN4124 (RSTOUT18_N)
 
       -- General Purpose Interface
 --      GPIO : inout std_logic_vector(1 downto 0);  -- GPIO[0] -> GN4124 GPIO8
@@ -275,7 +275,7 @@ architecture rtl of spec_top is
   ------------------------------------------------------------------------------
 
   -- LCLK from GN4124 used as system clock
-  signal l_clk : std_logic;
+--  signal l_clk : std_logic;
 
   -- Dedicated clock for GTP transceiver
   signal gtp_dedicated_clk : std_logic;
@@ -285,7 +285,7 @@ architecture rtl of spec_top is
 
   -- Reset
   signal rst_a : std_logic;
-  signal rst   : std_logic;
+  --signal rst   : std_logic;
 
   -- DMA wishbone bus
   --signal dma_adr     : std_logic_vector(31 downto 0);
@@ -446,7 +446,8 @@ begin
   U_Reset_Gen : spec_reset_gen
     port map (
       clk_sys_i        => clk_sys,
-      rst_pcie_n_a_i   => L_RST_N,
+      --rst_pcie_n_a_i   => L_RST_N,
+		rst_pcie_n_a_i => '1',
       rst_button_n_a_i => button1_i,
       rst_n_o          => local_reset_n);
 
@@ -468,16 +469,16 @@ begin
   ------------------------------------------------------------------------------
   -- Local clock from gennum LCLK
   ------------------------------------------------------------------------------
-  cmp_l_clk_buf : IBUFDS
-    generic map (
-      DIFF_TERM    => false,            -- Differential Termination
-      IBUF_LOW_PWR => true,  -- Low power (TRUE) vs. performance (FALSE) setting for referenced I/O standards
-      IOSTANDARD   => "DEFAULT")
-    port map (
-      O  => l_clk,                      -- Buffer output
-      I  => L_CLKp,  -- Diff_p buffer input (connect directly to top-level port)
-      IB => L_CLKn  -- Diff_n buffer input (connect directly to top-level port)
-      );
+--  cmp_l_clk_buf : IBUFDS
+--    generic map (
+--      DIFF_TERM    => false,            -- Differential Termination
+--      IBUF_LOW_PWR => true,  -- Low power (TRUE) vs. performance (FALSE) setting for referenced I/O standards
+--      IOSTANDARD   => "DEFAULT")
+--    port map (
+--      O  => l_clk,                      -- Buffer output
+--      I  => L_CLKp,  -- Diff_p buffer input (connect directly to top-level port)
+--      IB => L_CLKn  -- Diff_n buffer input (connect directly to top-level port)
+--      );
 
   cmp_pllrefclk_buf : IBUFGDS
     generic map (
@@ -509,7 +510,7 @@ begin
   ------------------------------------------------------------------------------
   -- Active high reset
   ------------------------------------------------------------------------------
-  rst <= not(L_RST_N);
+  --rst <= not(L_RST_N);
 
   ------------------------------------------------------------------------------
   -- GN4124 interface
@@ -596,7 +597,8 @@ begin
   -- genum_wb_out.adr(18 downto 2)  <= wb_adr(16 downto 0);
   -- genum_wb_out.adr(31 downto 19) <= (others => '0');
 
-  process(clk_sys, rst)
+  --process(clk_sys, rst)
+  process(clk_sys)
   begin
     if rising_edge(clk_sys) then
       led_divider <= led_divider + 1;
@@ -749,7 +751,7 @@ begin
       clk_gth_i  => gtp_dedicated_clk,
 
 		tx_out_clk_o => open,
-      --ref_clk_i      => clk_125m_pllref, SEE, SPARTAN6!!
+      --ref_clk_i      => clk_125m_pllref,
       tx_data_i      => phy_tx_data,
 		
       tx_k_i         => phy_tx_k,
