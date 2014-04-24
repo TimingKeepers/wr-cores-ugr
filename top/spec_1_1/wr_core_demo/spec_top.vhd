@@ -465,6 +465,25 @@ begin
     port map (
       O => clk_20m_vcxo_buf,
       I => clk_20m_vcxo_i);
+		
+	-- See http://www.cs.indiana.edu/hmg/le/project-home/xilinx/ise_13.2/ISE_DS/ISE/doc/usenglish/isehelp/7series/libs_le_bufgctrl.htm
+--	cmp_clk_vcxo : BUFGCTRL
+--		generic map (
+--		INIT_OUT => 0,         -- Initial value of BUFGCTRL output 
+--		PRESELECT_I0 => TRUE, -- BUFGCTRL output uses I0 input 
+--		PRESELECT_I1 => FALSE  -- BUFGCTRL output uses I1 input 
+--		)
+--		port map (
+--		O => clk_20m_vcxo_buf,             -- 1-bit output: Clock output
+--		CE0 => '1',         -- 1-bit input: Clock enable input for I0
+--		CE1 => '0',         -- 1-bit input: Clock enable input for I1
+--		I0 => clk_20m_vcxo_i,           -- 1-bit input: Primary clock
+--		I1 => '0',           -- 1-bit input: Secondary clock
+--		IGNORE0 => '0', -- 1-bit input: Clock ignore input for I0
+--		IGNORE1 => '1', -- 1-bit input: Clock ignore input for I1
+--		S0 => '1',           -- 1-bit input: Clock select for I0
+--		S1 => '0'            -- 1-bit input: Clock select for I1
+--		);
 
   ------------------------------------------------------------------------------
   -- Local clock from gennum LCLK
@@ -484,7 +503,8 @@ begin
     generic map (
       DIFF_TERM    => true,             -- Differential Termination
       IBUF_LOW_PWR => true,  -- Low power (TRUE) vs. performance (FALSE) setting for referenced I/O standards
-      IOSTANDARD   => "DEFAULT")
+      --IOSTANDARD   => "DEFAULT")
+		IOSTANDARD => "DIFF_HSTL_II_18")
     port map (
       O  => clk_125m_pllref,            -- Buffer output
       I  => clk_125m_pllref_p_i,  -- Diff_p buffer input (connect directly to top-level port)
@@ -499,7 +519,8 @@ begin
     generic map(
       DIFF_TERM    => true,
       IBUF_LOW_PWR => true,
-      IOSTANDARD   => "DEFAULT")
+      --IOSTANDARD   => "DEFAULT")
+		IOSTANDARD => "DIFF_HSTL_II_18")
     port map (
       O  => gtp_dedicated_clk,
       I  => fpga_pll_ref_clk_101_p_i,
