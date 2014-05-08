@@ -279,6 +279,7 @@ architecture rtl of spec_top is
 
   -- Dedicated clock for GTP transceiver
   signal gtp_dedicated_clk : std_logic;
+  signal gtp_dedicated_clk_i : std_logic;
 
   -- P2L colck PLL status
   signal p2l_pll_locked : std_logic;
@@ -379,69 +380,155 @@ architecture rtl of spec_top is
   
 begin
 
-  cmp_sys_clk_pll : PLL_BASE
-    generic map (
-      BANDWIDTH          => "OPTIMIZED",
-      CLK_FEEDBACK       => "CLKFBOUT",
-      COMPENSATION       => "INTERNAL",
-      DIVCLK_DIVIDE      => 1,
-      CLKFBOUT_MULT      => 8,
-      CLKFBOUT_PHASE     => 0.000,
-      CLKOUT0_DIVIDE     => 16,         -- 62.5 MHz
-      CLKOUT0_PHASE      => 0.000,
-      CLKOUT0_DUTY_CYCLE => 0.500,
-      CLKOUT1_DIVIDE     => 16,         -- 125 MHz
-      CLKOUT1_PHASE      => 0.000,
-      CLKOUT1_DUTY_CYCLE => 0.500,
-      CLKOUT2_DIVIDE     => 16,
-      CLKOUT2_PHASE      => 0.000,
-      CLKOUT2_DUTY_CYCLE => 0.500,
-      CLKIN_PERIOD       => 8.0,
-      REF_JITTER         => 0.016)
-    port map (
-      CLKFBOUT => pllout_clk_fb_pllref,
-      CLKOUT0  => pllout_clk_sys,
-      CLKOUT1  => open,
-      CLKOUT2  => open,
-      CLKOUT3  => open,
-      CLKOUT4  => open,
-      CLKOUT5  => open,
-      LOCKED   => open,
-      RST      => '0',
-      CLKFBIN  => pllout_clk_fb_pllref,
-      CLKIN    => clk_125m_pllref);
+--  cmp_sys_clk_pll : PLL_BASE
+--    generic map (
+--      BANDWIDTH          => "OPTIMIZED",
+--      CLK_FEEDBACK       => "CLKFBOUT",
+--      COMPENSATION       => "INTERNAL",
+--      DIVCLK_DIVIDE      => 1,
+--      CLKFBOUT_MULT      => 8,
+--      CLKFBOUT_PHASE     => 0.000,
+--      CLKOUT0_DIVIDE     => 16,         -- 62.5 MHz
+--      CLKOUT0_PHASE      => 0.000,
+--      CLKOUT0_DUTY_CYCLE => 0.500,
+--      CLKOUT1_DIVIDE     => 16,         -- 125 MHz
+--      CLKOUT1_PHASE      => 0.000,
+--      CLKOUT1_DUTY_CYCLE => 0.500,
+--      CLKOUT2_DIVIDE     => 16,
+--      CLKOUT2_PHASE      => 0.000,
+--      CLKOUT2_DUTY_CYCLE => 0.500,
+--      CLKIN_PERIOD       => 8.0,
+--      REF_JITTER         => 0.016)
+--    port map (
+--      CLKFBOUT => pllout_clk_fb_pllref,
+--      CLKOUT0  => pllout_clk_sys,
+--      CLKOUT1  => open,
+--      CLKOUT2  => open,
+--      CLKOUT3  => open,
+--      CLKOUT4  => open,
+--      CLKOUT5  => open,
+--      LOCKED   => open,
+--      RST      => '0',
+--      CLKFBIN  => pllout_clk_fb_pllref,
+--      CLKIN    => clk_125m_pllref);
+		
+cmp_sys_clk_pll : PLLE2_ADV
+  generic map
+   (BANDWIDTH            => "OPTIMIZED",
+    COMPENSATION         => "ZHOLD",
+    DIVCLK_DIVIDE        => 1,
+    CLKFBOUT_MULT        => 7,
+    CLKFBOUT_PHASE       => 0.000,
+    CLKOUT0_DIVIDE       => 7,
+    CLKOUT0_PHASE        => 0.000,
+    CLKOUT0_DUTY_CYCLE   => 0.500,
+    CLKOUT1_DIVIDE       => 14,
+    CLKOUT1_PHASE        => 0.000,
+    CLKOUT1_DUTY_CYCLE   => 0.500,
+    CLKIN1_PERIOD        => 8.000,
+    REF_JITTER1          => 0.010)
+  port map
+    -- Output clocks
+   (CLKFBOUT            => pllout_clk_fb_pllref,
+    CLKOUT0             => pllout_clk_sys,
+    CLKOUT1             => open,
+    CLKOUT2             => open,
+    CLKOUT3             => open,
+    CLKOUT4             => open,
+    CLKOUT5             => open,
+    -- Input clock control
+    CLKFBIN             => pllout_clk_fb_pllref,
+    CLKIN1              => clk_125m_pllref,
+    CLKIN2              => '0',
+    -- Tied to always select the primary input clock
+    CLKINSEL            => '1',
+    -- Ports for dynamic reconfiguration
+    DADDR               => (others => '0'),
+    DCLK                => '0',
+    DEN                 => '0',
+    DI                  => (others => '0'),
+    DO                  => open,
+    DRDY                => open,
+    DWE                 => '0',
+    -- Other control and status signals
+    LOCKED              => open,
+    PWRDWN              => '0',
+    RST                 => '0');
 
-  cmp_dmtd_clk_pll : PLL_BASE
-    generic map (
-      BANDWIDTH          => "OPTIMIZED",
-      CLK_FEEDBACK       => "CLKFBOUT",
-      COMPENSATION       => "INTERNAL",
-      DIVCLK_DIVIDE      => 1,
-      CLKFBOUT_MULT      => 50,
-      CLKFBOUT_PHASE     => 0.000,
-      CLKOUT0_DIVIDE     => 16,         -- 62.5 MHz
-      CLKOUT0_PHASE      => 0.000,
-      CLKOUT0_DUTY_CYCLE => 0.500,
-      CLKOUT1_DIVIDE     => 16,         -- 62.5 MHz
-      CLKOUT1_PHASE      => 0.000,
-      CLKOUT1_DUTY_CYCLE => 0.500,
-      CLKOUT2_DIVIDE     => 8,
-      CLKOUT2_PHASE      => 0.000,
-      CLKOUT2_DUTY_CYCLE => 0.500,
-      CLKIN_PERIOD       => 50.0,
-      REF_JITTER         => 0.016)
-    port map (
-      CLKFBOUT => pllout_clk_fb_dmtd,
-      CLKOUT0  => pllout_clk_dmtd,
-      CLKOUT1  => open,
-      CLKOUT2  => open,
-      CLKOUT3  => open,
-      CLKOUT4  => open,
-      CLKOUT5  => open,
-      LOCKED   => open,
-      RST      => '0',
-      CLKFBIN  => pllout_clk_fb_dmtd,
-      CLKIN    => clk_20m_vcxo_buf);
+--  cmp_dmtd_clk_pll : PLL_BASE
+--    generic map (
+--      BANDWIDTH          => "OPTIMIZED",
+--      CLK_FEEDBACK       => "CLKFBOUT",
+--      COMPENSATION       => "INTERNAL",
+--      DIVCLK_DIVIDE      => 1,
+--      CLKFBOUT_MULT      => 50,
+--      CLKFBOUT_PHASE     => 0.000,
+--      CLKOUT0_DIVIDE     => 16,         -- 62.5 MHz
+--      CLKOUT0_PHASE      => 0.000,
+--      CLKOUT0_DUTY_CYCLE => 0.500,
+--      CLKOUT1_DIVIDE     => 16,         -- 62.5 MHz
+--      CLKOUT1_PHASE      => 0.000,
+--      CLKOUT1_DUTY_CYCLE => 0.500,
+--      CLKOUT2_DIVIDE     => 8,
+--      CLKOUT2_PHASE      => 0.000,
+--      CLKOUT2_DUTY_CYCLE => 0.500,
+--      CLKIN_PERIOD       => 50.0,
+--      REF_JITTER         => 0.016)
+--    port map (
+--      CLKFBOUT => pllout_clk_fb_dmtd,
+--      CLKOUT0  => pllout_clk_dmtd,
+--      CLKOUT1  => open,
+--      CLKOUT2  => open,
+--      CLKOUT3  => open,
+--      CLKOUT4  => open,
+--      CLKOUT5  => open,
+--      LOCKED   => open,
+--      RST      => '0',
+--      CLKFBIN  => pllout_clk_fb_dmtd,
+--      CLKIN    => clk_20m_vcxo_buf);
+		
+ cmp_dmtd_clk_pll : PLLE2_ADV
+  generic map
+   (BANDWIDTH            => "OPTIMIZED",
+    COMPENSATION         => "ZHOLD",
+    DIVCLK_DIVIDE        => 1,
+    CLKFBOUT_MULT        => 50,
+    CLKFBOUT_PHASE       => 0.000,
+    CLKOUT0_DIVIDE       => 16,
+    CLKOUT0_PHASE        => 0.000,
+    CLKOUT0_DUTY_CYCLE   => 0.500,
+    CLKOUT1_DIVIDE       => 16,
+    CLKOUT1_PHASE        => 0.000,
+    CLKOUT1_DUTY_CYCLE   => 0.500,
+    CLKIN1_PERIOD        => 50.000,
+    REF_JITTER1          => 0.010)
+  port map
+    -- Output clocks
+   (CLKFBOUT            => pllout_clk_fb_dmtd,
+    CLKOUT0             => pllout_clk_dmtd,
+    CLKOUT1             => open,
+    CLKOUT2             => open,
+    CLKOUT3             => open,
+    CLKOUT4             => open,
+    CLKOUT5             => open,
+    -- Input clock control
+    CLKFBIN             => pllout_clk_fb_dmtd,
+    CLKIN1              => clk_20m_vcxo_buf,
+    CLKIN2              => '0',
+    -- Tied to always select the primary input clock
+    CLKINSEL            => '1',
+    -- Ports for dynamic reconfiguration
+    DADDR               => (others => '0'),
+    DCLK                => '0',
+    DEN                 => '0',
+    DI                  => (others => '0'),
+    DO                  => open,
+    DRDY                => open,
+    DWE                 => '0',
+    -- Other control and status signals
+    LOCKED              => open,
+    PWRDWN              => '0',
+    RST                 => '0');
 
   U_Reset_Gen : spec_reset_gen
     port map (
@@ -465,25 +552,6 @@ begin
     port map (
       O => clk_20m_vcxo_buf,
       I => clk_20m_vcxo_i);
-		
-	-- See http://www.cs.indiana.edu/hmg/le/project-home/xilinx/ise_13.2/ISE_DS/ISE/doc/usenglish/isehelp/7series/libs_le_bufgctrl.htm
---	cmp_clk_vcxo : BUFGCTRL
---		generic map (
---		INIT_OUT => 0,         -- Initial value of BUFGCTRL output 
---		PRESELECT_I0 => TRUE, -- BUFGCTRL output uses I0 input 
---		PRESELECT_I1 => FALSE  -- BUFGCTRL output uses I1 input 
---		)
---		port map (
---		O => clk_20m_vcxo_buf,             -- 1-bit output: Clock output
---		CE0 => '1',         -- 1-bit input: Clock enable input for I0
---		CE1 => '0',         -- 1-bit input: Clock enable input for I1
---		I0 => clk_20m_vcxo_i,           -- 1-bit input: Primary clock
---		I1 => '0',           -- 1-bit input: Secondary clock
---		IGNORE0 => '0', -- 1-bit input: Clock ignore input for I0
---		IGNORE1 => '1', -- 1-bit input: Clock ignore input for I1
---		S0 => '1',           -- 1-bit input: Clock select for I0
---		S1 => '0'            -- 1-bit input: Clock select for I1
---		);
 
   ------------------------------------------------------------------------------
   -- Local clock from gennum LCLK
@@ -503,8 +571,7 @@ begin
     generic map (
       DIFF_TERM    => true,             -- Differential Termination
       IBUF_LOW_PWR => true,  -- Low power (TRUE) vs. performance (FALSE) setting for referenced I/O standards
-      --IOSTANDARD   => "DEFAULT")
-		IOSTANDARD => "DIFF_HSTL_II_18")
+      IOSTANDARD   => "DEFAULT")
     port map (
       O  => clk_125m_pllref,            -- Buffer output
       I  => clk_125m_pllref_p_i,  -- Diff_p buffer input (connect directly to top-level port)
@@ -513,19 +580,23 @@ begin
 
 
   ------------------------------------------------------------------------------
-  -- Dedicated clock for GTP
+  -- Dedicated clock for GTH
   ------------------------------------------------------------------------------
-  cmp_gtp_dedicated_clk_buf : IBUFGDS
-    generic map(
-      DIFF_TERM    => true,
-      IBUF_LOW_PWR => true,
-      --IOSTANDARD   => "DEFAULT")
-		IOSTANDARD => "DIFF_HSTL_II_18")
+  cmp_gtp_dedicated_clk_buf_i : IBUFDS_GTE2
     port map (
-      O  => gtp_dedicated_clk,
+--      O  => gtp_dedicated_clk_i,
+		O  => gtp_dedicated_clk,
       I  => fpga_pll_ref_clk_101_p_i,
-      IB => fpga_pll_ref_clk_101_n_i
+      IB => fpga_pll_ref_clk_101_n_i,
+		CEB => '0',
+		ODIV2 => open
       );
+		
+--		 cmp_gtp_dedicated_clk_buf : BUFG
+--    port map (
+--      O => gtp_dedicated_clk,
+--      I => gtp_dedicated_clk_i);
+
 
 
   ------------------------------------------------------------------------------
@@ -764,7 +835,7 @@ begin
       master_o(0) => wrc_slave_i);
 
   ---------------------
-
+--
   U_GTP : wr_gth_phy_virtex7
     generic map (
       g_simulation => 0)
