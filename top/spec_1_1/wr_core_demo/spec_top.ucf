@@ -16,10 +16,10 @@ NET "CLK_20M_VCXO_I" CLOCK_DEDICATED_ROUTE = FALSE;
 #NET "clk_125m_pllref_p_i" IOSTANDARD = "LVDS_25";
 
 NET "clk_125m_pllref_n_i" LOC = AK32;
-NET "clk_125m_pllref_n_i" IOSTANDARD = "DIFF_HSTL_II_18";
+#NET "clk_125m_pllref_n_i" IOSTANDARD = "DIFF_HSTL_II_18";
 
 NET "clk_125m_pllref_p_i" LOC = AJ32;
-NET "clk_125m_pllref_p_i" IOSTANDARD = "DIFF_HSTL_II_18";
+#NET "clk_125m_pllref_p_i" IOSTANDARD = "DIFF_HSTL_II_18";
 
 #NET "fpga_pll_ref_clk_101_n_i" LOC = D11;
 #NET "fpga_pll_ref_clk_101_n_i" IOSTANDARD = "LVDS_25";
@@ -27,11 +27,10 @@ NET "clk_125m_pllref_p_i" IOSTANDARD = "DIFF_HSTL_II_18";
 #NET "fpga_pll_ref_clk_101_p_i" LOC = C11;
 #NET "fpga_pll_ref_clk_101_p_i" IOSTANDARD = "LVDS_25";
 
-# FIXME!!
-#NET "fpga_pll_ref_clk_101_n_i" LOC = AK7;
+NET "fpga_pll_ref_clk_101_n_i" LOC = AK7;
 #NET "fpga_pll_ref_clk_101_n_i" IOSTANDARD = "DIFF_HSTL_II_18";
-#
-#NET "fpga_pll_ref_clk_101_p_i" LOC = AK8;
+
+NET "fpga_pll_ref_clk_101_p_i" LOC = AK8; 
 #NET "fpga_pll_ref_clk_101_p_i" IOSTANDARD = "DIFF_HSTL_II_18";
 
 #NET "dac_cs1_n_o" LOC = A3;
@@ -88,14 +87,14 @@ NET "dac_sclk_o" IOSTANDARD = "LVCMOS18";
 #NET "SFP_MOD_DEF2_b" LOC = G16;
 #NET "SFP_MOD_DEF2_b" IOSTANDARD = "LVCMOS25";
 
-NET "SFP_MOD_DEF1_b" LOC = AT35;
-NET "SFP_MOD_DEF1_b" IOSTANDARD = "LVCMOS18";
+#NET "SFP_MOD_DEF1_b" LOC = AT35;
+#NET "SFP_MOD_DEF1_b" IOSTANDARD = "LVCMOS18";
 
 NET "SFP_MOD_DEF0_b" LOC = AB42;
 NET "SFP_MOD_DEF0_b" IOSTANDARD = "LVCMOS18";
 
-NET "SFP_MOD_DEF2_b" LOC = AU32;
-NET "SFP_MOD_DEF2_b" IOSTANDARD = "LVCMOS18";
+#NET "SFP_MOD_DEF2_b" LOC = AU32;
+#NET "SFP_MOD_DEF2_b" IOSTANDARD = "LVCMOS18";
 
 # This?? It is not used in our design! 
 #NET "SFP_RATE_SELECT_b" LOC = H14;
@@ -144,11 +143,11 @@ NET "sfp_txn_o" LOC= AP3;
 #NET "FPGA_SDA_B" LOC = F8;
 #NET "FPGA_SDA_B" IOSTANDARD = "LVCMOS25";
 
-# I2C general bus! (shared with SFP!) - FIXME!!
-#NET "FPGA_SCL_B" LOC = AT35;
-#NET "FPGA_SCL_B" IOSTANDARD = "LVCMOS18";
-#NET "FPGA_SDA_B" LOC = AU32;
-#NET "FPGA_SDA_B" IOSTANDARD = "LVCMOS18";
+# I2C general bus! (SFP IIC bus disabled - FIXME!)
+NET "FPGA_SCL_B" LOC = AT35;
+NET "FPGA_SCL_B" IOSTANDARD = "LVCMOS18";
+NET "FPGA_SDA_B" LOC = AU32;
+NET "FPGA_SDA_B" IOSTANDARD = "LVCMOS18";
 
 #NET "BUTTON1_I" LOC = C22;
 #NET "BUTTON1_I" IOSTANDARD = "LVCMOS18";
@@ -579,106 +578,108 @@ NET "LED_GREEN" IOSTANDARD = "LVCMOS18";
 #NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
 #TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 
-
 ########################################################
 ##  Pin definitions for FmcDio5chttl + SPEC v1.1/2.0  ##
 ########################################################
 # DIO outputs
-#NET "dio_p_o[4]" LOC= T8; 
-#NET "dio_n_o[4]" LOC= U8; 
+NET "dio_p_o[4]" LOC= K39; 
+NET "dio_n_o[4]" LOC= K40; 
 #NET "dio_p_o[4]" IOSTANDARD=LVDS_25;
 #NET "dio_n_o[4]" IOSTANDARD=LVDS_25;
-#
-#
-#NET "dio_p_o[3]" LOC= U9; 
-#NET "dio_n_o[3]" LOC= V9;
+
+NET "dio_p_o[3]" LOC= M42; 
+NET "dio_n_o[3]" LOC= L42;
 #NET "dio_p_o[3]" IOSTANDARD=LVDS_25;
 #NET "dio_n_o[3]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_o[2]" LOC=  R9;
-#NET "dio_n_o[2]" LOC=  R8;
+
+NET "dio_p_o[2]" LOC=  K37;
+NET "dio_n_o[2]" LOC=  K38;
 #NET "dio_p_o[2]" IOSTANDARD=LVDS_25;
 #NET "dio_n_o[2]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_o[1]" LOC=  Y16;
-#NET "dio_n_o[1]" LOC=  W15;
-#NET "dio_p_o[1]" IOSTANDARD=LVDS_25;
+
+NET "dio_p_o[1]" LOC=  Y29;
+NET "dio_n_o[1]" LOC=  Y30;
+#NET "dio_p_o[1]" IOSTANDARD=LVDS_º25;
 #NET "dio_n_o[1]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_o[0]" LOC=  W17;
-#NET "dio_n_o[0]" LOC=  Y18;
+
+NET "dio_p_o[0]" LOC=  U31;
+NET "dio_n_o[0]" LOC=  T31;
 #NET "dio_p_o[0]" IOSTANDARD=LVDS_25;
 #NET "dio_n_o[0]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_sdn_n_o" LOC=  V11;
+
+################## I2C Bus Problem!! #######################
+
+#NET "dio_sdn_n_o" LOC=  AU32;
 #NET "dio_sdn_n_o" IOSTANDARD=LVCMOS25;
-#
-#NET "dio_sdn_ck_n_o" LOC=  Y5;
+
+#NET "dio_sdn_ck_n_o" LOC=  AT35;
 #NET "dio_sdn_ck_n_o" IOSTANDARD=LVCMOS25;
-#
+
+############################################################
+
 ## DIO output enable/termination enable
-#NET "dio_oe_n_o[4]" LOC=  AA6;
-#NET "dio_oe_n_o[3]" LOC=  W10;
-#NET "dio_oe_n_o[2]" LOC=  W11;
-#NET "dio_oe_n_o[1]" LOC= Y14;
-#NET "dio_oe_n_o[0]" LOC= V17;
-#
+NET "dio_oe_n_o[4]" LOC=  M41;
+NET "dio_oe_n_o[3]" LOC=  F40;
+NET "dio_oe_n_o[2]" LOC=  L37;
+NET "dio_oe_n_o[1]" LOC= P31;
+NET "dio_oe_n_o[0]" LOC= V30;
+
 #NET "dio_oe_n_o[4]"  IOSTANDARD=LVCMOS25;
 #NET "dio_oe_n_o[3]"  IOSTANDARD=LVCMOS25;
 #NET "dio_oe_n_o[2]"  IOSTANDARD=LVCMOS25;
 #NET "dio_oe_n_o[1]"  IOSTANDARD=LVCMOS25;
 #NET "dio_oe_n_o[0]"  IOSTANDARD=LVCMOS25;
-#
-#NET "dio_term_en_o[4]" LOC=AB7;
-#NET "dio_term_en_o[3]" LOC=Y7;
-#NET "dio_term_en_o[2]" LOC=AB6;
-#NET "dio_term_en_o[1]" LOC=AB5;
-#NET "dio_term_en_o[0]" LOC=W18;
-#
+
+NET "dio_term_en_o[4]" LOC=P42;
+NET "dio_term_en_o[3]" LOC=R42;
+NET "dio_term_en_o[2]" LOC=L41;
+NET "dio_term_en_o[1]" LOC=J42;
+NET "dio_term_en_o[0]" LOC=V31;
+
 #NET "dio_term_en_o[4]"  IOSTANDARD=LVCMOS25;
 #NET "dio_term_en_o[3]"  IOSTANDARD=LVCMOS25;
 #NET "dio_term_en_o[2]"  IOSTANDARD=LVCMOS25;
 #NET "dio_term_en_o[1]"  IOSTANDARD=LVCMOS25;
 #NET "dio_term_en_o[0]"  IOSTANDARD=LVCMOS25;
-#
-#NET "dio_onewire_b" LOC=AB16;
+
+NET "dio_onewire_b" LOC=N31;
 #NET "dio_onewire_b" IOSTANDARD=LVCMOS25;
-#
+
 ## DIO inputs
-#NET "dio_clk_p_i" LOC=L20;
+NET "dio_clk_p_i" LOC=N30;
 #NET "dio_clk_p_i" IOSTANDARD=LVDS_25;
-#
-#NET "dio_clk_n_i" LOC=L22;
+
+NET "dio_clk_n_i" LOC=M31;
 #NET "dio_clk_n_i" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_i[4]" LOC =Y11;
+
+NET "dio_p_i[4]" LOC =H40;
 #NET "dio_p_i[4]" IOSTANDARD=LVDS_25;
-#NET "dio_n_i[4]" LOC =AB11;
+NET "dio_n_i[4]" LOC =H41;
 #NET "dio_n_i[4]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_i[3]" LOC =V7;
+
+NET "dio_p_i[3]" LOC =G41;
 #NET "dio_p_i[3]" IOSTANDARD=LVDS_25;
-#NET "dio_n_i[3]" LOC =W8;
+NET "dio_n_i[3]" LOC =G42;
 #NET "dio_n_i[3]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_i[2]" LOC =W12;
+
+NET "dio_p_i[2]" LOC =M37;
 #NET "dio_p_i[2]" IOSTANDARD=LVDS_25;
-#NET "dio_n_i[2]" LOC =Y12;
+NET "dio_n_i[2]" LOC =M38;
 #NET "dio_n_i[2]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_i[1]" LOC =R11;
+
+NET "dio_p_i[1]" LOC =J30;
 #NET "dio_p_i[1]" IOSTANDARD=LVDS_25;
-#NET "dio_n_i[1]" LOC =T11;
+NET "dio_n_i[1]" LOC =H30;
 #NET "dio_n_i[1]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_p_i[0]" LOC =C19;
+
+NET "dio_p_i[0]" LOC =T29;
 #NET "dio_p_i[0]" IOSTANDARD=LVDS_25;
-#NET "dio_n_i[0]" LOC =A19;
+NET "dio_n_i[0]" LOC =T30;
 #NET "dio_n_i[0]" IOSTANDARD=LVDS_25;
-#
-#NET "dio_led_top_o" LOC= AA12;
+
+NET "dio_led_top_o" LOC= J40;
 #NET "dio_led_top_o" IOSTANDARD=LVCMOS25;
-#NET "dio_led_bot_o" LOC= AB12;
+NET "dio_led_bot_o" LOC= J41;
 #NET "dio_led_bot_o" IOSTANDARD=LVCMOS25;
 
 NET "uart_rxd_i" LOC= AU33;
