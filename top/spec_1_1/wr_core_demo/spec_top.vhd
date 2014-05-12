@@ -77,7 +77,7 @@ entity spec_top is
 
       dac_sclk_o  : out std_logic;
       dac_din_o   : out std_logic;
-      dac_clr_n_o : out std_logic;
+--      dac_clr_n_o : out std_logic; -- NOT used!
       dac_cs1_n_o : out std_logic;
       dac_cs2_n_o : out std_logic;
 
@@ -87,7 +87,7 @@ entity spec_top is
       button1_i : in std_logic := 'H';
       button2_i : in std_logic := 'H';
 
-      thermo_id : inout std_logic;      -- 1-Wire interface to DS18B20
+--      thermo_id : inout std_logic;      -- 1-Wire interface to DS18B20
 
       -------------------------------------------------------------------------
       -- SFP pins
@@ -246,7 +246,7 @@ architecture rtl of spec_top is
 	port(
 		-- Clock and Reset
 		clk: in std_logic;
-		rst: in std_logic;
+		rst_n: in std_logic;
 
 		-- Slave I2C bus
 		slave_scl_i: in std_logic;
@@ -747,14 +747,14 @@ cmp_sys_clk_pll : PLLE2_ADV
 --  sfp_scl_i      <= sfp_mod_def1_b;
 --  sfp_sda_i      <= sfp_mod_def2_b;
 
-  thermo_id <= '0' when owr_en(0) = '1' else 'Z';
-  owr_i(0)  <= thermo_id;
+--  thermo_id <= '0' when owr_en(0) = '1' else 'Z';
+--  owr_i(0)  <= thermo_id;
   
   I2C_ADPT: i2c_switch
 	port map(
 		-- Clock and Reset
 		clk => clk_sys,
-		rst => not local_reset_n,
+		rst_n => local_reset_n,
 
 		-- Slave I2C bus
 		slave_scl_i => main_scl_i,
@@ -941,7 +941,8 @@ cmp_sys_clk_pll : PLLE2_ADV
 
       dac_cs_n_o(0) => dac_cs1_n_o,
       dac_cs_n_o(1) => dac_cs2_n_o,
-      dac_clr_n_o   => dac_clr_n_o,
+--      dac_clr_n_o   => dac_clr_n_o,
+		dac_clr_n_o   => open,
       dac_sclk_o    => dac_sclk_o,
       dac_din_o     => dac_din_o);
 
@@ -996,8 +997,8 @@ cmp_sys_clk_pll : PLLE2_ADV
 
   dio_term_en_o <= (others => '0');
 
-  dio_sdn_ck_n_o <= '1';
-  dio_sdn_n_o    <= '1';
+--  dio_sdn_ck_n_o <= '1';
+--  dio_sdn_n_o    <= '1';
 
   sfp_tx_disable_o <= '0';
 
