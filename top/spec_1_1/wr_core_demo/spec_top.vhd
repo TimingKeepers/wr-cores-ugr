@@ -100,8 +100,8 @@ entity spec_top is
       sfp_rxn_i : in std_logic;
 
       sfp_mod_def0_b    : in    std_logic;  -- sfp detect
-      sfp_mod_def1_b    : inout std_logic;  -- scl
-      sfp_mod_def2_b    : inout std_logic;  -- sda
+--      sfp_mod_def1_b    : inout std_logic;  -- scl
+--      sfp_mod_def2_b    : inout std_logic;  -- sda
       sfp_rate_select_b : inout std_logic;
       sfp_tx_fault_i    : in    std_logic;
       sfp_tx_disable_o  : out   std_logic;
@@ -231,6 +231,8 @@ architecture rtl of spec_top is
  --     dma_stall_i : in  std_logic                     := '0'
  --     );
  -- end component;  --  gn4124_core
+ 
+ 
 
   component spec_reset_gen
     port (
@@ -239,6 +241,28 @@ architecture rtl of spec_top is
       rst_button_n_a_i : in  std_logic;
       rst_n_o          : out std_logic);
   end component;
+  
+  component i2c_switch
+	port(
+		-- Clock and Reset
+		clk: in std_logic;
+		rst: in std_logic;
+
+		-- Slave I2C bus
+		slave_scl_i: in std_logic;
+		slave_scl_o: out std_logic;
+		slave_sda_i: in std_logic;
+		slave_sda_o: out std_logic;
+
+		-- Master I2C buses
+		master_scl_i: in std_logic_vector(1 downto 0);
+		master_scl_o: out std_logic_vector(1 downto 0);
+		master_sda_i: in std_logic_vector(1 downto 0);
+		master_sda_o: out std_logic_vector(1 downto 0)
+		
+		--ch_enable : out std_logic_vector(1 downto 0)
+	);
+	end component;
 
   --component chipscope_ila
   --  port (
@@ -319,14 +343,25 @@ architecture rtl of spec_top is
   signal dac_rst_n        : std_logic;
   signal led_divider      : unsigned(23 downto 0);
 
-  signal wrc_scl_o : std_logic;
-  signal wrc_scl_i : std_logic;
-  signal wrc_sda_o : std_logic;
-  signal wrc_sda_i : std_logic;
-  signal sfp_scl_o : std_logic;
-  signal sfp_scl_i : std_logic;
-  signal sfp_sda_o : std_logic;
-  signal sfp_sda_i : std_logic;
+--  signal wrc_scl_o : std_logic;
+--  signal wrc_scl_i : std_logic;
+--  signal wrc_sda_o : std_logic;
+--  signal wrc_sda_i : std_logic;
+--  signal sfp_scl_o : std_logic;
+--  signal sfp_scl_i : std_logic;
+--  signal sfp_sda_o : std_logic;
+--  signal sfp_sda_i : std_logic;
+  
+  signal master_scl_o : std_logic_vector(1 downto 0);
+  signal master_scl_i : std_logic_vector(1 downto 0);
+  signal master_sda_o : std_logic_vector(1 downto 0);
+  signal master_sda_i : std_logic_vector(1 downto 0);
+  
+  signal main_scl_o : std_logic;
+  signal main_scl_i : std_logic;
+  signal main_sda_o : std_logic;
+  signal main_sda_i : std_logic;
+  
   signal dio       : std_logic_vector(3 downto 0);
 
   signal dac_hpll_load_p1 : std_logic;
@@ -696,19 +731,43 @@ cmp_sys_clk_pll : PLLE2_ADV
       led_divider <= led_divider + 1;
     end if;
   end process;
+  
+  fpga_scl_b <= '0' when main_scl_o = '0' else 'Z';
+  fpga_sda_b <= '0' when main_sda_o = '0' else 'Z';
+  main_scl_i  <= fpga_scl_b;
+  main_sda_i  <= fpga_sda_b;
 
-  fpga_scl_b <= '0' when wrc_scl_o = '0' else 'Z';
-  fpga_sda_b <= '0' when wrc_sda_o = '0' else 'Z';
-  wrc_scl_i  <= fpga_scl_b;
-  wrc_sda_i  <= fpga_sda_b;
-
-  sfp_mod_def1_b <= '0' when sfp_scl_o = '0' else 'Z';
-  sfp_mod_def2_b <= '0' when sfp_sda_o = '0' else 'Z';
-  sfp_scl_i      <= sfp_mod_def1_b;
-  sfp_sda_i      <= sfp_mod_def2_b;
+--  fpga_scl_b <= '0' when wrc_scl_o = '0' else 'Z';
+--  fpga_sda_b <= '0' when wrc_sda_o = '0' else 'Z';
+--  wrc_scl_i  <= fpga_scl_b;
+--  wrc_sda_i  <= fpga_sda_b;
+--
+--  sfp_mod_def1_b <= '0' when sfp_scl_o = '0' else 'Z';
+--  sfp_mod_def2_b <= '0' when sfp_sda_o = '0' else 'Z';
+--  sfp_scl_i      <= sfp_mod_def1_b;
+--  sfp_sda_i      <= sfp_mod_def2_b;
 
   thermo_id <= '0' when owr_en(0) = '1' else 'Z';
   owr_i(0)  <= thermo_id;
+  
+  I2C_ADPT: i2c_switch
+	port map(
+		-- Clock and Reset
+		clk => clk_sys,
+		rst => not local_reset_n,
+
+		-- Slave I2C bus
+		slave_scl_i => main_scl_i,
+		slave_scl_o => main_scl_o,
+		slave_sda_i => main_sda_i,
+		slave_sda_o => main_sda_o,
+
+		-- Master I2C buses
+		master_scl_i => master_scl_i,
+		master_scl_o => master_scl_o,
+		master_sda_i => master_sda_i,
+		master_sda_o => master_sda_o
+	);
 
   U_WR_CORE : xwr_core
     generic map (
@@ -755,14 +814,14 @@ cmp_sys_clk_pll : PLLE2_ADV
 
       led_act_o   => LED_RED,
       led_link_o  => LED_GREEN,
-      scl_o       => wrc_scl_o,
-      scl_i       => wrc_scl_i,
-      sda_o       => wrc_sda_o,
-      sda_i       => wrc_sda_i,
-      sfp_scl_o   => sfp_scl_o,
-      sfp_scl_i   => sfp_scl_i,
-      sfp_sda_o   => sfp_sda_o,
-      sfp_sda_i   => sfp_sda_i,
+      scl_o       => master_scl_i(0),
+      scl_i       => master_scl_o(0),
+      sda_o       => master_sda_i(0),
+      sda_i       => master_sda_o(0),
+      sfp_scl_o   => master_scl_i(1),
+      sfp_scl_i   => master_scl_o(1),
+      sfp_sda_o   => master_sda_i(1),
+      sfp_sda_i   => master_sda_o(1),
       sfp_det_i   => sfp_mod_def0_b,
       btn1_i      => button1_i,
       btn2_i      => button2_i,
