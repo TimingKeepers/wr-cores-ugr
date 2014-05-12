@@ -12,7 +12,7 @@ entity i2c_start_stop_detector is
 	port(
 		-- Clock and Reset
 		clk: in std_logic;
-		rst: in std_logic;
+		rst_n: in std_logic;
 
 		ch_enable: out std_logic_vector(N-1 downto 0);
 
@@ -29,9 +29,9 @@ architecture behavioral of i2c_start_stop_detector is
 begin
 	
 start_detectors: for I in 0 to N-1 generate
-	process (clk,rst)
+	process (clk,rst_n)
 	begin
-		if rst = '1' then
+		if rst_n = '0' then
 			ch_start_reg(I) <= '0';
 		elsif clk'event and clk = '1' then
 			if master_sda_i(I)'event and master_sda_i(I) = '0' then
@@ -49,9 +49,9 @@ start_detectors: for I in 0 to N-1 generate
 end generate start_detectors;
 
 stop_detectors: for I in 0 to N-1 generate
-	process (clk,rst)
+	process (clk,rst_n)
 	begin
-		if rst = '1' then
+		if rst_n = '0' then
 			ch_stop_reg(I) <= '0';
 		elsif clk'event and clk = '1' then
 			if master_sda_i(I)'event and master_sda_i(I) = '1' then
@@ -69,9 +69,9 @@ stop_detectors: for I in 0 to N-1 generate
 end generate stop_detectors;
 
 enable_ch: for I in 0 to N-1 generate
-process(clk,rst)
+process(clk,rst_n)
 begin
-	if rst = '1' then
+	if rst_n = '0' then
 		ch_enable_reg(I) <= '0'; -- ¿Por qué casca si pongo ch_enable_reg <= (others => '0')? Multiple drivers!!
 	elsif clk'event and clk = '1' then
 		if ch_enable_reg(I) = '0' and ch_start_reg(I) = '1' then

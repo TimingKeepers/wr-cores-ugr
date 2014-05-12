@@ -9,7 +9,7 @@ entity i2c_switch is
 	port(
 		-- Clock and Reset
 		clk: in std_logic;
-		rst: in std_logic;
+		rst_n: in std_logic;
 
 		-- Slave I2C bus
 		slave_scl_i: in std_logic;
@@ -37,7 +37,7 @@ architecture behavioral of i2c_switch is
 	port(
 		-- Clock and Reset
 		clk: in std_logic;
-		rst: in std_logic;
+		rst_n: in std_logic;
 
 		ch_enable: out std_logic_vector(N-1 downto 0);
 
@@ -48,22 +48,22 @@ architecture behavioral of i2c_switch is
 	end component;
 
 begin
-	
+
 ss_detector: i2c_start_stop_detector
 generic map(
 	N => 2
 )
 port map(
 	clk => clk,
-	rst => rst,
+	rst_n => rst_n,
 	ch_enable => ch_enable_reg,
 	master_scl_i => master_scl_i,
 	master_sda_i => master_sda_i
 );
 
-process (clk,rst)
+process (clk,rst_n)
 begin
-	if rst = '1' then
+	if rst_n = '0' then
 		slave_scl_o <= '1';
 		slave_sda_o <= '1';
 		master_scl_o(0) <= '1';
