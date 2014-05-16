@@ -6,6 +6,7 @@ library UNISIM;
 use UNISIM.vcomponents.all;
 
 entity i2c_switch is
+
 	port(
 		-- Clock and Reset
 		clk: in std_logic;
@@ -61,24 +62,24 @@ port map(
 	master_sda_i => master_sda_i
 );
 
-process (clk,rst_n)
+process (clk)
 begin
-	if rst_n = '0' then
-		slave_scl_o <= '1';
-		slave_sda_o <= '1';
-		master_scl_o(0) <= '1';
-		master_sda_o(0) <= '1';
-		master_scl_o(1) <= '1';
-		master_sda_o(1) <= '1';
-	else
-		if clk'event and clk = '1' then
+	if clk'event and clk = '1' then		
+		if rst_n = '0' then
+			slave_scl_o <= '1';
+			slave_sda_o <= '1';
+			master_scl_o(0) <= '1';
+			master_sda_o(0) <= '1';
+			master_scl_o(1) <= '1';
+			master_sda_o(1) <= '1';
+		else
 			if ch_enable_reg(0) = '1' then
-				slave_scl_o <= master_scl_i(0);
-				slave_sda_o <= master_sda_i(0);
-				master_scl_o(0) <= slave_scl_i;
-				master_sda_o(0) <= slave_sda_i;
-				master_scl_o(1) <= '1';
-				master_sda_o(1) <= '1';
+					slave_scl_o <= master_scl_i(0);
+					slave_sda_o <= master_sda_i(0);
+					master_scl_o(0) <= slave_scl_i;
+					master_sda_o(0) <= slave_sda_i;
+					master_scl_o(1) <= '1';
+					master_sda_o(1) <= '1';
 			else
 				if ch_enable_reg(1) = '1' then
 					slave_scl_o <= master_scl_i(1);
@@ -99,14 +100,5 @@ begin
 		end if;
 	end if;
 end process;
-
--- El maestro que no tenga el turno tambien vería el bus (puede creer 
--- que el esclavo le está contestando!!)
---master_scl_o(0) <= slave_scl_i;
---master_sda_o(0) <= slave_sda_i;
---master_scl_o(1) <= slave_scl_i;
---master_sda_o(1) <= slave_sda_i;
-
---ch_enable <= ch_enable_reg;
 
 end behavioral;

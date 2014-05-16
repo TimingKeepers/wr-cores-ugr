@@ -29,58 +29,61 @@ architecture behavioral of i2c_start_stop_detector is
 begin
 	
 start_detectors: for I in 0 to N-1 generate
-	process (clk,rst_n)
+	process (clk)
 	begin
-		if rst_n = '0' then
-			ch_start_reg(I) <= '0';
-		elsif clk'event and clk = '1' then
-			if master_sda_i(I)'event and master_sda_i(I) = '0' then
-				if master_scl_i(I) = '1' then
-					ch_start_reg(I) <= '1';
+		if clk'event and clk = '1' then
+			if rst_n = '0' then
+				ch_start_reg(I) <= '0';
+			else
+				if master_sda_i(I)'event and master_sda_i(I) = '0' then
+					if master_scl_i(I) = '1' then
+						ch_start_reg(I) <= '1';
+					end if;
+				end if;
+			
+				if ch_start_reg(I) = '1' then
+					ch_start_reg(I) <= '0';
 				end if;
 			end if;
-			
-			if ch_start_reg(I) = '1' then
-				ch_start_reg(I) <= '0';
-			end if;
-			
 		end if;
 	end process;
 end generate start_detectors;
 
 stop_detectors: for I in 0 to N-1 generate
-	process (clk,rst_n)
+	process (clk)
 	begin
-		if rst_n = '0' then
-			ch_stop_reg(I) <= '0';
-		elsif clk'event and clk = '1' then
-			if master_sda_i(I)'event and master_sda_i(I) = '1' then
-				if master_scl_i(I) = '1' then
-					ch_stop_reg(I) <= '1';
+		if clk'event and clk = '1' then
+			if rst_n = '0' then
+				ch_stop_reg(I) <= '0';
+			else
+				if master_sda_i(I)'event and master_sda_i(I) = '1' then
+					if master_scl_i(I) = '1' then
+						ch_stop_reg(I) <= '1';
+					end if;
+				end if;
+			
+				if ch_stop_reg(I) = '1' then
+					ch_stop_reg(I) <= '0';
 				end if;
 			end if;
-			
-			if ch_stop_reg(I) = '1' then
-				ch_stop_reg(I) <= '0';
-			end if;
-			
 		end if;
 	end process;
 end generate stop_detectors;
 
 enable_ch: for I in 0 to N-1 generate
-process(clk,rst_n)
+process(clk)
 begin
-	if rst_n = '0' then
-		ch_enable_reg(I) <= '0'; -- ¿Por qué casca si pongo ch_enable_reg <= (others => '0')? Multiple drivers!!
-	elsif clk'event and clk = '1' then
-		if ch_enable_reg(I) = '0' and ch_start_reg(I) = '1' then
-			ch_enable_reg(I) <= '1';
-		elsif ch_enable_reg(I) = '1' and ch_stop_reg(I) = '1' then
+	if clk'event and clk = '1' then
+		if rst_n = '0' then
 			ch_enable_reg(I) <= '0';
+		else
+			if ch_enable_reg(I) = '0' and ch_start_reg(I) = '1' then
+				ch_enable_reg(I) <= '1';
+			elsif ch_enable_reg(I) = '1' and ch_stop_reg(I) = '1' then
+				ch_enable_reg(I) <= '0';
+			end if;
 		end if;
 	end if;
-	
 end process;
 
 end generate enable_ch;
@@ -88,4 +91,3 @@ end generate enable_ch;
 ch_enable <= ch_enable_reg;
 
 end behavioral;
-
