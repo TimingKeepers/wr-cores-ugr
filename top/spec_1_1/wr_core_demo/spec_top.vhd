@@ -446,22 +446,22 @@ begin
 --      RST      => '0',
 --      CLKFBIN  => pllout_clk_fb_pllref,
 --      CLKIN    => clk_125m_pllref);
-		
+
 cmp_sys_clk_pll : PLLE2_ADV
   generic map
    (BANDWIDTH            => "OPTIMIZED",
-    COMPENSATION         => "ZHOLD",
+    COMPENSATION         => "INTERNAL",
     DIVCLK_DIVIDE        => 1,
     CLKFBOUT_MULT        => 7,
     CLKFBOUT_PHASE       => 0.000,
-    CLKOUT0_DIVIDE       => 7,
+    CLKOUT0_DIVIDE       => 14,
     CLKOUT0_PHASE        => 0.000,
     CLKOUT0_DUTY_CYCLE   => 0.500,
-    CLKOUT1_DIVIDE       => 14,
+    CLKOUT1_DIVIDE       => 7,
     CLKOUT1_PHASE        => 0.000,
     CLKOUT1_DUTY_CYCLE   => 0.500,
     CLKIN1_PERIOD        => 8.000,
-    REF_JITTER1          => 0.010)
+    REF_JITTER1          => 0.016)
   port map
     -- Output clocks
    (CLKFBOUT            => pllout_clk_fb_pllref,
@@ -521,11 +521,11 @@ cmp_sys_clk_pll : PLLE2_ADV
 --      RST      => '0',
 --      CLKFBIN  => pllout_clk_fb_dmtd,
 --      CLKIN    => clk_20m_vcxo_buf);
-		
- cmp_dmtd_clk_pll : PLLE2_ADV
+
+cmp_dmtd_clk_pll : PLLE2_ADV
   generic map
    (BANDWIDTH            => "OPTIMIZED",
-    COMPENSATION         => "ZHOLD",
+    COMPENSATION         => "INTERNAL",
     DIVCLK_DIVIDE        => 1,
     CLKFBOUT_MULT        => 50,
     CLKFBOUT_PHASE       => 0.000,
@@ -536,7 +536,7 @@ cmp_sys_clk_pll : PLLE2_ADV
     CLKOUT1_PHASE        => 0.000,
     CLKOUT1_DUTY_CYCLE   => 0.500,
     CLKIN1_PERIOD        => 50.000,
-    REF_JITTER1          => 0.010)
+    REF_JITTER1          => 0.016)
   port map
     -- Output clocks
    (CLKFBOUT            => pllout_clk_fb_dmtd,
@@ -570,7 +570,7 @@ cmp_sys_clk_pll : PLLE2_ADV
       clk_sys_i        => clk_sys,
       --rst_pcie_n_a_i   => L_RST_N,
 		rst_pcie_n_a_i => '1',
-      rst_button_n_a_i => button1_i,
+      rst_button_n_a_i => not button1_i, -- pull-down in VC709
       rst_n_o          => local_reset_n);
 
   cmp_clk_sys_buf : BUFG
