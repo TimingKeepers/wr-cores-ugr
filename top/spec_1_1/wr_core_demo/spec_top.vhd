@@ -390,6 +390,8 @@ architecture rtl of spec_top is
 
   signal local_reset_n  : std_logic;
   signal button1_synced : std_logic_vector(2 downto 0);
+  
+  signal button1_i_n : std_logic;
 
   -- signal genum_wb_out    : t_wishbone_master_out;
   -- signal genum_wb_in     : t_wishbone_master_in;
@@ -412,6 +414,12 @@ architecture rtl of spec_top is
   signal etherbone_wb_in   : t_wishbone_master_in;
   signal etherbone_cfg_in  : t_wishbone_slave_in;
   signal etherbone_cfg_out : t_wishbone_slave_out;
+  
+  signal dio_led_top_i : std_logic;
+  signal dio_led_bot_i : std_logic;
+  
+  signal LED_RED_i   : std_logic;
+  signal LED_GREEN_i : std_logic;
   
 begin
 
@@ -564,13 +572,15 @@ cmp_dmtd_clk_pll : PLLE2_ADV
     LOCKED              => open,
     PWRDWN              => '0',
     RST                 => '0');
+	 
+  button1_i_n <= not button1_i;
 
   U_Reset_Gen : spec_reset_gen
     port map (
       clk_sys_i        => clk_sys,
       --rst_pcie_n_a_i   => L_RST_N,
 		rst_pcie_n_a_i => '1',
-      rst_button_n_a_i => not button1_i, -- pull-down in VC709
+      rst_button_n_a_i => button1_i_n, -- pull-down in VC709
       rst_n_o          => local_reset_n);
 
   cmp_clk_sys_buf : BUFG
@@ -812,8 +822,8 @@ cmp_dmtd_clk_pll : PLLE2_ADV
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      led_act_o   => LED_RED,
-      led_link_o  => LED_GREEN,
+      led_act_o   => LED_RED_i,
+      led_link_o  => LED_GREEN_i,
       scl_o       => master_scl_i(0),
       scl_i       => master_scl_o(0),
       sda_o       => master_sda_i(0),
@@ -1001,6 +1011,9 @@ cmp_dmtd_clk_pll : PLLE2_ADV
 --  dio_sdn_n_o    <= '1';
 
   sfp_tx_disable_o <= '0';
+  
+  LED_RED <= not LED_RED_i;
+  LED_GREEN <= not LED_GREEN_i;
 
 end rtl;
 
