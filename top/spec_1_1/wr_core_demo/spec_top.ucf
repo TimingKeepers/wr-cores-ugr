@@ -488,10 +488,10 @@ NET "BUTTON2_I" IOSTANDARD = "LVCMOS18";
 #NET "LED_GREEN" LOC = E5;
 #NET "LED_GREEN" IOSTANDARD = "LVCMOS25";
 
-NET "LED_RED" LOC = AM39;
+NET "LED_RED" LOC = AT37; #LED3
 NET "LED_RED" IOSTANDARD = "LVCMOS18";
 
-NET "LED_GREEN" LOC = AN39;
+NET "LED_GREEN" LOC = AR35; #LED4
 NET "LED_GREEN" IOSTANDARD = "LVCMOS18";
 
 #NET "PCB_VER[0]" LOC = P5;
@@ -682,9 +682,15 @@ NET "dio_p_i[0]" IOSTANDARD=LVDS;
 NET "dio_n_i[0]" LOC =T30;
 NET "dio_n_i[0]" IOSTANDARD=LVDS;
 
-NET "dio_led_top_o" LOC= J40;
+# FOR FMC!!
+#NET "dio_led_top_o" LOC= J40;
+#NET "dio_led_top_o" IOSTANDARD=LVCMOS18;
+#NET "dio_led_bot_o" LOC= J41;
+#NET "dio_led_bot_o" IOSTANDARD=LVCMOS18;
+
+NET "dio_led_top_o" LOC= AU39; # LED7
 NET "dio_led_top_o" IOSTANDARD=LVCMOS18;
-NET "dio_led_bot_o" LOC= J41;
+NET "dio_led_bot_o" LOC= AM39; # LED0
 NET "dio_led_bot_o" IOSTANDARD=LVCMOS18;
 
 NET "uart_rxd_i" LOC= AU33;
