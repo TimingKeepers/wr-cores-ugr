@@ -76,6 +76,7 @@ use work.endpoint_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.sysc_wbgen2_pkg.all;
 use work.softpll_pkg.all;
+use work.obp_pkg.all;
 
 entity wr_core is
   generic(
@@ -164,8 +165,8 @@ entity wr_core is
     sfp_sda_o  : out std_logic;
     sfp_sda_i  : in  std_logic := '1';
     sfp_det_i  : in  std_logic := '1';
-    btn1_i     : in  std_logic := '1';
-    btn2_i     : in  std_logic := '1';
+    btn1_i     : in  std_logic := '0';
+    btn2_i     : in  std_logic := '0';
 
     -----------------------------------------
     --UART
@@ -354,6 +355,12 @@ architecture struct of wr_core is
   -----------------------------------------------------------------------------
   signal dpram_wbb_i : t_wishbone_slave_in;
   signal dpram_wbb_o : t_wishbone_slave_out;
+  
+  -----------------------------------------------------------------------------
+  --Dual-port RAM PROG (DUMMY)
+  -----------------------------------------------------------------------------
+  signal dpram_wbb_i_dummy : t_wishbone_slave_in;
+  signal dpram_wbb_o_dummy : t_wishbone_slave_out;
 
   -----------------------------------------------------------------------------
   --WB Peripherials
@@ -391,9 +398,12 @@ architecture struct of wr_core is
     (0 => f_sdb_embed_device(f_xwb_dpram(g_dpram_size), x"00000000"),
      1 => f_sdb_embed_bridge(c_secbar_bridge_sdb, x"00020000"));
   constant c_sdb_address : t_wishbone_address := x"00030000";
-
-  signal cbar_slave_i  : t_wishbone_slave_in_array (2 downto 0);
-  signal cbar_slave_o  : t_wishbone_slave_out_array(2 downto 0);
+  
+	constant c_main_bridge_sdb  : t_sdb_bridge       :=
+    f_xwb_bridge_layout_sdb(true, c_layout, c_sdb_address);
+  
+  signal cbar_slave_i  : t_wishbone_slave_in_array (3 downto 0);
+  signal cbar_slave_o  : t_wishbone_slave_out_array(3 downto 0);
   signal cbar_master_i : t_wishbone_master_in_array(1 downto 0);
   signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
 
@@ -474,6 +484,10 @@ architecture struct of wr_core is
   --signal TRIG1   : std_logic_vector(31 downto 0);
   --signal TRIG2   : std_logic_vector(31 downto 0);
   --signal TRIG3   : std_logic_vector(31 downto 0);
+  
+  signal stall_wrpc : std_logic := '0';
+  signal stall_wrpc_reset : std_logic := '0';
+  
 begin
 
   rst_aux_n_o <= rst_net_n;
@@ -711,7 +725,7 @@ begin
     generic map(g_profile => "medium_icache_debug")
     port map(
       clk_sys_i => clk_sys_i,
-      rst_n_i   => rst_wrc_n,
+      rst_n_i   => stall_wrpc_reset,
       irq_i     => lm32_irq_slv,
 
       dwb_o => cbar_slave_i(0),
@@ -719,7 +733,10 @@ begin
       iwb_o => cbar_slave_i(1),
       iwb_i => cbar_slave_o(1)
       );
-
+		
+	stall_wrpc_reset <= (not stall_wrpc) and rst_wrc_n;
+	stall_wrpc <= btn2_i;
+		
   -----------------------------------------------------------------------------
   -- Dual-port RAM
   -----------------------------------------------------------------------------  
@@ -814,13 +831,28 @@ begin
       sl_err_o   => wb_err_o,
       sl_rty_o   => wb_rty_o,
       sl_stall_o => wb_stall_o);
+		
+		-- PROGRAMER
+		obp_lm32: obp
+		generic map(
+			g_dpram_initf => "wrc_prog.ram",
+			--g_dpram_size  => 8192,
+			g_bridge_sdb  => c_main_bridge_sdb 
+		)
+		port map(
+			clk_sys_i => clk_sys_i,
+			rst_n_i => rst_n_i,
+			enable_obp => stall_wrpc,
+			wb_i => cbar_slave_o(3),
+			wb_o  => cbar_slave_i(3)
+		);
 
   -----------------------------------------------------------------------------
   -- WB intercon
   -----------------------------------------------------------------------------
   WB_CON : xwb_sdb_crossbar
     generic map(
-      g_num_masters => 3,
+      g_num_masters => 4,
       g_num_slaves  => 2,
       g_registered  => true,
       g_wraparound  => true,

@@ -83,9 +83,11 @@ entity spec_top is
 
       fpga_scl_b : inout std_logic;
       fpga_sda_b : inout std_logic;
+		
+		fpga_i2c_reset_n : out std_logic;
 
-      button1_i : in std_logic := 'H';
-      button2_i : in std_logic := 'H';
+      button1_i : in std_logic := 'L';
+      button2_i : in std_logic := 'L';
 
 --      thermo_id : inout std_logic;      -- 1-Wire interface to DS18B20
 
@@ -103,9 +105,9 @@ entity spec_top is
 --      sfp_mod_def1_b    : inout std_logic;  -- scl
 --      sfp_mod_def2_b    : inout std_logic;  -- sda
       sfp_rate_select_b : inout std_logic;
-      sfp_tx_fault_i    : in    std_logic;
+      sfp_tx_fault_i    : in    std_logic := '0';
       sfp_tx_disable_o  : out   std_logic;
-      sfp_los_i         : in    std_logic;
+      sfp_los_i         : in    std_logic := '0';
 
 
       -------------------------------------------------------------------------
@@ -343,24 +345,17 @@ architecture rtl of spec_top is
   signal dac_rst_n        : std_logic;
   signal led_divider      : unsigned(23 downto 0);
 
---  signal wrc_scl_o : std_logic;
---  signal wrc_scl_i : std_logic;
---  signal wrc_sda_o : std_logic;
---  signal wrc_sda_i : std_logic;
---  signal sfp_scl_o : std_logic;
---  signal sfp_scl_i : std_logic;
---  signal sfp_sda_o : std_logic;
---  signal sfp_sda_i : std_logic;
+  signal wrc_scl_o : std_logic;
+  signal wrc_scl_i : std_logic;
+  signal wrc_sda_o : std_logic;
+  signal wrc_sda_i : std_logic;
   
-  signal master_scl_o : std_logic_vector(1 downto 0);
-  signal master_scl_i : std_logic_vector(1 downto 0);
-  signal master_sda_o : std_logic_vector(1 downto 0);
-  signal master_sda_i : std_logic_vector(1 downto 0);
+  signal dummy_sfp_scl_o : std_logic;
+  signal dummy_sfp_scl_i : std_logic;
+  signal dummy_sfp_sda_o : std_logic;
+  signal dummy_sfp_sda_i : std_logic;
   
-  signal main_scl_o : std_logic;
-  signal main_scl_i : std_logic;
-  signal main_sda_o : std_logic;
-  signal main_sda_i : std_logic;
+  signal i2c_reset_n : std_logic;
   
   signal dio       : std_logic_vector(3 downto 0);
 
@@ -741,43 +736,6 @@ cmp_dmtd_clk_pll : PLLE2_ADV
       led_divider <= led_divider + 1;
     end if;
   end process;
-  
-  fpga_scl_b <= '0' when main_scl_o = '0' else 'Z';
-  fpga_sda_b <= '0' when main_sda_o = '0' else 'Z';
-  main_scl_i  <= fpga_scl_b;
-  main_sda_i  <= fpga_sda_b;
-
---  fpga_scl_b <= '0' when wrc_scl_o = '0' else 'Z';
---  fpga_sda_b <= '0' when wrc_sda_o = '0' else 'Z';
---  wrc_scl_i  <= fpga_scl_b;
---  wrc_sda_i  <= fpga_sda_b;
---
---  sfp_mod_def1_b <= '0' when sfp_scl_o = '0' else 'Z';
---  sfp_mod_def2_b <= '0' when sfp_sda_o = '0' else 'Z';
---  sfp_scl_i      <= sfp_mod_def1_b;
---  sfp_sda_i      <= sfp_mod_def2_b;
-
---  thermo_id <= '0' when owr_en(0) = '1' else 'Z';
---  owr_i(0)  <= thermo_id;
-  
-  I2C_ADPT: i2c_switch
-	port map(
-		-- Clock and Reset
-		clk => clk_sys,
-		rst_n => local_reset_n,
-
-		-- Slave I2C bus
-		slave_scl_i => main_scl_i,
-		slave_scl_o => main_scl_o,
-		slave_sda_i => main_sda_i,
-		slave_sda_o => main_sda_o,
-
-		-- Master I2C buses
-		master_scl_i => master_scl_i,
-		master_scl_o => master_scl_o,
-		master_sda_i => master_sda_i,
-		master_sda_o => master_sda_o
-	);
 
   U_WR_CORE : xwr_core
     generic map (
@@ -824,14 +782,14 @@ cmp_dmtd_clk_pll : PLLE2_ADV
 
       led_act_o   => LED_RED_i,
       led_link_o  => LED_GREEN_i,
-      scl_o       => master_scl_i(0),
-      scl_i       => master_scl_o(0),
-      sda_o       => master_sda_i(0),
-      sda_i       => master_sda_o(0),
-      sfp_scl_o   => master_scl_i(1),
-      sfp_scl_i   => master_scl_o(1),
-      sfp_sda_o   => master_sda_i(1),
-      sfp_sda_i   => master_sda_o(1),
+      scl_o       => wrc_scl_o,
+      scl_i       => wrc_scl_i,
+      sda_o       => wrc_sda_o,
+      sda_i       => wrc_sda_i,
+      sfp_scl_o   => dummy_sfp_scl_o,
+      sfp_scl_i   => dummy_sfp_scl_i,
+      sfp_sda_o   => dummy_sfp_sda_o,
+      sfp_sda_i   => dummy_sfp_sda_i,
       sfp_det_i   => sfp_mod_def0_b,
       btn1_i      => button1_i,
       btn2_i      => button2_i,
@@ -1014,6 +972,19 @@ cmp_dmtd_clk_pll : PLLE2_ADV
   
   LED_RED <= not LED_RED_i;
   LED_GREEN <= not LED_GREEN_i;
+  
+  --i2c_reset_n <= '1';
+  i2c_reset_n <= local_reset_n;
+  
+  fpga_i2c_reset_n <= '0' when i2c_reset_n = '0' else 'Z';
+  
+  fpga_scl_b <= '0' when wrc_scl_o = '0' else 'Z';
+  fpga_sda_b <= '0' when wrc_sda_o = '0' else 'Z';
+  wrc_scl_i  <= fpga_scl_b;
+  wrc_sda_i  <= fpga_sda_b;
+
+--  thermo_id <= '0' when owr_en(0) = '1' else 'Z';
+--  owr_i(0)  <= thermo_id;
 
 end rtl;
 
