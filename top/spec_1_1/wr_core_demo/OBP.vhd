@@ -44,6 +44,8 @@ architecture Behavioral of OBP is
   signal dpram_wbb_i_dummy : t_wishbone_slave_in;
   signal dpram_wbb_o_dummy : t_wishbone_slave_out;
   
+  signal rst_n_obp : std_logic;
+  
 begin
 
 -----------------------------------------------------------------------------
@@ -53,7 +55,7 @@ begin
     generic map(g_profile => "medium_icache_debug")
     port map(
       clk_sys_i => clk_sys_i,
-      rst_n_i   => enable_obp,
+      rst_n_i   => rst_n_obp,
       irq_i     => (others => '0'),
 
       dwb_o => cbar_slave_i(0),
@@ -107,5 +109,7 @@ begin
 		
 		cbar_master_i(1) <= wb_i;
 		wb_o <= cbar_master_o(1);
+		
+		rst_n_obp <= (enable_obp and rst_n_i);
 		
 end Behavioral;
