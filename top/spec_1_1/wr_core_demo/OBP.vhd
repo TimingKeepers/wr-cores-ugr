@@ -15,7 +15,7 @@ use work.obp_pkg.all;
 entity OBP is
 generic(
     g_dpram_initf               : string                         := "obp.ram";
-    g_dpram_size                : integer                        := 90112/4;
+    g_dpram_size                : integer                        := 10240/4;
 	 g_bridge_sdb  : t_sdb_bridge
     );
 	 port(
