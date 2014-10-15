@@ -13,5 +13,6 @@ modules =  {"local" :
 												"modules/wr_eca",
 												"modules/wr_tlu",
 												"modules/wrc_core",
+												"modules/wr_obp",
 												"platform"]
 						}
