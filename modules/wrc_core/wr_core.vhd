@@ -464,6 +464,23 @@ signal out_enable : std_logic_vector(g_aux_clks downto 0);
 
 signal stall_wrpc : std_logic := '0';
 signal stall_wrpc_reset : std_logic := '0';
+
+----------------------------------------------------------------------------
+-- For OBP (Dummies)
+----------------------------------------------------------------------------
+signal ep_txtsu_port_id_obp_dummy           : std_logic_vector(4 downto 0);
+signal ep_txtsu_frame_id_obp_dummy          : std_logic_vector(15 downto 0);
+signal ep_txtsu_ts_value_obp_dummy          : std_logic_vector(31 downto 0);
+signal ep_txtsu_ts_incorrect_obp_dummy      : std_logic;
+signal ep_txtsu_stb_obp_dummy : std_logic;
+
+signal src_out_obp_dummy : t_wrf_source_out;
+signal src_in_obp_dummy  : t_wrf_source_in;
+signal snk_out_obp_dummy : t_wrf_sink_out;
+signal snk_in_obp_dummy  : t_wrf_sink_in;
+
+signal mnic_txtsu_ack_obp_dummy : std_logic;
+
 begin
 
 rst_aux_n_o <= rst_net_n;
@@ -1020,6 +1037,20 @@ port map(
 	clk_sys_i => clk_sys_i,
 	rst_n_i => rst_n_i,
 	enable_obp => stall_wrpc,
+	
+	ep_txtsu_port_id => ep_txtsu_port_id_obp_dummy,
+    ep_txtsu_frame_id  => ep_txtsu_frame_id_obp_dummy, 
+    ep_txtsu_ts_value  => ep_txtsu_ts_value_obp_dummy,  
+    ep_txtsu_ts_incorrect  => ep_txtsu_ts_incorrect_obp_dummy,  
+	ep_txtsu_stb => ep_txtsu_stb_obp_dummy,
+
+	src_out => src_out_obp_dummy,
+	src_in  => src_in_obp_dummy,
+	snk_out => snk_out_obp_dummy,
+	snk_in  => snk_in_obp_dummy,
+
+	mnic_txtsu_ack => mnic_txtsu_ack_obp_dummy, 
+	
 	wb_i => cbar_slave_o(3),
 	wb_o  => cbar_slave_i(3)
 );

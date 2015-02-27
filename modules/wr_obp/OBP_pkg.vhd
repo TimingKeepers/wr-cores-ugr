@@ -47,6 +47,7 @@ use ieee.numeric_std.all;
 library work;
 use work.genram_pkg.all;
 use work.wishbone_pkg.all;
+use work.wr_fabric_pkg.all;
 
 package obp_pkg is
 
@@ -61,6 +62,20 @@ generic(
     clk_sys_i : in std_logic;
     rst_n_i : in std_logic;
 	 enable_obp : in std_logic;
+	 
+	 ep_txtsu_port_id           : in std_logic_vector(4 downto 0);
+        ep_txtsu_frame_id          : in std_logic_vector(15 downto 0);
+        ep_txtsu_ts_value          : in std_logic_vector(31 downto 0);
+        ep_txtsu_ts_incorrect      : in std_logic;
+	ep_txtsu_stb : in std_logic;
+
+	src_out : out t_wrf_source_out;
+	src_in  : in t_wrf_source_in;
+	snk_out : out t_wrf_sink_out;
+	snk_in  : in t_wrf_sink_in;
+
+	mnic_txtsu_ack : out std_logic;
+	
 	 wb_i  : in t_wishbone_master_in;
 	 wb_o  : out t_wishbone_master_out
     );

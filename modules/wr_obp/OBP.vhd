@@ -43,6 +43,7 @@
 
 -- Master interconnect:
 --  0x00000000: OBP RAM Memory
+--  0x00200000: Mini NIC for OBP
 --  0x00400000: To-external device bridge (Main)
 
 library ieee;
@@ -69,6 +70,20 @@ generic(
     clk_sys_i : in std_logic;
     rst_n_i : in std_logic;
 	 enable_obp : in std_logic;
+
+        ep_txtsu_port_id           : in std_logic_vector(4 downto 0);
+        ep_txtsu_frame_id          : in std_logic_vector(15 downto 0);
+        ep_txtsu_ts_value          : in std_logic_vector(31 downto 0);
+        ep_txtsu_ts_incorrect      : in std_logic;
+	ep_txtsu_stb : in std_logic;
+
+	src_out : out t_wrf_source_out;
+	src_in  : in t_wrf_source_in;
+	snk_out : out t_wrf_sink_out;
+	snk_in  : in t_wrf_sink_in;
+
+	mnic_txtsu_ack : out std_logic;
+
 	 wb_i  : in t_wishbone_master_in;
 	 wb_o  : out t_wishbone_master_out
     );
@@ -78,20 +93,40 @@ architecture Behavioral of OBP is
 -----------------------------------------------------------------------------
   --WB intercon
   -----------------------------------------------------------------------------
-  constant c_layout : t_sdb_record_array(1 downto 0) :=
+  constant c_layout : t_sdb_record_array(2 downto 0) :=
     (0 => f_sdb_embed_device(f_xwb_dpram_obp(g_dpram_size), x"00000000"),
-     1 => f_sdb_embed_bridge(g_bridge_sdb, x"00400000"));
+     1 => f_sdb_embed_device(c_xwr_mini_nic_sdb, x"00200000"),
+     2 => f_sdb_embed_bridge(g_bridge_sdb, x"00400000"));
   constant c_sdb_address : t_wishbone_address := x"00c00000";
 
   signal cbar_slave_i  : t_wishbone_slave_in_array (1 downto 0);
   signal cbar_slave_o  : t_wishbone_slave_out_array(1 downto 0);
-  signal cbar_master_i : t_wishbone_master_in_array(1 downto 0);
-  signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
+  signal cbar_master_i : t_wishbone_master_in_array(2 downto 0);
+  signal cbar_master_o : t_wishbone_master_out_array(2 downto 0);
   
   signal dpram_wbb_i_dummy : t_wishbone_slave_in;
   signal dpram_wbb_o_dummy : t_wishbone_slave_out;
   
   signal rst_n_obp : std_logic;
+
+constant c_mnic_memsize_log2 : integer := f_log2_size(g_dpram_size);
+
+-----------------------------------------------------------------------------
+--Mini-NIC
+-----------------------------------------------------------------------------
+signal mnic_mem_data_o : std_logic_vector(31 downto 0);
+signal mnic_mem_addr_o : std_logic_vector(c_mnic_memsize_log2-1 downto 0);
+signal mnic_mem_data_i : std_logic_vector(31 downto 0);
+signal mnic_mem_wr_o   : std_logic;
+
+signal minic_wb_in  : t_wishbone_slave_in;
+signal minic_wb_out : t_wishbone_slave_out;
+
+-----------------------------------------------------------------------------
+--Dual-port RAM
+-----------------------------------------------------------------------------
+signal dpram_wbb_i : t_wishbone_slave_in;
+signal dpram_wbb_o : t_wishbone_slave_out;
   
 begin
 
@@ -129,9 +164,54 @@ begin
 
       slave1_i => cbar_master_o(0),
       slave1_o => cbar_master_i(0),
-      slave2_i => dpram_wbb_i_dummy,
-      slave2_o => dpram_wbb_o_dummy
+	slave2_i => dpram_wbb_i,
+	slave2_o => dpram_wbb_o
       );
+
+dpram_wbb_i.cyc                                 <= '1';
+dpram_wbb_i.stb                                 <= '1';
+dpram_wbb_i.adr(c_mnic_memsize_log2-1 downto 0) <= mnic_mem_addr_o;
+dpram_wbb_i.sel                                 <= "1111";
+dpram_wbb_i.we                                  <= mnic_mem_wr_o;
+dpram_wbb_i.dat                                 <= mnic_mem_data_o;
+mnic_mem_data_i                                 <= dpram_wbb_o.dat;
+
+-----------------------------------------------------------------------------
+-- Mini-NIC
+-----------------------------------------------------------------------------
+MINI_NIC : xwr_mini_nic
+ generic map (
+	g_interface_mode       => PIPELINED,
+	g_address_granularity  => BYTE,
+	g_memsize_log2         => f_log2_size(g_dpram_size),
+	g_buffer_little_endian => false)
+ port map (
+	clk_sys_i => clk_sys_i,
+	rst_n_i   => rst_n_i,
+
+	mem_data_o => mnic_mem_data_o,
+	mem_addr_o => mnic_mem_addr_o,
+	mem_data_i => mnic_mem_data_i,
+	mem_wr_o   => mnic_mem_wr_o,
+
+	src_o => src_out,
+	src_i => src_in,
+	snk_o => snk_out,
+	snk_i => snk_in,
+
+	txtsu_port_id_i     => ep_txtsu_port_id,
+	txtsu_frame_id_i    => ep_txtsu_frame_id,
+	txtsu_tsval_i       => ep_txtsu_ts_value,
+	txtsu_tsincorrect_i => ep_txtsu_ts_incorrect,
+	txtsu_stb_i         => ep_txtsu_stb,
+	txtsu_ack_o         => mnic_txtsu_ack,
+
+	wb_i => minic_wb_in,
+	wb_o => minic_wb_out
+	);
+	
+	minic_wb_in <= cbar_master_o(1);
+	cbar_master_i(1) <= minic_wb_out;
 
  -----------------------------------------------------------------------------
   -- WB intercon
@@ -139,7 +219,7 @@ begin
   WB_CON : xwb_sdb_crossbar
     generic map(
       g_num_masters => 2,
-      g_num_slaves  => 2,
+      g_num_slaves  => 3,
       g_registered  => true,
       g_wraparound  => true,
       g_layout      => c_layout,
@@ -154,8 +234,8 @@ begin
       master_o  => cbar_master_o
       );
 		
-    cbar_master_i(1) <= wb_i;
-    wb_o <= cbar_master_o(1);
+    cbar_master_i(2) <= wb_i;
+    wb_o <= cbar_master_o(2);
 		
     rst_n_obp <= (enable_obp and rst_n_i);
 		
