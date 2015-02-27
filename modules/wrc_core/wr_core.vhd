@@ -371,18 +371,26 @@ signal secbar_master_o : t_wishbone_master_out_array(7 downto 0);
 -----------------------------------------------------------------------------
 --WB intercon
 -----------------------------------------------------------------------------
-constant c_layout : t_sdb_record_array(1 downto 0) :=
+
+constant c_ram_size                : integer                        := 20480/4;
+constant c_secobp_layout : t_sdb_record_array(1 downto 0) := f_secobp_layout(c_ram_size);
+
+ constant c_secobp_bridge_sdb  : t_sdb_bridge       :=
+ f_xwb_bridge_layout_sdb(true, c_secobp_layout, c_secobp_sdb_address);
+
+constant c_layout : t_sdb_record_array(2 downto 0) :=
  (0 => f_sdb_embed_device(f_xwb_dpram(g_dpram_size), x"00000000"),
-  1 => f_sdb_embed_bridge(c_secbar_bridge_sdb, x"00020000"));
-constant c_sdb_address : t_wishbone_address := x"00030000";
+  1 => f_sdb_embed_bridge(c_secbar_bridge_sdb, x"00020000"),
+  2 => f_sdb_embed_bridge(c_secobp_bridge_sdb, x"00040000"));
+constant c_sdb_address : t_wishbone_address := x"000c0000";
 
 constant c_main_bridge_sdb  : t_sdb_bridge       :=
  f_xwb_bridge_layout_sdb(true, c_layout, c_sdb_address);
 
 signal cbar_slave_i  : t_wishbone_slave_in_array (3 downto 0);
 signal cbar_slave_o  : t_wishbone_slave_out_array(3 downto 0);
-signal cbar_master_i : t_wishbone_master_in_array(1 downto 0);
-signal cbar_master_o : t_wishbone_master_out_array(1 downto 0);
+signal cbar_master_i : t_wishbone_master_in_array(2 downto 0);
+signal cbar_master_o : t_wishbone_master_out_array(2 downto 0);
 
 -----------------------------------------------------------------------------
 --External WB interface
@@ -823,7 +831,7 @@ U_Adapter : wb_slave_adapter
 WB_CON : xwb_sdb_crossbar
  generic map(
 	g_num_masters => 4,
-	g_num_slaves  => 2,
+	g_num_slaves  => 3,
 	g_registered  => true,
 	g_wraparound  => true,
 	g_layout      => c_layout,
@@ -1013,15 +1021,18 @@ txtsu_stb_o          <= '1' when (ep_txtsu_stb = '1' and (ep_txtsu_frame_id /= x
 obp_lm32: obp
 generic map(
 	g_dpram_initf => "obp.ram",
-	--g_dpram_size  => 20480/4,
+	g_dpram_size  => c_ram_size,
+	g_cram_size  => c_ram_size,
 	g_bridge_sdb  => c_main_bridge_sdb 
 )
 port map(
 	clk_sys_i => clk_sys_i,
 	rst_n_i => rst_n_i,
 	enable_obp => stall_wrpc,
-	wb_i => cbar_slave_o(3),
-	wb_o  => cbar_slave_i(3)
+        wbs_i => cbar_master_o(2),
+	wbs_o => cbar_master_i(2),
+	wbm_i => cbar_slave_o(3),
+	wbm_o  => cbar_slave_i(3)
 );
 
 end struct;
